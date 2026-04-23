@@ -1,0 +1,24 @@
+{
+  "synced_at": "2026-04-23T02:32:17.628641Z",
+  "source": "loom",
+  "variant": "rs",
+  "multi_cli": true,
+  "artifacts": {
+    "updated": 0,
+    "created": 1772,
+    "unchanged": 0
+  },
+  "scripts": {
+    "updated": 0,
+    "created": 42,
+    "unchanged": 0
+  },
+  "overlay_composed": 10,
+  "cli_artifacts": {
+    "codex.prompts": 29,
+    "codex.skills": 34,
+    "gemini.commands": 29,
+    "gemini.skills": 34,
+    "gemini.agents": 22
+  }
+}
