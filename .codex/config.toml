@@ -16,7 +16,7 @@ project_doc_max_bytes = 65536
 # they cover the full tool surface.
 [mcp_servers.codex-mcp-guard]
 command = "node"
-args = ["./.claude/codex-mcp-guard/server.js"]
+args = ["./.codex-mcp-guard/server.js"]
 
 # Default model. Override per-session via `codex --model`.
 # model = "gpt-5"
