@@ -8,6 +8,8 @@ scope: baseline
 
 # Agent Orchestration Rules
 
+See `.claude/guides/rule-extracts/agents.md` for full evidence, extended examples, and post-mortems.
+
 
 ## Specialist Delegation (MUST)
 
@@ -65,6 +67,12 @@ Reviews happen at COC phase boundaries, not per-edit. Skip only when explicitly 
 - "Reviews will happen in a follow-up session"
 - "The changes are straightforward, no review needed"
 - "Already reviewed informally during implementation"
+
+## MUST: Verify Specialist Tool Inventory Before Implementation Delegation
+
+When delegating IMPLEMENTATION work (any task involving file edits, commits, build/test invocation, version bumps), the orchestrator MUST select a specialist whose declared tool set includes `Edit` AND `Bash`. Read-only specialists (`security-reviewer`, `analyst`, `reviewer`, `gold-standards-validator`, `value-auditor`) MUST NOT be delegated implementation tasks — their tool set is `Read, Write, Grep, Glob` (and a few have `Task`), with no Edit + no Bash. Pure-research / pure-review delegations are fine.
+
+**Why:** Read-only specialists halt mid-instruction at file-edit boundaries with no recovery — the agent emits "Now let me wire X" then exits with zero tool calls because Edit is not available, OR fabricates commit-style language without actually committing (violating `git.md` § "Commit-Message Claim Accuracy"). Either outcome wastes one full shard's budget AND requires re-launch with a tools-equipped specialist (e.g., `tdd-implementer`, `build-fix`, `python-binding`). Verifying tool inventory pre-launch is O(1); re-launch + re-read of all context is O(N) on shard size.
 
 
 
@@ -329,20 +337,34 @@ Format: `type/description` (e.g., `feat/add-auth`, `fix/api-timeout`)
 
 **Why:** Inconsistent branch names prevent CI pattern-matching rules and make `git branch --list` unreadable across contributors.
 
+### Release-Prep PRs MUST Use `release/v*` Branch Convention (MUST)
+
+Any PR whose diff is metadata-only — version anchors (`pyproject.toml` / `Cargo.toml`, `__init__.py::__version__` / lib.rs `pub const VERSION`), `CHANGELOG.md`, spec/doc version-line updates, and CHANGELOG-paired spec updates — MUST be opened from a branch named `release/v<X.Y.Z>`. Using `feat/`, `fix/`, `chore/`, or any other prefix on a release-prep PR is BLOCKED.
+
+**Why:** Every PR-gate workflow that adopts the `ci-runners.md` § "MUST: Release-prep skip" pattern checks `if: !startsWith(github.head_ref, 'release/')`. Branching from `release/v*` triggers the auto-skip and saves ~45 min × matrix-size of CI minutes per release-prep PR. Branching from anything else burns the full PR-gate matrix on a diff that has no code surface to verify. Evidence: kailash-rs PR #602 (2026-04-25) used `feat/v3.23.0-release-prep` and consumed ~73 min of GitHub-billable runner time on a metadata-only diff that should have skipped to ~0 min. The cross-reference exists in `ci-runners.md` but is path-scoped to `.github/workflows/**`, so it does not load when an agent is choosing a branch name. This clause cross-references the rule from `git.md` (always-loaded baseline) so branch-naming decisions surface the cost lever.
+
+**If the release-prep work IS NOT metadata-only** (e.g., folds in a code fix as part of the same PR), split: keep the code fix on a `feat/` or `fix/` branch with its own PR; cut the release-prep on a separate `release/v*` branch that only updates anchors + CHANGELOG. Two PRs, one with full CI, one near-zero.
+
+### Pre-FIRST-Push CI Parity Discipline (MUST)
+
+Before the FIRST `git push` that creates a remote branch (which opens the door to PR-gate CI), the agent MUST run the project's local CI parity command set. The discipline already exists in language-specific rules (`build-speed.md` § "Run Full CI Job-Set Locally Before Admin-Merge" for Rust; equivalents for Python: `pre-commit run --all-files` + `mypy --strict` + `pytest`) — this clause extends the same gate to the FIRST push, not just admin-merge.
+
+**Why:** Each push to an open PR retriggers the full PR-gate matrix. With `concurrency: cancel-in-progress: true` on the workflow, prior in-flight runs are cancelled — but **the cancelled runs are still billed for the wall-clock minutes already consumed before cancellation**. kailash-rs PR #598 (2026-04-25) had a 71-minute Workspace Tests run cancelled mid-flight by a fix-up push; those 71 min were charged. Pre-flighting the local commands takes ~5-10 minutes once + amortized seconds on incremental re-runs; the alternative is N × 45 min of billed CI per fix-up cycle. Local discipline is strictly cheaper. The rule extends to the FIRST push because by the time admin-merge is invoked, every previous fix-up cycle has already burned billable minutes.
+
 ## Branch Protection
 
 All protected repos require PRs to main. Direct push is rejected by GitHub.
 
 **Why:** Direct pushes bypass CI checks and code review, allowing broken or unreviewed code to reach the release branch.
 
-| Repository                                    | Branch | Protection          |
-| --------------------------------------------- | ------ | ------------------- |
-| `terrene-foundation/kailash-py`               | `main` | Full (admin bypass) |
-| `terrene-foundation/kailash-coc-claude-py`    | `main` | Full (admin bypass) |
-| `terrene-foundation/kailash-coc-claude-rs`    | `main` | Full (admin bypass) |
-| `esperie/kailash-rs`                          | `main` | Full (admin bypass) |
-| `terrene-foundation/kailash-prism`            | `main` | Full (admin bypass) |
-| `terrene-foundation/kailash-coc-claude-prism` | `main` | Full (admin bypass) |
+| Repository                                    | Branch | Protection                                         |
+| --------------------------------------------- | ------ | -------------------------------------------------- |
+| `terrene-foundation/kailash-py`               | `main` | Full (admin bypass)                                |
+| `terrene-foundation/kailash-coc-claude-py`    | `main` | Full (admin bypass) — legacy (archival 2026-10-22) |
+| `terrene-foundation/kailash-coc-claude-rs`    | `main` | Full (admin bypass) — legacy (archival 2026-10-22) |
+| ... | ... |
+
+**New multi-CLI USE repos (`kailash-coc-py`, `kailash-coc-rs`)**: created 2026-04-23 as net-new repos (not rename) per migration r3 directive. Flipped to public + branch protection applied 2026-04-23 (1 approving review required, force-push + deletion blocked, admin bypass retained). Posture matches legacy `kailash-coc-claude-{py,rs}` rows.
 
 **Owner workflow**: Branch → commit → push → PR → `gh pr merge <N> --admin --merge --delete-branch`
 
@@ -499,8 +521,9 @@ scope: baseline
 
 # Security Rules
 
-
 ALL code changes in the repository.
+
+See `.claude/guides/rule-extracts/security.md` for extended examples, exhaustive sanitizer contract examples, and multi-site kwarg plumbing full post-mortem.
 
 ## No Hardcoded Secrets
 
@@ -516,13 +539,13 @@ All database queries MUST use parameterized queries or ORM.
 
 ## Credential Decode Helpers
 
-Connection strings carry credentials in URL-encoded form. Decoding them at a call site with `unquote(parsed.password)` is BLOCKED — every decode site MUST route through a shared helper module so the validation logic lives in exactly one place and drift between sites is impossible.
+Connection strings carry credentials in URL-encoded form. Decoding them at a call site with `unquote(parsed.password)` is BLOCKED — every decode site MUST route through a shared helper module so validation logic lives in one place.
 
 ### 1. Null-Byte Rejection At Every Credential Decode Site (MUST)
 
 Every URL parsing site that extracts `user`/`password` from `urlparse(connection_string)` MUST route through a single shared helper that rejects null bytes after percent-decoding. Hand-rolled `unquote(parsed.password)` at a call site is BLOCKED.
 
-**Why:** A crafted `mysql://user:%00bypass@host/db` decodes to `\x00bypass`; the MySQL C client truncates credentials at the first null byte and the driver sends an empty password, succeeding against any row in `mysql.user` with an empty `authentication_string`. Drift between sites that have the check and sites that don't is unauditable without a single helper.
+**Why:** A crafted `mysql://user:%00bypass@host/db` decodes to `\x00bypass`; the MySQL C client truncates credentials at the first null byte and the driver sends an empty password. Drift between sites with/without the check is unauditable without a single helper. See guide for full evidence.
 
 ### 2. Pre-Encoder Consolidation (MUST)
 
@@ -542,34 +565,6 @@ All user-generated content MUST be encoded before display in HTML templates, JSO
 
 **Why:** Unencoded user content enables cross-site scripting (XSS), allowing attackers to execute arbitrary JavaScript in other users' browsers.
 
-## Sanitizer Contract — DataFlow Display Hygiene
-
-DataFlow's input sanitizer is a defense-in-depth display-path safety net, NOT the primary SQLi defense. Parameter binding (`$N` / `%s` / `?`) is the primary defense — see § Parameterized Queries above.
-
-The sanitizer's contract is fixed:
-
-### 1. String Inputs MUST Be Token-Replaced, Not Quote-Escaped
-
-For declared-string fields, the sanitizer MUST replace dangerous SQL keyword sequences with grep-able sentinel tokens (`STATEMENT_BLOCKED`, `DROP_TABLE`, `UNION_SELECT`, etc.). Quote-escaping (`'` → `''`) is BLOCKED.
-
-**Why:** Token-replace makes attacker intent grep-able post-incident (`grep STATEMENT_BLOCKED audit.log`). Quote-escape preserves the payload as data, masking that an attack was attempted. The actual injection defense is parameter binding; the sanitizer is the audit trail.
-
-### 2. Type-Confusion MUST Raise, Not Silently Coerce
-
-For declared-string fields receiving `dict` / `list` / `set` / `tuple` values, the sanitizer MUST raise `ValueError("parameter type mismatch: …")`. Silent coercion via `str(value)` is BLOCKED — it lets a nested structure bypass the string-only sanitizer.
-
-**Why:** A malicious upstream node that passes `{"injection": "'; DROP TABLE …"}` for a field declared as `str` bypasses every string-only check. Raising at the type-confusion boundary closes the bypass; coercion-to-string converts a structural attack into an unaudited storage event.
-
-### 3. Safe Types Are Returned As-Is
-
-Values of declared-safe types (`int`, `float`, `bool`, `Decimal`, `datetime`, `date`, `time`) MUST pass through unchanged. `dict` and `list` MUST also pass through unchanged when the field's declared type is `dict` or `list` (JSON / array columns).
-
-## Multi-Site Kwarg Plumbing
-
-When a security-relevant kwarg (classification policy, tenant scope, clearance context, audit correlation ID) is plumbed through a helper, EVERY call site of that helper MUST be updated in the SAME PR. Updating the "primary" call site and deferring siblings is BLOCKED.
-
-**Why:** A helper that takes a security-relevant kwarg has the kwarg precisely because the unqualified call leaks or misbehaves. Leaving any sibling call site on the unqualified signature ships the exact failure mode the kwarg was introduced to fix; the "safe default" is by definition the insecure default (otherwise the kwarg would not exist). The fix is mechanical — `grep -rn 'helper_name(' .` and patch every hit in the same PR.
-
 ## MUST NOT
 
 - **No eval() on user input**: `eval()`, `exec()`, `subprocess.call(cmd, shell=True)` — BLOCKED
@@ -584,36 +579,41 @@ When a security-relevant kwarg (classification policy, tenant scope, clearance c
 
 **Why:** Once committed, secrets persist in git history even after removal, and are exposed to anyone with repo access.
 
+## Sanitizer Contract — DataFlow Display Hygiene
+
+DataFlow's input sanitizer (`packages/kailash-dataflow/src/dataflow/core/nodes.py::sanitize_sql_input`) is a defense-in-depth display-path safety net, NOT the primary SQLi defense. Parameter binding (`$N` / `%s` / `?`) is the primary defense — see § Parameterized Queries above.
+
+### 1. String Inputs MUST Be Token-Replaced, Not Quote-Escaped
+
+For declared-string fields, the sanitizer MUST replace dangerous SQL keyword sequences with grep-able sentinel tokens (`STATEMENT_BLOCKED`, `DROP_TABLE`, `UNION_SELECT`, etc.). Quote-escaping (`'` → `''`) is BLOCKED.
+
+**Why:** Token-replace makes attacker intent grep-able post-incident (`grep STATEMENT_BLOCKED audit.log`). Quote-escape preserves the payload as data, masking the attack. Sanitizer is the audit trail; parameter binding is the defense.
+
+### 2. Type-Confusion MUST Raise, Not Silently Coerce
+
+For declared-string fields receiving `dict` / `list` / `set` / `tuple` values, the sanitizer MUST raise `ValueError("parameter type mismatch: …")`. Silent coercion via `str(value)` is BLOCKED.
+
+**Why:** A malicious upstream node passing `{"injection": "'; DROP TABLE …"}` for a str-declared field bypasses every string-only check. Raising at the type-confusion boundary closes the bypass; coercion-to-string converts a structural attack into an unaudited storage event.
+
+### 3. Safe Types Are Returned As-Is
+
+Values of declared-safe types (`int`, `float`, `bool`, `Decimal`, `datetime`, `date`, `time`) MUST pass through unchanged. `dict` and `list` MUST also pass through unchanged when the field's declared type is `dict` or `list` (JSON / array columns). Bug #515: premature `json.dumps()` on dict/list breaks parameter binding.
+
+## Multi-Site Kwarg Plumbing
+
+When a security-relevant kwarg (classification policy, tenant scope, clearance context, audit correlation ID) is plumbed through a helper, EVERY call site of that helper MUST be updated in the SAME PR. Updating the "primary" call site and deferring siblings is BLOCKED.
+
+**Why:** A helper takes a security-relevant kwarg precisely because the unqualified call leaks or misbehaves. Leaving any sibling on the unqualified signature ships the exact failure mode the kwarg was introduced to fix; the "safe default" is by definition the insecure default. Fix is mechanical: `grep -rn 'helper_name(' .` + patch every hit.
+
 ## Kailash-Specific Security
 
 - **DataFlow**: Access controls on models, validate at model level, never expose internal IDs
 - **Nexus**: Authentication on protected routes, rate limiting, CORS configured
 - **Kaizen**: Prompt injection protection, sensitive data filtering, output validation
 
-## Rust: Credential Comparison (MUST)
-
-Every credential / token / HMAC / API key comparison in Rust code MUST use `kailash_auth::api_key::ApiKeyConfig::validate_key` (list) or `kailash_auth::constant_time_eq` (single) — NEVER `==`, NEVER `.any()` over a constant-time inner comparison.
-
-**Why:** `.any()` returns on first match, revealing _which position_ matched via response timing. During key rotation this narrows brute force by one key's worth of entropy per observation. Origin: R3 red team finding `0021-RISK-r3-timing-leak-mcp-auth.md`, fixed in commit `173d054b`. Full pattern: `skills/18-security-patterns/constant-time-comparison-rs.md`.
-
-## Rust: Fail-Closed Security Defaults (MUST)
-
-Every `Default` impl, `default()` constructor, and builder-chain starting value on a security-adjacent type MUST be the most restrictive, non-functional state. Permissive behavior is explicit opt-in only.
-
-Applies to: classification/clearance levels, registry insert, file permissions (0o600 on audit/evidence files), path containment (allowlist, not free path), posture/tenant selection, delegation keys, and unsafe `Send`/`Sync` invariants.
-
-**Why:** Four of six HIGH findings in R1 shared a single root cause — permissive defaults silently disabled security features that operators believed were enabled. Origin: `0018-RISK-six-high-security-findings.md`, fixed in PR #334. Full pattern: `skills/18-security-patterns/fail-closed-defaults-rs.md`.
-
-## Rust: Network Transport Hardening (MUST)
-
-HTTP MCP transports MUST validate `Origin`/`Host` against an allowlist before dispatching any JSON-RPC method. Stdio MCP transports MUST restrict spawn to an allowlisted `{command, arg regex, env key}` triple. Log lines including rejected credential / token / identifier content MUST fingerprint the content, never echo it.
-
-**Why:** Local-only MCP servers bind to 127.0.0.1 and assume localhost = trusted. DNS rebinding defeats this — a website the operator visits while the MCP server runs can invoke local MCP tools via the browser. Stdio spawn without allowlist gives the JSON-RPC caller arbitrary code execution via `sh -c`, `LD_PRELOAD`, or argv injection. Log content without sanitization is a log-poisoning + secret-exfiltration vector. Origin: R3 commits `173d054b`, `0d4ebd12`. Full pattern: `skills/18-security-patterns/network-security-rs.md`.
-
 ## Exceptions
 
 Security exceptions require: written justification, security-reviewer approval, documentation, and time-limited remediation plan.
-
 
 ---
 
@@ -626,10 +626,9 @@ scope: baseline
 
 # Worktree Isolation Rules
 
+See `.claude/guides/rule-extracts/worktree-isolation.md` for extended examples, post-mortem prose, and session evidence for all 6 MUST rules.
 
-This rule targets **orchestrator behavior** — the parent session that spawns agents with `isolation: "worktree"`. It governs session-spawn-time decisions (what to pass in the delegation prompt, how to verify deliverables), NOT file-edit-time behavior. It loads universally because orchestration happens in sessions that rarely edit the `agents/`, `commands/`, or rule files it used to be path-scoped to — exactly the sessions where its absence caused the failure mode to recur.
-
-Agents launched with `isolation: "worktree"` run in their own git worktree so parallel jobs do not fight over the same resources. The original motivation was compile-heavy contention (Rust `target/`, Python `.venv/`, JS `node_modules/`) but **the rule applies to every worktree agent regardless of whether it compiles** — prose-drafting, config edits, markdown briefs, one-line pytest.ini fixes all exhibit the same failure mode. When an agent drifts back to the main checkout — because the system prompt didn't pin cwd, because absolute paths were copied from the orchestrator, because the tool defaulted to `process.cwd()` — the isolation silently breaks: two workers overwrite each other's changes, one commits the other's half-done code, and the "parallel" session produces garbage that only surfaces at `/redteam` or (more often) post-hoc when the lost work is noticed missing.
+Agents launched with `isolation: "worktree"` run in their own git worktree so parallel compile/test jobs do not fight over the same `target/` or `.venv/`. The isolation is only real if the agent actually edits files inside its assigned worktree path. When an agent drifts back to the main checkout — because the system prompt didn't pin cwd, because absolute paths were copied from the orchestrator, because the tool defaulted to `process.cwd()` — the isolation silently breaks.
 
 This rule mandates a self-verification step at agent start AND a pre-flight check in the orchestrator's delegation prompt. The verification is cheap (one `git status`) and the failure mode is expensive (a whole session's worth of parallel work corrupted).
 
@@ -637,41 +636,39 @@ This rule mandates a self-verification step at agent start AND a pre-flight chec
 
 ### 1. Orchestrator Prompts MUST Pin The Worktree Path
 
-Any delegation that uses worktree isolation MUST include the absolute worktree path in the prompt AND MUST instruct the agent to verify `git -C <worktree> status` at the start of its run. Passing the isolation flag without the explicit path is BLOCKED.
+Any delegation that uses `isolation: "worktree"` MUST include the absolute worktree path in the prompt AND MUST instruct the agent to verify `git -C <worktree> status` at the start of its run. Passing the isolation flag without the explicit path is BLOCKED.
 
-See **Examples § Rule 1 — Orchestrator Prompts Pin The Worktree Path** below for the DO / DO NOT delegation syntax.
-
-**Why:** The `isolation: "worktree"` flag creates the worktree but does not pin every tool call inside it — file-writing tools that accept absolute paths will happily write to the main checkout if the orchestrator's prompt uses a main-checkout path. Multiple specialist agents (ml, dataflow, kaizen) drifted back to the main tree during parallel sessions; the corruption was only caught by `git status` after the fact. One-line verification at agent start converts a silent corruption into a loud refusal.
+**Why:** The `isolation: "worktree"` flag creates the worktree but does not pin every tool call inside it — file-writing tools accepting absolute paths will write to the main checkout if the prompt uses a main-checkout path. One-line verification at agent start converts silent corruption into a loud refusal. See guide for 2026-04-19 post-mortem.
 
 ### 2. Specialist Agents MUST Self-Verify Cwd At Start
 
 Every specialist agent file (`.claude/agents/**/*.md`) that may be launched with `isolation: "worktree"` MUST include a "Working Directory Self-Check" step at the top of its process section. The check prints the resolved cwd and the git branch, and refuses to proceed if either is unexpected.
 
-**Why:** The orchestrator's pinned-path instruction can be lost to context compression across long delegation chains; a self-check inside the specialist file is a belt-and-suspenders guarantee that survives prompt truncation. Verified cost: one git call (~30 ms). Verified benefit: prevents the parallel-specialist drift seen in long sessions across compile-heavy languages (Rust cargo locks, Python `.venv` install races, JS `node_modules` writes).
+**Why:** The orchestrator's pinned-path instruction can be lost to context compression across long delegation chains; a self-check inside the specialist file is a belt-and-suspenders guarantee that survives prompt truncation. One git call (~30 ms) prevents specialist drift.
 
 ### 3. Parent MUST Verify Deliverables Exist After Agent Exit
 
-When an agent reports completion of a file-writing task, the parent orchestrator MUST verify the claimed files exist at the worktree path via the CLI's filesystem-read primitive before trusting the completion claim. Agent completion messages are NOT evidence of file creation.
+When an agent reports completion of a file-writing task, the parent orchestrator MUST verify the claimed files exist at the worktree path via `ls` or `Read` before trusting the completion claim. Agent completion messages are NOT evidence of file creation.
 
-See **Examples § Rule 3 — Parent Verifies Deliverables After Agent Exit** below for the DO / DO NOT delegation syntax.
+**Why:** Agents hit budget mid-message and emit "Now let me write X..." without having written X. Kaizen round 6 and ml-specialist round 7 both reported success with zero files on disk. `ls` check is O(1) and converts silent no-op into loud retry.
 
-**Why:** Agents hit their budget mid-message and emit "Now let me write X..." without having written X. Multi-agent sessions have logged repeated occurrences (kaizen-specialist round 6, ml-specialist round 7) where an agent reported success with zero files on disk. An `ls` check is O(1) and converts "silent no-op" into "loud retry".
+### 4. Parallel-Launch Burst Size Limit (Waves of ≤3)
 
-### 4. Worktree Prompts MUST NOT Reference The Parent-Checkout Path
+When launching multiple Opus agents with `isolation: "worktree"` in a single orchestration turn, the parent MUST launch them in waves of ≤3, NOT a single burst of 4+. Bursts of 4+ simultaneous Opus agents hit Anthropic server-side rate limiting and ALL fail at 30–45s elapsed. Rate-limit failures exit the agent before it commits anything.
 
-Any absolute path in a worktree-isolation delegation prompt MUST be anchored to the pinned worktree path (see Rule 1). Absolute paths pointing to the parent checkout (`/Users/<you>/repos/<project>/<subpath>` with no worktree prefix) are BLOCKED — agents resolve them against the filesystem root, silently bypassing the worktree and writing into the parent. Relative paths are the safer default because they always resolve to the agent's cwd (the worktree).
+**Why:** Empirically 4–6 concurrent Opus worktree agents from one parent exceeds server-side throttle; every agent in the burst dies before committing. Recovery is worse than serialization (re-launch + orphan recovery > waiting one wave). Evidence: 2026-04-23 M10 launch — 6 agents all died at 34–45s; waves of 3 completed cleanly. See guide for agent hashes.
 
-See **Examples § Rule 4 — Worktree Prompts Do Not Reference Parent-Checkout Path** below for the DO / DO NOT delegation syntax.
+### 5. Pre-Flight Merge-Base Check Before Worktree Launch
 
-**Why:** `isolation: "worktree"` runs the agent with cwd set to the worktree, but file-write tools accept any absolute path — an absolute path that points to the parent resolves there regardless of cwd. Session 2026-04-19 logged 2 of 3 parallel ml-specialist shards writing to main before self-correcting (Shard B) or losing work entirely (Shard A's 300+ LOC of sklearn array-API impl was lost when its empty worktree auto-cleaned). Only one self-corrected; the failure mode is not agent-detectable by default.
+Before launching a worktree agent, the orchestrator MUST create the worktree's branch from the current `HEAD` of the feat/main branch the work will merge back into — NOT from a stale commit the agent happens to pick up. The orchestrator MUST verify `git merge-base <new-branch> <target-branch>` equals the CURRENT tip of `<target-branch>` at launch time. Launching without the merge-base check is BLOCKED.
 
-### 5. Worktree Agents MUST Commit Incremental Progress
+**Why:** `git worktree add` without explicit base defaults to whatever branch HEAD was last set — can be pre-merge commit from hours ago. Stale-base worktrees merge cleanly only when packages don't overlap; otherwise 3-way merge silently discards one shard's edits. Merge-base check converts invisible drift into loud pre-flight abort. Evidence: 2026-04-23 M10 launch — 5 of 6 worktrees branched from pre-W30-merge SHA. See guide.
 
-Every agent launched with worktree isolation MUST receive an explicit instruction in its prompt to `git commit` after each major milestone (each file written, each test batch passed, each draft brief completed, each config edit made), NOT only at completion. The orchestrator MUST then verify the branch has ≥1 commit before declaring the agent's work landed. Worktrees with zero commits auto-clean on agent exit and the work is unrecoverable — **this applies equally to compile work, prose/markdown drafting, one-line config edits, and every other agent task; "my agent is just writing markdown, commit discipline is overkill" is BLOCKED.**
+### 6. Worktree Branch Name MUST Match Prompt's Declared Name
 
-See **Examples § Rule 5 — Worktree Agents Commit Incremental Progress** below for the DO / DO NOT delegation syntax.
+When the orchestrator prompt specifies a branch name (e.g. `feat/w31-core-ml-nodes`), the worktree MUST be created with that exact branch name — NOT the harness default `worktree-agent-<hash>`. The orchestrator MUST pass `-b <branch>` explicitly to `git worktree add`, AND the agent prompt MUST verify `git rev-parse --abbrev-ref HEAD` matches the declared name before committing.
 
-**Why:** Worktree auto-cleanup silently deletes worktrees with zero commits on their branch. An agent that writes perfect code / prose / config but truncates mid-message before committing loses 100% of its output. Post-hoc file-existence verification (Rule 3) catches orphan files in main but CANNOT recover files that were only in a cleaned-up worktree. Sessions 2026-04-19 (compile-heavy: 3 of 3 parallel ml-specialist shards truncated at 250-370k tokens; 2 lost work) AND 2026-04-21 (non-compile: 11 drafted markdown briefs + a verified pytest.ini diagnosis lost when two worktree agents reported "done" without committing) demonstrate the same failure across both task types. The only reliable defense is instructing the agent to commit as it goes regardless of whether the task compiles or not.
+**Why:** Branch names are the primary `git log --grep` surface for tracing a shard back to its plan — `feat/w31-core-ml-nodes-observability` surfaces in history; `worktree-agent-aa7fb6a6` surfaces only as meaningless hash. Post-merge audits cannot enumerate "did every planned shard land?" via grep when half use harness defaults. Evidence: 2026-04-23 — 3 of 6 M10 shards got hash-default names; audit had to pull from working-memory table.
 
 ## MUST NOT
 
@@ -687,25 +684,6 @@ See **Examples § Rule 5 — Worktree Agents Commit Incremental Progress** below
 
 **Why:** `process.cwd()` resolves to whatever the Claude Code process was launched with (the main checkout), not the worktree; relative paths inherit the same problem.
 
-## Relationship To Other Rules
-
-- `rules/agents.md` § "MUST: Worktree Isolation for Compiling Agents" — companion rule; this file is the verification layer for the isolation directive there.
-- `rules/zero-tolerance.md` Rule 2 — a completed-looking file that doesn't exist is a stub under a different name.
-- `rules/testing.md` § "Verified Numerical Claims In Session Notes" — same principle, applied to file deliverables.
-
-
-
-## Examples
-
-### Rule 1 — Orchestrator Prompts Pin The Worktree Path
-
-### Rule 3 — Parent Verifies Deliverables After Agent Exit
-
-### Rule 4 — Worktree Prompts Do Not Reference Parent-Checkout Path
-
-### Rule 5 — Worktree Agents Commit Incremental Progress
-
-
 ---
 
 # zero-tolerance.md
@@ -717,68 +695,119 @@ scope: baseline
 
 # Zero-Tolerance Rules
 
+See `.claude/guides/rule-extracts/zero-tolerance.md` for extended BLOCKED-pattern examples and Phase 5 audit evidence.
 
 ## Scope
 
 ALL sessions, ALL agents, ALL code, ALL phases. ABSOLUTE and NON-NEGOTIABLE.
 
-## Rule 1: Pre-Existing Failures MUST Be Fixed
+## Rule 1: Pre-Existing Failures, Warnings, And Notices MUST Be Resolved Immediately
 
-If you found it, you own it. Period.
+If you found it, you own it. Fix it in THIS run — do not report, log, or defer.
 
-**Why:** Deferred failures in the Rust SDK compound across the FFI boundary -- a single unfixed bug becomes a silent data-corruption path that downstream Python users cannot diagnose or work around.
+**Applies to** ("found it" includes, with equal weight):
 
-1. Diagnose root cause
-2. Implement the fix
-3. Write a regression test
-4. Verify with `pytest`
-5. Include in current or dedicated commit
+- Test failures, build errors, type errors
+- Compiler / linter warnings, deprecation notices
+- WARN/ERROR in workspace logs since previous gate
+- Runtime warnings (`DeprecationWarning`, `ResourceWarning`, `RuntimeWarning`)
+- Peer-dependency / missing-module / version-resolution warnings
 
-**Exception:** User explicitly says "skip this issue."
+A warning is not "less broken" than an error. It is an error the framework chose to keep running through.
 
-## Rule 2: No Stubs, Placeholders, or Deferred Implementation
+**Process:** diagnose root cause → fix → regression test → verify (`pytest` or project test cmd) → commit.
 
-Production code MUST NOT contain: `TODO`, `FIXME`, `HACK`, `STUB`, `XXX`, `raise NotImplementedError`, `pass # placeholder`, empty function bodies, simulated/fake data.
+**Why:** Deferring creates a ratchet — every session inherits more failures; codebase degrades faster than any single session can fix. Warnings are the leading indicator: today's `DeprecationWarning` is next quarter's "it stopped working when we upgraded".
 
-**Why:** Stubs in the Rust SDK compile and link successfully but panic at runtime when called through PyO3 bindings, giving Python users an unrecoverable crash with no actionable error message.
+**Mechanism:** The log-triage protocol in `rules/observability.md` Rule 5 has concrete scan commands. If `observability.md` isn't loaded (config-file edits), MUST still scan most recent test runner + build output for WARN+ entries before reporting any gate complete.
 
-**Extended examples (DataFlow 2.0 Phase 5 audit):** these patterns passed prior audits but were caught by the Phase 5 wiring sweep. They are equally BLOCKED: fake encryption (stores key, never encrypts), fake transaction (context manager with no BEGIN/COMMIT), fake health (always returns 200), fake classification (decorator that never enforces on read), fake tenant isolation (multi_tenant=True with no tenant dimension in cache key), fake metrics (no-op counters when prometheus_client missing). See the global `zero-tolerance.md` for full code examples.
+**Exceptions:** User explicitly says "skip this"; OR upstream third-party deprecation unresolvable in this session → pinned version + documented reason OR upstream issue link OR todo with explicit owner. Silent dismissal still BLOCKED.
 
-## Rule 3: No Silent Fallbacks or Error Hiding
+### Rule 1a: Scanner-Surface Symmetry
 
-- `except: pass` (bare except with pass) — BLOCKED
+Findings reported by a security scanner on a PR scan MUST be treated identically to findings on a main scan. "This also exists on main, therefore not introduced here" is BLOCKED.
+
+**Why:** "Same on main" is the institutional ratchet that defers fixes forever. Rule 1 covers this in spirit; an explicit scanner-surface clause closes the rationalization gap. See guide for `__all__` / `__getattr__` second-instance variant (PR #506).
+
+### Rule 1b: Scanner Deferral Requires Tracking Issue + Runtime-Safety Proof
+
+Rule 1a mandates that scanner findings MUST be fixed, not dismissed. A LEGITIMATE deferral disposition exists for findings that are provably runtime-safe AND require architectural refactor out of release-scope — but ONLY if all four conditions are met. Missing any one of them, the "deferral" IS silent dismissal under a different name and is BLOCKED.
+
+Required conditions (ALL four):
+
+1. **Runtime-safety proof** — the finding is verified safe (e.g., every cyclic import is `TYPE_CHECKING`-guarded; the "unsafe" path is unreachable at runtime). Verification is a PR comment citing the guard lines.
+2. **Tracking issue** — filed against the repo with title `codeql: defer <rule-id> — <short-context>`, body including acceptance criteria for the full fix.
+3. **Release PR body link** — the tracking issue is linked from the release PR's body with explicit "deferred, safe per #<issue>" language.
+4. **Release-specialist agreement** — release-specialist confirms the deferral in review OR user explicitly overrides with "full fix".
+
+**Why:** Without written runtime-safety proof + tracking issue + release PR link + release-specialist signoff, a "deferred" finding is indistinguishable from a silent dismissal — nothing forces the follow-up and nothing surfaces the backlog. The four conditions are the structural defense: verification is the grep-able claim; the tracking issue is the workstream; the release PR link is the audit trail; the release-specialist signoff is the human gate. Rule 1a blocks dismissal; Rule 1b documents the ONLY legitimate path to defer.
+
+## Rule 2: No Stubs, Placeholders, Or Deferred Implementation
+
+Production code MUST NOT contain:
+
+- `TODO`, `FIXME`, `HACK`, `STUB`, `XXX` markers
+- `raise NotImplementedError`
+- `pass # placeholder`, empty function bodies
+- `return None # not implemented`
+
+**No simulated/fake data:** `simulated_data`, `fake_response`, `dummy_value`, hardcoded mock responses, placeholder dicts. **Frontend mock is a stub too:** `MOCK_*`, `FAKE_*`, `DUMMY_*`, `SAMPLE_*` constants; `generate*()` / `mock*()` producing synthetic display data; `Math.random()` for UI.
+
+**Why:** Frontend mock data is invisible to Python detection but has the same effect — users see fake data presented as real.
+
+**Extended BLOCKED patterns** (Phase 5 audit + kailash-ml-audit W33b) — see guide for full code examples:
+
+- **Fake encryption** — class stores `encryption_key` but `set()` writes plaintext. Audit trail shows "encrypted"; disk shows plaintext.
+- **Fake transaction** — `@contextmanager` named `transaction` that commits after every statement (no BEGIN/COMMIT/rollback).
+- **Fake health** — `/health` returns 200 without probing DB/Redis. Orchestrators make routing decisions on lies.
+- **Fake classification / redaction** — `@classify(REDACT)` stored but never enforced on read. Documented security control ships as no-op.
+- **Fake tenant isolation** — `multi_tenant=True` flag with cache key missing `tenant_id` dimension.
+- **Fake integration via missing handoff field** — frozen dataclass on pipeline's critical path omits the field the NEXT primitive needs. Each primitive's unit tests pass (each constructs its own fixture); the advertised 3-line pipeline breaks on every fresh install. Fix: add missing field; populate at every return site; add Tier-2 E2E regression (see `rules/testing.md` § End-to-End Pipeline Regression). Evidence: kailash-ml W33b `TrainingResult(frozen=True)` without `trainable`; `km.register` raised `ValueError` on fresh install.
+- **Fake metrics** — silent no-op counters because `prometheus_client` missing + no startup warning. Dashboards empty while operators believe they're reporting.
+
+## Rule 3: No Silent Fallbacks Or Error Hiding
+
+- `except: pass` (bare except + pass) — BLOCKED
 - `catch(e) {}` (empty catch) — BLOCKED
 - `except Exception: return None` without logging — BLOCKED
 
-**Why:** Silent error suppression around Rust FFI calls hides panics and segfaults, turning a diagnosable crash into an invisible data loss that only surfaces hours later.
+**Why:** Silent error swallowing hides bugs until they cascade into data corruption or production outages with no stack trace to diagnose.
 
 **Acceptable:** `except: pass` in hooks/cleanup where failure is expected.
 
-## Rule 4: No Workarounds for Core SDK Issues
+### Rule 3a: Typed Delegate Guards For None Backing Objects
 
-File a GitHub issue on the SDK repository (`esperie-enterprise/kailash-rs`) with a minimal reproduction. Use a supported alternative pattern if one exists.
+Any delegate method forwarding to a lazily-assigned backing object MUST guard with a typed error before access. Allowing `AttributeError` to propagate from `None.method()` is BLOCKED.
 
-**Why:** Workarounds that re-implement Rust SDK logic in Python bypass the optimized native code path, introducing subtle behavioral divergence and doubling the maintenance surface.
+**Why:** Opaque `AttributeError` blocks N tests at once with no actionable message; typed guard turns the failure into a one-line fix instruction.
+
+## Rule 4: No Workarounds For Core SDK Issues
+
+This is a BUILD repo. You have the source. Fix bugs directly.
+
+**Why:** Workarounds create parallel implementations that diverge from the SDK, doubling maintenance cost and masking the root bug.
 
 **BLOCKED:** Naive re-implementations, post-processing, downgrading.
 
-## Rule 5: Version Consistency on Release
+## Rule 5: Version Consistency On Release
 
 ALL version locations updated atomically:
-
-**Why:** A version mismatch between `pyproject.toml` and `__init__.py` causes pip to install one version while runtime reports another, making bug reports unreproducible.
 
 1. `pyproject.toml` → `version = "X.Y.Z"`
 2. `src/{package}/__init__.py` → `__version__ = "X.Y.Z"`
 
+**Why:** Split version states cause `pip install kailash==X.Y.Z` to install a package whose `__version__` reports a different number, breaking version-gated logic.
+
 ## Rule 6: Implement Fully
 
 - ALL methods, not just the happy path
-- If an endpoint exists, it returns real data
-- If a service is referenced, it is functional
+- If endpoint exists, it returns real data
+- If service is referenced, it is functional
 - Never leave "will implement later" comments
-
-**Why:** Partially implemented Rust types expose uninitialized or default-valued fields through PyO3, causing downstream Python code to silently operate on zero/empty values instead of failing fast.
+- If you cannot implement: ask the user what it should do, then do it. If user says "remove it," delete the function.
 
 **Test files excluded:** `test_*`, `*_test.*`, `*.test.*`, `*.spec.*`, `__tests__/`
 
+**Why:** Half-implemented features present working UI with broken backend — users trust outputs that are silently incomplete or wrong.
+
+**Iterative TODOs:** Permitted when actively tracked (workspace todos, issue-linked).

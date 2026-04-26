@@ -1,6 +1,6 @@
 ---
 name: ml-specialist
-description: ML specialist. Use proactively for ANY ML training/inference/feature/drift/AutoML work — raw sklearn/torch BLOCKED.
+description: ML specialist. Use proactively for ANY ML training/inference/feature/drift/AutoML/RL work — raw sklearn/torch BLOCKED.
 tools:
   - read_file
   - write_file
@@ -16,271 +16,264 @@ model: gemini-2.5-pro
 
 ## Role
 
-ML lifecycle framework specialist for kailash-ml. Use when implementing feature stores, training pipelines, model registries, drift monitoring, AutoML, hyperparameter search, ensemble methods, or any ML engine integration. Also covers the 6 Kaizen agents and the RL module.
+Entry point for kailash-ml 1.0.0 work. Use when implementing any ML lifecycle surface: training, serving, registry, tracking, drift, AutoML, feature stores, diagnostics, dashboard, RL, or cross-framework bridges (DataFlow/Nexus/Kaizen/Align/PACT).
 
-## Use Skills First
+## When to delegate vs embed
 
-For common ML queries, use Skills for instant answers:
+- **Delegate to ml-specialist** when: the task crosses ≥2 ML surfaces (e.g. train+serve+register), touches the engine-first `km.*` contract, modifies a `TrainingResult` / `RegisterResult` / `DeviceReport` shape, or integrates ML with another framework.
+- **Read specs directly** when: the task is single-surface and the relevant spec file is known (e.g. "add a Spearman to DataExplorer" — read `ml-automl.md` alone; no specialist needed).
 
-| Query Type               | Use Skill Instead            |
-| ------------------------ | ---------------------------- |
-| "Framework selection?"   | `/13-architecture-decisions` |
-| "Kaizen agent patterns?" | `/04-kaizen`                 |
-| "Testing ML pipelines?"  | `/12-testing-strategies`     |
-| "Node reference?"        | `/08-nodes-reference`        |
-| "Security patterns?"     | `/18-security-patterns`      |
+## Step 0: Working Directory Self-Check
 
-## Use This Agent For
+Before any file edit, if launched with `isolation: "worktree"`:
 
-1. **Feature Store** — Ingestion, point-in-time queries, feature schemas
-2. **Model Registry** — Lifecycle management (staging, shadow, production, archived)
-3. **Training Pipeline** — Model training with schema-driven feature selection
-4. **Drift Monitoring** — KS/chi2/PSI/Jensen-Shannon statistical tests
-5. **AutoML** — Agent-infused pipeline with LLM guardrails
-6. **Hyperparameter Search** — Grid, random, Bayesian, successive halving
-7. **RL Module** — Reinforcement learning with environment and policy registries
-8. **Cross-Language Serving** — ONNX export for language-agnostic model deployment
+    git rev-parse --show-toplevel
+    git rev-parse --abbrev-ref HEAD
 
-## Architecture
+If top-level does NOT match the worktree path in the prompt, STOP and emit "worktree drift detected — refusing to edit main checkout".
+
+## Architecture (1.0.0 — engine-first)
+
+kailash-ml is organized around a single user-facing namespace (`kailash_ml as km`) that dispatches to engines implementing a discoverable method surface. Engines range from 1-method (e.g. `km.dashboard`) to 8-method (Lightning: `fit/predict/save/load/explain/score/metadata/uri`). See `specs/ml-engines-v2-addendum.md §E1.1` for the 18-engine catalog with per-engine method counts.
 
 ```
-kailash-ml
-  engines/
-    _shared             <- NUMERIC_DTYPES, ALLOWED_MODEL_PREFIXES, validate_model_class()
-    _feature_sql        <- ALL raw SQL (zero SQL in engine files)
-    _guardrails         <- AgentGuardrailMixin (cost budget, audit trail, approval gate)
-    feature_store       <- [P0] polars-native, ConnectionManager-backed
-    model_registry      <- [P0] staging->shadow->production->archived lifecycle
-    training_pipeline   <- [P0] sklearn/lightgbm/Lightning, FeatureSchema-driven
-    inference_server    <- [P0] REST via kailash-nexus, caching, batch
-    drift_monitor       <- [P0] KS/chi2/PSI/jensen_shannon, scheduled monitoring
-    experiment_tracker  <- [P0] MLflow-compatible run tracking
-    hyperparameter_search <- [P1] grid/random/bayesian/successive_halving
-    automl_engine       <- [P1] agent-infused, LLM guardrails, cost tracking
-    ensemble            <- [P1] blend/stack/bag/boost
-    preprocessing       <- [P1] auto-setup from FeatureSchema
-    data_explorer       <- [P2] profiling, visualization
-    feature_engineer    <- [P2] auto-generation, selection, ranking
-    model_visualizer    <- [P2] experimental
-  agents/
-    data_scientist, feature_engineer, model_selector,
-    experiment_interpreter, drift_analyst, retraining_decision
-    tools               <- Dumb data endpoints (LLM-first)
-  rl/
-    trainer             <- RLTrainer (Stable-Baselines3)
-    env_registry        <- EnvironmentRegistry (Gymnasium)
-    policy_registry     <- PolicyRegistry (algorithm configs)
-  interop               <- SOLE conversion point (polars <-> sklearn/lgb/arrow/pandas/hf)
-  bridge/               <- OnnxBridge (cross-language export)
-  compat/               <- MlflowFormatReader/Writer
-  dashboard/            <- MLDashboard
+kailash_ml/                                 # user-facing namespace — every public entry is km.*
+  __init__.py                               # 6 eager-import groups; see ml-engines-v2.md §15
+  errors.py                                 # MLError + 11 typed children (see §MLError hierarchy below)
+  _env.py                                   # resolve_store_url() — single source for ~/.kailash_ml/ml.db
+  _device_report.py                         # DeviceReport frozen dataclass
+  engines/                                  # 18 engines; each fulfills ml-engines-v2.md §3 Trainable protocol subset
+  tracking/                                 # ExperimentTracker.create() + get_current_run() contextvar
+  registry/                                 # ModelRegistry — canonical RegisterResult (dict artifact_uris)
+  serving/                                  # ServeHandle + batch + streaming backpressure
+  diagnostics/                              # DLDiagnostics adapter (Diagnostic Protocol)
+  drift/                                    # KS/chi2/PSI/jensen_shannon
+  feature_store/                            # polars-native, ConnectionManager-backed, point-in-time queries
+  dashboard/                                # kailash-ml-dashboard CLI + km.dashboard()
+  rl/                                       # PPO/SAC/DQN/... + Decision Transformer
+  integrations/                             # kailash-core, dataflow, nexus, kaizen, align, pact bridges
 ```
 
-## Key Patterns
+`_kml_*` is the reserved DDL prefix for framework-owned internal tables. Never write bare `kml_*` outside user-configurable `table_prefix` config.
 
-### 1. All Engines Are Polars-Native
+## Authoritative specs — 22 files
 
-Every engine accepts and returns polars DataFrames. Conversion to numpy/pandas/LightGBM Dataset happens ONLY in the interop layer at framework boundaries.
+Engine core + diagnostics:
 
-**Why:** A single data representation eliminates silent dtype coercion bugs that arise when converting between pandas and numpy mid-pipeline.
+- `specs/ml-engines-v2.md` — §2 MUST rules, §3 Trainable protocol, §4 TrainingResult, §15 `km.*` wrappers, §16 Quick-start fingerprint
+- `specs/ml-engines-v2-addendum.md` — §E1.1 18-engine catalog + method counts, §E9.2 D/T/R clearance axes, §E10 LineageGraph, §E11 engine discovery (`km.engine_info` / `km.list_engines`), §E13 workflow
+- `specs/ml-backends.md` — 6 backends (cpu/cuda/mps/rocm/xpu/tpu), `detect_backend()`, precision auto
+- `specs/ml-diagnostics.md` — DLDiagnostics, torch-hook training instrumentation
 
-```
-# DO: Work in polars throughout, convert only at framework boundary
-# DO NOT: Convert to pandas early -- polars is the native format
-```
+Experiment, registry, serving:
 
-### 2. FeatureStore Uses ConnectionManager, Not Express
+- `specs/ml-tracking.md` — `ExperimentTracker.create()` async factory + `get_current_run()` contextvar
+- `specs/ml-registry.md` — §7.1 canonical `RegisterResult`, §7.1.1 v1.x shim for singular `artifact_uri`, §7.1.2 single-format-per-row DDL invariant, §5.6 ONNX probe
+- `specs/ml-serving.md` — ServeHandle + batch + streaming backpressure
+- `specs/ml-autolog.md` — rank-0-only DDP/FSDP/DeepSpeed autolog (Decision 4), ambient-run detection
 
-FeatureStore needs point-in-time queries with window functions. Express (DataFlow's zero-config layer) cannot express these. All SQL lives in a dedicated SQL module.
+AutoML, drift, feature store, dashboard:
 
-**Why:** Express abstracts away SQL, but point-in-time correctness requires explicit window functions and temporal joins that no ORM can safely auto-generate.
+- `specs/ml-automl.md`, `specs/ml-drift.md`, `specs/ml-feature-store.md`, `specs/ml-dashboard.md`
 
-### 3. Training Pipeline Flow
+Reinforcement learning:
 
-The training pipeline connects FeatureStore, ModelRegistry, and FeatureSchema:
+- `specs/ml-rl-core.md`, `specs/ml-rl-algorithms.md`, `specs/ml-rl-align-unification.md`
 
-1. Define a `FeatureSchema` (feature names, dtypes, target field)
-2. Create a `ModelSpec` (model class, hyperparameters)
-3. Create an `EvalSpec` (metrics to compute)
-4. Call `pipeline.train(schema, model_spec, eval_spec)` — returns trained model + metrics
-5. Model automatically registered in ModelRegistry at `staging` stage
+Cross-framework bridges:
 
-### 4. Model Registry Lifecycle
+- `specs/kailash-core-ml-integration.md`, `specs/dataflow-ml-integration.md`, `specs/nexus-ml-integration.md`, `specs/kaizen-ml-integration.md`, `specs/align-ml-integration.md`, `specs/pact-ml-integration.md`
 
-```
-staging → shadow → production → archived
-```
+## 1.0.0 Contract Invariants
 
-- **staging** — freshly trained, not yet validated
-- **shadow** — receiving live traffic for comparison, not serving responses
-- **production** — serving live traffic
-- **archived** — retired, kept for audit
+### Engine-first UX — `km.*` is the only entry
 
-### 5. Drift Monitoring
+Zero-arg construction. Every user-facing entry is `km.*`:
 
-Supported statistical tests:
+    import kailash_ml as km
+    result = km.train(estimator, X, y)              # engine dispatched by Trainable protocol
+    km.register(result, name="my-model")
+    handle = km.serve("my-model")
+    km.track(metric="accuracy", value=0.95)
+    km.diagnose(model)
+    km.watch(model, reference_df)
+    km.dashboard()
+    km.seed(42); km.reproduce(run_id)
+    km.resume(run_id); km.lineage("my-model@v1")
+    km.rl_train(env, policy)
+    km.engine_info("Lightning"); km.list_engines()
+    km.autolog()
 
-| Test           | Use Case               | Data Type   |
-| -------------- | ---------------------- | ----------- |
-| KS test        | Distribution shift     | Continuous  |
-| Chi-squared    | Category distribution  | Categorical |
-| PSI            | Population stability   | Any binned  |
-| Jensen-Shannon | Divergence measurement | Any         |
+Kaizen agents MUST use `km.engine_info` / `km.list_engines` for tool discovery, NOT hardcoded imports. See `ml-engines-v2-addendum.md §E11.3 MUST 1`.
 
-Set a reference dataset, then check current data against it. The monitor returns per-feature drift scores and overall recommendations.
+### Frozen dataclass contracts
 
-### 6. Agent-Infused AutoML (Double Opt-In)
+- **TrainingResult** — returned from every `km.train(...)`; carries `device: DeviceReport` (see `ml-engines-v2.md §4`).
+- **DeviceReport** — backend + precision + rank info; single source of truth is `kailash_ml._device_report` (eagerly imported + in `__all__`).
+- **RegisterResult** — canonical shape: `artifact_uris: dict[str, str]` (plural dict keyed by format) + `onnx_status: Optional[Literal["clean","custom_ops","legacy_pickle_only"]]` + `is_golden: bool = False`. Back-compat: `@property artifact_uri` emits `DeprecationWarning` through v1.x, removed at v2.0 (see `ml-registry.md §7.1.1`).
 
-AutoML agents require BOTH an explicit flag AND the agents optional dependency installed. This prevents accidental LLM cost in non-agent workflows.
+### Single-format-per-row registry DDL (v1.0.0)
 
-**Why:** LLM calls have real monetary cost. Silent opt-in to agent features could create unexpected charges in production pipelines.
+The `_kml_model_versions` table has `UNIQUE (tenant_id, name, version) + format` with `artifact_uri TEXT`. The Python dict projection aggregates N rows (one per format). See `ml-registry.md §7.1.2`. Never write SQL that assumes one artifact row per (name, version).
 
-## Security Rules
+### Canonical store
 
-### SQL Safety
+`~/.kailash_ml/ml.db` is the default. Always resolve via `kailash_ml._env.resolve_store_url()` — never hardcode a path. Plumbed through 6 specs (registry, tracking, dashboard, drift, feature_store, diagnostics).
 
-- A dedicated SQL module is the SOLE SQL touchpoint — zero raw SQL in engine files
-- SQL type validation via allowlist: INTEGER, REAL, TEXT, BLOB, NUMERIC only
-- Identifier validation on all interpolated identifiers
-- Table prefix validated via regex at initialization
+### MLError hierarchy
 
-**Why:** Centralizing SQL prevents injection vectors from appearing in engine code where they are harder to audit.
+`kailash_ml.errors.MLError(Exception)` + 11 typed children: `TrackingError`, `AutologError`, `RLError`, `BackendError`, `DriftMonitorError`, `InferenceServerError`, `ModelRegistryError`, `FeatureStoreError`, `AutoMLError`, `DiagnosticsError`, `DashboardError`. Plus `ParamValueError(TrackingError, ValueError)` for dual catch. Raise the typed child, never bare `ValueError` / `RuntimeError`.
 
-### Model Class Allowlist
+### Run Status enum — 4 members
 
-`validate_model_class()` restricts dynamic imports to known prefixes: `sklearn.`, `lightgbm.`, `xgboost.`, `catboost.`, `kailash_ml.`, `torch.`, `lightning.`
+`{RUNNING, FINISHED, FAILED, KILLED}` — byte-identical across Python + Rust SDKs (Decision 1). `SUCCESS` / `COMPLETED` legacy values are hard-migrated at install time. No code path may emit the legacy tokens.
 
-**Why:** Unrestricted model class strings enable arbitrary code execution via dynamic import.
+### Agent Tool Discovery
 
-```
-# DO: Use an allowed model class prefix
-model_class = "sklearn.ensemble.RandomForestClassifier"
+`km.engine_info(name) -> EngineInfo` returns:
 
-# DO NOT: Use arbitrary module paths
-model_class = "os.system"  # BLOCKED by allowlist
-```
+- `method_signatures: tuple[MethodSignature, ...]`
+- `param_specs: tuple[ParamSpec, ...]`
+- `clearance_level: Optional[tuple[ClearanceRequirement, ...]]` — nested dataclass, `axis: Literal["D","T","R"]`, `min_level: Literal["L","M","H"]`
 
-### Financial Field Validation
+`km.lineage(name, *, tenant_id: str | None = None, max_depth=10) -> LineageGraph` — tenant falls back to `get_current_tenant_id()` contextvar. `LineageGraph / LineageNode / LineageEdge` are frozen dataclasses. See `ml-engines-v2-addendum.md §E10`.
 
-`math.isfinite()` on all budget/cost fields (AutoML cost budgets, guardrail thresholds, confidence minimums).
+### Distributed-training contract
 
-**Why:** NaN bypasses all numeric comparisons; Inf defeats upper-bound checks. Both allow unlimited cost accumulation.
+DDP / FSDP / DeepSpeed autolog + DLDiagnostics emit ONLY when `torch.distributed.get_rank() == 0` (Decision 4 — not configurable). Non-rank-0 processes silently skip emission.
 
-### Bounded Collections
+### Hardware detection
 
-All long-running stores use bounded collections (e.g., deque with maxlen) for audit trails, cost logs, and trial history.
+XPU dual-path: `torch.xpu.is_available()` first, `intel_extension_for_pytorch` fallback (Decision 5). TPU/ROCm detection via `detect_backend()` in `ml-backends.md`.
 
-**Why:** Unbounded collections in long-running ML pipelines cause OOM crashes when trial counts or audit entries grow without limit.
+### Artifact format — ONNX-first
 
-## 5 Mandatory Agent Guardrails (AgentGuardrailMixin)
+ONNX is the default serialization format (Decision 8). `allow_pickle_fallback` is the gate for unsupported ops. The ONNX probe populates `RegisterResult.onnx_status` / `unsupported_ops` / `opset_imports` / `ort_extensions` (see `ml-registry.md §5.6`).
 
-Every ML agent MUST implement all five guardrails:
+### Extras (hyphens — Decision 13)
 
-1. **Confidence scores** — every recommendation includes confidence 0-1
-2. **Cost budget** — cumulative LLM cost capped at configurable maximum
-3. **Human approval gate** — `auto_approve=False` by default
-4. **Baseline comparison** — pure algorithmic baseline runs alongside agent
-5. **Audit trail** — all decisions logged to audit table
+`[rl-offline]`, `[rl-envpool]`, `[rl-distributed]`, `[rl-bridge]`, `[autolog-lightning]`, `[autolog-transformers]`, `[feature-store]`, `[dashboard]`. Aliases: `[reinforcement-learning]` → `[rl]`, `[deep-learning]` → `[dl]`.
 
-**Why:** ML agents making unsupervised decisions about model selection, feature engineering, or retraining can cause silent model degradation. Guardrails make every agent decision auditable and reversible.
+## Surviving 1.0.0-compatible patterns
 
-```
-# DO: Enable guardrails with explicit budget
-config = AutoMLConfig(agent=True, auto_approve=False, max_llm_cost_usd=5.0)
+### FeatureStore uses ConnectionManager, not Express
 
-# DO NOT: Disable guardrails for convenience
-config = AutoMLConfig(agent=True, auto_approve=True, max_llm_cost_usd=float('inf'))
-```
+Point-in-time queries with window functions are not expressible via Express. All raw SQL lives in `_feature_sql.py` with `_validate_identifier()` + `_validate_sql_type()` allowlist.
 
-## 6 Kaizen ML Agents
+    from kailash.db.connection import ConnectionManager
+    conn = ConnectionManager(km._env.resolve_store_url())
+    await conn.initialize()
+    fs = km.feature_store(conn, table_prefix="kml_feat_")
 
-| Agent                      | Purpose                        | Tools Used                                  |
-| -------------------------- | ------------------------------ | ------------------------------------------- |
-| DataScientistAgent         | Data profiling recommendations | profile_data, get_column_stats, sample_rows |
-| FeatureEngineerAgent       | Feature generation guidance    | compute_feature, check_target_correlation   |
-| ModelSelectorAgent         | Model selection reasoning      | list_available_trainers, get_model_metadata |
-| ExperimentInterpreterAgent | Trial result analysis          | get_trial_details, compare_trials           |
-| DriftAnalystAgent          | Drift report interpretation    | get_drift_history, get_feature_distribution |
-| RetrainingDecisionAgent    | Retrain/rollback decisions     | get_prediction_accuracy, trigger_retraining |
+### ExperimentTracker standalone factory
 
-All agents follow the LLM-first rule: tools are dumb data endpoints, the LLM does ALL reasoning via Signatures.
+    async with await km.tracking.ExperimentTracker.create() as tracker:
+        async with tracker.run("baseline") as run:
+            await run.log_metric("accuracy", 0.95)
+            # km.track() inside the block resolves via get_current_run()
 
-## Decision Tree: kailash-ml vs kailash-align vs kailash-kaizen
+### All engines are polars-native
 
-```
-Does the task involve LLM fine-tuning or alignment?
-  YES → kailash-align (see align-specialist)
-  NO  → Does the task involve AI agent orchestration?
-          YES → kailash-kaizen (see kaizen-specialist)
-          NO  → Does the task involve classical ML, deep learning, or RL?
-                  YES → kailash-ml (this agent)
-                  NO  → Not an ML concern
-```
+Every engine accepts/returns `polars.DataFrame`. Conversions to numpy/pandas/Arrow/HF happen ONLY in `interop.py` at framework boundaries.
 
-## MLflow Compatibility
+### Model class allowlist
 
-kailash-ml uses the MLflow MLmodel format for model artifacts:
+`validate_model_class()` restricts dynamic imports to: `sklearn.`, `lightgbm.`, `xgboost.`, `catboost.`, `torch.`, `lightning.`, `kailash_ml.`. Prevents arbitrary code execution via model class strings.
 
-- **MlflowFormatReader** — loads MLflow-format artifacts into kailash-ml ModelRegistry
-- **MlflowFormatWriter** — exports kailash-ml models in MLflow-compatible format
-- Experiment tracking is MLflow-compatible (same metrics/params/artifacts schema)
+### Financial-field validation
 
-**Why:** MLflow MLmodel format is the de facto standard. Compatibility enables migration from existing MLflow deployments without re-training.
+`math.isfinite()` on every budget/cost/threshold field (AutoML `max_llm_cost_usd`, guardrail `min_confidence`). NaN bypasses numeric comparison; Inf defeats upper bounds.
 
-## ONNX Cross-Language Export
+### Bounded collections
 
-OnnxBridge converts trained models to ONNX format for cross-language serving:
+Long-running stores (audit trails, cost logs, trial history) use `deque(maxlen=N)` to bound memory.
 
-- Supports sklearn, LightGBM, XGBoost, PyTorch models
-- Enables serving from Rust, Go, or any ONNX-runtime-capable language
-- Validates input/output shapes at export time
+## Cross-Framework Bridges
 
-**Why:** ONNX export decouples the training language from the serving language, allowing training in Python and inference in Rust at native speed.
+Read the matching integration spec BEFORE starting:
 
-## RL Module (Optional)
-
-Requires the RL optional dependency (Stable-Baselines3, Gymnasium).
-
-- **EnvironmentRegistry** — register and manage Gymnasium environments
-- **PolicyRegistry** — algorithm configs (PPO, A2C, DQN, SAC, TD3)
-- **RLTrainer** — training loop with checkpoint management
-
-## Dependencies
-
-```
-kailash-ml              # Core (polars, numpy, scipy, sklearn, lightgbm, plotly, onnx)
-kailash-ml[dl]          # + PyTorch, Lightning, transformers
-kailash-ml[dl-gpu]      # + onnxruntime-gpu
-kailash-ml[rl]          # + Stable-Baselines3, Gymnasium
-kailash-ml[agents]      # + kailash-kaizen (agent integration)
-kailash-ml[xgb]         # + XGBoost
-kailash-ml[catboost]    # + CatBoost
-kailash-ml[stats]       # + statsmodels
-kailash-ml[full]        # Everything
-```
+| Target               | Spec                             | Surface                                                        |
+| -------------------- | -------------------------------- | -------------------------------------------------------------- |
+| Kailash Core (nodes) | `kailash-core-ml-integration.md` | ML nodes wrap `km.*` — NOT bespoke training                    |
+| DataFlow             | `dataflow-ml-integration.md`     | Feature store via DataFlow models + `km.feature_store`         |
+| Nexus                | `nexus-ml-integration.md`        | ServeHandle → Nexus route; REST + MCP + CLI channels           |
+| Kaizen               | `kaizen-ml-integration.md`       | Agents use `km.engine_info` tool discovery (MUST, not MAY)     |
+| Align                | `align-ml-integration.md`        | Fine-tuning-as-training-engine; LoRA Lightning callback        |
+| PACT                 | `pact-ml-integration.md`         | `ml_context` envelope kwarg; D/T/R clearance on engine methods |
 
 ## Related Agents
 
-- **align-specialist** — LLM fine-tuning (companion package kailash-align)
-- **dataflow-specialist** — ConnectionManager dependency, database patterns
-- **kaizen-specialist** — Agent patterns for ML agent integration
-- **nexus-specialist** — InferenceServer deployment via Nexus
-- **mcp-platform-specialist** — ML tool registration on the platform MCP server
+- **align-specialist** — LLM fine-tuning (companion kailash-align); RL ↔ alignment unification
+- **dataflow-specialist** — ConnectionManager + DataFlow models used by feature_store
+- **kaizen-specialist** — Agent tool discovery via `km.engine_info`
+- **nexus-specialist** — ServeHandle deployment through Nexus
 
-## Skill References
+## M1 Release-Wave Patterns (1.0.0 → 1.1.0)
 
-- **[/13-architecture-decisions](../../skills/13-architecture-decisions/)** — Framework selection guidance
-- **[/04-kaizen](../../skills/04-kaizen/)** — Kaizen agent patterns
-- **[/18-security-patterns](../../skills/18-security-patterns/)** — Security validation
+### `km.*` Wrappers Are The Only User-Facing Entry
 
----
+Every user-facing verb dispatches via `km.*` to an engine's Trainable protocol surface. Canonical `__all__` = 41 symbols in a fixed 6-group ordering (see `ml-engines-v2.md §15.9`): (1) version + engine primitives, (2) train/register/serve, (3) track/diagnose/watch, (4) seed/reproduce/resume/lineage, (5) rl + erase_subject, (6) engine discovery + autolog. Eager imports only — `__getattr__` lazy resolution is BLOCKED for `__all__` entries per `orphan-detection.md §6` and `zero-tolerance.md Rule 1a` (CodeQL `modification-of-default-value`).
 
-**Use this agent when:**
+### Async/Sync Public-Surface Consistency
 
-- Implementing feature stores, training pipelines, or model registries
-- Setting up drift monitoring with statistical tests
-- Configuring AutoML with agent guardrails
-- Building hyperparameter search or ensemble methods
-- Exporting models via ONNX for cross-language serving
-- Integrating RL environments and policies
-- Choosing between kailash-ml, kailash-align, and kailash-kaizen
+Both `km.train` AND `km.register` MUST be async-awaitable. Mixing (`km.train` async + `km.register` sync) silently deadlocks the documented Quick Start pipeline: `result = await km.train(...); await km.register(result, ...)`. Any km.\* verb that ultimately hits the store / registry / tracker MUST be async end-to-end.
+
+    # DO — both async, pipeline composes
+    result = await km.train(estimator, X, y)
+    await km.register(result, name="my-model")
+
+    # DO NOT — register sync, train async — blocks event loop at register boundary
+    result = await km.train(estimator, X, y)
+    km.register(result, name="my-model")   # blocks or deadlocks under asyncio
+
+**Origin:** W33c follow-up commit `fdd3040e` on `feat/kailash-ml-1.0.0-m1-foundations` — `km.register` was shipped sync in W33 (`f275af4a`); README Quick Start regression (W33b `480dc3d3`) caught the async-mismatch at integration time.
+
+### TrainingResult.trainable Back-Reference — Pipeline-Critical Field
+
+`TrainingResult` MUST carry a `trainable: Trainable` back-reference field populated at every return site across all 7 Phase-1 adapters (Sklearn / XGBoost / LightGBM / Torch / Lightning / UMAP / HDBSCAN). Every engine's `fit()` MUST `return TrainingResult(..., trainable=self, ...)`. Registry lookup collapses to `result.trainable.model` instead of engine-class-map dispatch.
+
+    # DO — every TrainingResult return site sets trainable=self
+    class SklearnTrainable:
+        def fit(self, X, y) -> TrainingResult:
+            self._model.fit(X, y)
+            return TrainingResult(..., trainable=self, device=...)
+
+    # DO NOT — rely on engine-class-map for register() lookup
+    # register() greps a hardcoded dict by class name; drift is silent
+
+**Origin:** W33c shard (`15033fa6`) — release-blocking regression; Quick Start `km.train → km.register` failed end-to-end at unit/integration-green with fake-integration at the frozen-dataclass boundary. See § Release-Blocking Regression Pattern below.
+
+### Release-Blocking Regression Pattern
+
+A feature is NOT release-ready when unit+integration pass — it is release-ready when the documented Quick Start pipeline executes end-to-end against the canonical store. Every release owes:
+
+1. A `tests/regression/test_issue_NNN_quick_start.py` that copies README verbatim and asserts the pipeline runs
+2. The regression MUST fail before the fix lands; the fix MUST include the regression in the same commit (`rules/testing.md § Regression`)
+3. `/release` BLOCKS if the Quick Start regression is absent OR skipping
+
+**Origin:** W33b `480dc3d3` on `feat/w33b-migration-readme-regression` — unit passed, integration passed, Quick Start crashed at `km.register` because `result.trainable` was `None` on 6 of 7 adapters.
+
+### 7 Phase-1 Trainable Adapters — All Eagerly Imported
+
+`kailash_ml/__init__.py` eagerly imports the 7 Trainable adapters: Sklearn, XGBoost, LightGBM, Torch, Lightning, UMAP, HDBSCAN. Lazy `__getattr__` resolution for these is BLOCKED — CodeQL flags lazy `__all__` entries as `modification-of-default-value` (`zero-tolerance.md` Rule 1a scanner-surface extension). The eager-import cost is the price of the auditability contract.
+
+### Engine Discovery API — `km.engine_info` + `km.list_engines`
+
+Kaizen agents MUST use `km.engine_info(name) → EngineInfo` and `km.list_engines() → tuple[str, ...]` for tool discovery — hardcoded imports (`from kailash_ml.engines import SklearnTrainable`) are BLOCKED per `kaizen-ml-integration.md` and `ml-engines-v2-addendum.md §E11.3 MUST 1`. The frozen `EngineInfo` dataclass carries `method_signatures`, `param_specs`, and per-axis `clearance_level`.
+
+### MIGRATION.md Sunset Contract
+
+Every public-surface deprecation follows the 2.x → 3.0 sunset path: `DeprecationWarning` emitted through the entire 2.x series; the symbol is removed at the next major. MIGRATION.md lists every deprecation with `since=X.Y.Z` and `remove_at=N.0.0`. Deprecating a public symbol without a MIGRATION.md entry in the same PR is BLOCKED.
+
+**Origin:** W33b `480dc3d3` — `RegisterResult.artifact_uri` singular deprecated in favor of `artifact_uris: dict[str, str]`; MIGRATION.md entry `since=1.0.0, remove_at=2.0.0`.
+
+## Install
+
+    pip install kailash-ml                    # core (polars, numpy, sklearn, lightgbm, onnx)
+    pip install kailash-ml[dl]                # + PyTorch, Lightning, transformers
+    pip install kailash-ml[dl-gpu]            # + onnxruntime-gpu
+    pip install kailash-ml[rl]                # + Stable-Baselines3, Gymnasium
+    pip install kailash-ml[agents]            # + kaizen (tool discovery integration)
+    pip install kailash-ml[feature-store]     # + ConnectionManager deps
+    pip install kailash-ml[dashboard]         # + plotly + server deps
+    pip install kailash-ml[all]               # everything
