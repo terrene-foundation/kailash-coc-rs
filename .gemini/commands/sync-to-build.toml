@@ -96,7 +96,7 @@ Group by decision type. For MODIFIED files, show what would change:
 - skills/09-: source=workflow-patterns, BUILD=coc-reference
   → [R]ename BUILD  [S]kip source  [D]iff?
 
-### Scripts/hooks (always updated — these are infrastructure)
+### Hooks (`.claude/hooks/`, always updated — these are CC infrastructure)
 - session-start.js (+15 -8)
 - user-prompt-rules-reminder.js (+3 -1)
 
@@ -106,7 +106,7 @@ Group by decision type. For MODIFIED files, show what would change:
 
 ### 6. Apply approved changes
 
-Apply ONLY what the human approved. Scripts/hooks are always updated (they're CC infrastructure, not content).
+Apply ONLY what the human approved. Hooks under `.claude/hooks/` are always updated (they're CC infrastructure, not content). Before applying, run the obsoleted-paths purge: read `.claude/sync-manifest.yaml::obsoleted` and recursively delete every match in the BUILD repo (per `coc-sync.md` Step 4.5). Also emit `<BUILD>/.claude/.coc-obsoleted` so any consumer that pulls from this BUILD repo via /sync inherits the same purge contract.
 
 ### 7. Update VERSION
 

@@ -1,109 +1,174 @@
 ---
 name: dataflow
-description: "Kailash DataFlow — MANDATORY for ALL database, data pipeline, fabric, and cache work. Auto-generates workflow nodes from models. Use proactively when work touches schemas, queries, CRUD, bulk ops, migrations, repositories, connection pools, caches, Redis read-through/write-through, memoization, transactions, vector search, RAG, or 'just a quick query'. Raw SQL, SQLAlchemy, psycopg, peewee, MongoDB drivers, redis-py/aioredis/hiredis, hand-rolled cache layers, hand-rolled repositories BLOCKED. DataFlow is not an ORM — it generates workflow nodes per model."
+description: "Kailash DataFlow. Use for DB, CRUD, bulk, migrations, multi-tenancy, PostgreSQL/MySQL/MongoDB/pgvector, fabric engine."
 ---
 
 # Kailash DataFlow - Zero-Config Database Framework
 
-DataFlow automatically generates workflow nodes from database models. Not an ORM -- generates nodes that integrate with Kailash's workflow execution model.
+DataFlow is a zero-config database framework built on Kailash Core SDK that automatically generates workflow nodes from database models.
+
+## When to Use
+
+Use DataFlow when asking about database operations, DataFlow, database models, CRUD operations, bulk operations, database queries, database migrations, multi-tenancy, multi-instance, database transactions, PostgreSQL, MySQL, SQLite, MongoDB, pgvector, vector search, document database, RAG, semantic search, existing database, database performance, database deployment, database testing, TDD with databases, external data sources, data products, `db.source`, `db.product`, `db.start`, fabric engine, source adapters, REST source, webhooks, or data fabric. DataFlow is NOT an ORM — it generates 11 workflow nodes per SQL model, 8 nodes for MongoDB, and 3 nodes for vector operations.
+
+## Overview
+
+- **Automatic Node Generation**: 11 nodes per model (@db.model decorator)
+- **Multi-Database Support**: PostgreSQL, MySQL, SQLite (SQL) + MongoDB (Document) + pgvector (Vector Search)
+- **Enterprise Features**: Multi-tenancy, multi-instance isolation, transactions
+- **Zero Configuration**: String IDs preserved, deferred schema operations
+- **Developer Experience**: Enhanced errors (DF-XXX codes), strict mode validation, debug agent, CLI tools
 
 ## Quick Start
 
-### Express API (Simple CRUD -- 23x faster than workflow-based)
+### Express API (Recommended for Simple CRUD)
 
 ```python
-db = DataFlow("sqlite:///app.db")
+from dataflow import DataFlow
+
+# Zero-config initialization
+db = DataFlow("sqlite:///app.db", auto_migrate=True)
 
 @db.model
 class User:
-    id: int
     name: str
     email: str
+    active: bool = True
 
-user = await db.express.create("User", {"name": "Alice", "email": "alice@co.com"})
-users = await db.express.list("User", filter={"name": "Alice"})
+await db.initialize()
+
+# Async Express (default) — 23x faster than workflow primitives
+result = await db.express.create("User", {"name": "Alice", "email": "alice@example.com"})
+user = await db.express.read("User", result["id"])  # accepts both str and int IDs
+users = await db.express.list("User", {"active": True})
+count = await db.express.count("User")
+await db.express.update("User", result["id"], {"name": "Bob"})
+await db.express.delete("User", result["id"])
+
+# Sync Express (CLI scripts, non-async contexts)
+result = db.express_sync.create("User", {"name": "Alice", "email": "alice@example.com"})
+users = db.express_sync.list("User", {"active": True})
 ```
 
-### Workflow API (Complex Multi-Step Operations)
+### Workflow API (For Multi-Step Operations)
+
+Use WorkflowBuilder only when you need multiple nodes with data flow between them.
 
 ```python
-db = DataFlow(connection_string="postgresql://user:pass@localhost/db")
+from kailash.workflow.builder import WorkflowBuilder
+from kailash.runtime.local import LocalRuntime
 
-@db.model
-class User:
-    id: str  # String IDs preserved
-    name: str
-    email: str
-
+# Multi-node workflow with connections
 workflow = WorkflowBuilder()
 workflow.add_node("User_Create", "create_user", {
     "data": {"name": "John", "email": "john@example.com"}
 })
 
+# Execute with context manager (recommended for resource cleanup)
 with LocalRuntime() as runtime:
     results, run_id = runtime.execute(workflow.build())
-    user_id = results["create_user"]["result"]
+    user_id = results["create_user"]["result"]  # Access pattern
 ```
 
-## Generated Nodes (11 per SQL model)
+## Generated Nodes (11 per model)
 
-`{Model}_Create`, `{Model}_Read`, `{Model}_Update`, `{Model}_Delete`, `{Model}_List`, `{Model}_Upsert`, `{Model}_Count`, `{Model}_BulkCreate`, `{Model}_BulkUpdate`, `{Model}_BulkDelete`, `{Model}_BulkUpsert`
+Each `@db.model` class generates:
 
-### Bulk Node Contract (Cross-SDK)
+1. `{Model}_Create` - Create single record
+2. `{Model}_Read` - Read by ID
+3. `{Model}_Update` - Update record
+4. `{Model}_Delete` - Delete record
+5. `{Model}_List` - List with filters
+6. `{Model}_Upsert` - Insert or update (atomic)
+7. `{Model}_Count` - Efficient COUNT(\*) queries
+8. `{Model}_BulkCreate` - Bulk insert
+9. `{Model}_BulkUpdate` - Bulk update
+10. `{Model}_BulkDelete` - Bulk delete
+11. `{Model}_BulkUpsert` - Bulk upsert
 
-`BulkCreate`, `BulkUpdate`, `BulkDelete`, and `BulkUpsert` share an identical contract across both the Python (`kailash-py`) and Rust (`kailash-rs`) DataFlow implementations. Every binding (Python `PyDataFlowExpress`, Ruby `DataFlowExpressSync`, and any future binding) re-exposes the same shape. The same workflow logic therefore runs identically whether executed in a Python workflow, a Rust workflow, or through a binding — this is cross-SDK API parity by construction, not by convention.
+## Critical Rules
 
-**Input shape** — each bulk mutation node (except BulkCreate / BulkDelete where noted) takes two dicts:
+- ✅ String IDs preserved (no UUID conversion)
+- ✅ Deferred schema operations (safe for Docker/FastAPI)
+- ✅ Multi-instance isolation (one DataFlow per database)
+- ✅ Result access: `results["node_id"]["result"]`
+- ❌ NEVER use truthiness checks on filter/data parameters (empty dict `{}` is falsy)
+- ❌ ALWAYS use key existence checks: `if "filter" in kwargs` instead of `if kwargs.get("filter")`
+- ❌ NEVER use direct SQL when DataFlow nodes exist
+- ❌ NEVER use SQLAlchemy/Django ORM alongside DataFlow
 
-```
-filter: {<column>: <value>, ...}    # selects rows to operate on
-update: {<column>: <value>, ...}    # new values (BulkUpdate / BulkUpsert only)
-```
+## Reference Documentation
 
-BulkCreate takes a list of row dicts. BulkDelete takes only a filter dict. BulkUpsert additionally takes a `conflict_columns` list identifying the unique-constraint subset that triggers the UPDATE path.
+### Getting Started
 
-**DomainEvent emission** — every bulk node emits one `DomainEvent` per affected row on the DataFlow EventBus (see `dataflow-events.md`). Subscribers see `{operation: "bulk_update", model: "Document", row: {...}, tenant_id: ..., result: "ok" | "skipped" | "error"}` for each row, in the order the underlying driver reports results. Partial-failure batches emit one event per successful row PLUS one WARN log per failed row (see `rules/observability.md` MUST Rule 5).
+- **[dataflow-quickstart](dataflow-quickstart.md)** - Quick start guide
+- **[dataflow-installation](dataflow-installation.md)** - Installation and setup
+- **[dataflow-models](dataflow-models.md)** - Defining models with @db.model
+- **[dataflow-connection-config](dataflow-connection-config.md)** - Database connection
 
-**Classification & redaction on output** — every row returned from a bulk operation is routed through the DataFlow classification layer exactly as single-row reads are. Columns declared with `@classify(..., REDACT)` (Python) or `#[classify(..., Redact)]` (Rust) return `"[REDACTED]"` (or the dialect-appropriate sentinel) in the returned rows, regardless of the caller's clearance level — unless the caller's session clearance explicitly permits the column. The bulk path MUST NOT bypass classification; a BulkUpdate that returns raw classified columns is a Rule 2 (zero-tolerance) fake-classification failure.
+### Core Operations
 
-**Tenant-scoped cache keys** — on models declared `multi_tenant=True` / `multi_tenant = true`, the bulk node's cache key includes the `tenant_id` dimension per `rules/tenant-isolation.md` Rule 1. Invalidation is tenant-scoped too: calling `invalidate_model("Document", tenant_id=T)` clears only T's slots, never another tenant's. Raw cache-key construction in the bulk path is BLOCKED — route through the shared key helper.
+- **[dataflow-crud-operations](dataflow-crud-operations.md)** - Create, Read, Update, Delete
+- **[dataflow-queries](dataflow-queries.md)** - Query patterns and filtering
+- **[dataflow-aggregation](dataflow-aggregation.md)** - SQL aggregation queries (COUNT/SUM/AVG/MIN/MAX GROUP BY)
+- **[dataflow-bulk-operations](dataflow-bulk-operations.md)** - Batch operations
+- **[dataflow-transactions](dataflow-transactions.md)** - Transaction management
+- **[dataflow-connection-isolation](dataflow-connection-isolation.md)** - ⚠️ CRITICAL: ACID guarantees
 
-**Cross-binding exposure** — the full bulk surface appears on:
+### Advanced Features
 
-- Python `kailash-py` DataFlow (`@db.model` generates 11 nodes including the 4 bulk forms)
-- Rust `kailash-rs` DataFlow (`#[db::model]` generates 11 nodes with identical contract)
-- Python binding of `kailash-rs` (`PyDataFlowExpress`) — bulk methods are re-exposed
-- Ruby binding of `kailash-rs` (`DataFlowExpressSync`) — bulk methods are re-exposed
+### Data Fabric Engine
 
-**Example** — same workflow-level contract, different syntax per language:
+- **[dataflow-fabric-engine](dataflow-fabric-engine.md)** - External data sources (`db.source()`), derived products (`@db.product()`), fabric runtime (`db.start()`), 5 source adapters, webhooks, SSRF protection, observability
 
-```python
-# Python (kailash-py or kailash-rs Python binding)
-result = await db.express.bulk_update(
-    "Document",
-    filter={"status": "draft", "owner_id": owner},
-    update={"status": "archived", "archived_at": now()},
-)
-# result.affected_count; classification-redacted rows in result.rows
-```
+### Enterprise Features
 
-```rust
-// Rust (kailash-rs)
-let result = db.express().bulk_update::<Document>(
-    filter!{ status: "draft", owner_id: owner },
-    update!{ status: "archived", archived_at: now() },
-).await?;
-// result.affected_count; classification-redacted rows in result.rows
-```
+- **[dataflow-derived-models](dataflow-derived-models.md)** - Application-layer materialized views (`@db.derived_model`)
+- **[dataflow-file-import](dataflow-file-import.md)** - File ingestion (CSV/Excel/Parquet/JSON) + `db.express.import_file()`
+- **[dataflow-validation-dsl](dataflow-validation-dsl.md)** - Declarative validation (`__validation__` dict)
+- **[dataflow-express-cache](dataflow-express-cache.md)** - Model-scoped Express caching with TTL
+- **[dataflow-read-replicas](dataflow-read-replicas.md)** - Read/write splitting with `read_url`
+- **[dataflow-retention](dataflow-retention.md)** - Data retention (archive/delete/partition policies)
+- **[dataflow-events](dataflow-events.md)** - Write event emission + Core SDK EventBus integration
 
-```
-# DO NOT — hand-rolled batched CRUD
-# Loops calling {Model}_Update N times bypass DomainEvent ordering,
-# break atomicity guarantees, and degrade performance by 10-100x vs the
-# bulk node's single-statement driver path.
-```
+### Advanced Features
 
-**Why:** The bulk surface is where cross-SDK parity is easiest to drift — the four nodes touch eleven invariants (filter/update shape, event emission, classification, tenancy cache-key, tenancy invalidation, per-row result reporting, partial-failure WARN, binding re-export, conflict resolution for upsert, ordering semantics, atomicity boundary). Documenting the contract here is the single source of truth both SDKs implement against; each SDK's specs reference this section for the parity assertion.
+- **[dataflow-multi-instance](dataflow-multi-instance.md)** - Multiple database instances
+- **[dataflow-multi-tenancy](dataflow-multi-tenancy.md)** - Multi-tenant architectures
+- **[dataflow-existing-database](dataflow-existing-database.md)** - Working with existing databases
+- **[dataflow-migrations-quick](dataflow-migrations-quick.md)** - Database migrations
+- **[dataflow-custom-nodes](dataflow-custom-nodes.md)** - Custom database nodes
+- **[dataflow-sqlite-concurrency](dataflow-sqlite-concurrency.md)** - SQLite connection pooling, WAL mode, read/write splitting, memory DB URI patterns
+
+### Developer Experience Tools
+
+- **[dataflow-strict-mode](dataflow-strict-mode.md)** - Build-time validation (4-layer, OFF/WARN/STRICT)
+- **[dataflow-debug-agent](dataflow-debug-agent.md)** - Intelligent error analysis (5-stage pipeline)
+- **ErrorEnhancer** - Automatic error enhancement (40+ DF-XXX codes)
+- **Inspector API** - Self-service debugging (18 introspection methods)
+- **CLI Tools** - dataflow-validate, dataflow-analyze, dataflow-debug (5 commands)
+
+### Connection Pool & Monitoring
+
+- **[dataflow-connection-config](dataflow-connection-config.md)** - Pool auto-scaling, env vars, override scenarios
+- **[dataflow-monitoring](dataflow-monitoring.md)** - Pool utilization, leak detection, health checks, diagnostics
+
+### ML Integration
+
+- **[dataflow-ml-integration](dataflow-ml-integration.md)** - kailash-ml FeatureStore integration (ConnectionManager, point-in-time queries, polars interop)
+
+### Provenance & Audit
+
+- **[dataflow-provenance-audit](dataflow-provenance-audit.md)** - Provenance[T] field tracking, audit trail persistence, EventStoreBackend
+- **[dataflow-fabric-cache-consumers](dataflow-fabric-cache-consumers.md)** - Fabric cache control, consumer adapters, MCP tool generation
+
+### Cache Patterns
+
+- **[cache-cas-fail-closed](cache-cas-fail-closed.md)** - CAS (compare-and-swap) fail-closed pattern when primitive can only be satisfied by one backend
+
+### Troubleshooting
+
+- **[dataflow-gotchas](dataflow-gotchas.md)** - Common pitfalls
 
 ## Database Support Matrix
 
@@ -115,82 +180,49 @@ let result = db.express().bulk_update::<Document>(
 | MongoDB    | Document | 8           | Motor     |
 | pgvector   | Vector   | 3           | pgvector  |
 
-## Critical Rules
+**Not an ORM**: DataFlow generates workflow nodes, not ORM models. Uses string-based result access and integrates with Kailash's workflow execution model.
 
-- String IDs preserved (no UUID conversion)
-- Deferred schema operations (safe for async/Docker contexts)
-- Multi-instance isolation (one DataFlow per database)
-- Result access: `results["node_id"]["result"]`
-- NEVER use truthiness checks on filter/data parameters (empty dict `{}` is falsy) -- use `if "filter" in kwargs`
-- NEVER use direct SQL when DataFlow nodes exist
-- NEVER use SQLAlchemy/Django ORM alongside DataFlow
+## Integration Patterns
 
-## Reference Documentation
+### With Nexus (Multi-Channel)
 
-### Getting Started
+```python
+from dataflow import DataFlow
+from nexus import Nexus
 
-- **[dataflow-quickstart](dataflow-quickstart.md)** - Quick start guide
-- **[dataflow-installation](dataflow-installation.md)** - Installation and setup
-- **[dataflow-models](dataflow-models.md)** - Defining models with @db.model
-- **[dataflow-connection-config](dataflow-connection-config.md)** - Database connection and pool config
+db = DataFlow(connection_string="...")
+@db.model
+class User:
+    id: str
+    name: str
 
-### Core Operations
+# Auto-generates API + CLI + MCP
+nexus = Nexus(db.get_workflows())
+nexus.run()  # Instant multi-channel platform
+```
 
-- **[dataflow-crud-operations](dataflow-crud-operations.md)** - Create, Read, Update, Delete
-- **[dataflow-queries](dataflow-queries.md)** - Query patterns and filtering
-- **[dataflow-aggregation](dataflow-aggregation.md)** - SQL aggregation (COUNT/SUM/AVG/MIN/MAX GROUP BY)
-- **[dataflow-bulk-operations](dataflow-bulk-operations.md)** - Batch operations
-- **[dataflow-transactions](dataflow-transactions.md)** - Transaction management
-- **[dataflow-connection-isolation](dataflow-connection-isolation.md)** - ACID guarantees
+### With Core SDK (Custom Workflows)
 
-### Advanced Features
+```python
+from dataflow import DataFlow
+from kailash.workflow.builder import WorkflowBuilder
 
-- **[dataflow-multi-instance](dataflow-multi-instance.md)** - Multiple database instances
-- **[dataflow-multi-tenancy](dataflow-multi-tenancy.md)** - Multi-tenant architectures
-- **[dataflow-existing-database](dataflow-existing-database.md)** - Working with existing databases
-- **[dataflow-migrations-quick](dataflow-migrations-quick.md)** - Database migrations
-- **[dataflow-custom-nodes](dataflow-custom-nodes.md)** - Custom database nodes
-- **[dataflow-sqlite-concurrency](dataflow-sqlite-concurrency.md)** - SQLite WAL mode, connection pooling
+db = DataFlow(connection_string="...")
+# Use db-generated nodes in custom workflows
+workflow = WorkflowBuilder()
+workflow.add_node("User_Create", "user1", {...})
+```
 
-### Developer Experience
+## When to Use This Skill
 
-- **[dataflow-strict-mode](dataflow-strict-mode.md)** - Build-time validation (4-layer, OFF/WARN/STRICT)
-- **[dataflow-debug-agent](dataflow-debug-agent.md)** - Intelligent error analysis (5-stage pipeline)
-- **ErrorEnhancer** - Automatic error enhancement (40+ DF-XXX codes)
-- **Inspector API** - Self-service debugging (18 introspection methods)
-- **CLI Tools** - dataflow-validate, dataflow-analyze, dataflow-debug
+Use DataFlow when you need to:
 
-### Data Fabric Engine
-
-- **[dataflow-fabric-engine](dataflow-fabric-engine.md)** - External data sources (`db.source()`), derived products (`@db.product()`), consumer adapters, cache control, MCP integration
-- **[dataflow-fabric-cache-consumers](dataflow-fabric-cache-consumers.md)** - Fabric cache control, consumer adapters, MCP tool generation, virtual products, graceful shutdown
-
-### Provenance & Audit
-
-- **[dataflow-provenance-audit](dataflow-provenance-audit.md)** - Provenance[T] field tracking, SourceType enum, audit trail persistence, EventStoreBackend
-
-### Cache Patterns
-
-- **[cache-cas-fail-closed](cache-cas-fail-closed.md)** - CAS (compare-and-swap) fail-closed pattern when primitive can only be satisfied by one backend
-
-### Enterprise Features
-
-- **[dataflow-derived-models](dataflow-derived-models.md)** - Application-layer materialized views (`@db.derived_model`)
-- **[dataflow-file-import](dataflow-file-import.md)** - File ingestion (CSV/Excel/Parquet/JSON)
-- **[dataflow-validation-dsl](dataflow-validation-dsl.md)** - Declarative validation (`__validation__` dict)
-- **[dataflow-express-cache](dataflow-express-cache.md)** - Model-scoped Express caching with TTL
-- **[dataflow-read-replicas](dataflow-read-replicas.md)** - Read/write splitting
-- **[dataflow-retention](dataflow-retention.md)** - Data retention policies
-- **[dataflow-events](dataflow-events.md)** - Write event emission + EventBus integration
-
-### ML Integration
-
-- **[dataflow-ml-integration](dataflow-ml-integration.md)** - kailash-ml FeatureStore integration
-
-### Monitoring & Troubleshooting
-
-- **[dataflow-monitoring](dataflow-monitoring.md)** - Pool utilization, leak detection, health checks
-- **[dataflow-gotchas](dataflow-gotchas.md)** - Common pitfalls
+- Perform database operations in workflows
+- Generate CRUD APIs automatically (with Nexus)
+- Implement multi-tenant systems
+- Work with existing databases
+- Build database-first applications
+- Handle bulk data operations
 
 ## Related Skills
 
@@ -201,6 +233,8 @@ let result = db.express().bulk_update::<Document>(
 
 ## Support
 
+For DataFlow-specific questions, invoke:
+
 - `dataflow-specialist` - DataFlow implementation and patterns
-- `testing-specialist` - DataFlow testing strategies (Real infrastructure recommended)
-- `decide-framework` skill - Choose between Core SDK and DataFlow
+- `testing-specialist` - DataFlow testing strategies (NO MOCKING policy)
+- ``decide-framework` skill` - Choose between Core SDK and DataFlow

@@ -1,6 +1,6 @@
 ---
 name: open-source-strategist
-description: Open-source strategy advisor. Use for licensing, open/proprietary boundaries, or community building decisions.
+description: Open-source strategy advisor. Use for licensing, open/proprietary boundaries, or community decisions.
 tools:
   - read_file
   - write_file
@@ -46,7 +46,7 @@ Layer 1: SPECIFICATIONS (Open — Foundation-owned)
 2. **CC BY 4.0 for specs** — NOT CC-BY-SA. No ShareAlike.
 3. **BSL 1.1 is NOT open source** — Use "source-available" or "open-core."
 4. **Feature gate, not performance gate** — Community/Enterprise boundary is single-org vs multi-org, not slow vs fast.
-5. **Kailash Python is Foundation-owned** (Apache 2.0). Kailash RS is a separate proprietary product, not Foundation IP.
+5. **Kailash Python and Kailash Rust are both Foundation-owned** (Apache 2.0) — see `rules/independence.md`.
 
 ## The Open/Proprietary Boundary
 

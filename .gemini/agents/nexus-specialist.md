@@ -1,6 +1,6 @@
 ---
 name: nexus-specialist
-description: Nexus specialist. Use proactively for ANY API endpoint, web service, REST API, HTTP server, routes, request handling — custom HTTP frameworks BLOCKED.
+description: Nexus specialist. Use proactively for HTTP/API/websocket/gateway/middleware/login/session — direct FastAPI/Flask BLOCKED (use Nexus; Nexus itself uses FastAPI internally).
 tools:
   - read_file
   - write_file
@@ -84,7 +84,73 @@ async def greet(name: str, greeting: str = "Hello") -> dict:
 
 # DataFlow integration — CRITICAL: prevents startup blocking
 app = Nexus(auto_discovery=False)
+
+# Function-based middleware (#449)
+@app.use_middleware
+async def timing(request, call_next):
+    t0 = time.monotonic()
+    response = await call_next(request)
+    response.headers["X-Process-Time"] = str(time.monotonic() - t0)
+    return response
+
+# Subapp mounting (#447) — compose Nexus instances
+admin = Nexus()
+admin.register("users_admin", admin_workflow.build())
+app.mount("/admin", admin)
+
+# Class-based WebSocket handlers (#448) — per-connection state
+from nexus.websocket_handlers import MessageHandler, Connection
+
+@app.websocket("/events")
+class EventStream(MessageHandler):
+    async def on_connect(self, conn: Connection) -> None:
+        conn.state.subscriptions = set()
+    async def on_message(self, conn: Connection, msg: dict) -> None:
+        if msg.get("action") == "subscribe":
+            conn.state.subscriptions.add(msg["topic"])
+    async def on_event(self, event: dict) -> None:
+        for conn in self.connections:
+            if event["topic"] in conn.state.subscriptions:
+                await conn.send_json(event)
 ```
+
+## Typed Service Client (S2S)
+
+For service-to-service calls where the caller wants structured return types instead of raw JSON, use `kailash.nexus.TypedServiceClient` — a thin wrapper over `ServiceClient` with a pluggable `DecoderRegistry`. Register a decoder per response schema; the wrapper dispatches on the endpoint's declared return type.
+
+```python
+from kailash.nexus import TypedServiceClient, DecoderRegistry
+
+registry = DecoderRegistry()
+registry.register(UserResponse, lambda j: UserResponse(**j))
+registry.register(OrderResponse, lambda j: OrderResponse.model_validate(j))
+
+client = TypedServiceClient(base_url="https://users.internal", decoders=registry)
+user: UserResponse = await client.get("/users/42", response_type=UserResponse)
+# Raw variant still available for untyped endpoints:
+raw = await client.get_raw("/debug/dump")
+```
+
+**Why typed + raw pair**: the `_raw` variants preserve low-level access for migration/debug; per `rules/testing.md` § Delegating Primitives, every variant requires a direct test. See PR #507 for the introduction commit.
+
+## Transport Layer
+
+Nexus has 4 transports (all implement `Transport` ABC from `nexus.transports.base`):
+
+| Transport            | File                      | Purpose                                      |
+| -------------------- | ------------------------- | -------------------------------------------- |
+| `HTTPTransport`      | `transports/http.py`      | FastAPI/Starlette HTTP endpoints (default)   |
+| `MCPTransport`       | `transports/mcp.py`       | MCP protocol via FastMCP (background thread) |
+| `WebSocketTransport` | `transports/websocket.py` | Bidirectional real-time (JSON-RPC style)     |
+| `WebhookTransport`   | `transports/webhook.py`   | Inbound receiver + outbound delivery         |
+
+**Middleware**: `nexus.middleware.cache.ResponseCacheMiddleware` — TTL + LRU + ETag.
+
+**Security patterns for transports:**
+
+- Webhook: HMAC-SHA256 signatures (`hmac.compare_digest`), SSRF prevention via DNS-pinned delivery, idempotency deduplication
+- WebSocket: `max_connections` enforcement, generic error messages (never leak exception details)
+- All: bounded collections for connection/delivery tracking
 
 ## Framework Selection
 
@@ -132,6 +198,10 @@ app = Nexus(auto_discovery=False)
 
 - `.claude/skills/03-nexus/nexus-troubleshooting.md` -- Common issues and solutions (startup blocking, workflow not found, port conflicts, auth injection, sandbox warnings)
 
+## ML Integration Surface (nexus 2.2.0+, M10 W31c)
+
+`nexus.ml` — bridge module exposing `km.ServeHandle` via Nexus's REST + MCP + CLI channels. See `specs/nexus-ml-integration.md` for the contract. Every ML serving route flows through a ServeHandle adapter, NOT a bespoke FastAPI handler. Origin: `feat/w31c-nexus-ml-bridge` merged at `91bb0383`.
+
 ## Related Agents
 
 - **dataflow-specialist**: Database integration with Nexus platform
@@ -139,6 +209,7 @@ app = Nexus(auto_discovery=False)
 - **pattern-expert**: Core SDK workflows for Nexus registration
 - **`decide-framework` skill**: Choose between Core SDK and Nexus
 - **release-specialist**: Production deployment and scaling
+- **ml-specialist**: ServeHandle deployment through Nexus channels
 
 ## Full Documentation
 
