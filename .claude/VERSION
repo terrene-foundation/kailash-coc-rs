@@ -1,5 +1,5 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "coc-use-template",
   "description": "COC USE template for Python/Ruby developers using Rust-backed Kailash bindings — multi-CLI (claude + codex + gemini)",
   "released": "2026-04-27",
@@ -7,13 +7,21 @@
     "name": "kailash",
     "type": "coc-source",
     "version": "2.9.3",
-    "build_version": "3.20.0",
-    "synced_at": "2026-04-27T00:00:00+00:00",
+    "build_version": "3.23.0",
+    "synced_at": "2026-04-27T16:00:00+00:00",
     "sdk_packages": {
-      "kailash (binding wheel)": "3.20.0"
+      "kailash (binding wheel)": "3.23.0"
     }
   },
   "changelog": [
+    {
+      "version": "1.0.4",
+      "date": "2026-04-27",
+      "summary": "PATCH: SDK pin refresh to kailash-rs v3.23.0 release wave (3.20.0→3.23.0). Three minor versions of work shipped (3.21, 3.22, 3.23) since prior pin. Pure SDK-pin sweep — no .claude/ artifact changes (loom 2.9.3 already distributed in v1.0.3).",
+      "changes": [
+        "SDK PIN: kailash binding wheel 3.20.0→3.23.0."
+      ]
+    },
     {
       "version": "1.0.3",
       "date": "2026-04-27",
