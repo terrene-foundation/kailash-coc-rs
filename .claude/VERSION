@@ -1,19 +1,27 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "coc-use-template",
-  "description": "COC USE template for Python/Ruby developers using Rust-backed Kailash bindings \u2014 multi-CLI (claude + codex + gemini)",
+  "description": "COC USE template for Python/Ruby developers using Rust-backed Kailash bindings — multi-CLI (claude + codex + gemini)",
   "released": "2026-04-27",
   "upstream": {
     "name": "kailash",
     "type": "coc-source",
-    "version": "2.9.0",
+    "version": "2.9.3",
     "build_version": "3.20.0",
-    "synced_at": "2026-04-26T01:00:00Z",
+    "synced_at": "2026-04-27T00:00:00+00:00",
     "sdk_packages": {
       "kailash (binding wheel)": "3.20.0"
     }
   },
   "changelog": [
+    {
+      "version": "1.0.3",
+      "date": "2026-04-27",
+      "summary": "PATCH: rename /send-it → /decisive (slang removal + directive realignment to autonomous-execution + permission-envelope). The slang command name 'send-it' was unfamiliar to non-technical COC users (motorsports/skate slang); renamed to 'decisive' which names the posture without slang. Directive body rewritten to align with the user's standing principle 'autonomous execution to full with my permission, with the most optimal, complete, root-cause approach for the long-term … rigorous, prudent as well.' Added: § Prudence (permission envelope — destructive/hard-to-reverse/visible-to-others ops still require confirmation; BUILD-repo + downstream-of-USE commit/push carve-out per standing user feedback) + § Rigor (verify-before-commit — mechanical sweeps, cite paths/lines, distinguish observed-vs-assumed). Old send-it.md/.toml purged via .coc-obsoleted; new decisive command emitted to .claude/commands/ + (multi-CLI templates only) .codex/prompts/ + .gemini/commands/.",
+      "changes": [
+        "ADDED: .claude/commands/decisive.md + .codex/prompts/decisive.md + .gemini/commands/decisive.toml. PURGED: 3 send-it variants. OBSOLETED: appended 3 send-it paths to .claude/.coc-obsoleted."
+      ]
+    },
     {
       "version": "1.0.2",
       "date": "2026-04-27",
@@ -26,27 +34,27 @@
     {
       "version": "1.0.1",
       "date": "2026-04-26",
-      "summary": "Patch follow-up to 1.0.0 \u2014 close cross-SDK gap by re-distributing rs variant overlays after Gate 1 extended variants/rs/rules/agents.md (+'Verify Specialist Tool Inventory' MUST) and variants/rs/rules/ci-runners.md (+Rules 9/10/11). Both rules re-composed via compose.mjs and AGENTS.md/GEMINI.md regenerated via emit.mjs --all --lang rs. Validator 14 PASS. Multi-CLI baselines now ~51.8KB (up from ~50.7KB in 1.0.0), still WARN tier well under v6 \u00a72.2 block_cap (61440B).",
+      "summary": "Patch follow-up to 1.0.0 — close cross-SDK gap by re-distributing rs variant overlays after Gate 1 extended variants/rs/rules/agents.md (+'Verify Specialist Tool Inventory' MUST) and variants/rs/rules/ci-runners.md (+Rules 9/10/11). Both rules re-composed via compose.mjs and AGENTS.md/GEMINI.md regenerated via emit.mjs --all --lang rs. Validator 14 PASS. Multi-CLI baselines now ~51.8KB (up from ~50.7KB in 1.0.0), still WARN tier well under v6 §2.2 block_cap (61440B).",
       "changes": [
         "RS-VARIANT rules/agents.md re-composed via compose.mjs: now contains 'MUST: Verify Specialist Tool Inventory Before Implementation Delegation' (composed body 8499B, 151 lines).",
         "RS-VARIANT rules/ci-runners.md re-composed via compose.mjs: added Rules 9/10/11 (composed body 26731B, 471 lines).",
-        "AGENTS.md regenerated: 50702B \u2192 51872B WARN tier (9 rules, 814 lines).",
-        "GEMINI.md regenerated: 50673B \u2192 51843B WARN tier (9 rules, 818 lines).",
+        "AGENTS.md regenerated: 50702B → 51872B WARN tier (9 rules, 814 lines).",
+        "GEMINI.md regenerated: 50673B → 51843B WARN tier (9 rules, 818 lines).",
         "Validator 14 (rule-frontmatter pair consistency) PASS.",
-        "VERSION: 1.0.0 \u2192 1.0.1.",
+        "VERSION: 1.0.0 → 1.0.1.",
         "HOOKS: 12/12 verified."
       ]
     },
     {
       "version": "1.0.0",
       "date": "2026-04-26",
-      "summary": "Initial VERSION manifest for kailash-coc-rs (multi-CLI rs USE template). Sync loom 2.9.0 \u2014 PY CYCLE 8 + RS CYCLE 5 dual-SDK convergence. 4 rule files re-composed via .claude/bin/compose.mjs (rs variant overlay): rules/agents.md (rs-variant body \u2014 Tool Inventory MUST landed in py templates only), rules/build-repo-release-discipline.md (global \u2014 added MUST Rule 5 PR Review Sub-Package Version Bump Sweep), rules/git.md (global \u2014 added Release-Prep release/v* convention + Pre-FIRST-Push CI Parity Discipline), rules/ci-runners.md (rs-variant body \u2014 Rules 6a/7/8 GitHub Actions cost-aware rules landed in py templates only). 1 rs-variant rule extended: rules/build-speed.md (added MUST Run Full CI Job-Set Locally Before FIRST Push AND Before Admin-Merge). 1 NEW rs-variant skill: skills/18-security-patterns/rls-security-definer-preauth-carveout.md (517 lines \u2014 typed Rust SecurityDefinerBuilder). Multi-CLI baselines AGENTS.md/GEMINI.md regenerated via emit.mjs --all --lang rs: ~50.7KB each, both WARN tier. Validator 14 (rule-frontmatter pair consistency) PASS. SDK pins UNCHANGED \u2014 rs templates pin Python binding wheel only (Rust-toolchain-specific pins not managed by /sync per agent contract).",
+      "summary": "Initial VERSION manifest for kailash-coc-rs (multi-CLI rs USE template). Sync loom 2.9.0 — PY CYCLE 8 + RS CYCLE 5 dual-SDK convergence. 4 rule files re-composed via .claude/bin/compose.mjs (rs variant overlay): rules/agents.md (rs-variant body — Tool Inventory MUST landed in py templates only), rules/build-repo-release-discipline.md (global — added MUST Rule 5 PR Review Sub-Package Version Bump Sweep), rules/git.md (global — added Release-Prep release/v* convention + Pre-FIRST-Push CI Parity Discipline), rules/ci-runners.md (rs-variant body — Rules 6a/7/8 GitHub Actions cost-aware rules landed in py templates only). 1 rs-variant rule extended: rules/build-speed.md (added MUST Run Full CI Job-Set Locally Before FIRST Push AND Before Admin-Merge). 1 NEW rs-variant skill: skills/18-security-patterns/rls-security-definer-preauth-carveout.md (517 lines — typed Rust SecurityDefinerBuilder). Multi-CLI baselines AGENTS.md/GEMINI.md regenerated via emit.mjs --all --lang rs: ~50.7KB each, both WARN tier. Validator 14 (rule-frontmatter pair consistency) PASS. SDK pins UNCHANGED — rs templates pin Python binding wheel only (Rust-toolchain-specific pins not managed by /sync per agent contract).",
       "changes": [
         "GLOBAL rules/build-repo-release-discipline.md mirror-applied from loom global (Rule 5 PR Review Sub-Package Version Bump Sweep). Cross-SDK applicable.",
         "GLOBAL rules/git.md mirror-applied from loom global (Release-Prep release/v* + Pre-FIRST-Push CI Parity).",
         "RS-VARIANT rules/agents.md re-composed via compose.mjs --global rules/agents.md --overlay variants/rs/rules/agents.md (no semantic delta this cycle; rs variant carries its own Specialist Delegation block).",
-        "RS-VARIANT rules/ci-runners.md re-composed via compose.mjs (no semantic delta this cycle; rs variant carries \u00a76 Zombie-Job + \u00a77 Idle-But-Not-Accepting + \u00a78 Tag-Gated Release MUSTs).",
-        "RS-VARIANT rules/build-speed.md re-applied (added MUST Run Full CI Job-Set Locally Before FIRST Push AND Before Admin-Merge \u2014 five-command checklist).",
+        "RS-VARIANT rules/ci-runners.md re-composed via compose.mjs (no semantic delta this cycle; rs variant carries §6 Zombie-Job + §7 Idle-But-Not-Accepting + §8 Tag-Gated Release MUSTs).",
+        "RS-VARIANT rules/build-speed.md re-applied (added MUST Run Full CI Job-Set Locally Before FIRST Push AND Before Admin-Merge — five-command checklist).",
         "NEW (rs variant) skills/18-security-patterns/rls-security-definer-preauth-carveout.md (517 lines, copied from kailash-rs source-of-truth).",
         "AGENTS.md regenerated: 50702B WARN tier (9 rules).",
         "GEMINI.md regenerated: 50673B WARN tier (9 rules).",
