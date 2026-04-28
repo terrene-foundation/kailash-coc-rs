@@ -1,106 +1,42 @@
-# COC Sync Marker — kailash-coc-rs (multi-CLI)
-# Format: YAML (per coc-sync.md Step 9 — Known drift fixed: previous JSON marker
-# was incompatible with per-CLI drift detection). Patched to YAML schema in v2.9.1
-# fan-out (this sync) per coc-sync.md "Format MUST be YAML, not JSON" directive.
-timestamp: 2026-04-26T15:08:00Z
+# COC Sync Marker — kailash-coc-rs
+timestamp: 2026-04-28T06:43:07.866813+00:00
 source: loom/.claude
-source_version: 2.9.1
 variant: rs
-template: kailash-coc-rs
 clis: [claude, codex, gemini]
-multi_cli: true
-template_version: 1.0.1->1.0.2
-sdk_pins_changed: false
+loom_version: 2.9.5
+loom_sha: 1f65a4e
 stats:
-  updated: ~700              # bulk artifact sync (agents/commands/rules/skills/guides/hooks/bin)
-  created: 1                 # .coc-obsoleted
-  unchanged: 0               # bulk-rsync diff threshold not measured per-file
-  composed: 13               # rs slot-keyed + full-file rule overlays:
-                             # 10 slot-composed via compose.mjs (agents, ci-runners,
-                             # connection-pool, e2e-god-mode, framework-first,
-                             # independence, patterns, security, testing, zero-tolerance)
-                             # — 4 of the 10 (patterns/security/testing/zero-tolerance)
-                             # passed through with WARN "overlay introduces slot
-                             # 'neutral-body' not in global"; composed = global byte-equivalent.
-                             # 3 full-file overlays: build-speed, dataflow-null-typing, release.
-  preserved: 1               # CLAUDE.md (template-owned multi-CLI baseline; 9631B, dated 2026-04-23)
-  baselines_emitted:         # Step 6.5 — multi-CLI template
-    cc: 0                    # CLAUDE.md preserved, not emitted
-    codex: 1                 # AGENTS.md (51872B, WARN tier)
-    gemini: 1                # GEMINI.md (51843B, WARN tier)
-  baseline_emission_bytes:   # from emit-telemetry.json
+  updated: 226
+  created: 0
+  unchanged: 935
+  composed: 0
+  preserved: 1   # CLAUDE.md preserved per Step 7
+  purged: 0
+  baselines_emitted:
+    cc: 0
+    codex: 1
+    gemini: 1
+  baseline_emission_bytes:
     block_cap_bytes: 61440
     warn_cap_bytes: 32768
     codex:
-      rules: 9
-      bytes: 51872
+      bytes: 55413
       tier: WARN
-      headroom_bytes: 9568
-      headroom_pct: 15.57
+      headroom_bytes: 6027
+      headroom_pct: 9.81
     gemini:
-      rules: 9
-      bytes: 51843
+      bytes: 55422
       tier: WARN
-      headroom_bytes: 9597
-      headroom_pct: 15.62
-  cli_artifacts:             # Step 6.6 — emit-cli-artifacts.mjs
+      headroom_bytes: 6018
+      headroom_pct: 9.79
+  cli_artifacts:
     codex:
-      prompts: 29
+      prompts: 30
       skills: 34
     gemini:
-      commands: 29
+      commands: 30
       skills: 34
       agents: 22
-    skipped_per_exclusions:
-      commands: 1            # cc-audit
-      skills: 4              # 30-claude-code-patterns/** + co-reference/**
-      agents: 11             # cc-architect, etc.
-  mcp_guard:
-    policies_populated: false   # still gated — runtime predicate loader not wired
-    predicates_extracted: 4     # from extract-policies.mjs bijection (1450B policies.json)
-  obsoleted_purged:          # Step 4.5 — load-bearing v2.9.1 release lever
-    - scripts/resolve-template.js  # purged (was present pre-sync)
-    # scripts/hooks/ already absent pre-sync — not purged
-    # .claude/scripts/ already absent pre-sync — not purged
-  coc_obsoleted_emitted: .claude/.coc-obsoleted   # 3 entries written for downstream consumers
-v291_deltas_landed:
-  - .claude/agents/cli-orchestrator.md          # path update
-  - .claude/agents/codex-architect.md           # 4 path updates
-  - .claude/commands/sync.md                    # rs variant overlay (rewritten Downstream Sync)
-  - .claude/hooks/lib/template-resolver.js      # rewrite
-  - .claude/hooks/validate-workflow.js          # annotated transitional matcher
-  - .claude/bin/resolve-template.js             # NEW canonical thin shim
-verification:
-  hooks_resolved: 12/12
-  scripts_hooks_refs_in_settings: 0  # MUST be 0 per Step 8
-  scripts_hooks_dir_present: false   # MUST be false per Step 8
-  scripts_resolve_template_present: false  # MUST be false per Step 8
-  claude_scripts_dir_present: false  # MUST be false per Step 8
-  coc_obsoleted_present: true        # MUST be true per Step 8
-  coc_obsoleted_entries: 3           # MUST be 3 per manifest
-  build_path_leaks_in_md: 0          # zero /Users/esperie/repos/ refs in synced .md files
-  bin_resolve_template_present: true
-  hooks_lib_template_resolver_present: true
-  baseline_emission_tier: WARN       # both codex (51872B) + gemini (51843B) — steady state per v6 §2.2
-  validator_14: PASS                 # rule-frontmatter check ran during emit.mjs
-note: |
-  v2.9.1 hooks-consolidation + sync-template-resolver-UX-fix release.
-  Step 4.5 (NEW v2.9.1) fired: scripts/resolve-template.js purged; scripts/hooks/
-  and .claude/scripts/ were already absent pre-sync. .coc-obsoleted manifest
-  emitted at .claude/.coc-obsoleted with the 3 obsoleted-paths the manifest
-  declares. settings.json was already pointing at .claude/hooks/ (no rewrite
-  needed). 12/12 hooks resolved on disk.
-
-  Multi-CLI emission:
-    Step 6.5 (emit.mjs --all --lang rs) → AGENTS.md + GEMINI.md at repo root,
-    both at WARN tier (~52KB each, 15-16% headroom under 60KB block_cap).
-    Step 6.6 (emit-cli-artifacts.mjs) → .codex/{prompts,skills}/ +
-    .gemini/{commands,skills,agents}/ trees materialised; per-CLI exclusions
-    honoured (CC-only artifacts skipped from Codex/Gemini emissions).
-    .codex-mcp-guard/ refreshed including extracted policies.json (4 predicates).
-    .codex/{config.toml,hooks.json} + .gemini/settings.json copied from
-    loom-owned codex-templates/ and gemini-templates/.
-
-  Marker format flipped JSON → YAML per coc-sync.md Step 9 directive
-  ("Known drift" entry cited the rs flow specifically). CLAUDE.md preserved
-  (9631B multi-CLI version dated 2026-04-23).
+  integrity:
+    hooks_ok: 0
+    hooks_total: 0
