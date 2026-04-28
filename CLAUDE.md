@@ -152,13 +152,15 @@ The Rust SDK is a workspace of crates; downstream consumers install the binding 
 
 | Framework    | Purpose                                 | Binding install (Python)          | Binding install (Ruby)         |
 | ------------ | --------------------------------------- | --------------------------------- | ------------------------------ |
-| **Core SDK** | Workflow orchestration, 139+ nodes      | `pip install kailash-rs`          | `gem install kailash`          |
-| **DataFlow** | Zero-config database operations (sqlx)  | `pip install kailash-rs-dataflow` | `gem install kailash-dataflow` |
-| **Nexus**    | Multi-channel deployment (axum + tower) | `pip install kailash-rs-nexus`    | `gem install kailash-nexus`    |
-| **Kaizen**   | AI agent framework                      | `pip install kailash-rs-kaizen`   | `gem install kailash-kaizen`   |
-| **PACT**     | Organizational governance (D/T/R)       | `pip install kailash-rs-pact`     | `gem install kailash-pact`     |
+| **Core SDK** | Workflow orchestration, 139+ nodes      | `pip install kailash-enterprise`  | `gem install kailash`          |
+| **DataFlow** | Zero-config database operations (sqlx)  | included in `kailash-enterprise`  | `gem install kailash-dataflow` |
+| **Nexus**    | Multi-channel deployment (axum + tower) | included in `kailash-enterprise`  | `gem install kailash-nexus`    |
+| **Kaizen**   | AI agent framework                      | included in `kailash-enterprise`  | `gem install kailash-kaizen`   |
+| **PACT**     | Organizational governance (D/T/R)       | included in `kailash-enterprise`  | `gem install kailash-pact`     |
 
-The Rust monorepo also ships `kailash-enterprise`, `eatp`, `trust-plane`, `kailash-governance`, `kaizen-agents`, `kailash-rl`, `kailash-align-serving` (consumed through the same binding surfaces). Source-of-truth workspace: `esperie/kailash-rs`.
+Python: the Rust-backed binding ships as a single bundled wheel — `pip install kailash-enterprise`, import via `import kailash`. All frameworks (DataFlow, Nexus, Kaizen, PACT, EATP, Trust Plane, governance, kaizen-agents, RL, align-serving) are reachable from the one wheel via `from kailash.{dataflow,nexus,kaizen,pact,...} import ...`.
+
+Source-of-truth workspace: `esperie/kailash-rs`.
 
 ## Regeneration
 
