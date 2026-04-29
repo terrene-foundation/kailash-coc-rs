@@ -1,42 +1,63 @@
 # COC Sync Marker — kailash-coc-rs
-timestamp: 2026-04-28T06:43:07.866813+00:00
+timestamp: 2026-04-29T09:23:11+00:00
 source: loom/.claude
 variant: rs
 clis: [claude, codex, gemini]
-loom_version: 2.9.5
-loom_sha: 1f65a4e
+loom_version: 2.10.0
+loom_sha: 23fa489
 stats:
-  updated: 226
-  created: 0
-  unchanged: 935
-  composed: 0
-  preserved: 1   # CLAUDE.md preserved per Step 7
+  composed: 10
+  variant_only: 156
+  preserved: 1        # CLAUDE.md preserved per Step 7
   purged: 0
   baselines_emitted:
-    cc: 0
-    codex: 1
-    gemini: 1
+    cc: 0             # CLAUDE.md preserved, not emitted
+    codex: 0          # BLOCKED — see baseline_emission_bytes below
+    gemini: 0         # BLOCKED — see baseline_emission_bytes below
   baseline_emission_bytes:
     block_cap_bytes: 61440
     warn_cap_bytes: 32768
     codex:
-      bytes: 55413
-      tier: WARN
-      headroom_bytes: 6027
-      headroom_pct: 9.81
+      rules: 9
+      bytes: 61627
+      tier: BLOCK
+      headroom_bytes: -187
+      headroom_pct: -0.30
+      decision: held_at_prior_2.9.5_emission   # 55413 B WARN
+      block_cause: |
+        git.md +3056B over per-rule budget (4400 → 8776; new git reset --hard
+        clause from 2.9.7 carried into 2.10.0). independence.md +3397B over
+        budget (2500 → 6647; rs-variant proprietary-licensing override).
+        2.10.0 changelog predicted ~9-10% post-distribution headroom; actual
+        landed -0.30%. Spec v6 §A.2 remediation required.
     gemini:
-      bytes: 55422
-      tier: WARN
-      headroom_bytes: 6018
-      headroom_pct: 9.79
+      rules: 9
+      bytes: 61636
+      tier: BLOCK
+      headroom_bytes: -196
+      headroom_pct: -0.32
+      decision: held_at_prior_2.9.5_emission   # 55422 B WARN
+      block_cause: |
+        Same per-rule budget overruns as codex (git.md, independence.md).
   cli_artifacts:
     codex:
       prompts: 30
       skills: 34
+      mcp_guard_present: true
     gemini:
       commands: 30
       skills: 34
       agents: 22
+  mcp_guard:
+    policies_populated: false
   integrity:
-    hooks_ok: 0
-    hooks_total: 0
+    hooks_ok: 12
+    hooks_total: 12
+    scripts_hooks_leaks_in_settings: 0
+notes: |
+  All other tiers (.claude/, .codex/, .codex-mcp-guard/, .gemini/) at loom
+  2.10.0 parity. AGENTS.md (55413B WARN) and GEMINI.md (55422B WARN) held
+  at prior 2.9.5 emission to avoid shipping a hard-blocked baseline that
+  exceeds the Codex 61440 B cap. Remediation PR at loom required before
+  next /sync rs cycle. Cargo.toml not present in this template (delegates
+  to consumer downstream); cargo check N/A.
