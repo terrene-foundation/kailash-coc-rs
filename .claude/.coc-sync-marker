@@ -1,49 +1,41 @@
 # COC Sync Marker — kailash-coc-rs
-timestamp: 2026-04-29T17:46:00+00:00
+timestamp: 2026-04-29T11:17:46Z
 source: loom/.claude
+loom_version: 2.10.2
 variant: rs
-clis: [claude, codex, gemini]
-loom_version: 2.10.1
-loom_sha: ed204e2
+clis: ["claude", "codex", "gemini"]
+template_version: 1.0.7
 stats:
-  composed: 1
-  variant_only: 0
-  preserved: 1
-  purged: 0
-  rule_extracts_added: 2
-  baselines_emitted:
-    cc: 0             # CLAUDE.md preserved
-    codex: 1          # AGENTS.md re-emitted (was BLOCKED at 2.10.0)
-    gemini: 1         # GEMINI.md re-emitted (was BLOCKED at 2.10.0)
-  baseline_emission_bytes:
-    block_cap_bytes: 61440
-    warn_cap_bytes: 32768
+  files_updated_this_sync:
+    - .claude/commands/codify.md (cc-architect rename completion; loom 2.10.2 source fix)
+  files_added_this_sync: []
+  files_purged:
+    - .claude/agents/claude-code-architect.md (obsoleted)
+    - .claude/projects/ (obsoleted)
+    - .claude/scheduled_tasks.lock (obsoleted)
+    - .claude/test-harness/ (obsoleted)
+    - .claude/learning/ (one-shot; loom-leaked, manifest-excluded but no auto-purge mechanism)
+  manifest_changes:
+    obsoleted_added:
+      - .claude/agents/claude-code-architect.md
+      - .claude/projects/
+      - .claude/scheduled_tasks.lock
+      - .claude/test-harness/
+    exclude_added:
+      - "projects/**"
+      - "scheduled_tasks.lock"
+      - "test-harness/**"
+  coc_obsoleted_emitted: 13 paths (16-line file with header)
+  cli_artifacts:
     codex:
-      rules: 9
-      bytes: 56810
-      tier: WARN
-      headroom_bytes: 4630
-      headroom_pct: 7.54
-      decision: emitted_fresh
-      prior_held_bytes: 55413  # 2.9.5 emission held during 2.10.0 BLOCK
+      prompts: 30
+      skills: 34
     gemini:
-      rules: 9
-      bytes: 56819
-      tier: WARN
-      headroom_bytes: 4621
-      headroom_pct: 7.52
-      decision: emitted_fresh
-      prior_held_bytes: 55422
-  per_rule_warns:
-    - "git.md: 6306B over budget 4400B (still over +30% threshold of 5720B; refactoring signal)"
-    - "independence.md: 4300B over budget 2500B (still over +30% threshold of 3250B; refactoring signal)"
-  integrity:
-    hooks_ok: 12
-    hooks_total: 12
-    scripts_hooks_leaks_in_settings: 0
+      commands: 30
+      skills: 34
+      agents: 22
 notes: |
-  2.10.1 unblocks AGENTS.md / GEMINI.md emission that 2.10.0 held at
-  prior 2.9.5 byte sizes. All four 2.10.0 cross-SDK MUST clauses now
-  in always-loaded codex/gemini baselines. Per-rule WARNs on git.md
-  and independence.md remain refactoring-signal tier (no longer
-  blocking).
+  Surgical sync-hygiene patch (loom 2.10.2). Only modified artifact is
+  commands/codify.md (cc-architect rename completion). Stale state purged
+  across all 8 BUILD/USE consumers via new .coc-obsoleted entries.
+  No SDK pin updates this cycle (pure metadata + sync-hygiene patch).
