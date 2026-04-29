@@ -36,6 +36,12 @@ When multiple independent operations are needed, launch agents in parallel via C
 
 **Why:** Sequential execution of independent operations wastes the autonomous execution multiplier, turning a 1-session task into a multi-session bottleneck.
 
+### MUST: Parallel Brief-Claim Verification When Issue Count ≥ 3
+
+When `/analyze` runs against a brief covering ≥ 3 distinct issues / failure modes / workstreams, the orchestrator MUST launch parallel deep-dive verification agents — one per claim cluster — to independently re-grep / re-read every factual claim in the brief tagged with file:line citations. Inaccuracies surfaced by the deep-dive sweep MUST be recorded in the workspace journal AND in the architecture plan's "Brief corrections" section AS THE GATE before `/todos`. Single-agent analysis on a ≥3-issue brief is BLOCKED — the framing inherited from the brief is the failure mode this rule prevents.
+
+**Why:** Briefs decay silently as the code evolves; a ≥3-issue brief carries ≥3× the surface area for stale citations and misframed root causes. Single-agent analysis cannot resist the brief's framing because the agent has no independent reading. Parallel deep-dive verification is the structural defense — three agents reading three claim-clusters independently produce three independent reports the orchestrator reconciles. Evidence: `kailash-ml-1.5.x-followup` brief had THREE distinct factual inaccuracies — all three caught only because three parallel deep-dive agents independently verified. Origin: 2026-04-29 — `workspaces/kailash-ml-1.5.x-followup/journal/0001-DISCOVERY-brief-root-cause-incorrect-on-three-issues.md`.
+
 ## Quality Gates (MUST — Gate-Level Review)
 
 Reviews happen at COC phase boundaries, not per-edit. Skip only when explicitly told to. **MUST gates** are `/implement` and `/release`; reviewer + security-reviewer (and gold-standards-validator at `/release`) run as parallel background agents. RECOMMENDED gates run at `/analyze`, `/todos`, `/redteam`, `/codify`, and post-merge. See guide for the full gate table.
@@ -334,57 +340,50 @@ scope: baseline
 
 # Git Workflow Rules
 
+See `.claude/guides/rule-extracts/git.md` for extended bash examples, full BLOCKED rationalization lists, repository protection table, and Origin evidence.
+
 
 ## Conventional Commits
 
-Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+Format: `type(scope): description`. Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
 
 **Why:** Non-conventional commits break automated changelog generation and make `git log --oneline` useless for release notes.
 
 ## Branch Naming
 
-Format: `type/description` (e.g., `feat/add-auth`, `fix/api-timeout`)
+Format: `type/description` (e.g., `feat/add-auth`, `fix/api-timeout`).
 
-**Why:** Inconsistent branch names prevent CI pattern-matching rules and make `git branch --list` unreadable across contributors.
+**Why:** Inconsistent branch names prevent CI pattern-matching rules and make `git branch --list` unreadable.
 
 ### Release-Prep PRs MUST Use `release/v*` Branch Convention (MUST)
 
-Any PR whose diff is metadata-only — version anchors (`pyproject.toml` / `Cargo.toml`, `__init__.py::__version__` / lib.rs `pub const VERSION`), `CHANGELOG.md`, spec/doc version-line updates, and CHANGELOG-paired spec updates — MUST be opened from a branch named `release/v<X.Y.Z>`. Using `feat/`, `fix/`, `chore/`, or any other prefix on a release-prep PR is BLOCKED.
+Any PR whose diff is metadata-only — version anchors (`pyproject.toml` / `Cargo.toml`, `__init__.py::__version__` / lib.rs `pub const VERSION`), `CHANGELOG.md`, spec/doc version-line updates — MUST be opened from a branch named `release/v<X.Y.Z>`. Using `feat/`, `fix/`, `chore/` on a release-prep PR is BLOCKED.
 
-**Why:** Every PR-gate workflow that adopts the `ci-runners.md` § "MUST: Release-prep skip" pattern checks `if: !startsWith(github.head_ref, 'release/')`. Branching from `release/v*` triggers the auto-skip and saves ~45 min × matrix-size of CI minutes per release-prep PR. Branching from anything else burns the full PR-gate matrix on a diff that has no code surface to verify. Evidence: kailash-rs PR #602 (2026-04-25) used `feat/v3.23.0-release-prep` and consumed ~73 min of GitHub-billable runner time on a metadata-only diff that should have skipped to ~0 min. The cross-reference exists in `ci-runners.md` but is path-scoped to `.github/workflows/**`, so it does not load when an agent is choosing a branch name. This clause cross-references the rule from `git.md` (always-loaded baseline) so branch-naming decisions surface the cost lever.
-
-**If the release-prep work IS NOT metadata-only** (e.g., folds in a code fix as part of the same PR), split: keep the code fix on a `feat/` or `fix/` branch with its own PR; cut the release-prep on a separate `release/v*` branch that only updates anchors + CHANGELOG. Two PRs, one with full CI, one near-zero.
+**Why:** PR-gate workflows check `if: !startsWith(github.head_ref, 'release/')`. Branching from `release/v*` triggers the auto-skip and saves ~45 min × matrix-size of CI minutes per release-prep PR. If the work IS NOT metadata-only, split: keep code fix on `feat/`/`fix/` branch, cut release-prep on a separate `release/v*` branch. See extract for evidence (kailash-rs PR #602, ~120 min wasted).
 
 ### Pre-FIRST-Push CI Parity Discipline (MUST)
 
-Before the FIRST `git push` that creates a remote branch (which opens the door to PR-gate CI), the agent MUST run the project's local CI parity command set. The discipline already exists in language-specific rules (`build-speed.md` § "Run Full CI Job-Set Locally Before Admin-Merge" for Rust; equivalents for Python: `pre-commit run --all-files` + `mypy --strict` + `pytest`) — this clause extends the same gate to the FIRST push, not just admin-merge.
+Before the FIRST `git push` that creates a remote branch, the agent MUST run the project's local CI parity command set (Rust: `cargo +nightly fmt --all --check` + `cargo clippy -- -D warnings` + `cargo nextest run` + `RUSTDOCFLAGS="-Dwarnings" cargo doc`. Python: `pre-commit run --all-files` + `pytest` + `mypy --strict`). All MUST exit 0 → push.
 
-**Why:** Each push to an open PR retriggers the full PR-gate matrix. With `concurrency: cancel-in-progress: true` on the workflow, prior in-flight runs are cancelled — but **the cancelled runs are still billed for the wall-clock minutes already consumed before cancellation**. kailash-rs PR #598 (2026-04-25) had a 71-minute Workspace Tests run cancelled mid-flight by a fix-up push; those 71 min were charged. Pre-flighting the local commands takes ~5-10 minutes once + amortized seconds on incremental re-runs; the alternative is N × 45 min of billed CI per fix-up cycle. Local discipline is strictly cheaper. The rule extends to the FIRST push because by the time admin-merge is invoked, every previous fix-up cycle has already burned billable minutes.
+**Why:** With `concurrency: cancel-in-progress: true` on the workflow, prior in-flight runs are cancelled — but **the cancelled runs are still billed for the wall-clock minutes already consumed before cancellation**. PR #598 (2026-04-25) had a 71-minute Workspace Tests run cancelled mid-flight; those 71 min were charged. Pre-flighting takes ~5-10 min; the alternative is N × 45 min of billed CI per fix-up cycle.
 
 ## Branch Protection
 
-All protected repos require PRs to main. Direct push is rejected by GitHub.
+All protected repos require PRs to main. Direct push is rejected by GitHub. Owner workflow: branch → commit → push → PR → `gh pr merge <N> --admin --merge --delete-branch`. See extract for the full repository × protection table.
 
 **Why:** Direct pushes bypass CI checks and code review, allowing broken or unreviewed code to reach the release branch.
 
-| Repository                                    | Branch | Protection                                         |
-| --------------------------------------------- | ------ | -------------------------------------------------- |
-| `terrene-foundation/kailash-py`               | `main` | Full (admin bypass)                                |
-| `terrene-foundation/kailash-coc-claude-py`    | `main` | Full (admin bypass) — legacy (archival 2026-10-22) |
-| `terrene-foundation/kailash-coc-claude-rs`    | `main` | Full (admin bypass) — legacy (archival 2026-10-22) |
-| ... | ... |
-
-**New multi-CLI USE repos (`kailash-coc-py`, `kailash-coc-rs`)**: created 2026-04-23 as net-new repos (not rename) per migration r3 directive. Flipped to public + branch protection applied 2026-04-23 (1 approving review required, force-push + deletion blocked, admin bypass retained). Posture matches legacy `kailash-coc-claude-{py,rs}` rows.
-
-**Owner workflow**: Branch → commit → push → PR → `gh pr merge <N> --admin --merge --delete-branch`
-
-**Contributor workflow**: Fork → branch → PR → 1 approving review → CI passes → merge
-
 ## PR Description
 
-CC system prompt provides the template. Additionally, always include a `## Related issues` section (e.g., `Fixes #123`).
+CC system prompt provides the template. Always include a `## Related issues` section (e.g., `Fixes #123`).
 
 **Why:** Without issue links, PRs become disconnected from their motivation, breaking traceability and preventing automatic issue closure on merge.
+
+## `git reset --hard` MUST Verify Clean Working Tree (MUST)
+
+`git reset --hard <ref>` SILENTLY discards every unstaged modification AND every untracked file in the affected paths. Recovery is impossible — unstaged content has no reflog entry. Running `git reset --hard` without first verifying `git status --porcelain` is empty is BLOCKED. Prefer `git reset --keep <ref>`, which performs the same commit-graph operation BUT aborts if it would lose local changes.
+
+**Why:** `git reset --hard` is the most destructive git operation that doesn't rewrite history — and unlike force-push, the destruction is unrecoverable. `git reset --keep` exists in git specifically to provide the same effect with structural safety. Sibling of `dataflow-identifier-safety.md` Rule 4 (DROP) and `schema-migration.md` Rule 7 (downgrade) — same structural-confirmation pattern. Origin: kailash-py 2026-04-28 PR #691 wiped `.session-notes`; cross-language principle.
 
 ## Rules
 
@@ -394,11 +393,18 @@ CC system prompt provides the template. Additionally, always include a `## Relat
 - No large binaries (>10MB single file)
 - Commit bodies MUST answer **why**, not **what** (the diff shows what)
 
-**Why:** Mixed commits are impossible to revert cleanly, leaked secrets require immediate key rotation across all environments, and large binaries permanently bloat the repo since git never forgets them. Commit bodies that explain "why" are the cheapest form of institutional documentation — co-located with the code, versioned, searchable via `git log --grep`, and never stale (they describe a point in time). See 0052-DISCOVERY §2.10.
+**Why:** Mixed commits are impossible to revert cleanly. Leaked secrets require key rotation across all environments. Large binaries permanently bloat the repo. Commit bodies that explain "why" are the cheapest form of institutional documentation — co-located, versioned, `git log --grep`-searchable, never stale.
 
 ## Issue Closure Discipline
 
 Closing a GitHub issue as "completed" MUST include a commit SHA, PR number, or merged-PR link in the close comment. Closing with no code reference is BLOCKED.
+
+```bash
+# DO — close with delivered-code reference
+gh issue close 351 --comment "Fixed in #412 (commit a1b2c3d)"
+# DO NOT — close with no code proof
+gh issue close 351 --comment "Resolved"
+```
 
 **Why:** Issues closed with zero delivered code references break traceability; the next session cannot verify whether the fix actually shipped.
 
@@ -412,7 +418,7 @@ When pre-commit auto-stash causes commits to fail despite hooks passing in direc
 
 Commit bodies MUST describe ONLY changes actually present in the diff. Claiming a refactor, deletion, or side-effect that the diff does NOT contain is BLOCKED. If the claim was made in error, push a FOLLOW-UP commit that actually does what the prior message said — do NOT amend, do NOT ignore.
 
-**Why:** `git log --grep` is the cheapest institutional-knowledge search across a repo — a body that claims something the diff doesn't contain poisons every future search that lands on it. The next session reads "dropped the warning-suppression" in the log, assumes it happened, and bases later decisions on a diff that never existed. Amending is BLOCKED because it loses the audit trail of the over-claim; a follow-up commit preserves both the original claim AND the correction so anyone tracing the history sees the full sequence.
+**Why:** `git log --grep` is the cheapest institutional-knowledge search across a repo — a body that claims something the diff doesn't contain poisons every future search that lands on it. Amending is BLOCKED because it loses the audit trail; a follow-up commit preserves both the original claim AND the correction. Origin: 2026-04-20 kailash-rs self-correction; cross-language principle.
 
 
 ---
@@ -427,97 +433,68 @@ scope: baseline
 # Foundation Independence Rules
 
 
-This repository is a **proprietary product** that implements open standards published by the Terrene Foundation. The Foundation rules that govern `kailash-py` (Apache 2.0, CC BY 4.0, no commercial coupling) DO NOT apply here. This file is the variant override of the global `independence.md` and exists specifically to clarify that boundary.
+This repository is a **proprietary product** that implements open standards published by the Terrene Foundation. The Foundation rules that govern `kailash-py` (Apache 2.0, CC BY 4.0, no commercial coupling) DO NOT apply here. This file is the variant override of the global `independence.md`.
 
-## The Boundary
+See `.claude/guides/rule-extracts/independence-rs.md` for the boundary table, full key facts, extended examples, BLOCKED rationalizations, and the relationship-to-other-rules cross-reference list.
 
-| Layer               | Owner                              | License                                                   |
-| ------------------- | ---------------------------------- | --------------------------------------------------------- |
-| **Open standards**  | Terrene Foundation (Singapore CLG) | CC BY 4.0 (CARE, PACT, EATP, CO)                          |
-| **Open-source SDK** | Terrene Foundation (Singapore CLG) | Apache 2.0 (`kailash-py`, `pact`)                         |
-| **This product**    | Product team (proprietary)         | `LicenseRef-Proprietary`, trade secret, `publish = false` |
-
-**Key facts**:
-
-1. **This repo is a proprietary product codebase.** Source is trade secret. Every crate has `publish = false` (except `kailash-plugin-macros` and `kailash-plugin-guest`, the only crates published to crates.io).
-2. **The product ships a Python SDK** (`pip install kailash-enterprise`) built from Rust-backed bindings. The product is not the SDK — the SDK is what the product delivers.
-3. **TF specs are upstream.** CARE, EATP, CO, PACT are CC BY 4.0. Any entity may implement them in any language under any license. This product does so in proprietary Rust. The TF projects do so in open-source Python. Neither has a structural relationship with the other.
-4. **There is no special relationship.** This product is one of potentially many commercial implementations of TF standards. The Foundation has no knowledge of, dependency on, or design consideration for any specific commercial product — and this product makes no claim of endorsement, partnership, or preferred status.
+**Boundary in one line**: TF owns specs (CC BY 4.0) + open-source SDKs (Apache 2.0); this product owns its proprietary Rust codebase (`LicenseRef-Proprietary`, `publish = false`).
 
 ## MUST Rules
 
 ### 1. Proprietary Identity Is Allowed Here
 
-Unlike `kailash-py` (where commercial references are forbidden under TF independence), this repo is itself a commercial product. You MAY:
+Unlike `kailash-py`, this repo IS a commercial product. You MAY describe the product, reference TF standards it implements, and describe the SDK it ships (`kailash-enterprise`). You MUST NOT claim Foundation ownership or endorsement.
 
-- Describe this product and its commercial context
-- Reference the TF standards it implements
-- Describe the SDK it ships (`kailash-enterprise`)
+**Why:** Misrepresenting proprietary code as a TF project violates anti-capture provisions and creates legal ambiguity.
 
-**Why:** Misrepresenting proprietary code as a TF project violates the Foundation's anti-capture provisions and creates legal ambiguity.
+### 2. TF Specs Are CC BY 4.0; Implementations Are Separate
 
-### 2. TF Specs Are CC BY 4.0 — Implementations Are Separate
-
-This product MAY implement TF specs (CARE, EATP, CO, PACT) in proprietary code. The implementation is trade secret; the spec is CC BY 4.0 and remains owned by the Foundation. MUST NOT:
-
-- Claim ownership of any TF spec
-- Modify a TF spec without upstreaming through the Foundation's process
-- Re-license a TF spec
-- Claim that a product-only extension is part of the TF standard
+This product MAY implement TF specs (CARE, EATP, CO, PACT) in proprietary code. The implementation is trade secret; the spec stays Foundation-owned. MUST NOT claim ownership of any TF spec, modify it without upstreaming, re-license it, or claim a product extension is part of the standard.
 
 **Why:** Conflating spec ownership (TF) with implementation ownership (product) is the structural risk both sides must guard against.
 
 ### 3. Cross-Track References Must Be Generic
 
-Docs MAY reference `kailash-py` and `pact` as TF open-source projects. The reference must be factual and MUST NOT imply a structural relationship, partnership, or paired-product framing.
+Docs MAY reference `kailash-py` and `pact` as TF open-source projects, factually. MUST NOT imply structural relationship, partnership, or paired-product framing ("counterpart", "officially paired", etc.).
 
-**Why:** "Counterpart" and "paired" language implies a bilateral agreement. The accurate framing is: the standards are public, anyone can implement them, and multiple independent implementations exist.
+**Why:** "Counterpart" / "paired" implies a bilateral agreement. The accurate framing is: standards are public, anyone can implement them, multiple independent implementations exist.
 
 ### 4. Proprietary Code MUST NOT Be Claimed As TF Code
 
-Marketing copy, README content, license headers, package metadata, and docs MUST never claim that any proprietary crate is "open source" or "Foundation-owned" or under "Apache 2.0". The `LicenseRef-Proprietary` SPDX identifier is mandatory; `Apache-2.0` is BLOCKED on every proprietary crate.
+License headers, package metadata, and docs MUST never claim a proprietary crate is "open source" / "Foundation-owned" / under "Apache 2.0". `LicenseRef-Proprietary` SPDX identifier is mandatory; `Apache-2.0` is BLOCKED on every proprietary crate. `publish = false` is mandatory; `publish = true` on a proprietary crate is BLOCKED (would leak source to crates.io).
 
-**Why:** A single mis-licensed Cargo.toml that says "Apache 2.0" on a proprietary crate, then gets published to crates.io, leaks the source under a license the company never agreed to. The mandatory `LicenseRef-Proprietary` + `publish = false` pair is the structural defense.
+```toml
+# DO — proprietary crate
+license = "LicenseRef-Proprietary"
+publish = false
+# DO NOT — would leak source under unagreed license
+license = "Apache-2.0"
+publish = true
+```
+
+**Why:** A single mis-licensed Cargo.toml that ships to crates.io leaks the source under a license the company never agreed to. The `LicenseRef-Proprietary` + `publish = false` pair is the structural defense. BLOCKED rationalizations (full list in extract): "Apache 2.0 is more permissive, what's the harm?" / "open-source-friendly even if internal" / "we can re-license later".
 
 ### 5. The Two Crates That ARE Open-Source
 
-`kailash-plugin-macros` and `kailash-plugin-guest` are the only crates in this workspace that publish to crates.io. They MUST be Apache 2.0 OR MIT. They contain only the plugin SDK API surface needed by third-party plugin authors — no product runtime code, no proprietary algorithms.
+`kailash-plugin-macros` and `kailash-plugin-guest` are the only crates that publish to crates.io. They MUST be Apache 2.0 OR MIT. They contain only the plugin SDK API surface — no product runtime code, no proprietary algorithms.
 
 ```toml
 # DO — plugin SDK is genuinely open source
-[package]
 name = "kailash-plugin-guest"
 license = "Apache-2.0 OR MIT"
 publish = true
 ```
 
-**Why:** Third-party plugin authors compile against `kailash-plugin-guest` to produce binaries that load into the product runtime. They cannot do this if the dependency is proprietary. The plugin SDK is a deliberate, narrow open-source carve-out — not a precedent for opening other crates.
+**Why:** Third-party plugin authors compile against `kailash-plugin-guest` to produce binaries that load into the product runtime. The plugin SDK is a deliberate, narrow open-source carve-out — not a precedent for opening other crates.
 
 ## MUST NOT
 
-- Apply the `kailash-py` Foundation independence rules verbatim to this repo
-
-**Why:** Those rules forbid commercial product references entirely. This repo IS a commercial product; applying them creates contradictions agents cannot resolve. This variant rule replaces the global rule.
-
-- Frame this product as having a special or bilateral relationship with the Terrene Foundation
-
-**Why:** The Foundation's independence means no commercial entity has preferred status. Framing a "two-track" or "counterpart" relationship undermines that independence from both sides.
-
-- Use "the SDK" to mean this product or this repo — the SDK is `kailash-enterprise`, what the product ships
-
-**Why:** Conflating the product with its deliverable obscures the boundary between the proprietary codebase (trade secret, never published) and the distributed artifact (the Python package users install).
-
+- Apply the `kailash-py` Foundation independence rules verbatim to this repo (this variant rule replaces the global)
+- Frame this product as having a special or bilateral relationship with the Foundation
+- Use "the SDK" to mean this repo — the SDK is `kailash-enterprise`, what the product ships
 - Add Apache 2.0 license headers to proprietary source files
 
-**Why:** Mixed-license source files create legal ambiguity and undermine the trade-secret status of the proprietary code.
-
-## Relationship to other rules
-
-- `rules/release.md` — enforces `publish = false` on every crate except the plugin SDK pair
-- `rules/security.md` § "Source Protection" — covers what must NEVER be published
-- `rules/terrene-naming.md` — the GLOBAL rule for naming TF entities, still applies for any reference TO TF projects from this repo
-- `rules/eatp.md`, `rules/pact-governance.md` — apply to the EATP and PACT spec implementations in this repo (which are subject to trade-secret rules, NOT TF Apache 2.0 rules)
-- `docs/00-authority/10-source-protection.md` — release auditor's reference for which crates are proprietary
+**Why:** Each pattern erodes the proprietary/Foundation boundary in a specific direction; see extract for the per-clause Why and the cross-reference list to `release.md` / `security.md` / `terrene-naming.md`.
 
 
 ---
@@ -774,6 +751,7 @@ Production code MUST NOT contain:
 - **Fake tenant isolation** — `multi_tenant=True` flag with cache key missing `tenant_id` dimension.
 - **Fake integration via missing handoff field** — frozen dataclass on pipeline's critical path omits the field the NEXT primitive needs. Each primitive's unit tests pass (each constructs its own fixture); the advertised 3-line pipeline breaks on every fresh install. Fix: add missing field; populate at every return site; add Tier-2 E2E regression (see `rules/testing.md` § End-to-End Pipeline Regression). Evidence: kailash-ml W33b `TrainingResult(frozen=True)` without `trainable`; `km.register` raised `ValueError` on fresh install.
 - **Fake metrics** — silent no-op counters because `prometheus_client` missing + no startup warning. Dashboards empty while operators believe they're reporting.
+- **Fake dispatch** — accepted in a `Literal[...]` / `Enum` / declared-string-set dispatch parameter, but no branch in the dispatcher. Every accepted literal MUST have a corresponding branch in the function body. The validator gate (`if kind not in {"x", "y", "z"}: raise`) followed by a dispatcher that branches only on `"x"` and falls through to a default for `"y"` and `"z"` IS the same failure-mode class as fake encryption / fake transaction / fake health: the documented contract advertises a feature the code does not implement. Evidence: kailash-ml `_wrappers.py:474–485` accepted `kind="clustering"`, `"alignment"`, `"llm"`, `"agent"` as valid `Literal` values — none had a dispatch branch; every one fell through to `DLDiagnostics(subject)`. Documented in spec §3.1 as supported; silently broken in practice (#701 bonus finding). Detection: `/redteam` MUST AST-walk every `Literal[...]` / `Enum`-valued dispatch parameter and confirm every accepted literal has a `match` arm or `if`/`elif` branch. Rust's `match` exhaustiveness check structurally covers `enum DiagnosticKind`; `&str` dispatch in Rust does NOT — same gap if Rust adds a string-dispatch surface. Python lacks the structural check entirely; the rule is the only defense.
 
 ## Rule 3: No Silent Fallbacks Or Error Hiding
 
@@ -790,6 +768,12 @@ Production code MUST NOT contain:
 Any delegate method forwarding to a lazily-assigned backing object MUST guard with a typed error before access. Allowing `AttributeError` to propagate from `None.method()` is BLOCKED.
 
 **Why:** Opaque `AttributeError` blocks N tests at once with no actionable message; typed guard turns the failure into a one-line fix instruction.
+
+### Rule 3c: Documented Kwargs Accepted But Unused
+
+A documented kwarg accepted in the public signature but with zero effect on the function body IS the silent-fallback failure mode at API surface level. Every kwarg listed in the public signature AND documented in the spec MUST be consumed by at least one branch of the function body. Accepting a kwarg and dropping it on the floor is BLOCKED.
+
+**Why:** A documented kwarg is a contract. A kwarg accepted into the signature, listed in the spec, and silently dropped IS a contract violation indistinguishable from a stub return — the user passes a real `DataLoader`, the function returns a result, the user's loader was never read. Same failure-mode class as `except: pass` (Rule 3) and fake encryption (Rule 2): the documented behavior advertises something the code does not perform. Detection: at every `def f(*, kw1, kw2, kw3)` boundary, confirm `kw1`, `kw2`, `kw3` each appear at least once in the function body OR are explicitly forwarded to a callee. If the parameter exists only to satisfy a type-checker or to defer implementation, raise `NotImplementedError` until the branch is wired — silent drop is BLOCKED.
 
 ## Rule 4: No Workarounds For Core SDK Issues
 
@@ -821,3 +805,9 @@ ALL version locations updated atomically:
 **Why:** Half-implemented features present working UI with broken backend — users trust outputs that are silently incomplete or wrong.
 
 **Iterative TODOs:** Permitted when actively tracked (workspace todos, issue-linked).
+
+### Rule 6a: Remove Fully — Public-API Removal Requires Deprecation Cycle
+
+Public-API removal MUST land with a `DeprecationWarning` shim covering at least one minor cycle, plus a CHANGELOG migration section explicitly documenting the 1.x → next-1.x callsite change. Removal-without-shim is BLOCKED. The removal is "complete" only when the shim has lived through one minor release AND the CHANGELOG migration entry is in place.
+
+**Why:** Public-API removal without a deprecation cycle hard-breaks every downstream callsite on first import after `pip upgrade` / `cargo update`. The user did nothing wrong; their code worked yesterday and stops working today with a TypeError or NameError that gives no migration path. The deprecation shim converts a hard break into a warning the user can act on; the CHANGELOG migration section converts "what do I do now?" into "follow these 3 steps." Same structural-completion principle as Rule 6 (Implement Fully): a removal that ships without shim + CHANGELOG entry is half-implemented — the new API works, but the migration path is missing.
