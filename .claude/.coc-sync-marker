@@ -1,32 +1,46 @@
 # COC Sync Marker — kailash-coc-rs
-timestamp: 2026-04-29T11:17:46Z
+timestamp: 2026-04-30T05:50:00Z
 source: loom/.claude
-loom_version: 2.10.2
+loom_version: 2.11.0
+loom_source_sha: 068415b
 variant: rs
 clis: ["claude", "codex", "gemini"]
-template_version: 1.0.7
+template_version: 2.11.0
+sync_kind: USE-template-leakage-remediation
 stats:
+  updated: 38
+  created: 1
+  unchanged: 4
+  composed: 6
+  preserved: ["CLAUDE.md", "README.md"]
+  files_added_this_sync:
+    - .claude/rules/upstream-issue-hygiene.md   # new CRIT-baseline rule (priority:0)
   files_updated_this_sync:
-    - .claude/commands/codify.md (cc-architect rename completion; loom 2.10.2 source fix)
-  files_added_this_sync: []
-  files_purged:
-    - .claude/agents/claude-code-architect.md (obsoleted)
-    - .claude/projects/ (obsoleted)
-    - .claude/scheduled_tasks.lock (obsoleted)
-    - .claude/test-harness/ (obsoleted)
-    - .claude/learning/ (one-shot; loom-leaked, manifest-excluded but no auto-purge mechanism)
-  manifest_changes:
-    obsoleted_added:
-      - .claude/agents/claude-code-architect.md
-      - .claude/projects/
-      - .claude/scheduled_tasks.lock
-      - .claude/test-harness/
-    exclude_added:
-      - "projects/**"
-      - "scheduled_tasks.lock"
-      - "test-harness/**"
-  coc_obsoleted_emitted: 13 paths (16-line file with header)
-  cli_artifacts:
+    rules: 20
+    skills: 16
+    agents: 2
+    rule_extracts: 4
+  files_purged: []
+  baselines_emitted:                   # per-CLI baselines from Step 6.5
+    cc: 0                              # CLAUDE.md preserved, not emitted
+    codex: 1                           # AGENTS.md
+    gemini: 1                          # GEMINI.md
+  baseline_emission_bytes:
+    block_cap_bytes: 61440
+    warn_cap_bytes:  32768
+    codex:
+      rules: 10                        # +1 from 9 due to upstream-issue-hygiene.md (priority:0)
+      bytes: 60683
+      tier: WARN
+      headroom_bytes: 757
+      headroom_pct: 1.23
+    gemini:
+      rules: 10
+      bytes: 60692
+      tier: WARN
+      headroom_bytes: 748
+      headroom_pct: 1.22
+  cli_artifacts:                       # from emit-cli-artifacts.mjs (Step 6.6)
     codex:
       prompts: 30
       skills: 34
@@ -34,8 +48,43 @@ stats:
       commands: 30
       skills: 34
       agents: 22
+  mcp_guard:
+    policies_populated: false          # still gated — predicates extraction pending
+flagged_pre_existing_use_excluded:
+  description: |
+    Files now declared use_exclude in 2.11.0 that already exist at the
+    target from prior sync cycles. NOT auto-deleted (use_exclude is a
+    filter-on-this-sync, not an obsoletion).
+  paths:
+    - .claude/rules/documentation.md
+    - .claude/skills/30-claude-code-patterns/sdk-upstream-donation.md
+    - .claude/guides/co-setup/
+    - .claude/guides/deterministic-quality/
+    - .claude/guides/rule-extracts/git.md
+    - .claude/guides/rule-extracts/independence-rs.md
+allowlist_refresh:
+  appended: 1
+  new_entries:
+    - .claude/commands/cc-audit.md
+verification:
+  hooks_in_settings_json: OK
+  scripts_hooks_remnants: 0
+  scripts_dir_present: false
+  claude_md_preserved: true
+  baseline_emission: PASS
+  cli_trees_regenerated: true
+headroom_warning: |
+  Per-CLI baseline emission tightened significantly: codex 60683B (1.23%
+  headroom under 61440 block_cap), gemini 60692B (1.22% headroom). The
+  new rules/upstream-issue-hygiene.md (~10KB) consumed most of the prior
+  ~7.5% headroom from 2.10.1's extraction work. Next CRIT-baseline
+  addition WILL hit block_cap; extraction or path-scoping required
+  before any further priority:0 rule lands.
 notes: |
-  Surgical sync-hygiene patch (loom 2.10.2). Only modified artifact is
-  commands/codify.md (cc-architect rename completion). Stale state purged
-  across all 8 BUILD/USE consumers via new .coc-obsoleted entries.
-  No SDK pin updates this cycle (pure metadata + sync-hygiene patch).
+  Loom 2.11.0 USE-template downstream-context leakage remediation. New
+  CRIT-baseline rule rules/upstream-issue-hygiene.md added. ~80 leakage
+  sites anonymized. 8 BUILD-only artifacts moved into use_exclude: —
+  6 already exist at target from prior cycles, FLAGGED above; not
+  auto-purged. AGENTS.md regenerated 56810B → 60683B; GEMINI.md
+  regenerated 56819B → 60692B. .codex/ + .gemini/ + .codex-mcp-guard/
+  trees fully refreshed via emit-cli-artifacts.mjs.

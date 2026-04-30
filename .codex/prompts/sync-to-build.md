@@ -44,6 +44,8 @@ For each file in loom/.claude/ that's in a tier (cc/co/coc), NOT in `exclude:`, 
 
 **`build_exclude:` is BUILD-specific.** It lists files that are USE-only (e.g., `commands/deploy.md`, `rules/deploy-hygiene.md`, `skills/10-deployment-git/application-deployment.md`). These exist for downstream apps that deploy running code; BUILD repos release packages via `/release` and have no use for them. /sync-to-build MUST skip every file in `build_exclude:`. /sync (Gate 2 to USE templates) ignores `build_exclude:` — those files DO sync to USE templates.
 
+**`use_exclude:` is the symmetric counterpart — BUILD-only files.** It lists files that are MAINTAINER-only (e.g., `rules/cross-sdk-inspection.md`, `skills/30-claude-code-patterns/sdk-upstream-donation.md`, `guides/co-setup/**`, `guides/deterministic-quality/**`). These describe SDK-maintainer workflows (cross-SDK parity, sibling-SDK awareness, loom→BUILD→USE artifact-flow internals). USE consumers don't author SDK rules and don't run cross-SDK parity. /sync-to-build MUST include every file in `use_exclude:` (they are BUILD-bound). /sync (Gate 2 to USE templates) MUST skip every file in `use_exclude:`.
+
 ### 4. Per-file merge decisions
 
 For each file, compare source against BUILD repo and decide:

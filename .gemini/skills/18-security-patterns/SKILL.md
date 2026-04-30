@@ -120,7 +120,7 @@ Audit-chain anchors (hash-linked records proving the ordering of audited events)
 Every write path that mints an anchor AND every verify path (range-verify, anchor-chain-verify) MUST route through the shared canonical-form helper. In-module re-implementation of the canonical byte layout is BLOCKED.
 
 ```python
-# Python (kailash-py) — DO — route through the shared canonical-form helper
+# Python — DO — route through the shared canonical-form helper
 from kailash.audit.canonical import canonical_anchor_input, canonical_json_dumps
 
 payload_bytes = canonical_anchor_input(
@@ -133,7 +133,7 @@ h = sha256_hex(payload_bytes)
 ```
 
 ```rust
-// Rust (kailash-rs) — DO — route through the shared canonical-form helper
+// Compiled-language equivalent — DO — route through the shared canonical-form helper
 use kailash_audit::canonical::{canonical_anchor_input, canonical_json_serialize};
 
 let payload_bytes = canonical_anchor_input(
@@ -162,14 +162,14 @@ let h = sha256_hex(&payload_bytes);
 Every hash comparison in a verify path MUST use a constant-time comparison primitive. String `==` / `!=` on an attacker-influenced hash input is a timing oracle that leaks prefix-match length, allowing an attacker to forge an anchor hash one byte at a time across many verify attempts.
 
 ```python
-# Python (kailash-py) — DO
+# Python — DO
 import hmac
 if not hmac.compare_digest(expected_hash, computed_hash):
     raise ChainVerifyError("hash mismatch")
 ```
 
 ```rust
-// Rust (kailash-rs) — DO — route through the constant-time comparison primitive
+// Compiled-language equivalent — DO — route through the constant-time comparison primitive
 use kailash_core::crypto::constant_time_eq;
 if !constant_time_eq(expected_hash, &computed_hash) {
     return Err(ChainVerifyError::HashMismatch);
