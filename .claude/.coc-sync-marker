@@ -1,46 +1,57 @@
 # COC Sync Marker — kailash-coc-rs
-timestamp: 2026-04-30T05:50:00Z
+timestamp: 2026-05-01T01:18:00Z
 source: loom/.claude
-loom_version: 2.11.0
-loom_source_sha: 068415b
+loom_version: 2.11.2
+loom_source_sha: 25a0501
 variant: rs
 clis: ["claude", "codex", "gemini"]
-template_version: 2.11.0
-sync_kind: USE-template-leakage-remediation
+template_version: 2.11.2
+sync_kind: cap-headroom-restoration + use_obsoleted-purge
+
 stats:
-  updated: 38
-  created: 1
-  unchanged: 4
-  composed: 6
+  updated: 2                    # rules/git.md (trim) + AGENTS.md/GEMINI.md re-emission
+  created: 0                    # .coc-obsoleted already present from 2.11.0; refreshed in place
+  unchanged: 0
+  composed: 0                   # no slot-keyed variant changes since 2.11.0
   preserved: ["CLAUDE.md", "README.md"]
-  files_added_this_sync:
-    - .claude/rules/upstream-issue-hygiene.md   # new CRIT-baseline rule (priority:0)
+
+  files_purged:                 # Step 4.5 — UNION(obsoleted, use_obsoleted) intersected with target presence
+    - .claude/rules/documentation.md
+    - .claude/skills/30-claude-code-patterns/sdk-upstream-donation.md
+    - .claude/guides/co-setup/
+    - .claude/guides/deterministic-quality/
+    - .claude/guides/rule-extracts/git.md
+    - .claude/guides/rule-extracts/independence-rs.md
+    # automated-maintenance.md was already absent (no-op for this target)
+
   files_updated_this_sync:
-    rules: 20
-    skills: 16
-    agents: 2
-    rule_extracts: 4
-  files_purged: []
-  baselines_emitted:                   # per-CLI baselines from Step 6.5
-    cc: 0                              # CLAUDE.md preserved, not emitted
-    codex: 1                           # AGENTS.md
-    gemini: 1                          # GEMINI.md
+    rules: 1                    # rules/git.md trimmed: 8673 B -> 7098 B raw (Discipline section abridgement)
+    baselines: 2                # AGENTS.md re-emitted, GEMINI.md re-emitted
+
+  files_added_this_sync: []     # .coc-obsoleted present from 2.11.0; content refreshed in place to UNION(obsoleted, use_obsoleted)
+
+  baselines_emitted:            # per-CLI baselines from Step 6.5
+    cc: 0                       # CLAUDE.md preserved per Step 7
+    codex: 1                    # AGENTS.md
+    gemini: 1                   # GEMINI.md
+
   baseline_emission_bytes:
     block_cap_bytes: 61440
     warn_cap_bytes:  32768
     codex:
-      rules: 10                        # +1 from 9 due to upstream-issue-hygiene.md (priority:0)
-      bytes: 60683
+      rules: 10
+      bytes: 59879              # was 60683 at 2.11.0; trim restored 804B
       tier: WARN
-      headroom_bytes: 757
-      headroom_pct: 1.23
+      headroom_bytes: 1561
+      headroom_pct: 2.54        # was 1.23% at 2.11.0; +1.31pp recovered from git.md trim
     gemini:
       rules: 10
-      bytes: 60692
+      bytes: 59888              # was 60692 at 2.11.0; trim restored 804B
       tier: WARN
-      headroom_bytes: 748
-      headroom_pct: 1.22
-  cli_artifacts:                       # from emit-cli-artifacts.mjs (Step 6.6)
+      headroom_bytes: 1552
+      headroom_pct: 2.53        # was 1.22% at 2.11.0; +1.31pp recovered from git.md trim
+
+  cli_artifacts:                # from emit-cli-artifacts.mjs (Step 6.6) — refreshed at 2.11.0; unchanged for 2.11.2 (no command/skill/agent source changes since)
     codex:
       prompts: 30
       skills: 34
@@ -48,43 +59,77 @@ stats:
       commands: 30
       skills: 34
       agents: 22
+
   mcp_guard:
-    policies_populated: false          # still gated — predicates extraction pending
-flagged_pre_existing_use_excluded:
-  description: |
-    Files now declared use_exclude in 2.11.0 that already exist at the
-    target from prior sync cycles. NOT auto-deleted (use_exclude is a
-    filter-on-this-sync, not an obsoletion).
-  paths:
+    policies_populated: false   # still gated — predicates extraction pending
+
+manifest_changes_distributed:
+  use_obsoleted_block_NEW:
     - .claude/rules/documentation.md
     - .claude/skills/30-claude-code-patterns/sdk-upstream-donation.md
     - .claude/guides/co-setup/
     - .claude/guides/deterministic-quality/
+    - .claude/guides/automated-maintenance.md
     - .claude/guides/rule-extracts/git.md
     - .claude/guides/rule-extracts/independence-rs.md
-allowlist_refresh:
-  appended: 1
-  new_entries:
-    - .claude/commands/cc-audit.md
+  per_rule_size_budget_added:
+    - "upstream-issue-hygiene.md: 4000"   # validator-14 CRIT-budget gap closed
+  rule_trims:
+    - rules/git.md             # Discipline section: Issue Closure + Pre-Commit Hook Workarounds + Commit-Message Claim Accuracy collapsed into bullet list
+
 verification:
   hooks_in_settings_json: OK
   scripts_hooks_remnants: 0
   scripts_dir_present: false
   claude_md_preserved: true
-  baseline_emission: PASS
-  cli_trees_regenerated: true
-headroom_warning: |
-  Per-CLI baseline emission tightened significantly: codex 60683B (1.23%
-  headroom under 61440 block_cap), gemini 60692B (1.22% headroom). The
-  new rules/upstream-issue-hygiene.md (~10KB) consumed most of the prior
-  ~7.5% headroom from 2.10.1's extraction work. Next CRIT-baseline
-  addition WILL hit block_cap; extraction or path-scoping required
-  before any further priority:0 rule lands.
+  use_obsoleted_purge_complete: true   # all 6 pre-existing paths removed; automated-maintenance.md was already absent
+  coc_obsoleted_emitted: true
+  baseline_emission: PASS              # AGENTS.md + GEMINI.md re-emitted; both WARN tier (steady state per v6 §2.2)
+  cli_trees_regenerated: false         # 2.11.2 is metadata-only for commands/skills/agents — no .codex/ or .gemini/ tree changes since 2.11.0
+
+allowlist_refresh:
+  appended: 0
+  reason: |
+    No new files containing src/kailash/ references were distributed
+    in this sync (rules/git.md trim is non-SDK-pin-related); allowlist
+    is unchanged from 2.11.0 sync.
+
+headroom_recovery: |
+  Per-CLI baseline emission cap-headroom restored:
+    codex:  60683B (1.23%) → 59879B (2.54%)   ← +1.31pp recovered, +804B
+    gemini: 60692B (1.22%) → 59888B (2.53%)   ← +1.31pp recovered, +804B
+  Both still WARN tier (steady-state per v6 §2.2). Next CRIT-baseline
+  addition has more buffer; 2.11.0's headroom_warning is partially
+  resolved. Further extraction or path-scoping still required before
+  any priority:0 rule larger than ~1.5KB lands.
+
 notes: |
-  Loom 2.11.0 USE-template downstream-context leakage remediation. New
-  CRIT-baseline rule rules/upstream-issue-hygiene.md added. ~80 leakage
-  sites anonymized. 8 BUILD-only artifacts moved into use_exclude: —
-  6 already exist at target from prior cycles, FLAGGED above; not
-  auto-purged. AGENTS.md regenerated 56810B → 60683B; GEMINI.md
-  regenerated 56819B → 60692B. .codex/ + .gemini/ + .codex-mcp-guard/
-  trees fully refreshed via emit-cli-artifacts.mjs.
+  Loom 2.11.2 sync-hygiene patch on multi-CLI rs target. Three
+  distributed changes:
+
+  (1) rules/git.md trimmed (Discipline section): collapsed three
+  secondary subsections (Issue Closure / Pre-Commit Hook Workarounds /
+  Commit-Message Claim Accuracy) into a tight bullet list. All
+  load-bearing MUST clauses preserved + 1 DO/DO-NOT example per clause
+  + Why preserved. Full extended examples routed to
+  guides/rule-extracts/git.md (which itself remains use_excluded —
+  BUILD-only authoring context per 2.11.0 classification). Raw size:
+  8673 B -> 7098 B (-1575 B, -18%).
+
+  (2) NEW manifest tier use_obsoleted: realized — 7 paths previously
+  flagged as pre-existing-but-use_excluded in the 2.11.0 sync marker
+  are now actively purged from this target AND propagated to
+  downstream consumers via .claude/.coc-obsoleted (refreshed in place
+  to UNION of universal obsoleted: + use_obsoleted: lists, total 20
+  paths in 34-line manifest).
+
+  (3) AGENTS.md + GEMINI.md re-emitted via emit.mjs --all --lang rs.
+  Per-CLI emission cap-headroom restored from 1.22-1.23% to
+  2.53-2.54% under block_cap_bytes=61440. Both still WARN tier
+  (steady-state per v6 §2.2). Pre-existing v6 §3 slot-validation
+  warnings on agents.md / security.md overlays carry forward
+  unchanged — these are slot-shape advisories, not budget warnings.
+
+  SDK pin (kailash-enterprise>=3.23.0 in downstream consumer
+  pyproject.toml) confirmed current against the kailash-rs BUILD repo
+  Cargo workspace at version 3.23.0; no bump required.
