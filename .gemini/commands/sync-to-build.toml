@@ -44,6 +44,8 @@ For each file in loom/.claude/ that's in a tier (cc/co/coc), NOT in `exclude:`, 
 
 **`use_exclude:` is the symmetric counterpart — BUILD-only files.** It lists files that are MAINTAINER-only (e.g., `rules/cross-sdk-inspection.md`, `skills/30-claude-code-patterns/sdk-upstream-donation.md`, `guides/co-setup/**`, `guides/deterministic-quality/**`). These describe SDK-maintainer workflows (cross-SDK parity, sibling-SDK awareness, loom→BUILD→USE artifact-flow internals). USE consumers don't author SDK rules and don't run cross-SDK parity. /sync-to-build MUST include every file in `use_exclude:` (they are BUILD-bound). /sync (Gate 2 to USE templates) MUST skip every file in `use_exclude:`.
 
+**`use_obsoleted:` is the active-purge complement of `use_exclude:`.** Where `use_exclude:` says "stop emitting this path to USE templates," `use_obsoleted:` says "AND actively purge any pre-existing copy in the USE target on next sync, AND propagate the purge contract to downstream consumers via `.coc-obsoleted`." /sync-to-build MUST IGNORE `use_obsoleted:` — those paths are BUILD-internal artifacts BUILD repos legitimately own and MUST NOT be purged from BUILD targets. Only the universal `obsoleted:` list applies to /sync-to-build.
+
 ### 4. Per-file merge decisions
 
 For each file, compare source against BUILD repo and decide:

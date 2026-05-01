@@ -1,34 +1,27 @@
 # COC Sync Marker — kailash-coc-rs
-timestamp: 2026-05-01T01:18:00Z
+timestamp: 2026-05-01T02:30:00Z
 source: loom/.claude
-loom_version: 2.11.2
-loom_source_sha: 25a0501
+loom_version: 2.12.0
+loom_source_sha: cd53b65
 variant: rs
 clis: ["claude", "codex", "gemini"]
-template_version: 2.11.2
-sync_kind: cap-headroom-restoration + use_obsoleted-purge
+template_version: 2.12.0
+sync_kind: spec-accuracy-rule-codification + multi-CLI re-emit
 
 stats:
-  updated: 2                    # rules/git.md (trim) + AGENTS.md/GEMINI.md re-emission
-  created: 0                    # .coc-obsoleted already present from 2.11.0; refreshed in place
+  updated: 1                    # AGENTS.md/GEMINI.md re-emission (path-scoped rule add — content unchanged)
+  created: 2                    # rules/spec-accuracy.md + guides/rule-extracts/spec-accuracy.md
   unchanged: 0
-  composed: 0                   # no slot-keyed variant changes since 2.11.0
+  composed: 0                   # spec-accuracy.md is global path-scoped — no rs variant overlay needed
   preserved: ["CLAUDE.md", "README.md"]
 
-  files_purged:                 # Step 4.5 — UNION(obsoleted, use_obsoleted) intersected with target presence
-    - .claude/rules/documentation.md
-    - .claude/skills/30-claude-code-patterns/sdk-upstream-donation.md
-    - .claude/guides/co-setup/
-    - .claude/guides/deterministic-quality/
-    - .claude/guides/rule-extracts/git.md
-    - .claude/guides/rule-extracts/independence-rs.md
-    # automated-maintenance.md was already absent (no-op for this target)
+  files_added_this_sync:
+    - .claude/rules/spec-accuracy.md           # priority:10/path-scoped — paths: specs/**, workspaces/**/specs/**, 02-plans/**, briefs/**
+    - .claude/guides/rule-extracts/spec-accuracy.md  # full 2026-04-21 phantom-Databricks post-mortem + migration playbook + audit protocol
 
   files_updated_this_sync:
-    rules: 1                    # rules/git.md trimmed: 8673 B -> 7098 B raw (Discipline section abridgement)
-    baselines: 2                # AGENTS.md re-emitted, GEMINI.md re-emitted
-
-  files_added_this_sync: []     # .coc-obsoleted present from 2.11.0; content refreshed in place to UNION(obsoleted, use_obsoleted)
+    rules: 0                    # no existing rules modified
+    baselines: 2                # AGENTS.md re-emitted, GEMINI.md re-emitted (byte-identical to 2.11.2)
 
   baselines_emitted:            # per-CLI baselines from Step 6.5
     cc: 0                       # CLAUDE.md preserved per Step 7
@@ -39,19 +32,19 @@ stats:
     block_cap_bytes: 61440
     warn_cap_bytes:  32768
     codex:
-      rules: 10
-      bytes: 59879              # was 60683 at 2.11.0; trim restored 804B
+      rules: 10                 # NOT 11 — spec-accuracy is path-scoped, doesn't emit baseline
+      bytes: 59879              # UNCHANGED from 2.11.2 baseline
       tier: WARN
       headroom_bytes: 1561
-      headroom_pct: 2.54        # was 1.23% at 2.11.0; +1.31pp recovered from git.md trim
+      headroom_pct: 2.54        # UNCHANGED — cap-headroom trap fully avoided by path-scoping
     gemini:
       rules: 10
-      bytes: 59888              # was 60692 at 2.11.0; trim restored 804B
+      bytes: 59888              # UNCHANGED from 2.11.2 baseline
       tier: WARN
       headroom_bytes: 1552
-      headroom_pct: 2.53        # was 1.22% at 2.11.0; +1.31pp recovered from git.md trim
+      headroom_pct: 2.53        # UNCHANGED
 
-  cli_artifacts:                # from emit-cli-artifacts.mjs (Step 6.6) — refreshed at 2.11.0; unchanged for 2.11.2 (no command/skill/agent source changes since)
+  cli_artifacts:                # from emit-cli-artifacts.mjs (Step 6.6) — refreshed
     codex:
       prompts: 30
       skills: 34
@@ -63,73 +56,52 @@ stats:
   mcp_guard:
     policies_populated: false   # still gated — predicates extraction pending
 
-manifest_changes_distributed:
-  use_obsoleted_block_NEW:
-    - .claude/rules/documentation.md
-    - .claude/skills/30-claude-code-patterns/sdk-upstream-donation.md
-    - .claude/guides/co-setup/
-    - .claude/guides/deterministic-quality/
-    - .claude/guides/automated-maintenance.md
-    - .claude/guides/rule-extracts/git.md
-    - .claude/guides/rule-extracts/independence-rs.md
-  per_rule_size_budget_added:
-    - "upstream-issue-hygiene.md: 4000"   # validator-14 CRIT-budget gap closed
-  rule_trims:
-    - rules/git.md             # Discipline section: Issue Closure + Pre-Commit Hook Workarounds + Commit-Message Claim Accuracy collapsed into bullet list
-
 verification:
   hooks_in_settings_json: OK
   scripts_hooks_remnants: 0
   scripts_dir_present: false
   claude_md_preserved: true
-  use_obsoleted_purge_complete: true   # all 6 pre-existing paths removed; automated-maintenance.md was already absent
+  use_obsoleted_purge_complete: true   # all 6 pre-existing paths removed in prior 2.11.2 sync
   coc_obsoleted_emitted: true
   baseline_emission: PASS              # AGENTS.md + GEMINI.md re-emitted; both WARN tier (steady state per v6 §2.2)
-  cli_trees_regenerated: false         # 2.11.2 is metadata-only for commands/skills/agents — no .codex/ or .gemini/ tree changes since 2.11.0
+  cli_trees_regenerated: true          # .codex/ + .gemini/ trees refreshed via emit-cli-artifacts.mjs
+  spec_accuracy_NOT_in_baseline: true  # grep -c "spec-accuracy" AGENTS.md GEMINI.md = 0,0 (path-scoping verified)
 
-allowlist_refresh:
-  appended: 0
-  reason: |
-    No new files containing src/kailash/ references were distributed
-    in this sync (rules/git.md trim is non-SDK-pin-related); allowlist
-    is unchanged from 2.11.0 sync.
+sdk_pins_status:
+  kailash-enterprise: ">=3.23.0"   # downstream consumer pyproject.toml unchanged from 2.11.2 (BUILD repo Cargo workspace at 3.23.0; no bump required)
 
-headroom_recovery: |
-  Per-CLI baseline emission cap-headroom restored:
-    codex:  60683B (1.23%) → 59879B (2.54%)   ← +1.31pp recovered, +804B
-    gemini: 60692B (1.22%) → 59888B (2.53%)   ← +1.31pp recovered, +804B
-  Both still WARN tier (steady-state per v6 §2.2). Next CRIT-baseline
-  addition has more buffer; 2.11.0's headroom_warning is partially
-  resolved. Further extraction or path-scoping still required before
-  any priority:0 rule larger than ~1.5KB lands.
+cap_headroom_trap_avoidance: |
+  rs-axis baseline emission was the constrained one (2.54% headroom). Adding
+  a CRIT-baseline rule would have pushed AGENTS.md/GEMINI.md emission into
+  BLOCK without first demoting an existing rule per v6 §A.2. Path-scoped
+  classification (priority:10) means baseline emission is unchanged at
+  59,879 B (codex) / 59,888 B (gemini) — verified by emit.mjs --cli codex
+  --lang rs + --cli gemini --lang rs against this template post-sync.
+  spec-accuracy.md emits to baseline = 0 bytes. Cap headroom trap fully
+  side-stepped per loom #18 structural-classification decision.
 
 notes: |
-  Loom 2.11.2 sync-hygiene patch on multi-CLI rs target. Three
-  distributed changes:
+  Loom 2.12.0 codifies new path-scoped rule rules/spec-accuracy.md per
+  loom #18. Origin: 2026-04-21 tpc/tpc_cash_treasury-scenario /redteam
+  audit surfaced 8 phantom Databricks-accessor citations + 6 plugged
+  Monte-Carlo volatility constants. Rule blocks gap-annotated specs
+  (Phase-1/Phase-2, Promised/Current, Target/Fallback, scaffold-now-wire-later
+  framings); every cited symbol MUST resolve via grep / ast.parse / find at
+  merge time; work trackers MUST live in workspaces/todos or GH issues,
+  never inline in spec content; spec extension follows merged code.
 
-  (1) rules/git.md trimmed (Discipline section): collapsed three
-  secondary subsections (Issue Closure / Pre-Commit Hook Workarounds /
-  Commit-Message Claim Accuracy) into a tight bullet list. All
-  load-bearing MUST clauses preserved + 1 DO/DO-NOT example per clause
-  + Why preserved. Full extended examples routed to
-  guides/rule-extracts/git.md (which itself remains use_excluded —
-  BUILD-only authoring context per 2.11.0 classification). Raw size:
-  8673 B -> 7098 B (-1575 B, -18%).
+  Structural classification choice: priority:10/path-scoped (NOT priority:0
+  baseline as the issue framing suggested). Rationale: per rule-authoring.md
+  MUST Rule 5, path-scoped is the default; baseline requires justification.
+  Sister rule specs-authority.md is already path-scoped at the same paths.
+  Side-steps the rs-axis cap-headroom trap entirely (rs-axis baseline emission
+  unchanged at 59,879 B / 59,888 B). Closes loom #18 with structural-deviation
+  note vs reporter's baseline framing.
 
-  (2) NEW manifest tier use_obsoleted: realized — 7 paths previously
-  flagged as pre-existing-but-use_excluded in the 2.11.0 sync marker
-  are now actively purged from this target AND propagated to
-  downstream consumers via .claude/.coc-obsoleted (refreshed in place
-  to UNION of universal obsoleted: + use_obsoleted: lists, total 20
-  paths in 34-line manifest).
+  AGENTS.md + GEMINI.md re-emitted via emit.mjs --cli codex/gemini --lang rs.
+  .codex/ + .gemini/ trees refreshed via emit-cli-artifacts.mjs --out (with
+  proper post-emit merge into dotted dirs). validator-12 slot-round-trip PASS;
+  validator-13 codex-mcp-guard PASS; validator-14 rule-frontmatter PASS.
 
-  (3) AGENTS.md + GEMINI.md re-emitted via emit.mjs --all --lang rs.
-  Per-CLI emission cap-headroom restored from 1.22-1.23% to
-  2.53-2.54% under block_cap_bytes=61440. Both still WARN tier
-  (steady-state per v6 §2.2). Pre-existing v6 §3 slot-validation
-  warnings on agents.md / security.md overlays carry forward
-  unchanged — these are slot-shape advisories, not budget warnings.
-
-  SDK pin (kailash-enterprise>=3.23.0 in downstream consumer
-  pyproject.toml) confirmed current against the kailash-rs BUILD repo
-  Cargo workspace at version 3.23.0; no bump required.
+  SDK pin (kailash-enterprise>=3.23.0 in downstream consumer pyproject.toml)
+  unchanged from 2.11.2.
