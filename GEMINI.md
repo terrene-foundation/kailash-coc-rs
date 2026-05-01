@@ -346,6 +346,7 @@ CC system prompt provides the template. Always include a `## Related issues` sec
 
 - **Issue closure**: `gh issue close <N>` MUST include a commit SHA / PR number / merged-PR link in the comment. Closing with no code reference is BLOCKED.
 - **Pre-commit hook workarounds**: when pre-commit auto-stash fails despite hooks passing standalone, `git -c core.hooksPath=/dev/null commit ...` MUST be documented in the commit body + a follow-up todo filed. Silent `--no-verify` is BLOCKED.
+- **Pre-commit comment-syntax matchers**: the `python-use-type-annotations` hook regex matches `# type` (NOT `# type:`) per `pre-commit-hooks/.pre-commit-hooks.yaml::pygrep`. Comments referencing the `types` module — `# types.UnionType for PEP 604` — trigger a false positive. Reword to avoid `# type` as a literal substring (e.g. "PEP 604 produces `types.UnionType`" → "PEP 604 produces a union type"). Same class for any future `pygrep` hook that matches comment fragments without the trailing punctuation.
 - **Commit-message claim accuracy**: commit bodies MUST describe ONLY changes actually present in the diff. Over-claiming a refactor / deletion / side-effect is BLOCKED. If the claim was made in error, push a FOLLOW-UP commit that delivers what the prior message said — do NOT amend.
 
 **Why:** Issues closed without code refs break traceability; undocumented workarounds force every session to re-discover the same fix; over-claiming commit bodies poison `git log --grep` (the cheapest institutional-knowledge search). See extract for full DO/DO NOT examples.
@@ -737,6 +738,12 @@ Required conditions (ALL four):
 4. **Release-specialist agreement** — release-specialist confirms the deferral in review OR user explicitly overrides with "full fix".
 
 **Why:** Without written runtime-safety proof + tracking issue + release PR link + release-specialist signoff, a "deferred" finding is indistinguishable from a silent dismissal — nothing forces the follow-up and nothing surfaces the backlog. The four conditions are the structural defense: verification is the grep-able claim; the tracking issue is the workstream; the release PR link is the audit trail; the release-specialist signoff is the human gate. Rule 1a blocks dismissal; Rule 1b documents the ONLY legitimate path to defer.
+
+### Rule 1c: "Pre-Existing" Is Unprovable After Context Boundary
+
+Any disposition that classifies an issue as "pre-existing", "not introduced in this session", or "outside the session's blast radius" MUST cite a specific commit SHA AND demonstrate that the SHA pre-dates the session's first tool call. After `/clear`, auto-compaction, conversation resume, sub-agent handoff, or any other context boundary, the agent has no audit trail of its prior-turn edits — the "pre-existing" claim is structurally unfalsifiable and is BLOCKED. The disposition under uncertainty is: fix it.
+
+**Why:** Wrapper-default scope discipline (CC's "a bug fix doesn't need surrounding code cleaned up", `~/repos/contrib/claude-code-source-code/src/constants/prompts.ts:201`) is sound for short-horizon coding assistants where the agent's edit log IS the session log. In COC's long-horizon institutional codebase, sessions cross `/clear`, auto-compaction, and resume boundaries that erase the edit log; the agent's recall is no longer evidence. `git blame` is also insufficient — the agent may have re-introduced an old bug via a same-session refactor that blame attributes to the original author. The structural defense is symmetric: either cite a SHA that proves pre-existence relative to session start, or fix it. "Pre-existing" without provenance grounding is BLOCKED regardless of how confident the claim feels.
 
 ## Rule 2: No Stubs, Placeholders, Or Deferred Implementation
 
