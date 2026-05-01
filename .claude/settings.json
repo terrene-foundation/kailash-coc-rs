@@ -17,6 +17,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/gitignored-claude-warn.js\"",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUse": [
