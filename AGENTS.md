@@ -535,82 +535,54 @@ Security exceptions require: written justification, security-reviewer approval, 
 
 ---
 
-# upstream-issue-hygiene.md
+# verify-resource-existence.md
 
 ---
 priority: 0
 scope: baseline
 ---
 
-# Upstream Issue Hygiene
+# Verify Resource Existence Before Debugging Access
 
-When a downstream session — a Python / Ruby / Rust binding consumer working with `kailash` / `kailash_*` packages — discovers a defect or feature gap in the underlying SDK, the natural action is to file an issue against the SDK repo. That action MUST be human-gated, and the issue body MUST contain ONLY information from the SDK's public-API surface — never the consumer project's name, internal paths, workspace identifiers, finding tags, or session context.
+See `.claude/guides/rule-extracts/verify-resource-existence.md` for full DO/DO NOT examples, BLOCKED-rationalization enumerations, and origin post-mortem.
 
-The defect goes upstream. The story of HOW you found it stays at home.
-
-## Scope
-
-ALL sessions running in a USE-template-derived consumer repo. Applies to ANY `gh issue create`, `gh pr create`, `gh issue edit`, or equivalent issue-filing command targeting an SDK repository (`kailash-py`, `kailash-rs`, `kailash-prism`, or any sibling distributed via PyPI / crates.io / gems).
+When a tool fails with a permission error (HTTP 403, "access denied", "insufficient scope") against a named external resource, the FIRST diagnostic action MUST be to verify the resource exists. Recursing on the permission axis against an absent resource produces unbounded credential-rotation cycles.
 
 ## MUST Rules
 
-### 1. Human Gate Before Filing
+### 1. Existence Check Precedes Permission Debugging
 
-The agent MUST NOT execute `gh issue create`, `gh pr create` referencing an upstream SDK issue, or any equivalent issue-filing command against an SDK repo without explicit user approval IN THE SAME SESSION. Drafting the body is permitted; submission is not.
+Any session responding to a 403/401/permission-denied against a named external resource MUST run an existence check against that resource as the first diagnostic action. Recommending PAT provisioning, scope expansion, or credential rotation BEFORE the existence check is BLOCKED.
 
-**Why:** Issues filed against public SDK repos are world-readable forever. Auto-filing without a per-issue gate ships downstream-context leaks (project names, internal file paths, workspace IDs) to a surface the user cannot scrub after the fact. The human gate is the only mechanism that catches a draft body's leakage BEFORE it becomes part of the public record. "We can edit later" is wrong: GitHub preserves issue body history; redaction is partial.
+**Why:** A 403 says "you cannot access this thing" — it does NOT say the thing exists. APIs return 403 for both "missing permission to access" AND "missing permission to discover existence" — identical message, opposite root cause. The existence check (one read query, <1 second) resolves the recursion.
 
-### 2. Downstream Context Redaction
+### 2. The Existence Check MUST Cite The Endpoint, Not The Documentation
 
-The issue body MUST NOT contain any of:
+The verification command MUST be a live read against the same API surface the failing operation targets — NOT a grep against documentation, source comments, spec files, or the script's own intent statements. Trusting documentation as a proxy for runtime existence is BLOCKED.
 
-- The downstream project's name (e.g., consumer app names, customer / engagement names)
-- Internal file paths outside the SDK's import surface (e.g. `src/<consumer-app>/...`, `app/...`, `bindings/<consumer>/...`)
-- Workspace identifiers (`workspaces/<name>/...`, `.session-notes`, `.proposals/...`, journal paths)
-- Finding tags (e.g., `F-G1-HIGH`, `S-H3`, `BP-049`, internal redteam round IDs)
-- Session timestamps tied to consumer work (e.g. `<date> <consumer-app> session`, `S07-reviewer-...`)
-- "Origin: <consumer-app>" footers, "<consumer-app> workaround" sections, "Discovered during <consumer-name> red team" lines
-- References to private SDK repos when filing on the public SDK repo
+**Why:** Documentation, source comments, and operator memory all describe INTENT. None are evidence of CURRENT runtime state. A spec can mandate a runner that operations never provisioned; a script can target a table left undefined by a half-finished migration; a workflow can read a secret that was rotated out of existence. The live API query is the only evidence; everything else is hearsay.
 
-# DO NOT — body carries consumer-project name + internal paths + finding IDs
+### 3. When Existence Check Fails, Default Disposition Is Delete-Or-Stub, Not Provision
 
-## Summary
+If the existence check returns empty AND there is no active user request to provision the resource, the default disposition MUST be to delete the dependent code OR convert it to a no-op with a documented removal path. Recommending provisioning ("create the missing resource") is BLOCKED unless the user explicitly asked for that capability.
 
-[same technical content]
+**Why:** Code targeting a non-existent resource is dead by definition — it cannot have ever worked. Removal is cheap and reversible; provisioning is expensive and durable (server costs, secret rotation, monitoring). Until the user asks for the capability, dead code is dead.
 
-## Origin
+## MUST NOT
 
-F-G1-HIGH S-H3 finding (<consumer-app> repo, 2026-04-27): non-atomic store_tokens in
-live_oauth.py:192-237 and pseudo-atomic in oauth.py:470-536.
+- Recommend credential creation (PAT, service account, API key) BEFORE the existence check has run
 
-## Workspace
+**Why:** Credential creation is operator-time-expensive and error-prone. Spending it on a non-existent target is the worst-case waste — operator spends real time to obtain a credential that unlocks nothing.
 
-workspaces/<consumer-app>/journal/0020-DISCOVERY-dataflow-execute-raw-utf8-corruption.md
+- Loop more than once on permission-scope variations against the same 403 without re-verifying existence
 
-## Expected vs actual
-Expected: ASCII-only string parameter binds correctly.
-Actual: UTF-8 decoding error on a parameter that contains zero non-ASCII bytes.
+**Why:** Two consecutive failed scope attempts against the same 403 is the loud signal that the permission axis is the wrong axis. Existence check MUST fire automatically at the second failure if not at the first.
 
-## Severity
-HIGH — corrupts data path; non-deterministic; reproduces in CI.
+## Three-Layer Defense
 
-## Acceptance criteria
-- [ ] `execute_raw(sql, [None])` followed by `execute_raw(sql, [ascii_str])` succeeds.
-- [ ] Tier 2 regression test added at `tests/integration/dataflow/test_execute_raw_null_bind.py`.
-
-# DO NOT — the historical kitchen-sink shape
-
-## Summary
-[5 paragraphs of context including consumer name]
-## Workspace
-workspaces/<consumer-app>/journal/...
-## Workaround
-The consumer worked around it by ... [3 paragraphs of consumer-internal architecture]
-## Cross-SDK alignment
-This is the Python equivalent of <sibling-SDK>#NNN ...
-## References
-- <consumer-app> shard: S36d
-- Tier 2 test suite: tests/integration/test_websocket_*.py [in the consumer repo]
+1. Existence check FIRST — `gh api`, `psql \dt`, `kubectl get`, `aws describe-*`, etc.
+2. If exists — proceed with permission/scope debugging (`rules/security.md`, `rules/ci-runners.md`).
+3. If absent — default to removal; provisioning ONLY on explicit user request.
 
 ---
 
