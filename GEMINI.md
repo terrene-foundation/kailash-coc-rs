@@ -225,6 +225,43 @@ When a code review or self-verification surfaces a latent gap in the SAME BUG CL
 
 ---
 
+# coc-sync-landing.md
+
+---
+priority: 0
+scope: baseline
+---
+
+# COC Sync Landing — BUILD-Side Discipline
+
+See `.claude/guides/rule-extracts/coc-sync-landing.md` for BLOCKED-rationalizations, extended bash examples, origin post-mortem, MUST NOT clauses, and cross-rule relationships.
+
+
+Loom's `/sync-to-build` delivery MUST land on `main` BEFORE any other session work. Pairs with `.claude/hooks/coc-drift-warn.js` (SessionStart).
+
+## MUST Rules
+
+### 1. COC Drift Lands as PR #1
+
+When the SessionStart hook reports `🚨 COC ARTIFACT DRIFT DETECTED`, land it FIRST. Non-COC-PR workarounds BLOCKED. Cross-session carry BLOCKED.
+
+**Why:** Uncommitted deliveries appear available on disk but vanish on first non-main commit — new commands disappear, new agents become invisible.
+
+### 2. Stage Explicit Paths
+
+Stage `.claude/` and `scripts/hooks/` explicitly. `git add -u` / `-A` / `.` BLOCKED for COC-sync PRs.
+
+**Why:** Bulk staging sweeps unrelated workspace drift into the PR. PR #753 (2026-05-01) wasted ~15 min recovering from this exact failure.
+
+### 3. Admin-Merge Per Owner Workflow
+
+After CI green or path-filter auto-skip, run `gh pr merge <N> --admin --merge --delete-branch`. `REVIEW_REQUIRED` parking BLOCKED.
+
+**Why:** `--admin` is the owner-class bypass for chore PRs; without it the PR drifts open across sessions and the failure mode resumes.
+
+
+---
+
 # communication.md
 
 ---
@@ -350,82 +387,6 @@ CC system prompt provides the template. Always include a `## Related issues` sec
 - **Commit-message claim accuracy**: commit bodies MUST describe ONLY changes actually present in the diff. Over-claiming a refactor / deletion / side-effect is BLOCKED. If the claim was made in error, push a FOLLOW-UP commit that delivers what the prior message said — do NOT amend.
 
 **Why:** Issues closed without code refs break traceability; undocumented workarounds force every session to re-discover the same fix; over-claiming commit bodies poison `git log --grep` (the cheapest institutional-knowledge search). See extract for full DO/DO NOT examples.
-
-
----
-
-# independence.md
-
----
-priority: 0
-scope: baseline
----
-
-# Foundation Independence Rules
-
-
-This repository is a **proprietary product** that implements open standards published by the Terrene Foundation. The Foundation rules that govern `kailash-py` (Apache 2.0, CC BY 4.0, no commercial coupling) DO NOT apply here. This file is the variant override of the global `independence.md`.
-
-See `.claude/guides/rule-extracts/independence-rs.md` for the boundary table, full key facts, extended examples, BLOCKED rationalizations, and the relationship-to-other-rules cross-reference list.
-
-**Boundary in one line**: TF owns specs (CC BY 4.0) + open-source SDKs (Apache 2.0); this product owns its proprietary Rust codebase (`LicenseRef-Proprietary`, `publish = false`).
-
-## MUST Rules
-
-### 1. Proprietary Identity Is Allowed Here
-
-Unlike `kailash-py`, this repo IS a commercial product. You MAY describe the product, reference TF standards it implements, and describe the SDK it ships (`kailash-enterprise`). You MUST NOT claim Foundation ownership or endorsement.
-
-**Why:** Misrepresenting proprietary code as a TF project violates anti-capture provisions and creates legal ambiguity.
-
-### 2. TF Specs Are CC BY 4.0; Implementations Are Separate
-
-This product MAY implement TF specs (CARE, EATP, CO, PACT) in proprietary code. The implementation is trade secret; the spec stays Foundation-owned. MUST NOT claim ownership of any TF spec, modify it without upstreaming, re-license it, or claim a product extension is part of the standard.
-
-**Why:** Conflating spec ownership (TF) with implementation ownership (product) is the structural risk both sides must guard against.
-
-### 3. Cross-Track References Must Be Generic
-
-Docs MAY reference `kailash-py` and `pact` as TF open-source projects, factually. MUST NOT imply structural relationship, partnership, or paired-product framing ("counterpart", "officially paired", etc.).
-
-**Why:** "Counterpart" / "paired" implies a bilateral agreement. The accurate framing is: standards are public, anyone can implement them, multiple independent implementations exist.
-
-### 4. Proprietary Code MUST NOT Be Claimed As TF Code
-
-License headers, package metadata, and docs MUST never claim a proprietary crate is "open source" / "Foundation-owned" / under "Apache 2.0". `LicenseRef-Proprietary` SPDX identifier is mandatory; `Apache-2.0` is BLOCKED on every proprietary crate. `publish = false` is mandatory; `publish = true` on a proprietary crate is BLOCKED (would leak source to crates.io).
-
-```toml
-# DO — proprietary crate
-license = "LicenseRef-Proprietary"
-publish = false
-# DO NOT — would leak source under unagreed license
-license = "Apache-2.0"
-publish = true
-```
-
-**Why:** A single mis-licensed Cargo.toml that ships to crates.io leaks the source under a license the company never agreed to. The `LicenseRef-Proprietary` + `publish = false` pair is the structural defense. BLOCKED rationalizations (full list in extract): "Apache 2.0 is more permissive, what's the harm?" / "open-source-friendly even if internal" / "we can re-license later".
-
-### 5. The Two Crates That ARE Open-Source
-
-`kailash-plugin-macros` and `kailash-plugin-guest` are the only crates that publish to crates.io. They MUST be Apache 2.0 OR MIT. They contain only the plugin SDK API surface — no product runtime code, no proprietary algorithms.
-
-```toml
-# DO — plugin SDK is genuinely open source
-name = "kailash-plugin-guest"
-license = "Apache-2.0 OR MIT"
-publish = true
-```
-
-**Why:** Third-party plugin authors compile against `kailash-plugin-guest` to produce binaries that load into the product runtime. The plugin SDK is a deliberate, narrow open-source carve-out — not a precedent for opening other crates.
-
-## MUST NOT
-
-- Apply the `kailash-py` Foundation independence rules verbatim to this repo (this variant rule replaces the global)
-- Frame this product as having a special or bilateral relationship with the Foundation
-- Use "the SDK" to mean this repo — the SDK is `kailash-enterprise`, what the product ships
-- Add Apache 2.0 license headers to proprietary source files
-
-**Why:** Each pattern erodes the proprietary/Foundation boundary in a specific direction; see extract for the per-clause Why and the cross-reference list to `release.md` / `security.md` / `terrene-naming.md`.
 
 
 ---
@@ -568,6 +529,57 @@ Security exceptions require: written justification, security-reviewer approval, 
 
 ---
 
+# sweep-completeness.md
+
+---
+priority: 0
+scope: baseline
+---
+
+# Sweep / Multi-Step Protocol Completeness
+
+See `.claude/guides/rule-extracts/sweep-completeness.md` for the full BLOCKED-rationalization enumeration, extended DO/DO NOT examples, the cross-rule relationship list, the tool-backing pattern, and the 2026-05-04 origin post-mortem.
+
+When a skill, command, or rule prescribes a multi-step protocol and the agent identifies any step as too expensive / "needs separate trigger" / "deferrable to /redteam" / "out of sweep tempo", the agent MUST stop and ask the human BEFORE substituting a cheaper proxy. Silent substitution is BLOCKED. Appeal to precedent ("yesterday's sweep skipped this step too") does NOT authorize today's substitution — yesterday's skip was its own failure.
+
+The substitution decision is the trigger. The human is the gate.
+
+## MUST Rules
+
+### 1. Substitution Decision Triggers a Human Gate
+
+When the agent identifies a mandated step as too expensive to run inline AND the skill/command/rule does not explicitly authorize the substitution, the agent MUST stop and surface to the human: WHICH step is being skipped, WHY (cost / time / "needs trigger"), WHAT proxy is being considered, WHAT coverage is lost, and ASK skip / substitute / run-full / different-approach.
+
+**Why:** Substitution feels efficient and goes invisibly until someone asks "what did you actually check?" By then the report has shipped, the next session inherits the framing, and the gap silently widens.
+
+### 2. Proxy Output MUST Be Labeled, Never Relabeled
+
+If the agent substitutes a cheap proxy after human-gated approval, the proxy's output MUST be labeled with the proxy's own name in the report — never as the mandated step's result. `Sweep 5: 0/0/0 cite-check (substituted per user approval)` is fine. `Sweep 5: 0/0/0 (clean)` is BLOCKED.
+
+**Why:** A reader of the sweep report cannot tell, from the second form, that the mandated step did not run. The agent's substitution becomes invisible institutional knowledge.
+
+### 3. Skill / Command Text Tightening Is The Long-Term Fix
+
+When a skill repeatedly produces substitution decisions, the skill text itself is the leverage point — propose a `/codify` upstream that either (a) tightens prose into a tool invocation (e.g., `commands/sweep.md` Sweep 5 → `tools/sweep-redteam.py` invocation), or (b) explicitly authorizes substitution with named bounds. This rule is run-time defense; tool-backed skill text is design-time defense. Both layers needed.
+
+**Why:** A rule that fires every cycle is a signal that the structural defense is wrong. Recurring substitutions need design-time tooling so the gate stops firing.
+
+## MUST NOT
+
+- Silently substitute a cheaper tool for a mandated multi-step protocol step
+
+**Why:** This is the originating failure mode — invisible to readers, propagates as institutional drift.
+
+- Cite "yesterday's sweep did the same" as authorization
+
+**Why:** Yesterday's substitution was its own failure; treating it as precedent compounds the gap.
+
+- Label the proxy's output as the mandated step's result
+
+**Why:** It removes the audit trail that allows the next reader to know the mandated step didn't run.
+
+---
+
 # verify-resource-existence.md
 
 ---
@@ -616,75 +628,6 @@ If the existence check returns empty AND there is no active user request to prov
 1. Existence check FIRST — `gh api`, `psql \dt`, `kubectl get`, `aws describe-*`, etc.
 2. If exists — proceed with permission/scope debugging (`rules/security.md`, `rules/ci-runners.md`).
 3. If absent — default to removal; provisioning ONLY on explicit user request.
-
----
-
-# worktree-isolation.md
-
----
-priority: 0
-scope: baseline
----
-
-# Worktree Isolation Rules
-
-See `.claude/guides/rule-extracts/worktree-isolation.md` for extended examples, post-mortem prose, and session evidence for all 6 MUST rules.
-
-Agents launched with `isolation: "worktree"` run in their own git worktree so parallel compile/test jobs do not fight over the same `target/` or `.venv/`. The isolation is only real if the agent actually edits files inside its assigned worktree path. When an agent drifts back to the main checkout — because the system prompt didn't pin cwd, because absolute paths were copied from the orchestrator, because the tool defaulted to `process.cwd()` — the isolation silently breaks.
-
-This rule mandates a self-verification step at agent start AND a pre-flight check in the orchestrator's delegation prompt. The verification is cheap (one `git status`) and the failure mode is expensive (a whole session's worth of parallel work corrupted).
-
-## MUST Rules
-
-### 1. Orchestrator Prompts MUST Pin The Worktree Path
-
-Any delegation that uses `isolation: "worktree"` MUST include the absolute worktree path in the prompt AND MUST instruct the agent to verify `git -C <worktree> status` at the start of its run. Passing the isolation flag without the explicit path is BLOCKED.
-
-**Why:** The `isolation: "worktree"` flag creates the worktree but does not pin every tool call inside it — file-writing tools accepting absolute paths will write to the main checkout if the prompt uses a main-checkout path. One-line verification at agent start converts silent corruption into a loud refusal. See guide for 2026-04-19 post-mortem.
-
-### 2. Specialist Agents MUST Self-Verify Cwd At Start
-
-Every specialist agent file (`.claude/agents/**/*.md`) that may be launched with `isolation: "worktree"` MUST include a "Working Directory Self-Check" step at the top of its process section. The check prints the resolved cwd and the git branch, and refuses to proceed if either is unexpected.
-
-**Why:** The orchestrator's pinned-path instruction can be lost to context compression across long delegation chains; a self-check inside the specialist file is a belt-and-suspenders guarantee that survives prompt truncation. One git call (~30 ms) prevents specialist drift.
-
-### 3. Parent MUST Verify Deliverables Exist After Agent Exit
-
-When an agent reports completion of a file-writing task, the parent orchestrator MUST verify the claimed files exist at the worktree path via `ls` or `Read` before trusting the completion claim. Agent completion messages are NOT evidence of file creation.
-
-**Why:** Agents hit budget mid-message and emit "Now let me write X..." without having written X. Kaizen round 6 and ml-specialist round 7 both reported success with zero files on disk. `ls` check is O(1) and converts silent no-op into loud retry.
-
-### 4. Parallel-Launch Burst Size Limit (Waves of ≤3)
-
-When launching multiple Opus agents with `isolation: "worktree"` in a single orchestration turn, the parent MUST launch them in waves of ≤3, NOT a single burst of 4+. Bursts of 4+ simultaneous Opus agents hit Anthropic server-side rate limiting and ALL fail at 30–45s elapsed. Rate-limit failures exit the agent before it commits anything.
-
-**Why:** Empirically 4–6 concurrent Opus worktree agents from one parent exceeds server-side throttle; every agent in the burst dies before committing. Recovery is worse than serialization (re-launch + orphan recovery > waiting one wave). Evidence: 2026-04-23 M10 launch — 6 agents all died at 34–45s; waves of 3 completed cleanly. See guide for agent hashes.
-
-### 5. Pre-Flight Merge-Base Check Before Worktree Launch
-
-Before launching a worktree agent, the orchestrator MUST create the worktree's branch from the current `HEAD` of the feat/main branch the work will merge back into — NOT from a stale commit the agent happens to pick up. The orchestrator MUST verify `git merge-base <new-branch> <target-branch>` equals the CURRENT tip of `<target-branch>` at launch time. Launching without the merge-base check is BLOCKED.
-
-**Why:** `git worktree add` without explicit base defaults to whatever branch HEAD was last set — can be pre-merge commit from hours ago. Stale-base worktrees merge cleanly only when packages don't overlap; otherwise 3-way merge silently discards one shard's edits. Merge-base check converts invisible drift into loud pre-flight abort. Evidence: 2026-04-23 M10 launch — 5 of 6 worktrees branched from pre-W30-merge SHA. See guide.
-
-### 6. Worktree Branch Name MUST Match Prompt's Declared Name
-
-When the orchestrator prompt specifies a branch name (e.g. `feat/w31-core-ml-nodes`), the worktree MUST be created with that exact branch name — NOT the harness default `worktree-agent-<hash>`. The orchestrator MUST pass `-b <branch>` explicitly to `git worktree add`, AND the agent prompt MUST verify `git rev-parse --abbrev-ref HEAD` matches the declared name before committing.
-
-**Why:** Branch names are the primary `git log --grep` surface for tracing a shard back to its plan — `feat/w31-core-ml-nodes-observability` surfaces in history; `worktree-agent-aa7fb6a6` surfaces only as meaningless hash. Post-merge audits cannot enumerate "did every planned shard land?" via grep when half use harness defaults. Evidence: 2026-04-23 — 3 of 6 M10 shards got hash-default names; audit had to pull from working-memory table.
-
-## MUST NOT
-
-- Launch an agent with `isolation: "worktree"` without passing the absolute worktree path in the prompt
-
-**Why:** The isolation flag alone does not guarantee every tool call stays inside the worktree — the prompt is the only place the agent learns where it belongs.
-
-- Trust an agent's "completion" message when it says "Now let me write…" followed by no tool call
-
-**Why:** Budget exhaustion truncates the write. The completion message is misleading; the filesystem is the source of truth.
-
-- Use `process.cwd()` or relative paths inside specialist agent files that may run in a worktree
-
-**Why:** `process.cwd()` resolves to whatever the Claude Code process was launched with (the main checkout), not the worktree; relative paths inherit the same problem.
 
 ---
 
@@ -795,6 +738,12 @@ Any delegate method forwarding to a lazily-assigned backing object MUST guard wi
 A documented kwarg accepted in the public signature but with zero effect on the function body IS the silent-fallback failure mode at API surface level. Every kwarg listed in the public signature AND documented in the spec MUST be consumed by at least one branch of the function body. Accepting a kwarg and dropping it on the floor is BLOCKED.
 
 **Why:** A documented kwarg is a contract. A kwarg accepted into the signature, listed in the spec, and silently dropped IS a contract violation indistinguishable from a stub return — the user passes a real `DataLoader`, the function returns a result, the user's loader was never read. Same failure-mode class as `except: pass` (Rule 3) and fake encryption (Rule 2): the documented behavior advertises something the code does not perform. Detection: at every `def f(*, kw1, kw2, kw3)` boundary, confirm `kw1`, `kw2`, `kw3` each appear at least once in the function body OR are explicitly forwarded to a callee. If the parameter exists only to satisfy a type-checker or to defer implementation, raise `NotImplementedError` until the branch is wired — silent drop is BLOCKED.
+
+### Rule 3d: Dual-Shape Return + Structural Guard = Silent Fallback
+
+A property or method whose return type is a union of structurally-distinct shapes (e.g., `Union[ConfigWrapper(dict), KaizenConfig(dataclass)]`) MUST NOT be consumed via a structural existence guard (`hasattr(value, "method")`) that resolves True for one branch and False for the other. The guard silently flips False on the branch that lacks the attribute, and the documented behavior never fires for users on that branch. Either dispatch on a discriminator (`isinstance` / type check) OR collapse the API to a single return shape.
+
+**Why:** A dual-shape API consumed via structural guard is the same failure-mode class as fake encryption / fake transaction / fake dispatch (Rule 2): the documented contract advertises a feature the code does not perform on every branch. Tests written against the structurally-richer branch (dict has `.get`) silently mask the gap; users on the typed branch get a no-op. Detection: at every `hasattr(x, "<method>")` callsite where `x` has a union return type, walk back to the declared type — if any branch lacks `<method>`, the guard is silently flipping for that branch's users. Either dispatch on a discriminator (the consumer KNOWS which shape it has) or collapse the API (one shape eliminates the ambiguity).
 
 ## Rule 4: No Workarounds For Core SDK Issues
 
