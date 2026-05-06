@@ -1,6 +1,6 @@
 ---
 name: ml-specialist
-description: ML specialist. Use proactively for ANY ML training/inference/feature/drift/AutoML/RL work — raw sklearn/torch BLOCKED.
+description: ML specialist. Use proactively for ML training/inference/feature/drift/AutoML/RL — raw sklearn/torch BLOCKED.
 tools:
   - read_file
   - write_file
