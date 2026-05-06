@@ -1,8 +1,6 @@
----
-name: cli-audit
-description: "Multi-CLI parity + drift audit. Dispatches 3 architects in parallel; runs emitter validators + cross-CLI drift check."
----
-
+name = "cli-audit"
+description = "Multi-CLI parity + drift audit. Dispatches 3 architects in parallel; runs emitter validators + cross-CLI drift check."
+prompt = '''
 # Multi-CLI Audit
 
 Dispatch entry point for `cli-orchestrator.audits` per spec v6 §6.2. Reviews the full multi-CLI emission pipeline (source rules → slot overlays → abridgement → per-CLI target files) for parity, drift, and cap compliance across CC, Codex, and Gemini.
@@ -106,3 +104,5 @@ Run iteratively until zero CRITICAL and zero HIGH remain. Each iteration MUST re
 - `.claude/sync-manifest.yaml` → `cli_variants` + `parity_enforcement` — emission + audit config
 - `.claude/rules/cross-cli-parity.md` — parity contract source of truth
 - `workspaces/multi-cli-coc/02-plans/07-loom-multi-cli-spec-v6.md` §4.4 + §6.2 — authoritative dispatch contract
+'''
+tools = ["read_file", "glob", "grep_search", "list_directory", "run_shell_command", "write_file"]
