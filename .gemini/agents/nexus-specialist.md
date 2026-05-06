@@ -1,6 +1,6 @@
 ---
 name: nexus-specialist
-description: Nexus specialist. Use proactively for HTTP/API/websocket/gateway/middleware/login/session — direct FastAPI/Flask BLOCKED (use Nexus; Nexus itself uses FastAPI internally).
+description: Nexus specialist. Use for HTTP/API/websocket/gateway/middleware/login/session — direct FastAPI/Flask BLOCKED.
 tools:
   - read_file
   - write_file
