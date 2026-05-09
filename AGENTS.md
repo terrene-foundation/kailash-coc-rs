@@ -168,6 +168,8 @@ Autonomous AI execution with mature COC institutional knowledge produces ~10x su
 
 **Does NOT apply to**: Greenfield domains (first session ~2-3x), novel architecture decisions, external dependencies (API access, approvals), human-authority gates (calendar-bound).
 
+**See also**: `rules/time-pressure-discipline.md` — when the user signals time pressure ("speed up", "deadline looming", "everyone's waiting"), parallelization IS the throughput response. Procedure drops (skipping `/redteam`, omitting regression tests, `--no-verify`) are BLOCKED even when explicitly authorized; the structural alternative (more parallel shards within the per-session capacity budget below) is the only correct response.
+
 ## Structural vs Execution Gates
 
 **Structural (human required):** Plan approval (/todos), release authorization (/release), envelope changes.
@@ -578,6 +580,8 @@ When a skill repeatedly produces substitution decisions, the skill text itself i
 
 **Why:** It removes the audit trail that allows the next reader to know the mandated step didn't run.
 
+**Distinct from**: `rules/time-pressure-discipline.md` — that rule blocks procedure drops triggered by **user pressure framings** ("speed up", "deadline looming"); this rule blocks procedure drops triggered by the **agent's own cost calculus** ("the expensive step needs a trigger we don't have"). Different triggers, overlapping defense. Both halves required: the agent can rationalize a substitution either way.
+
 ---
 
 # verify-resource-existence.md
@@ -589,7 +593,7 @@ scope: baseline
 
 # Verify Resource Existence Before Debugging Access
 
-See `.claude/guides/rule-extracts/verify-resource-existence.md` for full DO/DO NOT examples, BLOCKED-rationalization enumerations, and origin post-mortem.
+See `.claude/guides/rule-extracts/verify-resource-existence.md` for full DO/DO NOT examples, BLOCKED-rationalization enumerations, Trust Posture Wiring, and origin post-mortem.
 
 When a tool fails with a permission error (HTTP 403, "access denied", "insufficient scope") against a named external resource, the FIRST diagnostic action MUST be to verify the resource exists. Recursing on the permission axis against an absent resource produces unbounded credential-rotation cycles.
 
@@ -613,6 +617,22 @@ If the existence check returns empty AND there is no active user request to prov
 
 **Why:** Code targeting a non-existent resource is dead by definition — it cannot have ever worked. Removal is cheap and reversible; provisioning is expensive and durable (server costs, secret rotation, monitoring). Until the user asks for the capability, dead code is dead.
 
+### 4. Convergence / Round-Verdict Claims MUST Cite Durable Receipts
+
+Any claim that a multi-round process (redteam, vet, polish, sweep) reached convergence — "round N met target", "rounds 5+6 clean", "cross-agent agreement achieved" — MUST cite an external receipt: (a) a journal entry recording the verdict + agent task ID, (b) a commit SHA referencing the agent invocation transcript, or (c) an observations.jsonl entry naming the round + verdict. Self-attestation in the disposition document itself is BLOCKED.
+
+```markdown
+# DO — receipt cited
+
+Receipts: journal/.pending/0003 § round-history table.
+
+# DO NOT — self-attest
+
+Rounds 5+6 met convergence target.
+```
+
+**Why:** A self-attested convergence verdict has the same structural defect as a 403 against a non-existent resource — the claim cannot be verified by inspecting itself. The external receipt is the equivalent of `gh api` against the runtime. See guide for the BLOCKED-rationalization corpus and incident post-mortem.
+
 ## MUST NOT
 
 - Recommend credential creation (PAT, service account, API key) BEFORE the existence check has run
@@ -623,11 +643,17 @@ If the existence check returns empty AND there is no active user request to prov
 
 **Why:** Two consecutive failed scope attempts against the same 403 is the loud signal that the permission axis is the wrong axis. Existence check MUST fire automatically at the second failure if not at the first.
 
+- Self-attest a convergence verdict in the disposition document making the verdict claim
+
+**Why:** Same-document self-attestation is structurally identical to "the documentation says this resource exists" — it cannot be verified by inspecting itself. The receipt MUST be external (journal entry / commit SHA / observation entry) per MUST-4.
+
 ## Three-Layer Defense
 
 1. Existence check FIRST — `gh api`, `psql \dt`, `kubectl get`, `aws describe-*`, etc.
 2. If exists — proceed with permission/scope debugging (`rules/security.md`, `rules/ci-runners.md`).
 3. If absent — default to removal; provisioning ONLY on explicit user request.
+
+MUST-4 mirrors this shape: receipt FIRST, claim-grounding SECOND, absence-disposition THIRD (if no receipt exists, spawn one or surface the gap).
 
 ---
 
@@ -667,6 +693,8 @@ A warning is not "less broken" than an error. It is an error the framework chose
 **Mechanism:** The log-triage protocol in `rules/observability.md` Rule 5 has concrete scan commands. If `observability.md` isn't loaded (config-file edits), MUST still scan most recent test runner + build output for WARN+ entries before reporting any gate complete.
 
 **Exceptions:** User explicitly says "skip this"; OR upstream third-party deprecation unresolvable in this session → pinned version + documented reason OR upstream issue link OR todo with explicit owner. Silent dismissal still BLOCKED.
+
+**See also**: `rules/time-pressure-discipline.md` — Rule 1's most common bypass is user time-pressure framing ("speed up", "deadline looming"). User authorization under pressure is NOT sufficient to skip a fix — the time-pressure rule names that pattern explicitly and BLOCKS procedure drops even when the user authorizes them. The throughput response is parallelization, not deferral.
 
 ### Rule 1a: Scanner-Surface Symmetry
 

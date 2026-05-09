@@ -1,6 +1,6 @@
 ---
 name: security-patterns
-description: "Kailash security: input validation, secret management, injection prevention, authn/z, OWASP compliance. Use for credentials, API keys, secure coding, security review."
+description: "Kailash Rust security — input validation, secrets, injection prevention. Hardcoded secrets BLOCKED."
 ---
 
 # Security Patterns - Kailash SDK
