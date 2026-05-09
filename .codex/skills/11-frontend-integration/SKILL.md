@@ -1,6 +1,6 @@
 ---
 name: frontend-integration
-description: "Kailash frontend integration: React + Flutter. Setup, API client, state management, React Query, Flutter Riverpod. Use for UI workflows."
+description: "Kailash Rust frontend — React + Flutter integration, API client, React Query, Flutter Riverpod."
 ---
 
 # Kailash Frontend Integration
@@ -40,7 +40,7 @@ Frontend integration patterns for:
 
 ### General Frontend
 
-- **[frontend-developer](frontend-developer.md)** - Frontend development guide
+- **[frontend-patterns](frontend-patterns.md)** - General frontend development patterns
   - Architecture patterns
   - API integration
   - Authentication
