@@ -1,11 +1,3 @@
-
-# agents.md
-
----
-priority: 0
-scope: baseline
----
-
 # Agent Orchestration Rules
 
 See `.claude/guides/rule-extracts/agents.md` for full evidence, extended examples, post-mortems, recovery-protocol commands, the gate-review table, and CLI-syntax variants.
@@ -119,13 +111,6 @@ When launching ≥2 parallel agents whose worktrees touch the SAME sub-package, 
 
 ---
 
-# autonomous-execution.md
-
----
-priority: 0
-scope: baseline
----
-
 # Autonomous Execution Model
 
 
@@ -227,13 +212,6 @@ When a gate-level review (reviewer, security-reviewer, gold-standards-validator)
 
 ---
 
-# coc-sync-landing.md
-
----
-priority: 0
-scope: baseline
----
-
 # COC Sync Landing — BUILD-Side Discipline
 
 See `.claude/guides/rule-extracts/coc-sync-landing.md` for BLOCKED-rationalizations, extended bash examples, origin post-mortem, MUST NOT clauses, and cross-rule relationships.
@@ -262,13 +240,6 @@ After CI green or path-filter auto-skip, run `gh pr merge <N> --admin --merge --
 **Why:** `--admin` is the owner-class bypass for chore PRs; without it the PR drifts open across sessions and the failure mode resumes.
 
 
----
-
-# communication.md
-
----
-priority: 0
-scope: baseline
 ---
 
 # Communication Style
@@ -315,13 +286,6 @@ At gates (end of `/todos`, before `/deploy`), ask:
 **Why:** Repeating failed explanations signals that the agent cannot adapt, eroding user trust in the entire session.
 
 
----
-
-# git.md
-
----
-priority: 0
-scope: baseline
 ---
 
 # Git Workflow Rules
@@ -393,13 +357,6 @@ CC system prompt provides the template. Always include a `## Related issues` sec
 
 ---
 
-# repo-scope-discipline.md
-
----
-priority: 0
-scope: baseline
----
-
 # Repo Scope Discipline — Stay In This Repo
 
 See `.claude/guides/rule-extracts/repo-scope-discipline.md` for full BLOCKED-rationalization enumerations, extended DO/DO NOT examples, the orchestration-root exception detail, and origin post-mortem.
@@ -424,13 +381,6 @@ The repo whose root is the session's CWD defines the agent's entire scope of act
 
 NONE for action. Descriptive sibling-repo mentions are OK when purely informational, not prescriptive. The rule does NOT apply at orchestration roots (`~/repos/`, `loom/`) where cross-repo coordination IS the legitimate purpose — `/sync`, `/sync-to-build`, `/inspect`, `/repos` cross repos by design.
 
----
-
-# security.md
-
----
-priority: 0
-scope: baseline
 ---
 
 # Security Rules
@@ -531,13 +481,6 @@ Security exceptions require: written justification, security-reviewer approval, 
 
 ---
 
-# sweep-completeness.md
-
----
-priority: 0
-scope: baseline
----
-
 # Sweep / Multi-Step Protocol Completeness
 
 See `.claude/guides/rule-extracts/sweep-completeness.md` for the full BLOCKED-rationalization enumeration, extended DO/DO NOT examples, the cross-rule relationship list, the tool-backing pattern, and the 2026-05-04 origin post-mortem.
@@ -582,13 +525,6 @@ When a skill repeatedly produces substitution decisions, the skill text itself i
 
 **Distinct from**: `rules/time-pressure-discipline.md` — that rule blocks procedure drops triggered by **user pressure framings** ("speed up", "deadline looming"); this rule blocks procedure drops triggered by the **agent's own cost calculus** ("the expensive step needs a trigger we don't have"). Different triggers, overlapping defense. Both halves required: the agent can rationalize a substitution either way.
 
----
-
-# verify-resource-existence.md
-
----
-priority: 0
-scope: baseline
 ---
 
 # Verify Resource Existence Before Debugging Access
@@ -655,13 +591,6 @@ Rounds 5+6 met convergence target.
 
 MUST-4 mirrors this shape: receipt FIRST, claim-grounding SECOND, absence-disposition THIRD (if no receipt exists, spawn one or surface the gap).
 
----
-
-# zero-tolerance.md
-
----
-priority: 0
-scope: baseline
 ---
 
 # Zero-Tolerance Rules
@@ -809,3 +738,5 @@ ALL version locations updated atomically:
 Public-API removal MUST land with a `DeprecationWarning` shim covering at least one minor cycle, plus a CHANGELOG migration section explicitly documenting the 1.x → next-1.x callsite change. Removal-without-shim is BLOCKED. The removal is "complete" only when the shim has lived through one minor release AND the CHANGELOG migration entry is in place.
 
 **Why:** Public-API removal without a deprecation cycle hard-breaks every downstream callsite on first import after `pip upgrade` / `cargo update`. The user did nothing wrong; their code worked yesterday and stops working today with a TypeError or NameError that gives no migration path. The deprecation shim converts a hard break into a warning the user can act on; the CHANGELOG migration section converts "what do I do now?" into "follow these 3 steps." Same structural-completion principle as Rule 6 (Implement Fully): a removal that ships without shim + CHANGELOG entry is half-implemented — the new API works, but the migration path is missing.
+
+---
