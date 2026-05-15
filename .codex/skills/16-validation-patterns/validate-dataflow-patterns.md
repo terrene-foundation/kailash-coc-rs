@@ -109,6 +109,6 @@ let workflow = builder.build(&registry)?;
 
 - **DataFlow guide**: [`CLAUDE.md`](../../../../CLAUDE.md) -- kailash-dataflow section
 - **DataFlow crate**: `crates/kailash-dataflow/`
-- **DataFlow skills**: `.claude/skills/02-dataflow/`
+- **DataFlow skills**: `.codex/skills/02-dataflow/`
 
 <!-- Trigger Keywords: validate dataflow, dataflow compliance, check dataflow code, dataflow patterns, ModelDefinition -->

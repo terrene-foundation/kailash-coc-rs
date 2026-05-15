@@ -242,7 +242,7 @@ Use `rust-architect`:
 - `builder.build(&registry)?` is the primary validation boundary -- always call it
 - Use `cargo clippy -- -D warnings` to catch common issues
 - The `?` operator propagates errors cleanly -- never use `.unwrap()` in production
-- Start with templates from `.claude/skills/15-code-templates/` to avoid violations
+- Start with templates from `.gemini/skills/15-code-templates/` to avoid violations
 - All ValueMap keys need `.into()` to convert `&str` to `Arc<str>`
 
 <!-- Trigger Keywords: validate workflow, check workflow, workflow validation, verify code, code review, pattern compliance, check for errors, validate patterns, standards check, best practices check, workflow review -->

@@ -184,7 +184,7 @@ crates/
   kailash-kaizen/src/   - Kaizen with rustdoc
 docs/                   - Architecture and design documents
 examples/               - Runnable example programs
-.claude/skills/         - Agent skill documentation
+.codex/skills/         - Agent skill documentation
 ```
 
 ## Update Guidelines

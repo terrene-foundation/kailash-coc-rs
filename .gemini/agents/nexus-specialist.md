@@ -202,32 +202,32 @@ if resp["status"] == 200:
 
 ### Patterns & Setup
 
-- `.claude/skills/03-nexus/nexus-essential-patterns.md` — Setup, handlers, middleware, configuration
-- `.claude/skills/03-nexus/nexus-quickstart.md` — Basic setup
-- `.claude/skills/03-nexus/nexus-workflow-registration.md` — Registration patterns
-- `.claude/skills/03-nexus/nexus-multi-channel.md` — Multi-channel architecture
-- `.claude/skills/03-nexus/golden-patterns-catalog.md` — Top 10 patterns by production usage
-- `.claude/skills/03-nexus/codegen-decision-tree.md` — Decision tree, anti-patterns
+- `.gemini/skills/03-nexus/nexus-essential-patterns.md` — Setup, handlers, middleware, configuration
+- `.gemini/skills/03-nexus/nexus-quickstart.md` — Basic setup
+- `.gemini/skills/03-nexus/nexus-workflow-registration.md` — Registration patterns
+- `.gemini/skills/03-nexus/nexus-multi-channel.md` — Multi-channel architecture
+- `.gemini/skills/03-nexus/golden-patterns-catalog.md` — Top 10 patterns by production usage
+- `.gemini/skills/03-nexus/codegen-decision-tree.md` — Decision tree, anti-patterns
 
 ### Channel Patterns
 
-- `.claude/skills/03-nexus/nexus-api-patterns.md` — API deployment
-- `.claude/skills/03-nexus/nexus-cli-patterns.md` — CLI integration
-- `.claude/skills/03-nexus/nexus-mcp-channel.md` — MCP server
+- `.gemini/skills/03-nexus/nexus-api-patterns.md` — API deployment
+- `.gemini/skills/03-nexus/nexus-cli-patterns.md` — CLI integration
+- `.gemini/skills/03-nexus/nexus-mcp-channel.md` — MCP server
 
 ### Integration
 
-- `.claude/skills/03-nexus/nexus-dataflow-integration.md` — DataFlow integration
-- `.claude/skills/03-nexus/nexus-sessions.md` — Session management
+- `.gemini/skills/03-nexus/nexus-dataflow-integration.md` — DataFlow integration
+- `.gemini/skills/03-nexus/nexus-sessions.md` — Session management
 
 ### Authentication & Authorization
 
-- `.claude/skills/03-nexus/nexus-auth-plugin.md` — NexusAuthPlugin: JWT, RBAC, API keys, rate limiting
-- `.claude/skills/03-nexus/nexus-enterprise-features.md` — Enterprise auth patterns
+- `.gemini/skills/03-nexus/nexus-auth-plugin.md` — NexusAuthPlugin: JWT, RBAC, API keys, rate limiting
+- `.gemini/skills/03-nexus/nexus-enterprise-features.md` — Enterprise auth patterns
 
 ### Troubleshooting
 
-- `.claude/skills/03-nexus/nexus-troubleshooting.md` — Common issues and solutions
+- `.gemini/skills/03-nexus/nexus-troubleshooting.md` — Common issues and solutions
 
 ## Related Agents
 

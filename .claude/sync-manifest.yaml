@@ -228,6 +228,7 @@ cli_variants:
       size_cap_bytes: 65536
       warn_cap_bytes: 32768            # refactoring-signal threshold
       block_cap_bytes: 61440           # v6: raised from 40960 to match override ceiling less 4 KiB safety margin
+      headroom_floor_pct: 10           # v6.2 Risk-0004 floor — emission MUST keep ≥10% margin under block_cap; per-lang enforcement at emission time per workspaces/multi-cli-coc/02-plans/08-loom-v6.2-headroom-validator.md Shard 1
       block_cap_rationale: |
         Codex native cap is 32,768 bytes; mandatory invocation flag
         -c project_doc_max_bytes=65536 raises operational cap to 65,536
@@ -310,7 +311,16 @@ cli_variants:
           # review trigger; rule still loads in COC orchestration
           # sessions via paths: [.claude/{agents,commands,skills}/**,
           # **/*worktree*, **/workspaces/**].
-          "agents.md": 10000
+          # agents.md raised 10000 → 14000 at #200 closure 2026-05-14
+          # (PR #203 commit c3bb9c8): slot:neutral-body + slot:examples
+          # partition per rule-authoring.md MUST-8 grew codex/gemini
+          # composed emission from 12832B → 13479B (+34.8% over 10000B
+          # block_threshold). Fix-immediately per
+          # autonomous-execution.md MUST Rule 4 (same-class gap, ≤5
+          # LOC); mirrors git.md raise pattern. New 13479B sits at
+          # ~96% of raised 14000B budget (under +30% block_threshold);
+          # composed emission stays under per-CLI cap headroom.
+          "agents.md": 14000
           "autonomous-execution.md": 7100
           # git.md raised 4400 → 6300 at Shard D 2026-05-10 (PRB-2 closure).
           # New MUST clauses landed 2026-05-09 ("Release-Prep PRs MUST Use
@@ -324,15 +334,34 @@ cli_variants:
           "communication.md": 1800
           "verify-resource-existence.md": 4200
           "repo-scope-discipline.md": 2800
-          "sweep-completeness.md": 3200
+          # sweep-completeness.md DEMOTED to path-scoped at v6.2-Shard-3
+          # (2026-05-15) — frees ~3,550 B baseline emission across both
+          # codex+gemini, restoring rs-lang headroom from 9.81%/9.85%
+          # (BELOW 10% Risk-0004 floor) to ~15%+. Demoted per
+          # workspaces/multi-cli-coc/02-plans/08-loom-v6.2-headroom-validator.md
+          # Shard 3 + journal/0072. Rule still loads in /sweep, /redteam,
+          # /codify, /vet command sessions via paths predicate covering
+          # those command files + corresponding skill/workspace paths.
+          # Selection over loom-csq-boundary.md / coc-sync-landing.md:
+          # narrowest fire condition (only multi-step protocol substitution
+          # decisions) AND largest reclamation (3,550 B vs 1,299 B for
+          # coc-sync-landing). loom-csq-boundary.md rejected because its
+          # Rule 5 (commit-tagging for COC shape changes) actually fires
+          # across all .claude/rules/ + sync-manifest.yaml edits — wider
+          # than path predicate suggests.
           "coc-sync-landing.md": 1400
         per_rule_budget_tolerance: "±30%"
         per_rule_budget_block_threshold: "+30%"
     gemini:
       emit_to: "GEMINI.md"
-      # Gemini cap/abridgement TBD: refined at Phase E2 when the
-      # gemini-architect agent lands. Inherits codex's abridgement
-      # protocol as a v6 placeholder per spec §2.2.
+      # Gemini caps mirror codex's contract per cross-cli-parity.md MUST
+      # Rule 1 (neutral-body slot invariant across CLIs). Caps were
+      # implicit pre-v6.2 (loadCliCaps fallback path); v6.2 makes them
+      # explicit so headroom_floor_pct lives at the single source of
+      # truth instead of a regex fallback default.
+      warn_cap_bytes: 32768            # mirror codex per parity contract
+      block_cap_bytes: 61440           # mirror codex per parity contract
+      headroom_floor_pct: 10           # v6.2 Risk-0004 floor — parity-locked to codex per cross-cli-parity.md MUST-1
       inherit_abridgement_from: "codex"
 
   # agents/**.md — TOML-header safety for codex-ingested agent files.
@@ -411,14 +440,20 @@ parity_enforcement:
   # Cross-CLI drift check — byte-identity on neutral-body + frontmatter
   # classification across every CLI emission of the same underlying
   # artifact. Syntactic-delegation tokens are scrubbed to avoid false
-  # positives (CC `Agent(` vs Codex `codex_agent(` vs Gemini `@specialist`
-  # are EXPECTED divergence, not drift).
+  # positives (CC `Agent(` vs Codex `/prompts:specialist-<name>` vs
+  # Gemini `@specialist` are EXPECTED divergence, not drift). The
+  # legacy `codex_agent(` token stays in the scrub list for backward
+  # compatibility while ternary py-codex / rs-codex overlays drain;
+  # new codex variants emit `/prompts:specialist-` exclusively per the
+  # 2026-05-15 deterministic shim landing (see
+  # .claude/bin/emit-cli-artifacts.mjs::emitCodexAgentPrompts).
   cross_cli_drift_audit:
     enabled: true
     compare_slots: ["neutral-body", "frontmatter.priority", "frontmatter.scope"]
     scrub_tokens:
       - "Agent("
       - "codex_agent("
+      - "/prompts:specialist-"
       - "@specialist"
       - "subagent_type"
       - "run_in_background"
@@ -1235,6 +1270,8 @@ variant_only:
     - variants/rs/rules/build-speed.md
     - variants/rs/rules/dataflow-null-typing.md
     - variants/rs/rules/release.md
+    - variants/rs/rules/llm-auth-strategy-hygiene.md
+    - variants/rs/rules/llm-deployment-coverage.md
     - variants/rs/skills/18-security-patterns/security-auth-middleware-rs.md
     - variants/rs/skills/18-security-patterns/constant-time-comparison-rs.md
     - variants/rs/skills/18-security-patterns/fail-closed-defaults-rs.md
@@ -1442,6 +1479,7 @@ obsoleted:
   - .claude/skills/30-claude-code-patterns/anti-patterns.md   # why: skill audit 2026-05-09 (v2.29.0) — RESTRUCTURE 30 sub-file. Zero external references (grep clean). Content covered by 30/SKILL.md prose. User-approved.
   - .claude/skills/30-claude-code-patterns/artifact-design.md # why: skill audit 2026-05-09 (v2.29.0) — RESTRUCTURE 30 sub-file. Zero external references. Templates duplicated in actual existing artifacts. User-approved.
   - .claude/skills/30-claude-code-patterns/token-budget.md    # why: skill audit 2026-05-09 (v2.29.0) — RESTRUCTURE 30 sub-file. Zero external references. Token-cost numbers covered at high level in 30/SKILL.md. User-approved.
+  - .claude/skills/management/             # why: residual stale skill in kailash-coc-claude-py only (rs/rb/prism don't ship it, loom doesn't ship it). Hollow frontmatter (no `description:` field) — surfaces as 0-char-description entry in CC skill listing, consuming slot without semantic value. Content is repo-maintainer notes for /sync /codify /inspect, not a semantic skill consumers should match against. Surfaced 2026-05-14 via coursewright skill-bloat audit. User-approved REMOVE.
 
 # ─────────────────────────────────────────────────────────────────
 # EXCLUSIONS

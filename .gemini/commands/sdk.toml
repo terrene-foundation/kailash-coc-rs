@@ -93,6 +93,6 @@ When working with Core SDK, deploy:
 
 ## Skill Reference
 
-This command loads: `.claude/skills/01-core-sdk/SKILL.md`
+This command loads: `.gemini/skills/01-core-sdk/SKILL.md`
 '''
 tools = ["read_file", "glob", "grep_search", "list_directory", "run_shell_command", "write_file"]

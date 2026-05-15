@@ -24,15 +24,17 @@ Every specialist delegation prompt MUST include relevant spec file content from 
 
 ## Parallel Execution
 
-When multiple independent operations are needed, launch agents in parallel via Gemini's `@specialist` delegation primitive, wait for all, aggregate results. MUST NOT run sequentially when parallel is possible.
+When multiple independent operations are needed, launch agents in parallel via the CLI's delegation primitive, wait for all, aggregate results. MUST NOT run sequentially when parallel is possible.
 
 **Why:** Sequential execution of independent operations wastes the autonomous execution multiplier, turning a 1-session task into a multi-session bottleneck.
+
+**See also**: `rules/time-pressure-discipline.md` — when the user signals time pressure ("speed up", "deadline looming"), parallelization (parallel specialist delegation, parallel worktree waves of 3) IS the throughput response. Procedure drops are BLOCKED even when the user authorizes them; the structural alternative is more parallel work, not fewer steps.
 
 ### MUST: Parallel Brief-Claim Verification When Issue Count ≥ 3
 
 When `/analyze` runs against a brief covering ≥ 3 distinct issues / failure modes / workstreams, the orchestrator MUST launch parallel deep-dive verification agents — one per claim cluster — to independently re-grep / re-read every factual claim in the brief tagged with file:line citations. Inaccuracies surfaced by the deep-dive sweep MUST be recorded in the workspace journal AND in the architecture plan's "Brief corrections" section AS THE GATE before `/todos`. Single-agent analysis on a ≥3-issue brief is BLOCKED — the framing inherited from the brief is the failure mode this rule prevents.
 
-**Why:** Briefs decay silently as the code evolves; a ≥3-issue brief carries ≥3× the surface area for stale citations and misframed root causes. Single-agent analysis cannot resist the brief's framing because the agent has no independent reading. Parallel deep-dive verification is the structural defense — three agents reading three claim-clusters independently produce three independent reports the orchestrator reconciles. Evidence: `kailash-ml-1.5.x-followup` brief had THREE distinct factual inaccuracies — all three caught only because three parallel deep-dive agents independently verified. Origin: 2026-04-29 — `workspaces/kailash-ml-1.5.x-followup/journal/0001-DISCOVERY-brief-root-cause-incorrect-on-three-issues.md`.
+**Why:** Briefs are written from the human's mental model of the system, which is up-to-date as of the last time they read the code. The model decays silently as the code evolves. A ≥3-issue brief carries ≥3× the surface area for stale citations and misframed root causes; single-agent analysis cannot resist the brief's framing because the agent has no independent reading. Parallel deep-dive verification is the structural defense — three agents reading three claim-clusters independently produce three independent reports that the orchestrator reconciles. The cost is bounded (parallel = 1 wall-clock unit) and the value is the prevention of every downstream session inheriting the wrong framing. Evidence: `kailash-ml-1.5.x-followup` brief had THREE distinct factual inaccuracies (issue #699 root-cause framing, issue #700 file path, issue #701 silent-drop scope) — all three were caught only because three parallel deep-dive agents independently verified. A single-agent analysis would have inherited the misframings into `/todos` and the workstream would have shipped fixes targeted at the wrong root causes.
 
 ## Quality Gates (MUST — Gate-Level Review)
 
@@ -58,17 +60,27 @@ Pre-existing failures MUST be fixed (`rules/zero-tolerance.md` Rule 1). No worka
 
 When delegating IMPLEMENTATION work (file edits, commits, build/test invocation, version bumps), the orchestrator MUST select a specialist whose declared tool set includes `Edit` AND `Bash`. Read-only specialists (`security-reviewer`, `analyst`, `reviewer`, `gold-standards-validator`, `value-auditor`) MUST NOT be delegated implementation tasks. Pure-research / pure-review delegations are fine. See guide for the specialist tool-inventory table and CLI-specific delegation syntax.
 
-**Why:** Read-only specialists halt mid-instruction at file-edit boundaries — the agent emits "Now let me wire X" then exits with zero tool calls because Edit is unavailable. Verifying tool inventory pre-launch is O(1); re-launch is O(N) on shard size. See guide for cross-SDK rediscovery evidence.
+**Why:** Read-only specialists halt mid-instruction at file-edit boundaries — the agent emits "Now let me wire X" then exits with zero tool calls because Edit is unavailable. Verifying tool inventory pre-launch is O(1); re-launch is O(N) on shard size. See guide for rediscovery evidence.
 
 ## MUST: Audit/Closure-Parity Verification Specialist Has Bash + Read
 
 When delegating a /redteam round whose mission includes **closure-parity verification** (mapping prior-wave findings to delivered code via `gh pr view`, `pytest --collect-only`, `grep`, `ast.parse()`, `find`), the orchestrator MUST select a specialist whose tool set includes `Bash` AND `Read`. Read-only analyst (`Read, Grep, Glob`) MUST NOT be assigned closure-parity verification — its tool set silently FORWARDS verification rows the next round must redo. Extends § "Verify Specialist Tool Inventory" above from IMPLEMENTATION to AUDIT delegation.
 
-**Why:** Tool-inventory mismatch costs one full audit round. Verifying pre-launch is O(1); re-launch is O(N) on row count. Origin: 2026-04-27 W6 /redteam Round 3 — analyst FORWARDED 16 of 22; pact-specialist (Bash) Round 3 converted all 16 to VERIFIED in one shard. The Rust audit toolkit substitutes `cargo expand` / `cargo doc --document-private-items` (JSON) / `syn::parse_file` for the Python introspection commands.
+**Delegation-time detection signals (orchestrator self-check before launch).** Before delegating, the orchestrator MUST scan the prompt-being-drafted for closure-parity mission markers. Presence of ANY of the following in the prompt obligates a Bash+Read specialist (general-purpose, pact-specialist, or framework specialist with full tool inventory) — selecting analyst with these markers present is BLOCKED:
+
+- Verification verbs: "verify closure", "closure parity", "FORWARDED → VERIFIED", "convert FORWARDED rows", "map findings to delivered code"
+- Bash-required commands named in mission: `gh pr view`, `gh pr diff`, `gh issue view`, `pytest --collect-only`, `ast.parse(`, `cargo nextest`, `find -type f`, `grep -c`
+- Closure-parity nouns: "Round N closure parity", "post-merge verification", "wave-N → wave-N+1 audit", "redteam round N convergence check"
+
+The orchestrator MUST run this scan as a pre-flight before EVERY closure-parity-class delegation; surfacing the mismatch at delegation-time is O(1), re-launching after the agent FORWARDS rows is O(N) on row count and burns the round.
+
+**BLOCKED auto-promotion rationalizations:** "I'll let the agent figure out it lacks the tool" / "Analyst handles audit by name, the markers don't override" / "Execution-time error is fine; the agent will surface it" / "Skipping the scan saves the orchestrator one step".
+
+**Why:** Tool-inventory mismatch costs one full audit round. Verifying pre-launch is O(1); re-launch is O(N) on row count. The delegation-time scan IS the structural defense — the rule already mandates a Bash+Read specialist; the scan converts the mandate from a recall-it-yourself principle into a draft-time check the orchestrator runs every cycle. Origin: 2026-04-27 /redteam Round 3 — analyst FORWARDED 16 of 22 verification rows; a Bash-equipped specialist re-ran Round 3 and converted all 16 to VERIFIED in one shard. Reproduction: 2026-05-09 stale-workspace disposition Round 3 — analyst (Read/Grep/Glob) was assigned closure-parity verification of phantom-citation chain across 3 sites; FORWARDED 5 rows; re-launched as general-purpose (full inventory) caught the HIGH-class phantom citation in `.session-notes:20`. Per `journal/.pending/0003` § "Tool-inventory matters for closure-parity verification" + `journal/.pending/0004:87`. Compiled-language audit toolkits substitute their own introspection commands (`cargo nextest`, `cargo doc`, `grep` on Rust source) for the Python introspection set listed above.
 
 ## MUST: Worktree Isolation for Compiling Agents
 
-Agents that compile (Rust `cargo`, Python editable installs at scale) MUST use Gemini's worktree-isolation primitive to avoid build-directory lock contention.
+Agents that compile (Rust `cargo`, Python editable installs at scale) MUST use the CLI's worktree-isolation primitive to avoid build-directory lock contention.
 
 **Why:** Cargo holds an exclusive filesystem lock on `target/`. Worktrees give each agent its own `target/`. See `skills/30-claude-code-patterns/worktree-orchestration.md` for the full 5-layer protocol — worktree isolation is necessary but not sufficient.
 
@@ -107,6 +119,36 @@ When launching ≥2 parallel agents whose worktrees touch the SAME sub-package, 
 - **Framework work without specialist** — misuse violates invariants (pool sharing, session lifecycle, trust boundaries).
 - **Sequential when parallel is possible** — wastes the autonomous execution multiplier.
 - **Raw SQL / custom API / custom agents / custom governance** — see `rules/framework-first.md` and guide for per-framework rationale.
+
+
+
+## Examples
+
+### Quality Gates — Background Agent Pattern
+
+### Reviewer Mechanical Sweeps
+
+### Worktree Isolation for Compiling Agents
+
+```
+# DO
+@ml-specialist
+isolation: worktree
+prompt: "implement feature X..."
+
+# DO NOT: two agents sharing target/ serialize on cargo's exclusive lock
+```
+
+### Worktree Prompts Use Relative Paths Only
+
+### Verify Agent Deliverables Exist After Exit
+
+```rust
+// DO — verify after @agent returns
+read_file("/abs/path/src/feature.rs")  // raises if missing → retry
+
+// DO NOT — trust completion message
+```
 
 
 ---
@@ -175,7 +217,7 @@ A single shard (one session, one worktree, one implementation pass) MUST stay wi
 - **≤15k LOC of relevant surface area** in working context for correctness.
 - Describable in **3 sentences or fewer**. If it takes more, the shard is too big.
 
-**Why:** Beyond the budget the model stops tracking cross-file invariants and pattern-matches instead. Errors on line 400 poison everything after and surface only at `/redteam`. Evidence: the Phase 5.11 orphan (2,407 LOC of trust integration code with zero production call sites) was one conceptual change that exceeded the invariant budget — nothing caught it until the audit.
+**Why:** Beyond the budget the model stops tracking cross-file invariants and pattern-matches instead. Errors on line 400 poison everything after and surface only at `/redteam`. See Origin for Phase 5.11 evidence.
 
 ### 2. Size By Complexity, Not LOC Alone (MUST)
 
@@ -193,7 +235,7 @@ Shards with an executable feedback loop (unit tests, `cargo check`, type checker
 
 When a gate-level review (reviewer, security-reviewer, gold-standards-validator) or self-verification surfaces a latent gap in the SAME BUG CLASS as the in-flight PR AND the gap fits within one remaining shard budget (≤500 LOC load-bearing logic / ≤5–10 invariants / ≤3–4 call-graph hops), the session MUST spawn the fix immediately rather than filing a follow-up issue. Filing the follow-up issue instead of fixing is BLOCKED.
 
-**Why:** Same-bug-class gaps surfaced during review cost the least to fix while the context is loaded — the invariants, call graph, and domain model are all warm in attention. Filing a follow-up issue requires the next session to reload the entire context from scratch, typically 2–5× the marginal cost of continuing. Evidence: 2026-04-20 — a reviewer flagged 40+ sibling sites with the same hardcode pattern as the just-fixed PR. The agent filed a follow-up issue instead of fixing; the user pushed back ("why aren't you resolving it"); the fix shipped same session. Filing the follow-up wasted one user-turn of friction and one session-handoff context-reload that was unnecessary.
+**Why:** Same-bug-class gaps surfaced during review cost the least to fix while the context is loaded — the invariants, call graph, and domain model are all warm in attention. Filing a follow-up issue requires the next session to reload the entire context from scratch, typically 2–5× the marginal cost of continuing. See Origin for 2026-04-20 + cross-class evidence (kailash-rs PRs #735/#736, kailash-kaizen PR #836).
 
 **Bounded by the shard budget.** This rule does NOT override MUST Rule 1 (shard threshold). If the surfaced gap exceeds ≤500 LOC load-bearing / ≤5–10 invariants / ≤3–4 call-graph hops, filing the follow-up issue IS the correct disposition — the gap is a new shard, not a continuation of the current one.
 
@@ -309,13 +351,13 @@ Format: `type/description` (e.g., `feat/add-auth`, `fix/api-timeout`).
 
 Any PR whose diff is metadata-only — version anchors (`pyproject.toml` / `Cargo.toml`, `__init__.py::__version__` / lib.rs `pub const VERSION`), `CHANGELOG.md`, spec/doc version-line updates — MUST be opened from a branch named `release/v<X.Y.Z>`. Using `feat/`, `fix/`, `chore/` on a release-prep PR is BLOCKED.
 
-**Why:** PR-gate workflows check `if: !startsWith(github.head_ref, 'release/')`. Branching from `release/v*` triggers the auto-skip and saves ~45 min × matrix-size of CI minutes per release-prep PR. If the work IS NOT metadata-only, split: keep code fix on `feat/`/`fix/` branch, cut release-prep on a separate `release/v*` branch. Evidence: a recent BUILD release-prep PR opened from `feat/...-release-prep` instead of `release/v*` consumed ~120 min of avoidable PR-gate CI on a metadata-only diff.
+**Why:** PR-gate workflows check `if: !startsWith(github.head_ref, 'release/')`. Branching from `release/v*` triggers the auto-skip and saves ~45 min × matrix-size of CI minutes per release-prep PR. If the work IS NOT metadata-only, split: keep code fix on `feat/`/`fix/` branch, cut release-prep on a separate `release/v*` branch. See guide for the ~120 min CI burn evidence.
 
 ### Pre-FIRST-Push CI Parity Discipline (MUST)
 
 Before the FIRST `git push` that creates a remote branch, the agent MUST run the project's local CI parity command set (Rust: `cargo +nightly fmt --all --check` + `cargo clippy -- -D warnings` + `cargo nextest run` + `RUSTDOCFLAGS="-Dwarnings" cargo doc`. Python: `pre-commit run --all-files` + `pytest` + `mypy --strict`). All MUST exit 0 → push.
 
-**Why:** With `concurrency: cancel-in-progress: true` on the workflow, prior in-flight runs are cancelled — but **the cancelled runs are still billed for the wall-clock minutes already consumed before cancellation**. A recent BUILD release had a 71-minute Workspace Tests run cancelled mid-flight; those 71 min were charged. Pre-flighting takes ~5-10 min; the alternative is N × 45 min of billed CI per fix-up cycle.
+**Why:** With `concurrency: cancel-in-progress: true` on the workflow, prior in-flight runs are cancelled — but **the cancelled runs are still billed for the wall-clock minutes already consumed before cancellation**. Pre-flighting takes ~5-10 min; the alternative is N × 45 min of billed CI per fix-up cycle. See guide for the 71-minute mid-flight cancel evidence.
 
 ## Branch Protection
 
@@ -333,7 +375,7 @@ CC system prompt provides the template. Always include a `## Related issues` sec
 
 `git reset --hard <ref>` SILENTLY discards every unstaged modification AND every untracked file in the affected paths. Recovery is impossible — unstaged content has no reflog entry. Running `git reset --hard` without first verifying `git status --porcelain` is empty is BLOCKED. Prefer `git reset --keep <ref>`, which performs the same commit-graph operation BUT aborts if it would lose local changes.
 
-**Why:** `git reset --hard` is the most destructive git operation that doesn't rewrite history — and unlike force-push, the destruction is unrecoverable. `git reset --keep` exists in git specifically to provide the same effect with structural safety. Sibling of `dataflow-identifier-safety.md` Rule 4 (DROP) and `schema-migration.md` Rule 7 (downgrade) — same structural-confirmation pattern. Origin: 2026-04-28 — a `git reset --hard` wiped uncommitted `.session-notes`; cross-language principle.
+**Why:** `git reset --hard` is the most destructive git operation that doesn't rewrite history — and unlike force-push, the destruction is unrecoverable. `git reset --keep` exists in git specifically to provide the same effect with structural safety. Sibling of `dataflow-identifier-safety.md` Rule 4 (DROP) and `schema-migration.md` Rule 7 (downgrade) — same structural-confirmation pattern.
 
 ## Rules
 
@@ -481,52 +523,6 @@ Security exceptions require: written justification, security-reviewer approval, 
 
 ---
 
-# Sweep / Multi-Step Protocol Completeness
-
-See `.claude/guides/rule-extracts/sweep-completeness.md` for the full BLOCKED-rationalization enumeration, extended DO/DO NOT examples, the cross-rule relationship list, the tool-backing pattern, and the 2026-05-04 origin post-mortem.
-
-When a skill, command, or rule prescribes a multi-step protocol and the agent identifies any step as too expensive / "needs separate trigger" / "deferrable to /redteam" / "out of sweep tempo", the agent MUST stop and ask the human BEFORE substituting a cheaper proxy. Silent substitution is BLOCKED. Appeal to precedent ("yesterday's sweep skipped this step too") does NOT authorize today's substitution — yesterday's skip was its own failure.
-
-The substitution decision is the trigger. The human is the gate.
-
-## MUST Rules
-
-### 1. Substitution Decision Triggers a Human Gate
-
-When the agent identifies a mandated step as too expensive to run inline AND the skill/command/rule does not explicitly authorize the substitution, the agent MUST stop and surface to the human: WHICH step is being skipped, WHY (cost / time / "needs trigger"), WHAT proxy is being considered, WHAT coverage is lost, and ASK skip / substitute / run-full / different-approach.
-
-**Why:** Substitution feels efficient and goes invisibly until someone asks "what did you actually check?" By then the report has shipped, the next session inherits the framing, and the gap silently widens.
-
-### 2. Proxy Output MUST Be Labeled, Never Relabeled
-
-If the agent substitutes a cheap proxy after human-gated approval, the proxy's output MUST be labeled with the proxy's own name in the report — never as the mandated step's result. `Sweep 5: 0/0/0 cite-check (substituted per user approval)` is fine. `Sweep 5: 0/0/0 (clean)` is BLOCKED.
-
-**Why:** A reader of the sweep report cannot tell, from the second form, that the mandated step did not run. The agent's substitution becomes invisible institutional knowledge.
-
-### 3. Skill / Command Text Tightening Is The Long-Term Fix
-
-When a skill repeatedly produces substitution decisions, the skill text itself is the leverage point — propose a `/codify` upstream that either (a) tightens prose into a tool invocation (e.g., `commands/sweep.md` Sweep 5 → `tools/sweep-redteam.py` invocation), or (b) explicitly authorizes substitution with named bounds. This rule is run-time defense; tool-backed skill text is design-time defense. Both layers needed.
-
-**Why:** A rule that fires every cycle is a signal that the structural defense is wrong. Recurring substitutions need design-time tooling so the gate stops firing.
-
-## MUST NOT
-
-- Silently substitute a cheaper tool for a mandated multi-step protocol step
-
-**Why:** This is the originating failure mode — invisible to readers, propagates as institutional drift.
-
-- Cite "yesterday's sweep did the same" as authorization
-
-**Why:** Yesterday's substitution was its own failure; treating it as precedent compounds the gap.
-
-- Label the proxy's output as the mandated step's result
-
-**Why:** It removes the audit trail that allows the next reader to know the mandated step didn't run.
-
-**Distinct from**: `rules/time-pressure-discipline.md` — that rule blocks procedure drops triggered by **user pressure framings** ("speed up", "deadline looming"); this rule blocks procedure drops triggered by the **agent's own cost calculus** ("the expensive step needs a trigger we don't have"). Different triggers, overlapping defense. Both halves required: the agent can rationalize a substitution either way.
-
----
-
 # Verify Resource Existence Before Debugging Access
 
 See `.claude/guides/rule-extracts/verify-resource-existence.md` for full DO/DO NOT examples, BLOCKED-rationalization enumerations, Trust Posture Wiring, and origin post-mortem.
@@ -545,7 +541,7 @@ Any session responding to a 403/401/permission-denied against a named external r
 
 The verification command MUST be a live read against the same API surface the failing operation targets — NOT a grep against documentation, source comments, spec files, or the script's own intent statements. Trusting documentation as a proxy for runtime existence is BLOCKED.
 
-**Why:** Documentation, source comments, and operator memory all describe INTENT. None are evidence of CURRENT runtime state. A spec can mandate a runner that operations never provisioned; a script can target a table left undefined by a half-finished migration; a workflow can read a secret that was rotated out of existence. The live API query is the only evidence; everything else is hearsay.
+**Why:** Documentation, source comments, and operator memory all describe INTENT — none are evidence of CURRENT runtime state. The live API query is the only evidence; everything else is hearsay. See guide for examples (mandated-but-unprovisioned runners, undefined tables, rotated-out secrets).
 
 ### 3. When Existence Check Fails, Default Disposition Is Delete-Or-Stub, Not Provision
 
@@ -706,6 +702,6 @@ ALL version locations updated atomically:
 
 Public-API removal MUST land with a `DeprecationWarning` shim covering at least one minor cycle, plus a CHANGELOG migration section explicitly documenting the callsite change. Removal-without-shim is BLOCKED. Removal is "complete" only when the shim has lived through one minor release AND the migration entry is in place.
 
-**Why:** Removal without a deprecation cycle hard-breaks every downstream callsite on first import after `pip upgrade` / `cargo update`. The shim converts a hard break into a warning the user can act on; the CHANGELOG migration converts "what do I do now?" into actionable steps. See guide for kailash-ml 1.5.0 evidence (`InferenceServer(registry=, cache_size=)` and `warm_cache` dropped without shim).
+**Why:** Removal without a deprecation cycle hard-breaks every downstream callsite on first `pip upgrade` / `cargo update`. The shim converts a hard break into an actionable warning; the CHANGELOG migration tells users what to do next. See guide for kailash-ml 1.5.0 evidence.
 
 ---

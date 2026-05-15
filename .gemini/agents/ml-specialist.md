@@ -327,4 +327,4 @@ Core: `ndarray` 0.16, `sprs` 0.11, `rayon` 1.10, `rand`/`rand_chacha` 0.8, `serd
 
 ## Full Documentation
 
-- `.claude/skills/34-kailash-ml/SKILL.md` -- Complete ML skill index
+- `.gemini/skills/34-kailash-ml/SKILL.md` -- Complete ML skill index

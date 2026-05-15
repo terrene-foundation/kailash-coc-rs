@@ -370,6 +370,6 @@ Two crates serve different roles in the agent stack:
 
 **Gradient classification**: `kaizen-agents` defines G1-G9 gradient levels that map objectives to complexity tiers, determining how much LLM intelligence vs simple rule-based logic is needed.
 
-**Skills reference**: `.claude/skills/04-kaizen/` for agent patterns and orchestration documentation.
+**Skills reference**: `.gemini/skills/04-kaizen/` for agent patterns and orchestration documentation.
 
 **Core Principle**: Kaizen is the AI agent framework for Kailash. The LLM does ALL reasoning -- tools are dumb data endpoints. No if-else routing, no keyword matching, no regex classification. Use the TAOD loop for autonomous reasoning, validate with real models.

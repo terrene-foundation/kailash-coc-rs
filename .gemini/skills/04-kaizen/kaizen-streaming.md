@@ -106,7 +106,7 @@ Three entry points for Rust callers:
 | `Agent::chat_stream()`         | `&mut self` | No        | Yes (SSE) |
 | `TaodRunner::run_stream()`     | `self`      | Yes       | No        |
 
-See `.claude/skills/04-kaizen/kaizen-agents-hydration-streaming.md` for full Rust API docs.
+See `.gemini/skills/04-kaizen/kaizen-agents-hydration-streaming.md` for full Rust API docs.
 
 ## References
 
