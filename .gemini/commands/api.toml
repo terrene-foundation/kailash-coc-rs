@@ -87,6 +87,6 @@ When working with Nexus, deploy:
 
 ## Skill Reference
 
-This command loads: `.claude/skills/03-nexus/SKILL.md`
+This command loads: `.gemini/skills/03-nexus/SKILL.md`
 '''
 tools = ["read_file", "glob", "grep_search", "list_directory", "run_shell_command", "write_file"]

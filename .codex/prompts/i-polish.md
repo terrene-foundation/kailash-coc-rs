@@ -136,6 +136,6 @@ Deploy these agents for visual refinement:
 
 ## Skill References
 
-- `.claude/skills/23-uiux-design-principles/design-principles.md` - Design principles
-- `.claude/skills/23-uiux-design-principles/motion-design.md` - Motion design
-- `.claude/skills/23-uiux-design-principles/ux-writing.md` - UX writing
+- `.codex/skills/23-uiux-design-principles/design-principles.md` - Design principles
+- `.codex/skills/23-uiux-design-principles/motion-design.md` - Motion design
+- `.codex/skills/23-uiux-design-principles/ux-writing.md` - UX writing

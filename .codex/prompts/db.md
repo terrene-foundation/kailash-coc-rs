@@ -90,4 +90,4 @@ When working with DataFlow, deploy:
 
 ## Skill Reference
 
-This command loads: `.claude/skills/02-dataflow/SKILL.md`
+This command loads: `.codex/skills/02-dataflow/SKILL.md`

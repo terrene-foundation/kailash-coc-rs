@@ -91,4 +91,4 @@ When working with Kaizen, deploy:
 
 ## Skill Reference
 
-This command loads: `.claude/skills/04-kaizen/SKILL.md`
+This command loads: `.codex/skills/04-kaizen/SKILL.md`

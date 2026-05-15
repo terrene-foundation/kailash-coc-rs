@@ -89,4 +89,4 @@ When working with Nexus, deploy:
 
 ## Skill Reference
 
-This command loads: `.claude/skills/03-nexus/SKILL.md`
+This command loads: `.codex/skills/03-nexus/SKILL.md`
