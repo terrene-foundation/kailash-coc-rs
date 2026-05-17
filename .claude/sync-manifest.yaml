@@ -165,7 +165,7 @@ multi_cli_overlays:
     # Files and links the .claude/-emitters need at /migrate time that
     # cannot be produced by plain file-copy. Honored by coc-sync.md
     # Step 4.6. Closes the /migrate Step-4a inline-workaround gap
-    # surfaced by issue #184 (2026-05-13 hana + rr-coe rollout).
+    # surfaced by issue #184 (2026-05-13).
     #
     # symlinks: produced via `ln -sfn <target> <path>` inside the USE
     #           template's working tree. Idempotent; replaces stale links.
@@ -333,7 +333,13 @@ cli_variants:
           "git.md": 6300
           "communication.md": 1800
           "verify-resource-existence.md": 4200
-          "repo-scope-discipline.md": 2800
+          # 2800 → 3600 (2026-05-16, journal 0078): the user-approved
+          # User-Authorized Exception added a 5-condition load-bearing
+          # MUST block. Body is already abridged to skeleton (examples,
+          # BLOCKED corpus, post-mortem all in the rule-extract). 3600 is
+          # the legitimate load-bearing floor; in line with sibling
+          # baseline rules (verify-resource-existence.md 4200, git.md 6300).
+          "repo-scope-discipline.md": 3600
           # sweep-completeness.md DEMOTED to path-scoped at v6.2-Shard-3
           # (2026-05-15) — frees ~3,550 B baseline emission across both
           # codex+gemini, restoring rs-lang headroom from 9.81%/9.85%
@@ -471,6 +477,26 @@ tiers:
     - skills/30-claude-code-patterns/**
     - rules/cc-artifacts.md
     - commands/cc-audit.md
+    # CC-runtime hook companion fixtures per cc-artifacts.md Rule 9 +
+    # hook-output-discipline.md MUST-4. Parallel to hooks/** which is
+    # in the always-include list — these fixtures are exercised by the
+    # hooks and live alongside them on the target. 175+ files at every
+    # USE template today (pre-existing from prior cycles, never formally
+    # tier-classified until this entry). Loom #272 (2026-05-17 manifest
+    # completeness audit, follow-up to PR #271).
+    - audit-fixtures/**
+    # Extended rule prose referenced by rules/*.md body lines. Per
+    # rule-authoring.md Rule 7 (slot-keyed body) + the "See
+    # `.claude/guides/rule-extracts/<name>.md` for ..." reference
+    # pattern used by 20+ rules. Without this entry, the body line
+    # points to a non-existent file at every USE template. Same
+    # classification cycle as audit-fixtures/** above.
+    - guides/rule-extracts/**
+    # Validator-13 + future emit.mjs validator fixtures. Referenced by
+    # bin/emit.mjs validateCodexMcpGuardPolicies() and downstream
+    # validator additions. Parallel to bin/** which is in the
+    # always-include list.
+    - fixtures/**
   co:
     - skills/co-reference/**
     - skills/26-eatp-reference/**
@@ -540,6 +566,26 @@ tiers:
     # dirs become ls-visible. The path is outside .claude/ — emit handles
     # this via the standard tier file-list mechanism.
     - workspaces/_template/**
+    # ── Tier reconciliation 2026-05-16 (journal 0078) ──────────────
+    # Root cause: as these baseline/path-scoped behavioural rules were
+    # authored at loom, the tier lists were never updated. The
+    # subscription-based sync model silently excludes anything not
+    # tier-listed, so these rules were frozen in templates at whatever
+    # a pre-subscription full-sync last copied — unhooked from the
+    # freshness guarantee. They are universal CO discipline (apply to
+    # any project, including stack-agnostic base), so they belong in
+    # `co`. A manifest-completeness validator (emit.mjs) now blocks any
+    # rules/*.md that is neither tier-listed nor use_obsoleted, so this
+    # class of silent omission cannot recur.
+    - rules/repo-scope-discipline.md
+    - rules/verify-resource-existence.md
+    - rules/trust-posture.md
+    - rules/value-prioritization.md
+    - rules/time-pressure-discipline.md
+    - rules/sweep-completeness.md
+    - rules/orphan-detection.md
+    - rules/hook-output-discipline.md
+    - rules/facade-manager-detection.md
   coc:
     # Foundation-branding rules — moved from `co` tier 2026-05-07. These
     # apply to Kailash/Foundation projects only; the language-agnostic
@@ -670,6 +716,35 @@ tiers:
     - hooks/**
     - hooks/lib/**
     - bin/**
+    # ── Tier reconciliation 2026-05-16 (journal 0078) ──────────────
+    # Same root cause as the `co`-tier block above (unmaintained tier
+    # lists vs. the live rule corpus). These are Kailash/Python-specific
+    # (DataFlow, .py-pathed) or COC-tooling-process rules — `base`
+    # (stack-agnostic) consumers do NOT want them, so they belong in
+    # `coc`, not `co`. Covered by the same emit.mjs manifest-completeness
+    # validator that makes silent untiering structurally impossible.
+    - rules/python-environment.md
+    - rules/tenant-isolation.md
+    - rules/dataflow-identifier-safety.md
+    - rules/refactor-invariants.md
+    - rules/coc-sync-landing.md
+    - rules/sync-completeness.md
+    - rules/variant-authoring.md
+    - rules/cross-cli-parity.md
+    # Codex/Gemini bash-wrapper schemas. Multi-CLI infrastructure
+    # paired with the variants/<cli>/ overlay structure. wrapper
+    # emission was deferred per journal/0006 follow-up (2026-05-10),
+    # but the schemas remain at targets as the canonical reference
+    # for any future wrapper revival. 28 files at every multi-CLI
+    # USE template. Same classification cycle as audit-fixtures/**
+    # above (Loom #272 manifest completeness audit, 2026-05-17).
+    - wrappers/**
+    # Trust posture skill — referenced by rules/trust-posture.md
+    # ("See `.claude/skills/32-trust-posture/` for codify/implement/
+    # redteam integration procedures and grace-period mechanics").
+    # Without this entry, the rule's primary cross-reference points
+    # to a non-existent directory. Same classification cycle.
+    - skills/32-trust-posture/**
   # ─────────────────────────────────────────────────────────────
   # ONBOARDING TIER — Stack-agnostic onboarding artifacts for the
   # base variant. Added 2026-05-06 v2.21.0 to support the non-Kailash,
@@ -1561,6 +1636,16 @@ use_exclude:
   # Same loom-only-meta-rule classification as cross-cli-parity.md (which is
   # path-scoped at the rule + variant authoring surface). Loom #21 (2026-05-01).
   - rules/loom-csq-boundary.md
+  # Cross-repo target-resolution rule — binds the loom-links resolver
+  # (`bin/lib/loom-links.mjs`) as the canonical NAME→location binding for
+  # cross-repo tooling at orchestration roots (loom, ~/repos/) AND BUILD
+  # repos. USE templates are per-project CC sessions that do NOT do
+  # cross-repo enumeration — the resolver, its gitignored config, and the
+  # LinkError surface are all loom/BUILD-side concerns. Same loom-only-
+  # meta-rule classification as loom-csq-boundary.md above. Origin:
+  # Shards 1–3 feat/loom-links-resolver (2026-05-17), validator-15
+  # surfacing during /sync py v2.31.0 (2026-05-17).
+  - rules/cross-repo.md
   # SDK upstream-donation playbook — instructs auto-cross-filing of parity
   # issues; entirely a maintainer workflow.
   - skills/30-claude-code-patterns/sdk-upstream-donation.md
@@ -1752,3 +1837,115 @@ repos:
       USE templates which already carry frontend-generic content; the prism
       BUILD repo (kailash-prism) receives /sync-to-build for working-tree
       updates only (per "Never Commit BUILD Repos" feedback).
+
+
+# ─────────────────────────────────────────────────────────────────
+# CONSUMER OVERLAYS — standalone-consumer canonical↔variant boundary
+# ─────────────────────────────────────────────────────────────────
+# Issue #243 (2026-05-16). A generalized, client-agnostic mechanism
+# for any future enterprise consumer that runs its OWN downstream
+# /sync against a USE template while authoring its OWN overlay
+# content in its OWN repo.
+#
+# WHAT THIS IS NOT
+#   This is NOT a new first-class loom `client` variant axis. The
+#   `variants/` overlay system (py/rs/rb/base/prism) is the LANGUAGE/
+#   stack axis and is loom-authored. A `client` axis would mean loom
+#   authors and ships consumer-specific policy content — loom does NOT
+#   and MUST NOT carry any individual consumer's policy content. See
+#   guides/co-setup/05-variant-architecture.md § "Standalone-Consumer
+#   Model — `client` is intentionally NOT a variant axis (yet)" for the
+#   ratified decision, the rationale, and the explicit revisit trigger
+#   (a 2nd enterprise consumer appears).
+#
+# WHAT THIS IS
+#   A per-consumer PRESERVATION + PROHIBITION contract. A downstream
+#   USE-template consumer authors its OWN overlay content in its OWN
+#   repo. loom never sees or stores that content. This section tells
+#   the downstream `/sync` flow:
+#     (a) which consumer-authored paths to PRESERVE on every /sync
+#         (never overwrite, never purge) — the consumer overlay;
+#     (b) which loom-canonical paths the consumer MUST NOT edit, and
+#         how /sync DETECTS + BLOCKS a canonical-file divergence;
+#     (c) the codify-back policy (exceptional; consumer-confidential
+#         content MUST NOT be codified upstream).
+#
+# CONSUMER-TARGETED, NOT TEMPLATE-TARGETED
+#   Entries are keyed by the consumer's resolved GitHub slug and are
+#   honored ONLY when a downstream `/sync` runs against a consumer
+#   whose `.claude/.coc-sync-marker` (or `.claude/VERSION::upstream`)
+#   identifies it as that consumer. They are NEVER applied to the
+#   kailash-coc-claude-{py,rs,rb} / kailash-coc-{py,rs} / coc-base
+#   USE templates — those are loom-canonical-only and carry no
+#   consumer overlay. The keying-by-slug is the structural guarantee
+#   of that scoping.
+#
+# MERGE SEMANTICS (extends sync-flow.md § Downstream Sync step 5)
+#   - `preserved:` globs join the step-5 "NEVER overwritten" set for
+#     that consumer only. A path matching any `preserved:` glob is
+#     preserved even when absent from the resolved template (it is
+#     consumer-authored; loom has no copy) AND never purged by the
+#     obsoleted/use_obsoleted machinery (consumer-only additions are
+#     not former-COC-artifacts — the obsoletion exemption in
+#     cross-repo.md Rule 4 does not reach them).
+#   - `canonical_protected:` globs enumerate loom-owned paths the
+#     consumer must treat as read-only. On every downstream /sync, the
+#     flow diffs each canonical_protected path in the consumer against
+#     the freshly-resolved template. A divergence (consumer content !=
+#     resolved-template content) is a BLOCK-level finding: /sync MUST
+#     surface it in the merge plan, MUST NOT silently overwrite the
+#     consumer's edited copy, and MUST require explicit human
+#     adjudication (re-canonicalize the edit upstream via codify-back,
+#     OR move the divergent content into a preserved overlay path, OR
+#     accept the loom-canonical version and discard the local edit).
+#   - Precedence when a path matches BOTH: `preserved:` wins (a path
+#     the consumer is authorized to own cannot also be canonical).
+#     The globs are authored to be disjoint; this is the tie-break if
+#     a future edit makes them overlap.
+#
+# SCHEMA (per registered consumer, keyed by GitHub slug):
+#   "<github-org>/<consumer-repo-slug>":
+#     aliases: [ ... ]                 # match .coc-sync-marker variance
+#     upstream_template: <use-template-name>   # canonical source
+#     preserved:                       # consumer-owned overlay globs
+#       - .claude/skills/project/**
+#       - .claude/agents/project/**
+#       - .claude/rules/<consumer-policy>.md
+#       - .claude/hooks/<consumer-hook>.js
+#       - .claude/commands/<consumer-command>.md
+#     canonical_protected:             # loom-owned, consumer read-only
+#       - .claude/rules/**             # except preserved: (preserved wins)
+#       - .claude/agents/**            # except .claude/agents/project/**
+#       - .claude/skills/**            # except .claude/skills/project/**
+#       - .claude/commands/**          # except preserved: commands
+#       - .claude/hooks/**             # except preserved: hooks
+#       - .claude/hooks/lib/**
+#       - .claude/bin/**
+#       - .claude/guides/**
+#       - .claude/.coc-obsoleted
+#     canonical_divergence_gate:
+#       severity: block
+#       action: halt-merge-require-adjudication
+#       # Adjudication options surfaced to the human in the merge plan:
+#       #   1. codify-back: re-canonicalize the edit upstream
+#       #   2. relocate:    move divergent content into a preserved glob
+#       #   3. accept-canonical: discard the local edit (default)
+#     codify_back:
+#       policy: exceptional            # the overlay is client-specific
+#       route: loom                    # generalizable items route to loom
+#       confidential_never_upstream:   # MUST NOT be codified upstream
+#         - "<consumer-confidential content classes — verbatim policy,
+#            identity schemas, internal process guides, jurisdiction or
+#            client-confidential material under the preserved: globs>"
+#     # A codify-back proposal originating from a consumer MUST be
+#     # scrubbed of all confidential_never_upstream content BEFORE it
+#     # leaves the consumer repo. The default disposition for any
+#     # consumer overlay change is SKIP (stays local); upstreaming
+#     # requires an explicit human classification at loom Gate 1 that
+#     # the pattern is generalizable AND confidential-free.
+#
+# No consumer is registered. Populate per the SCHEMA above when an
+# enterprise consumer onboards; the populated entry lives in the
+# consumer's own provisioning, never with client identifiers in loom
+# canonical (see issue #248).
+consumer_overlays: {}
