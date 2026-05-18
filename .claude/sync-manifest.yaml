@@ -356,6 +356,13 @@ cli_variants:
           # across all .claude/rules/ + sync-manifest.yaml edits — wider
           # than path predicate suggests.
           "coc-sync-landing.md": 1400
+          # NOTE: self-referential-codify.md is intentionally NOT budgeted here.
+          # It was demoted baseline → path-scoped 2026-05-18 (journal/0102) for
+          # Codex/Gemini emission fit; per_rule_size_budget_bytes is a
+          # baseline-emission budget and does not apply to a path-scoped rule.
+          # The journal/0101 14000 B entry was removed at F4 Phase-2 redteam
+          # reconciliation (reviewer HIGH-2; cc-architect's keep-it dissent
+          # rested on a misread of coc-sync-landing.md, which is scope:baseline).
         per_rule_budget_tolerance: "±30%"
         per_rule_budget_block_threshold: "+30%"
     gemini:
@@ -586,6 +593,7 @@ tiers:
     - rules/orphan-detection.md
     - rules/hook-output-discipline.md
     - rules/facade-manager-detection.md
+    - rules/self-referential-codify.md
   coc:
     # Foundation-branding rules — moved from `co` tier 2026-05-07. These
     # apply to Kailash/Foundation projects only; the language-agnostic

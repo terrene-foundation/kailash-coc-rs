@@ -1,26 +1,34 @@
 # COC Sync Marker — kailash-coc-rs (multi-CLI)
-timestamp: 2026-05-17T11:39:21Z
+timestamp: 2026-05-18T11:00:00Z
 source: loom/.claude
-loom_sha: 951eaea
+loom_sha: 0266594
+loom_commit: 0266594
 loom_version: 2.31.0
-template_version: 2.22.9
+template_version: 2.22.10
+upstream_version: 2.31.0
 variant: rs
+template_type: multi-cli
 clis: ["claude", "codex", "gemini"]
+distributor: .claude/bin/sync-tier-aware.mjs
+overlay_apply: .claude/bin/compose.mjs (slot-keyed) + full-file copy (coc-sync Step 2.5)
+tier_subscriptions: ["cc", "co", "coc"]
 stats:
-  updated: 147
-  created: 75
-  unchanged: 570
-  excluded: 633          # manifest exclude + use_exclude + onboarding-tier filter
-  composed: 8            # slot-keyed rs variants composed via compose.mjs
-  legacy_overlay: 90     # legacy full-file rs variants copied as-is
-  variant_only: 159      # rs-specific files from variant_only.rs
-  purged: 1              # obsoleted: + use_obsoleted: union
-  preserved: 4           # CLAUDE.md, .codex/local-config.toml, .gemini/local-settings.json (absent — no-op), README.md
-  baselines_emitted:     # Step 6.5 — multi-CLI template
-    cc: 0                # CLAUDE.md preserved, not emitted
-    codex: 1             # AGENTS.md at repo root
-    gemini: 1            # GEMINI.md at repo root
-  baseline_emission_bytes:   # emit.mjs --all --lang rs strict-headroom default
+  copied: 922              # canonical sync-tier-aware.mjs global tier-set (NOT ad-hoc bash)
+  purged: 0                # obsoleted: + use_obsoleted: paths already absent from prior 951eaea sync
+  skipped:
+    loom_local: 2
+    exclude: 770
+    use_exclude: 31
+    no_tier_match: 35
+  composed: 8              # slot-keyed rs variants composed via compose.mjs (per .variants decl, ×2 templates applied)
+  legacy_overlay: 89       # full-file rs variants copied as-is (per .variants decl)
+  variant_only: 159        # rs-specific files from variant_only.rs (preserved from prior sync — additive, no global)
+  preserved: 3             # CLAUDE.md (template-owned); .codex/local-config.toml + .gemini/local-settings.json (multi_cli_overlays.preserved — absent, no-op)
+  baselines_emitted:       # Step 6.5 — multi-CLI template
+    cc: 0                  # CLAUDE.md preserved, not emitted
+    codex: 1               # AGENTS.md at repo root
+    gemini: 1              # GEMINI.md at repo root
+  baseline_emission_bytes:   # emit.mjs --all --lang rs strict-headroom DEFAULT (NOT bypassed)
     block_cap_bytes: 61440
     warn_cap_bytes:  32768
     headroom_floor_pct: 10
@@ -55,8 +63,17 @@ stats:
   mcp_guard:
     policies_populated: false   # Phase H3+ wiring; guard remains fail-closed per coc-sync.md
     predicates_extracted: 0
+self_referential_codify:
+  landed: true
+  path: .claude/rules/self-referential-codify.md
+  tier: co
+  scope: path-scoped
+  priority: 10
+  paths_frontmatter_present: true
+  codify_gate_directive_present: true   # commands/codify.md § "Self-referential gate (MANDATORY, posture-independent)"
+  absent_from_always_on_baseline: true  # path-scoped → NOT in AGENTS.md/GEMINI.md (the #286 Codex/Gemini emission-fit fix)
 sdk_packages:
-  kailash-rs_workspace: 4.2.1   # from /Users/esperie/repos/loom/kailash-rs/Cargo.toml workspace.package.version
+  kailash-rs_workspace: 4.2.1   # from /Users/esperie/repos/loom/kailash-rs/Cargo.toml workspace.package.version (unchanged this cycle)
   template_pins: null            # multi-CLI template has no Cargo.toml/pyproject/Gemfile — consumer-wires-own-runtime
 overlay_verify:
   total: 194
@@ -75,7 +92,8 @@ integrity:
   gemini_config_refreshed: true  # .gemini/settings.json
   codex_mcp_guard_refreshed: true # .codex-mcp-guard/ tree
   multi_cli_symlink_present: true # .claude/codex-mcp-guard -> ../.codex-mcp-guard
-  manifest_distributed: true      # .claude/sync-manifest.yaml present per multi_cli_overlays.manifest_distribute
+  manifest_distributed: true      # .claude/sync-manifest.yaml BYTE-IDENTICAL to loom HEAD per multi_cli_overlays.manifest_distribute
+disclosure_scan: exit_0
 provenance:
-  pr_drivers: ["#270", "#271", "#273"]
-  cycle_note: "Full /sync rs catch-up post /sync py v2.22.x cycle; PRs #271 + #273 universal manifest fixes (NOT py-specific)"
+  pr_drivers: ["#284", "#285", "#286"]
+  cycle_note: "loom delta sync 951eaea → 0266594 — F4 self-referential-codify rule + tier-classification + path-scoped demotion. Distributed via canonical sync-tier-aware.mjs + compose.mjs overlay-apply (Step 2.5); emit.mjs --all --lang rs strict-headroom DEFAULT (NOT bypassed) exit 0. NOTE: sync-tier-aware.mjs copies global tier-set ONLY (does NOT apply variant overlays — confirmed defect this cycle, overlay-apply is separate coc-sync Step 2.5). [ack: sync-completeness]."
