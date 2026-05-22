@@ -34,7 +34,9 @@ When multiple independent operations are needed, launch agents in parallel via t
 
 When `/analyze` runs against a brief covering ≥ 3 distinct issues / failure modes / workstreams, the orchestrator MUST launch parallel deep-dive verification agents — one per claim cluster — to independently re-grep / re-read every factual claim in the brief tagged with file:line citations. Inaccuracies surfaced by the deep-dive sweep MUST be recorded in the workspace journal AND in the architecture plan's "Brief corrections" section AS THE GATE before `/todos`. Single-agent analysis on a ≥3-issue brief is BLOCKED — the framing inherited from the brief is the failure mode this rule prevents.
 
-**Why:** Briefs are written from the human's mental model of the system, which is up-to-date as of the last time they read the code. The model decays silently as the code evolves. A ≥3-issue brief carries ≥3× the surface area for stale citations and misframed root causes; single-agent analysis cannot resist the brief's framing because the agent has no independent reading. Parallel deep-dive verification is the structural defense — three agents reading three claim-clusters independently produce three independent reports that the orchestrator reconciles. The cost is bounded (parallel = 1 wall-clock unit) and the value is the prevention of every downstream session inheriting the wrong framing. Evidence: `kailash-ml-1.5.x-followup` brief had THREE distinct factual inaccuracies (issue #699 root-cause framing, issue #700 file path, issue #701 silent-drop scope) — all three were caught only because three parallel deep-dive agents independently verified. A single-agent analysis would have inherited the misframings into `/todos` and the workstream would have shipped fixes targeted at the wrong root causes.
+(See **Example 1** in the examples slot below for CLI-specific dispatch syntax.)
+
+**Why:** Briefs reflect the author's mental model, which decays as code evolves. A ≥3-issue brief carries ≥3× the surface area for stale citations and misframed root causes; single-agent analysis cannot resist the brief's framing without independent reading. Parallel deep-dive verification is the structural defense — three agents, three claim-clusters, one wall-clock unit. See Origin for kailash-ml-1.5.x-followup evidence.
 
 ## Quality Gates (MUST — Gate-Level Review)
 
@@ -42,11 +44,15 @@ Reviews happen at COC phase boundaries, not per-edit. Skip only when explicitly 
 
 **Why:** Skipping gate reviews lets analysis gaps, security holes, and naming violations propagate to downstream repos where they are far more expensive to fix.
 
+(See **Example 2** in the examples slot below for the background-dispatch pattern.)
+
 **BLOCKED responses when skipping MUST gates:** "Skipping review to save time" / "Reviews will happen in a follow-up session" / "The changes are straightforward, no review needed" / "Already reviewed informally during implementation".
 
 ### MUST: Reviewer Prompts Include Mechanical AST/Grep Sweep
 
 Every gate-level reviewer prompt MUST include explicit mechanical sweeps that verify ABSOLUTE state (not only the diff). LLM-judgment review catches what's wrong with new code; mechanical sweeps catch what's missing from OLD code the spec also touched.
+
+(See **Example 3** in the examples slot below for a mechanical-sweep reviewer prompt.)
 
 **Why:** Reviewers are constrained by the diff. The orphan failure mode in `orphan-detection.md` §1 is invisible at diff-level. A 4-second `grep -c` catches what 5 minutes of LLM judgment misses. See guide for full evidence.
 
@@ -64,23 +70,19 @@ When delegating IMPLEMENTATION work (file edits, commits, build/test invocation,
 
 ## MUST: Audit/Closure-Parity Verification Specialist Has Bash + Read
 
-When delegating a /redteam round whose mission includes **closure-parity verification** (mapping prior-wave findings to delivered code via `gh pr view`, `pytest --collect-only`, `grep`, `ast.parse()`, `find`), the orchestrator MUST select a specialist whose tool set includes `Bash` AND `Read`. Read-only analyst (`Read, Grep, Glob`) MUST NOT be assigned closure-parity verification — its tool set silently FORWARDS verification rows the next round must redo. Extends § "Verify Specialist Tool Inventory" above from IMPLEMENTATION to AUDIT delegation.
+When delegating a /redteam round whose mission includes **closure-parity verification** (mapping prior-wave findings to delivered code via `gh pr view`, `pytest --collect-only`, `grep`, `ast.parse()`, `find`, `cargo nextest`), the orchestrator MUST select a specialist whose tool set includes `Bash` AND `Read`. Read-only analyst (`Read, Grep, Glob`) MUST NOT be assigned closure-parity verification — its tool set silently FORWARDS verification rows the next round must redo. Extends § "Verify Specialist Tool Inventory" above from IMPLEMENTATION to AUDIT delegation.
 
-**Delegation-time detection signals (orchestrator self-check before launch).** Before delegating, the orchestrator MUST scan the prompt-being-drafted for closure-parity mission markers. Presence of ANY of the following in the prompt obligates a Bash+Read specialist (general-purpose, pact-specialist, or framework specialist with full tool inventory) — selecting analyst with these markers present is BLOCKED:
+(See **Example 4** for closure-parity dispatch; **Example 5** for the delegation-time scan pattern.)
 
-- Verification verbs: "verify closure", "closure parity", "FORWARDED → VERIFIED", "convert FORWARDED rows", "map findings to delivered code"
-- Bash-required commands named in mission: `gh pr view`, `gh pr diff`, `gh issue view`, `pytest --collect-only`, `ast.parse(`, `cargo nextest`, `find -type f`, `grep -c`
-- Closure-parity nouns: "Round N closure parity", "post-merge verification", "wave-N → wave-N+1 audit", "redteam round N convergence check"
+**BLOCKED (summary):** "analyst is the audit specialist" / "reviewer round picks up the FORWARDED rows" / "agent will figure out it lacks the tool". Full corpus + delegation-time detection signals (verification verbs / Bash-required commands / closure-parity nouns) + BLOCKED auto-promotion rationalizations + multi-incident Origin evidence: see `.claude/skills/30-claude-code-patterns/closure-parity-specialist-discipline.md`.
 
-The orchestrator MUST run this scan as a pre-flight before EVERY closure-parity-class delegation; surfacing the mismatch at delegation-time is O(1), re-launching after the agent FORWARDS rows is O(N) on row count and burns the round.
-
-**BLOCKED auto-promotion rationalizations:** "I'll let the agent figure out it lacks the tool" / "Analyst handles audit by name, the markers don't override" / "Execution-time error is fine; the agent will surface it" / "Skipping the scan saves the orchestrator one step".
-
-**Why:** Tool-inventory mismatch costs one full audit round. Verifying pre-launch is O(1); re-launch is O(N) on row count. The delegation-time scan IS the structural defense — the rule already mandates a Bash+Read specialist; the scan converts the mandate from a recall-it-yourself principle into a draft-time check the orchestrator runs every cycle. Origin: 2026-04-27 /redteam Round 3 — analyst FORWARDED 16 of 22 verification rows; a Bash-equipped specialist re-ran Round 3 and converted all 16 to VERIFIED in one shard. Reproduction: 2026-05-09 stale-workspace disposition Round 3 — analyst (Read/Grep/Glob) was assigned closure-parity verification of phantom-citation chain across 3 sites; FORWARDED 5 rows; re-launched as general-purpose (full inventory) caught the HIGH-class phantom citation in `.session-notes:20`. Per `journal/.pending/0003` § "Tool-inventory matters for closure-parity verification" + `journal/.pending/0004:87`. Compiled-language audit toolkits substitute their own introspection commands (`cargo nextest`, `cargo doc`, `grep` on Rust source) for the Python introspection set listed above.
+**Why:** Tool-inventory mismatch costs one full audit round; verifying pre-launch is O(1) while re-launch is O(N) on row count.
 
 ## MUST: Worktree Isolation for Compiling Agents
 
 Agents that compile (Rust `cargo`, Python editable installs at scale) MUST use the CLI's worktree-isolation primitive to avoid build-directory lock contention.
+
+(See **Example 6** in the examples slot below for the worktree-isolation invocation pattern.)
 
 **Why:** Cargo holds an exclusive filesystem lock on `target/`. Worktrees give each agent its own `target/`. See `skills/30-claude-code-patterns/worktree-orchestration.md` for the full 5-layer protocol — worktree isolation is necessary but not sufficient.
 
@@ -88,11 +90,15 @@ Agents that compile (Rust `cargo`, Python editable installs at scale) MUST use t
 
 The clause above generalizes beyond compilation: ANY background/parallel agent that EDITS shared repo source (`sync-manifest.yaml`, rules, `bin/`, config) MUST be worktree-isolated, even if it never compiles. Any concurrent agent that READS that source MUST read the committed HEAD (`git show HEAD:<path>`), never the working tree.
 
+(See **Example 10** in the examples slot below.)
+
 **Why:** A non-isolated editor's mid-edit WIP (e.g. a transiently-broken manifest) is visible in the shared checkout to every concurrent reader; a reader that copies the working tree mid-edit ships the broken state. Reading committed HEAD is the structural isolation when the editor was not worktree-isolated. See guide for the 2026-05-16 #243-vs-catch-up post-mortem.
 
 ## MUST: Worktree Prompts Use Relative Paths Only
 
 When prompting an agent with worktree isolation, the orchestrator MUST reference files via paths RELATIVE to the repo root — never absolute paths starting with `/Users/` or `/home/`.
+
+(See **Example 7** in the examples slot below for relative-path discipline.)
 
 **Why:** Worktree isolation sets cwd to the worktree; absolute paths point back to the parent checkout, silently defeating isolation. See guide for 2026-04-19 post-mortem (300+ LOC lost).
 
@@ -106,6 +112,8 @@ When a worktree-isolated agent reports completion but the branch has zero commit
 
 Every worktree-isolated agent MUST receive an explicit instruction in its prompt to `git commit` after each milestone. The orchestrator MUST verify the branch has ≥1 commit before declaring the agent's work landed.
 
+(See **Example 8** in the examples slot below for the commit-discipline prompt fragment.)
+
 **Why:** Worktrees with zero commits are silently deleted. See guide for 2026-04-19 three-shard post-mortem.
 
 ## MUST: Verify Agent Deliverables Exist After Exit
@@ -117,6 +125,8 @@ When an agent reports completion of a file-writing task, the parent MUST `ls` or
 ## MUST: Parallel-Worktree Package Ownership Coordination
 
 When launching ≥2 parallel agents whose worktrees touch the SAME sub-package, the orchestrator MUST designate ONE agent as **version owner** (pyproject.toml + `__init__.py::__version__` + CHANGELOG) AND tell every sibling explicitly: "do NOT edit those files". Integration belongs to the orchestrator.
+
+(See **Example 9** in the examples slot below for the version-owner coordination pattern.)
 
 **Why:** Parallel agents see the same base SHA; each independently bumps `version` and writes a CHANGELOG entry. Merge picks one — discarding the other's prose silently. See guide for kailash-ml 0.13.0 evidence (PRs #552, #553).
 
@@ -244,6 +254,10 @@ When a gate-level review (reviewer, security-reviewer, gold-standards-validator)
 **Why:** Same-bug-class gaps surfaced during review cost the least to fix while the context is loaded — the invariants, call graph, and domain model are all warm in attention. Filing a follow-up issue requires the next session to reload the entire context from scratch, typically 2–5× the marginal cost of continuing. See Origin for 2026-04-20 + cross-class evidence (kailash-rs PRs #735/#736, kailash-kaizen PR #836).
 
 **Bounded by the shard budget.** This rule does NOT override MUST Rule 1 (shard threshold). If the surfaced gap exceeds ≤500 LOC load-bearing / ≤5–10 invariants / ≤3–4 call-graph hops, filing the follow-up issue IS the correct disposition — the gap is a new shard, not a continuation of the current one.
+
+## Multi-Operator Capacity Considerations
+
+Concurrent-operator capacity guidance — per-operator capacity bounded per-`verified_id` (not per-session), cross-operator parallelization throughput multiplier (NON-SAME adjacency only), `/claim`-record discipline as the coordination signal — lives in `rules/multi-operator-coordination.md` §8. That rule is `scope: path-scoped` so the capacity clauses load only on paths where multi-operator coordination applies, keeping this baseline rule under its per-rule emission budget.
 
 ## MUST NOT (Sharding)
 
@@ -447,11 +461,7 @@ Note: at the orchestration root, cross-repo targets are enumerated _explicitly_ 
 
 ---
 
-# Security Rules
-
 ALL code changes in the repository.
-
-See `.claude/guides/rule-extracts/security.md` for extended examples, exhaustive sanitizer contract examples, and multi-site kwarg plumbing full post-mortem.
 
 ## No Hardcoded Secrets
 
@@ -467,13 +477,13 @@ All database queries MUST use parameterized queries or ORM.
 
 ## Credential Decode Helpers
 
-Connection strings carry credentials in URL-encoded form. Decoding them at a call site with `unquote(parsed.password)` is BLOCKED — every decode site MUST route through a shared helper module so validation logic lives in one place.
+Connection strings carry credentials in URL-encoded form. Decoding them at a call site with `unquote(parsed.password)` is BLOCKED — every decode site MUST route through a shared helper module so the validation logic lives in exactly one place and drift between sites is impossible.
 
 ### 1. Null-Byte Rejection At Every Credential Decode Site (MUST)
 
 Every URL parsing site that extracts `user`/`password` from `urlparse(connection_string)` MUST route through a single shared helper that rejects null bytes after percent-decoding. Hand-rolled `unquote(parsed.password)` at a call site is BLOCKED.
 
-**Why:** A crafted `mysql://user:%00bypass@host/db` decodes to `\x00bypass`; the MySQL C client truncates credentials at the first null byte and the driver sends an empty password. Drift between sites with/without the check is unauditable without a single helper. See guide for full evidence.
+**Why:** A crafted `mysql://user:%00bypass@host/db` decodes to `\x00bypass`; the MySQL C client truncates credentials at the first null byte and the driver sends an empty password, succeeding against any row in `mysql.user` with an empty `authentication_string`. Drift between sites that have the check and sites that don't is unauditable without a single helper.
 
 ### 2. Pre-Encoder Consolidation (MUST)
 
@@ -493,6 +503,34 @@ All user-generated content MUST be encoded before display in HTML templates, JSO
 
 **Why:** Unencoded user content enables cross-site scripting (XSS), allowing attackers to execute arbitrary JavaScript in other users' browsers.
 
+## Sanitizer Contract — DataFlow Display Hygiene
+
+DataFlow's input sanitizer is a defense-in-depth display-path safety net, NOT the primary SQLi defense. Parameter binding (`$N` / `%s` / `?`) is the primary defense — see § Parameterized Queries above.
+
+The sanitizer's contract is fixed:
+
+### 1. String Inputs MUST Be Token-Replaced, Not Quote-Escaped
+
+For declared-string fields, the sanitizer MUST replace dangerous SQL keyword sequences with grep-able sentinel tokens (`STATEMENT_BLOCKED`, `DROP_TABLE`, `UNION_SELECT`, etc.). Quote-escaping (`'` → `''`) is BLOCKED.
+
+**Why:** Token-replace makes attacker intent grep-able post-incident (`grep STATEMENT_BLOCKED audit.log`). Quote-escape preserves the payload as data, masking that an attack was attempted. The actual injection defense is parameter binding; the sanitizer is the audit trail.
+
+### 2. Type-Confusion MUST Raise, Not Silently Coerce
+
+For declared-string fields receiving `dict` / `list` / `set` / `tuple` values, the sanitizer MUST raise `ValueError("parameter type mismatch: …")`. Silent coercion via `str(value)` is BLOCKED — it lets a nested structure bypass the string-only sanitizer.
+
+**Why:** A malicious upstream node that passes `{"injection": "'; DROP TABLE …"}` for a field declared as `str` bypasses every string-only check. Raising at the type-confusion boundary closes the bypass; coercion-to-string converts a structural attack into an unaudited storage event.
+
+### 3. Safe Types Are Returned As-Is
+
+Values of declared-safe types (`int`, `float`, `bool`, `Decimal`, `datetime`, `date`, `time`) MUST pass through unchanged. `dict` and `list` MUST also pass through unchanged when the field's declared type is `dict` or `list` (JSON / array columns).
+
+## Multi-Site Kwarg Plumbing
+
+When a security-relevant kwarg (classification policy, tenant scope, clearance context, audit correlation ID) is plumbed through a helper, EVERY call site of that helper MUST be updated in the SAME PR. Updating the "primary" call site and deferring siblings is BLOCKED.
+
+**Why:** A helper that takes a security-relevant kwarg has the kwarg precisely because the unqualified call leaks or misbehaves. Leaving any sibling call site on the unqualified signature ships the exact failure mode the kwarg was introduced to fix; the "safe default" is by definition the insecure default (otherwise the kwarg would not exist). The fix is mechanical — `grep -rn 'helper_name(' .` and patch every hit in the same PR.
+
 ## MUST NOT
 
 - **No eval() on user input**: `eval()`, `exec()`, `subprocess.call(cmd, shell=True)` — BLOCKED
@@ -507,37 +545,31 @@ All user-generated content MUST be encoded before display in HTML templates, JSO
 
 **Why:** Once committed, secrets persist in git history even after removal, and are exposed to anyone with repo access.
 
-## Sanitizer Contract — DataFlow Display Hygiene
-
-DataFlow's input sanitizer (`packages/kailash-dataflow/src/dataflow/core/nodes.py::sanitize_sql_input`) is a defense-in-depth display-path safety net, NOT the primary SQLi defense. Parameter binding (`$N` / `%s` / `?`) is the primary defense — see § Parameterized Queries above.
-
-### 1. String Inputs MUST Be Token-Replaced, Not Quote-Escaped
-
-For declared-string fields, the sanitizer MUST replace dangerous SQL keyword sequences with grep-able sentinel tokens (`STATEMENT_BLOCKED`, `DROP_TABLE`, `UNION_SELECT`, etc.). Quote-escaping (`'` → `''`) is BLOCKED.
-
-**Why:** Token-replace makes attacker intent grep-able post-incident (`grep STATEMENT_BLOCKED audit.log`). Quote-escape preserves the payload as data, masking the attack. Sanitizer is the audit trail; parameter binding is the defense.
-
-### 2. Type-Confusion MUST Raise, Not Silently Coerce
-
-For declared-string fields receiving `dict` / `list` / `set` / `tuple` values, the sanitizer MUST raise `ValueError("parameter type mismatch: …")`. Silent coercion via `str(value)` is BLOCKED.
-
-**Why:** A malicious upstream node passing `{"injection": "'; DROP TABLE …"}` for a str-declared field bypasses every string-only check. Raising at the type-confusion boundary closes the bypass; coercion-to-string converts a structural attack into an unaudited storage event.
-
-### 3. Safe Types Are Returned As-Is
-
-Values of declared-safe types (`int`, `float`, `bool`, `Decimal`, `datetime`, `date`, `time`) MUST pass through unchanged. `dict` and `list` MUST also pass through unchanged when the field's declared type is `dict` or `list` (JSON / array columns). Bug #515: premature `json.dumps()` on dict/list breaks parameter binding.
-
-## Multi-Site Kwarg Plumbing
-
-When a security-relevant kwarg (classification policy, tenant scope, clearance context, audit correlation ID) is plumbed through a helper, EVERY call site of that helper MUST be updated in the SAME PR. Updating the "primary" call site and deferring siblings is BLOCKED.
-
-**Why:** A helper takes a security-relevant kwarg precisely because the unqualified call leaks or misbehaves. Leaving any sibling on the unqualified signature ships the exact failure mode the kwarg was introduced to fix; the "safe default" is by definition the insecure default. Fix is mechanical: `grep -rn 'helper_name(' .` + patch every hit.
-
 ## Kailash-Specific Security
 
 - **DataFlow**: Access controls on models, validate at model level, never expose internal IDs
 - **Nexus**: Authentication on protected routes, rate limiting, CORS configured
 - **Kaizen**: Prompt injection protection, sensitive data filtering, output validation
+
+## Rust: Credential Comparison (MUST)
+
+Every credential / token / HMAC / API key comparison in Rust code MUST use `kailash_auth::api_key::ApiKeyConfig::validate_key` (list) or `kailash_auth::constant_time_eq` (single) — NEVER `==`, NEVER `.any()` over a constant-time inner comparison.
+
+**Why:** `.any()` returns on first match, revealing _which position_ matched via response timing. During key rotation this narrows brute force by one key's worth of entropy per observation. Origin: R3 red team finding `0021-RISK-r3-timing-leak-mcp-auth.md`, fixed in commit `173d054b`. Full pattern: `skills/18-security-patterns/constant-time-comparison-rs.md`.
+
+## Rust: Fail-Closed Security Defaults (MUST)
+
+Every `Default` impl, `default()` constructor, and builder-chain starting value on a security-adjacent type MUST be the most restrictive, non-functional state. Permissive behavior is explicit opt-in only.
+
+Applies to: classification/clearance levels, registry insert, file permissions (0o600 on audit/evidence files), path containment (allowlist, not free path), posture/tenant selection, delegation keys, and unsafe `Send`/`Sync` invariants.
+
+**Why:** Four of six HIGH findings in R1 shared a single root cause — permissive defaults silently disabled security features that operators believed were enabled. Origin: `0018-RISK-six-high-security-findings.md`, fixed in PR #334. Full pattern: `skills/18-security-patterns/fail-closed-defaults-rs.md`.
+
+## Rust: Network Transport Hardening (MUST)
+
+HTTP MCP transports MUST validate `Origin`/`Host` against an allowlist before dispatching any JSON-RPC method. Stdio MCP transports MUST restrict spawn to an allowlisted `{command, arg regex, env key}` triple. Log lines including rejected credential / token / identifier content MUST fingerprint the content, never echo it.
+
+**Why:** Local-only MCP servers bind to 127.0.0.1 and assume localhost = trusted. DNS rebinding defeats this — a website the operator visits while the MCP server runs can invoke local MCP tools via the browser. Stdio spawn without allowlist gives the JSON-RPC caller arbitrary code execution via `sh -c`, `LD_PRELOAD`, or argv injection. Log content without sanitization is a log-poisoning + secret-exfiltration vector. Origin: R3 commits `173d054b`, `0d4ebd12`. Full pattern: `skills/18-security-patterns/network-security-rs.md`.
 
 ## Exceptions
 
