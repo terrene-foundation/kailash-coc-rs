@@ -816,6 +816,29 @@ tiers:
     # INTEGRATION-NOTES.md — illustrative only. Gate-1 classification
     # at /sync may downgrade to SKIP if the content is non-portable.
     - team-memory/canonical-build-targets.md
+    # ─────────────────────────────────────────────────────────────
+    # /certify — knowledge-gate for new devs/consultants
+    # (co-owner-directed 2026-05-25, journal/0158). Three phases
+    # (Brief → Probe → Gate at 100%). Per-repo question bank lives
+    # in the CONSUMER repo at `specs/_certification.yaml`; loom ships
+    # a starter template at `templates/specs/_certification.yaml`
+    # for downstream repos to copy and curate. Same shape as the M7
+    # onboard surface (command + skill, global / not variant).
+    # ─────────────────────────────────────────────────────────────
+    - commands/certify.md
+    - skills/42-certify/**
+    # Starter template: downstream repos copy this to specs/_certification.yaml
+    # once on first /certify use, then curate. The CONSUMER-side
+    # specs/_certification.yaml is NOT shipped via /sync (lives in each
+    # downstream repo's own git history); only the loom-side starter is.
+    #
+    # EMISSION POLICY (PR #355 R1 security MED-4 closure): the asset is
+    # YAML data with no CLI-divergent body — copy-as-is to every CLI
+    # surface that subscribes the coc tier (CC, Codex, Gemini emission all
+    # ship the identical file). Not in cli_variants (no per-CLI overlay
+    # exists or is permitted; bank schema is CLI-invariant); not in
+    # cli_emit_exclusions (intentionally shipped to all three).
+    - templates/specs/_certification.yaml
   # ─────────────────────────────────────────────────────────────
   # ONBOARDING TIER — Stack-agnostic onboarding artifacts for the
   # base variant. Added 2026-05-06 v2.21.0 to support the non-Kailash,
