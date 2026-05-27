@@ -33,11 +33,19 @@ ARG REMOTE_USER=vscode
 
 ENV DEBIAN_FRONTEND=noninteractive \
     # Out-of-repo install targets so the runtime bind-mount of the repo source
-    # does NOT shadow them (journal/0005). The M2 overlay installs target these.
+    # does NOT shadow them (journal/0005). The M2 overlays install into these
+    # SAME locations so a no-rebuild `bin/dev setup` is requireable in the
+    # same shell (NFR-12 shared-env invariant).
     VIRTUAL_ENV=/opt/venv \
     GEM_HOME=/opt/gems \
     GEM_PATH=/opt/gems \
-    BUNDLE_PATH=/opt/gems \
+    # BUNDLE_PATH is intentionally NOT set. Setting it (even to GEM_HOME) forces
+    # bundler's isolated nested `<path>/ruby/<ver>/gems/` layout, which is NOT
+    # on the default Gem.path — `ruby -e 'require "x"'` then fails in a plain
+    # shell (the NFR-12 peer-validated trap, confirmed empirically against the
+    # running container 2026-05-28 — see journal/0009). With BUNDLE_PATH unset,
+    # `bundle install` installs system-wide into GEM_HOME (flat layout), so the
+    # overlay gem is requireable in the same shell as the base gem.
     # Non-interactive GPG so `git commit -S` works in a headless container (FR-25).
     GPG_TTY=/dev/console
 ENV PATH="${VIRTUAL_ENV}/bin:${GEM_HOME}/bin:/usr/local/share/npm-global/bin:${PATH}"
@@ -78,7 +86,11 @@ RUN "${VIRTUAL_ENV}/bin/python" -c \
     "import importlib.metadata as m; assert m.version('${KAILASH_PY_PACKAGE}'); import kailash"
 
 # --- Ruby Magnus binding (out-of-repo GEM_HOME, not shadowed) ----------------
-RUN gem install "${KAILASH_RB_GEM}" --no-document
+# Install bundler into GEM_HOME so `bundle` lands in /opt/gems/bin (on PATH);
+# the default-gem bundler under the system ruby tree is NOT on PATH. The M2
+# overlay path (`Gemfile.user`) drives bundle.
+RUN gem install bundler --no-document \
+    && gem install "${KAILASH_RB_GEM}" --no-document
 
 # --- OPT-IN Rust toolchain (source builds / SDK-source dev only — ADR-03) ----
 RUN if [ "${INCLUDE_RUST}" = "true" ]; then \

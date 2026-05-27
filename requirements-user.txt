@@ -1,0 +1,18 @@
+# requirements-user.txt — PROJECT-OWNED Python overlay (template /sync NEVER touches this)
+#
+# Add YOUR project's Python pip dependencies here, one per line, using standard
+# pip requirements syntax (`name`, `name>=ver`, `name @ url`, etc.).
+#
+# After editing, run from the host:
+#     ./bin/dev setup
+# It installs the overlay into the SAME interpreter the base uses (/opt/venv),
+# so `python -c "import <your-dep>"` works in the SAME shell — no image rebuild.
+#
+# OS / system packages (apt) → put them in `Dockerfile.user` (rebuild path).
+# There is NO `sudo` in the running container (preserves the non-root design).
+#
+# Examples (uncomment / extend as needed):
+#
+#   requests>=2.32.0
+#   pydantic>=2.7,<3
+#   structlog>=24.1

@@ -3,11 +3,17 @@
 # bin/dev — one-command entry to the Kailash COC (rs) dev environment.
 #
 #   ./bin/dev            bring the stack up + drop into a ready shell
-#   ./bin/dev setup      (re)install runtime deps (MCP guard; M2 adds overlays)
+#   ./bin/dev setup      (re)install runtime deps — MCP guard + project overlays
+#                        (Python / Ruby / npm), no image rebuild
 #   ./bin/dev <args>     pass through to `docker compose <args>`
 #
-# Keys come from .env (gitignored) — never baked into the image. See
-# workspaces/docker-dev-environment/specs/container-topology.md.
+# Keys come from `.env` (gitignored) — never baked into the image. Project
+# overlays (`requirements-user.txt`, `Gemfile.user`, `package.json`) are
+# project-owned (template `/sync` never touches them); they install into the
+# SAME `/opt/venv` and `/opt/gems` the base uses (NFR-12 shared-env invariant),
+# so additions are requireable in the same shell with NO rebuild.
+#
+# See workspaces/docker-dev-environment/specs/{container-topology,extensibility}.md.
 # =============================================================================
 set -euo pipefail
 
@@ -24,16 +30,51 @@ ensure_env() {
   fi
 }
 
-# Runtime setup: the repo source is bind-mounted, so the MCP guard's node_modules
-# must be installed INSIDE the running container, after the mount (journal/0005).
+# Single source of truth for in-container runtime install steps. Runs inside the
+# workspace container (either via `compose exec` from the host, or directly when
+# `bin/dev setup` is invoked from postCreate inside the container itself).
+#   1. MCP guard deps (M1; bind-mount shadows a build-time install — journal/0005).
+#   2. Python overlay → /opt/venv (NFR-12 shared env; same interpreter as base).
+#   3. Ruby   overlay → /opt/gems FLAT layout (NFR-12; BUNDLE_PATH MUST be unset
+#      — verified live 2026-05-28, see journal/0009).
+#   4. npm    overlay → workspace node_modules (optional; runs only if package.json).
+read -r -d '' INSTALL_OVERLAYS_SH <<'OVERLAYS_EOF' || true
+set -e
+cd /workspace
+
+# `has_content` = at least one non-blank, non-comment line (pip-style overlays).
+# `has_gem_decl` = at least one `gem "..."` declaration (bundler-DSL overlays).
+# The Gemfile gate is stricter so the shipped source-only scaffold does NOT
+# generate a noisy empty Gemfile.user.lock on every fresh-clone `./bin/dev`.
+has_content()  { [ -f "$1" ] && grep -Ev "^[[:space:]]*(#|$)" "$1" >/dev/null 2>&1; }
+has_gem_decl() { [ -f "$1" ] && grep -Eq "^[[:space:]]*gem[[:space:]]+[\"\x27]" "$1"; }
+
+if [ -d /workspace/.codex-mcp-guard ] && [ ! -d /workspace/.codex-mcp-guard/node_modules ]; then
+  echo "→ Installing MCP guard deps (.codex-mcp-guard)…"
+  ( cd /workspace/.codex-mcp-guard && npm ci --no-fund --no-audit )
+fi
+
+if has_content requirements-user.txt; then
+  echo "→ Installing Python overlay (requirements-user.txt → /opt/venv)…"
+  python -m pip install --no-cache-dir -r requirements-user.txt
+fi
+
+if has_gem_decl Gemfile.user; then
+  # BUNDLE_PATH unset → bundler installs system-wide into GEM_HOME flat layout
+  # (verified live 2026-05-28; setting it forces nested layout that breaks
+  # plain-shell `require`, the NFR-12 peer-validated trap).
+  echo "→ Installing Ruby overlay (Gemfile.user → /opt/gems flat)…"
+  env -u BUNDLE_PATH BUNDLE_GEMFILE=/workspace/Gemfile.user bundle install
+fi
+
+if [ -f /workspace/package.json ]; then
+  echo "→ Installing npm overlay (package.json)…"
+  ( cd /workspace && npm install --no-fund --no-audit )
+fi
+OVERLAYS_EOF
+
 setup_in_container() {
-  compose exec -T workspace bash -lc '
-    set -e
-    if [ -d /workspace/.codex-mcp-guard ] && [ ! -d /workspace/.codex-mcp-guard/node_modules ]; then
-      echo "Installing MCP guard deps (.codex-mcp-guard)…"
-      ( cd /workspace/.codex-mcp-guard && npm ci --no-fund --no-audit )
-    fi
-  '
+  compose exec -T workspace bash -lc "$INSTALL_OVERLAYS_SH"
 }
 
 case "${1:-up}" in
@@ -41,9 +82,7 @@ case "${1:-up}" in
     # Used by devcontainer postCreateCommand (runs already inside the container)
     # AND callable from the host (execs into the running container).
     if [ -f /.dockerenv ]; then
-      if [ -d /workspace/.codex-mcp-guard ] && [ ! -d /workspace/.codex-mcp-guard/node_modules ]; then
-        ( cd /workspace/.codex-mcp-guard && npm ci --no-fund --no-audit )
-      fi
+      bash -lc "$INSTALL_OVERLAYS_SH"
     else
       compose up -d
       setup_in_container
