@@ -113,7 +113,7 @@ cd my-project
 cp .env.example .env   # Fill in your API keys (Anthropic, OpenAI, or Google)
 
 # Install the Kailash Rust binding for your language
-pip install kailash-rs           # Python binding
+pip install kailash-enterprise   # Python binding (import kailash)
 # or
 gem install kailash              # Ruby binding
 
@@ -209,7 +209,7 @@ Do not hand-edit emitted files (`AGENTS.md`, `GEMINI.md`, `.codex/prompts/`, `.c
 
 This template targets downstream apps that consume the Kailash Rust SDK through bindings. You write:
 
-- **Python** — via `kailash-rs` wheels (PyO3 bindings)
+- **Python** — via `kailash-enterprise` wheels (PyO3 bindings)
 - **Ruby** — via the `kailash` gem (Magnus bindings)
 
 You do NOT write Rust in a project using this template. Rust lives in `esperie/kailash-rs` (the SDK source workspace), behind the binding layer. All skill code examples, test patterns, and rules in this template use Python or Ruby — never `cargo`, `use crate::`, or `#[derive]`.

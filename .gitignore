@@ -47,6 +47,11 @@ htmlcov/
 .pytest_cache/
 .mypy_cache/
 
+# Runtime-installed deps (never committed) — installed at container startup, not baked.
+# The repo source is bind-mounted, so a build-time install would be shadowed (journal/0005).
+node_modules/
+.codex-mcp-guard/node_modules/
+
 # Secrets
 *.pem
 *.key

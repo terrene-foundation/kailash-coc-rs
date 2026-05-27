@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# =============================================================================
+# bin/dev — one-command entry to the Kailash COC (rs) dev environment.
+#
+#   ./bin/dev            bring the stack up + drop into a ready shell
+#   ./bin/dev setup      (re)install runtime deps (MCP guard; M2 adds overlays)
+#   ./bin/dev <args>     pass through to `docker compose <args>`
+#
+# Keys come from .env (gitignored) — never baked into the image. See
+# workspaces/docker-dev-environment/specs/container-topology.md.
+# =============================================================================
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+compose() { docker compose "$@"; }
+
+ensure_env() {
+  if [ ! -f "$ROOT/.env" ] && [ -f "$ROOT/.env.example" ]; then
+    cp "$ROOT/.env.example" "$ROOT/.env"
+    echo "⚠  Created .env from .env.example — add your API keys."
+    echo "   (The CLIs run, but fail at use until a key is present — no silent fallback.)"
+  fi
+}
+
+# Runtime setup: the repo source is bind-mounted, so the MCP guard's node_modules
+# must be installed INSIDE the running container, after the mount (journal/0005).
+setup_in_container() {
+  compose exec -T workspace bash -lc '
+    set -e
+    if [ -d /workspace/.codex-mcp-guard ] && [ ! -d /workspace/.codex-mcp-guard/node_modules ]; then
+      echo "Installing MCP guard deps (.codex-mcp-guard)…"
+      ( cd /workspace/.codex-mcp-guard && npm ci --no-fund --no-audit )
+    fi
+  '
+}
+
+case "${1:-up}" in
+  setup)
+    # Used by devcontainer postCreateCommand (runs already inside the container)
+    # AND callable from the host (execs into the running container).
+    if [ -f /.dockerenv ]; then
+      if [ -d /workspace/.codex-mcp-guard ] && [ ! -d /workspace/.codex-mcp-guard/node_modules ]; then
+        ( cd /workspace/.codex-mcp-guard && npm ci --no-fund --no-audit )
+      fi
+    else
+      compose up -d
+      setup_in_container
+    fi
+    ;;
+  up | "")
+    ensure_env
+    compose up -d
+    setup_in_container
+    echo "✓ Stack up. Entering workspace shell (exit to leave; stack keeps running)."
+    compose exec workspace bash
+    ;;
+  *)
+    compose "$@"
+    ;;
+esac
