@@ -87,9 +87,11 @@ RUN "${VIRTUAL_ENV}/bin/python" -c \
 
 # --- Ruby Magnus binding (out-of-repo GEM_HOME, not shadowed) ----------------
 # Install bundler into GEM_HOME so `bundle` lands in /opt/gems/bin (on PATH);
-# the default-gem bundler under the system ruby tree is NOT on PATH. The M2
-# overlay path (`Gemfile.user`) drives bundle.
-RUN gem install bundler --no-document \
+# the default-gem bundler under the system ruby tree is NOT on PATH. Pinned to
+# the `~> 4.0` major line so a future bundler-major bump cannot silently change
+# the flat-layout contract `journal/0009` verified empirically (For-Discussion
+# caveat #2). The M2 overlay path (`Gemfile.user`) drives bundle.
+RUN gem install bundler -v '~> 4.0' --no-document \
     && gem install "${KAILASH_RB_GEM}" --no-document
 
 # --- OPT-IN Rust toolchain (source builds / SDK-source dev only — ADR-03) ----

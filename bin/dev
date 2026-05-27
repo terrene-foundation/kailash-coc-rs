@@ -62,14 +62,24 @@ fi
 if has_gem_decl Gemfile.user; then
   # BUNDLE_PATH unset → bundler installs system-wide into GEM_HOME flat layout
   # (verified live 2026-05-28; setting it forces nested layout that breaks
-  # plain-shell `require`, the NFR-12 peer-validated trap).
+  # plain-shell `require`, the NFR-12 peer-validated trap). BUNDLE_APP_CONFIG
+  # also unset so a project-local `.bundle/config` cannot resurrect a `path`
+  # setting that would re-create the trap.
   echo "→ Installing Ruby overlay (Gemfile.user → /opt/gems flat)…"
-  env -u BUNDLE_PATH BUNDLE_GEMFILE=/workspace/Gemfile.user bundle install
+  env -u BUNDLE_PATH -u BUNDLE_APP_CONFIG \
+      BUNDLE_GEMFILE=/workspace/Gemfile.user bundle install
 fi
 
 if [ -f /workspace/package.json ]; then
+  # Prefer `npm ci` when a lockfile is present (reproducible, refuses on
+  # mismatch); fall back to `npm install` for first-time projects that have
+  # not committed a lockfile yet. Mirrors the MCP-guard install above.
   echo "→ Installing npm overlay (package.json)…"
-  ( cd /workspace && npm install --no-fund --no-audit )
+  if [ -f /workspace/package-lock.json ]; then
+    ( cd /workspace && npm ci --no-fund --no-audit )
+  else
+    ( cd /workspace && npm install --no-fund --no-audit )
+  fi
 fi
 OVERLAYS_EOF
 

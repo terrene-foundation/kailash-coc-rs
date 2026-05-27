@@ -36,6 +36,13 @@ services:
     # The key is never copied into a layer; mounted ro so the container cannot
     # mutate the host's keyring. Pair with `GPG_TTY` (already exported in the
     # base image) and the `pinentry-curses` non-interactive pinentry.
+    #
+    # TTY caveat: `GPG_TTY=/dev/console` in the image works for interactive
+    # `docker compose exec workspace bash` shells. For non-TTY one-shot calls
+    # (`docker compose exec -T`, CI) add `tty: true` below OR pass
+    # `gpg --pinentry-mode loopback` so signing does not block on a missing
+    # controlling terminal.
+    # tty: true
     #   - ${HOME}/.gnupg:/home/vscode/.gnupg:ro
     #
     # --- Per-project env overrides (in addition to anything in `.env`) -------

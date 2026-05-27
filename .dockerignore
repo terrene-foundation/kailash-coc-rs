@@ -10,6 +10,16 @@
 *.key
 secrets/
 
+# Host CLI-config + signing-key dirs — defense-in-depth.
+# The structural defense is already in place: the Dockerfile contains ZERO
+# COPY/ADD directives (source enters at runtime via bind-mount, not build),
+# so these dirs CANNOT enter a layer today. The exclusions below guarantee
+# the safety property holds if a future Dockerfile ever adds a `COPY .` line.
+**/.claude
+**/.codex
+**/.gemini
+**/.gnupg
+
 # VCS + per-session state
 .git
 **/.session-notes
