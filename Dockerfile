@@ -42,10 +42,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     # BUNDLE_PATH is intentionally NOT set. Setting it (even to GEM_HOME) forces
     # bundler's isolated nested `<path>/ruby/<ver>/gems/` layout, which is NOT
     # on the default Gem.path — `ruby -e 'require "x"'` then fails in a plain
-    # shell (the NFR-12 peer-validated trap, confirmed empirically against the
-    # running container 2026-05-28 — see journal/0009). With BUNDLE_PATH unset,
-    # `bundle install` installs system-wide into GEM_HOME (flat layout), so the
-    # overlay gem is requireable in the same shell as the base gem.
+    # shell (peer-validated empirically). With BUNDLE_PATH unset, `bundle install`
+    # installs system-wide into GEM_HOME (flat layout), so the overlay gem is
+    # requireable in the same shell as the base gem.
     # Non-interactive GPG so `git commit -S` works in a headless container (FR-25).
     GPG_TTY=/dev/console
 ENV PATH="${VIRTUAL_ENV}/bin:${GEM_HOME}/bin:/usr/local/share/npm-global/bin:${PATH}"
@@ -89,8 +88,8 @@ RUN "${VIRTUAL_ENV}/bin/python" -c \
 # Install bundler into GEM_HOME so `bundle` lands in /opt/gems/bin (on PATH);
 # the default-gem bundler under the system ruby tree is NOT on PATH. Pinned to
 # the `~> 4.0` major line so a future bundler-major bump cannot silently change
-# the flat-layout contract `journal/0009` verified empirically (For-Discussion
-# caveat #2). The M2 overlay path (`Gemfile.user`) drives bundle.
+# the verified flat-layout contract. The M2 overlay path (`Gemfile.user`) drives
+# bundle.
 RUN gem install bundler -v '~> 4.0' --no-document \
     && gem install "${KAILASH_RB_GEM}" --no-document
 
