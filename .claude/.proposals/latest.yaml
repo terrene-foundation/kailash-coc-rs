@@ -1,0 +1,152 @@
+source_repo: kailash-coc-rs
+origin: use-template # explicit class discriminator per sync-flow.md §83
+codify_date: 2026-05-28
+codify_session: "fix(docker): M2+M4 Docker dev-env patterns — bundler shared-env trap + gpg-agent host:Linux ABI gap"
+template_version: "2.23.1" # .claude/VERSION::version (committed HEAD)
+coc_version: "2.23.1" # .claude/VERSION::upstream.template_version (committed HEAD)
+
+# This proposal originates from kailash-coc-rs's M2 + M4 Docker dev-environment
+# workstream. Two structurally-load-bearing patterns surfaced during the user-
+# flow walks of the resulting Docker stack and are being lifted to loom for
+# distribution across every kailash-coc-* template that ships a Dockerized
+# dev environment (rs + py + future siblings).
+#
+# Both patterns are RECEIPT-FIRST: each cites a specific commit on
+# feat/docker-dev-environment + a workspace-local journal entry + the user-
+# flow walk that surfaced them.
+#
+# Disclosure-scrub status: this proposal body is scrubbed per
+# rules/upstream-issue-hygiene.md MUST-2 — no operator project names, no
+# internal paths beyond the SDK / template surface, no operator host
+# identifiers, no key fingerprints.
+
+changes:
+  - file: .claude/skills/10-deployment-git/docker-dev-env-patterns.md
+    action: created
+    suggested_tier: coc
+    reason: |
+      NEW skill capturing Docker dev-environment patterns surfaced during
+      kailash-coc-rs M2/M4 user-flow walks. Two MUST-class patterns ship
+      in the initial skill body:
+
+      PATTERN A — Cross-Platform GPG Keyring Bootstrap (FR-25)
+      ----------------------------------------------------------
+      Direct mount of host ~/.gnupg into a Linux container CANNOT deliver
+      git commit -S signing on macOS hosts (the dominant developer surface).
+      Two structural failure modes:
+
+        1. :ro mount → "gpg: can't connect to the gpg-agent: Read-only
+           file system" (Linux gpg-agent needs writable dir for its socket)
+        2. rw mount → "gpg: failed to start gpg-agent: General error"
+           (host macOS socket files S.gpg-agent + .#lk<HOSTNAME>.local.NNNNN
+            leak in and confuse the Linux agent's startup probe)
+
+      The structural fix: side-mount host keyring READ-ONLY at /host-gnupg
+      (NOT at /home/vscode/.gnupg); bin/dev setup populates a FRESH
+      container-side ~/.gnupg via prune-then-copy + denylist tar (exclude
+      S.gpg-agent* + .#lk*, include everything else — covers pubring.kbx,
+      pubring.gpg legacy, openpgp-revocs.d, tofu.db, gpg.conf, trustdb.gpg,
+      private-keys-v1.d, and any future GnuPG state). Modes 700 throughout.
+
+      Why each design property matters:
+      - Side-mount (not direct mount): crosses the macOS↔Linux gpg-agent
+        ABI gap; host keyring stays immutable from container via :ro.
+      - Prune-then-copy: a key revoked on the host disappears from the
+        container too — additive cp leaves revoked keys usable.
+      - Denylist (not allowlist): survives GnuPG version drift; legacy
+        pubring.gpg + future tofu.db inherit automatically.
+      - umask 077 BEFORE copy: no permissive-bits window between cp and
+        chmod.
+      - 700 on private-keys-v1.d explicitly: GnuPG checks group/other
+        bits on the secret-key subdir specifically.
+
+      PATTERN B — Bundler Shared-Env Trap (Ruby NFR-12)
+      ----------------------------------------------------------
+      BUNDLE_PATH=<anything> exported in any layer (image ENV, compose
+      environment:, host shell, .env, .bundle/config) FORCES bundler's
+      isolated nested-layout install path
+      (<base-path>/ruby/<ver>/gems/...) which is NOT on the default
+      Gem.path. Result: a gem installed via Gemfile.user is in the
+      filesystem but ruby -e 'require "<gem>"' fails with LoadError
+      in a plain shell — only `bundle exec` works. Peer-validated as
+      a silent NFR violation: users see "bundle install OK" then
+      "require fails" with no obvious correlation.
+
+      The structural fix: in every overlay-install path that touches
+      `bundle install`, use `env -u BUNDLE_PATH -u BUNDLE_APP_CONFIG`
+      to defensively unset BOTH variables. BUNDLE_PATH is the primary
+      trap; BUNDLE_APP_CONFIG is the secondary (it points at
+      .bundle/config which can re-supply BUNDLE_PATH). With both unset,
+      bundler installs system-wide into GEM_HOME (flat layout) and the
+      same shell can `require "<gem>"` directly.
+
+      Defense in depth: ship a CI smoke test that asserts
+      `[ -z "${BUNDLE_PATH:-}" ]` inside the built image — catches any
+      regression that re-introduces the trap (e.g., a future Dockerfile
+      `ENV BUNDLE_PATH=...` or a base-image change that defaults it).
+    diff_lines: "+~280 -0" # new file
+    receipts:
+      - "kailash-coc-rs commit 176bd0b: fix(docker): M4 R1 closure — gpg-agent host:Linux ABI gap"
+      - "kailash-coc-rs commit e1142b2: fix(docker): M4 R2 closure — reviewer findings on Walk 4 gpg bootstrap"
+      - "kailash-coc-rs commit 9d88900: fix(docker): M2 R1 closure — bundler pin + defense-in-depth overlay shard"
+      - "kailash-coc-rs workspaces/docker-dev-environment/journal/0009-DECISION-ruby-overlay-bundle-no-bundlepath.md"
+      - "kailash-coc-rs workspaces/docker-dev-environment/journal/0012-DECISION-walk4-gpg-agent-host-linux-abi-gap.md"
+      - "live verification 2026-05-28: container-side gpg --list-secret-keys = 1; signing reaches pinentry passphrase prompt"
+      - "M4 Walk 4 R1 + R2 cycle = autonomous-execution.md MUST-4 cross-class evidence point: walk → 1 HIGH + 2 MED + 2 LOW reviewer findings → same-shard in-session fix"
+    review_recommendations:
+      - "Suggested classification: COC tier — applies to every kailash-coc-* template that ships a Dockerized dev environment"
+      - "Pattern A is host:OS-portable (macOS + Linux dev hosts both benefit); Pattern B is Ruby-binding-specific BUT the pattern shape (shared-env trap from a tool that has both 'isolated' and 'shared' install paths) generalizes to Python + Node + future bindings — consider authoring a section that names the generalization explicitly"
+      - "Cross-template inheritance: when loom kailash-coc-py's Docker mirror lands (loom #388), Pattern A applies UNCHANGED to py (gpg-agent ABI gap is host:Linux concern, not language-specific); Pattern B is rs-only at the surface but the lesson (tool-isolated vs shared-env defaults) applies to Python's venv too"
+
+  - file: .claude/skills/18-security-patterns/docker-disclosure-scrub.md
+    action: created
+    suggested_tier: coc
+    reason: |
+      NEW skill capturing the 7-check disclosure-scrub pattern from
+      kailash-coc-rs M3 R1 closure. Applies to every public-surface
+      Docker template that ships in a public repository under the
+      Terrene Foundation's public-template fleet.
+
+      The 7 mechanical greps (all positive-allowlist-tightened so future
+      novel disclosure types are FLAGGED, not silently passed):
+
+        (a) operator-home leaks (/Users/<name>/, /home/<name>/) — comment
+            lines and /home/vscode/ exempted (in-container path)
+        (b) literal API-key shapes (sk-*, ghp_*, AIza*, eyJ* JWT, AKIA*) —
+            placeholder strings exempted (your-key-here, EXAMPLE)
+        (c) --build-arg with secret-shaped values (KEY=, TOKEN=, SECRET=,
+            PASSWORD=, API=)
+        (d) COPY/ADD of secret or host-config dirs (.env, .claude/, .codex/,
+            .gemini/, .ssh/, .gnupg/, secrets/) in Dockerfile + Dockerfile.user
+        (e) .dockerignore coverage assertion against mandatory list (.env,
+            **/.env, secrets/, *.pem, *.key, .claude/learning/, workspaces/,
+            compose.override.yml, *.local, Gemfile.user.lock)
+        (f) machine hostnames + operator identifiers (per session-notes:42
+            disclosure class — Jacks-Mac-Studio etc.; operator-id, verified_id,
+            person_id from coordination-log records)
+        (g) GitHub org slugs beyond the public allowlist (terrene-foundation,
+            esperie, nodesource, microsoft, anthropic-ai, openai, google,
+            modelcontextprotocol, devcontainers)
+
+      Each check ships with FAIL output that names the file:line so the
+      operator can fix at the source. The full M2_FILES file-set is:
+        Dockerfile bin/dev docker-compose.yml .devcontainer/devcontainer.json
+        .dockerignore .gitignore .env.example requirements-user.txt
+        Gemfile.user Dockerfile.user compose.override.yml.example
+
+      Runs both in CI (as the first workflow step BEFORE any image build)
+      AND locally during developer pre-push. Mechanical, deterministic,
+      O(files * lines). The 7-check pattern is the structural defense
+      for the brief-anchored "public-surface constraint" — every Docker
+      artifact ships in a public template repository.
+    diff_lines: "+~180 -0"
+    receipts:
+      - "kailash-coc-rs commit a67758d: fix(docker): M3 R1 closure — README size accuracy + workflow path-filter + smoke tightening"
+      - "kailash-coc-rs .github/workflows/docker-build.yml § 'Disclosure scrub (FR-21 pre-build gate)' (lines 73-143)"
+      - "kailash-coc-rs M4 Walk 7 verification 2026-05-28: 7/7 CLEAN against HEAD post-M4 R2"
+    review_recommendations:
+      - "Suggested classification: COC tier — applies to every public-facing template"
+      - "Consider cross-referencing rules/upstream-issue-hygiene.md MUST-2 (downstream context redaction in public surfaces) — this skill is the build-time enforcement counterpart to upstream-issue-hygiene's runtime-time enforcement"
+      - "The check (e) .dockerignore coverage list is currently hardcoded in the workflow; consider lifting to a manifest file (e.g., .claude/audit-fixtures/docker-disclosure-scrub/required-dockerignore.txt) so downstream consumers can extend without forking the skill prose"
+
+status: pending_review
