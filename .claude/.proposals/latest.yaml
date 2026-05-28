@@ -95,8 +95,10 @@ changes:
       - "M4 Walk 4 R1 + R2 cycle = autonomous-execution.md MUST-4 cross-class evidence point: walk → 1 HIGH + 2 MED + 2 LOW reviewer findings → same-shard in-session fix"
     review_recommendations:
       - "Suggested classification: COC tier — applies to every kailash-coc-* template that ships a Dockerized dev environment"
-      - "Pattern A is host:OS-portable (macOS + Linux dev hosts both benefit); Pattern B is Ruby-binding-specific BUT the pattern shape (shared-env trap from a tool that has both 'isolated' and 'shared' install paths) generalizes to Python + Node + future bindings — consider authoring a section that names the generalization explicitly"
+      - "Pattern A is host:OS-portable (macOS + Linux dev hosts both benefit); Pattern B is Ruby-binding-specific BUT the pattern shape (shared-env trap from a tool that has both 'isolated' and 'shared' install paths) generalizes to Python + Node + future bindings — author a 'Generalizes to:' subsection in the skill body naming the Python venv vs system-site-packages analog AND the Node `npm install --prefix` vs global analog explicitly (per security-reviewer 2c9910f R1 MED note; lifts the generalization from review_recommendations into the surviving skill body so it survives variant-overlay composition)"
       - "Cross-template inheritance: when loom kailash-coc-py's Docker mirror lands (loom #388), Pattern A applies UNCHANGED to py (gpg-agent ABI gap is host:Linux concern, not language-specific); Pattern B is rs-only at the surface but the lesson (tool-isolated vs shared-env defaults) applies to Python's venv too"
+      - "Pattern A revocation-trust-window precision (per security-reviewer R1 MED-2): the prune-then-copy revocation property is bounded — propagation happens at the NEXT `bin/dev setup` (postCreate boundary), NOT in real time. The skill body MUST describe the trust window honestly: an operator who revokes a key on the host but does NOT immediately re-run `bin/dev setup` retains the revoked key inside any long-lived container until next setup. Operational defense: `docker compose down workspace && ./bin/dev setup` is the documented mitigation for compromised-key scenarios. Per recommendation-quality.md MUST-3 the cons MUST be stated alongside the pros."
+      - 'Pattern A cross-template guard discipline (per security-reviewer R1 MED-3): the `[ -d /host-gnupg ]` predicate at bin/dev:110 is LOAD-BEARING for safety. Without it, `rm -rf "$GNUPGHOME"` would unconditionally wipe `~/.gnupg` inside every container including those without GPG configured. py-template implementations MUST preserve this directory-predicate guard verbatim. Substituting an env-var sentinel (`${ENABLE_GPG:-}`) is BLOCKED because env-var sentinels do not fire when unset, while the directory predicate fires correctly on actual side-mount state. Same structural class as security.md § ''Multi-Site Kwarg Plumbing'' — the load-bearing guard MUST land at every implementation.'
 
   - file: .claude/skills/18-security-patterns/docker-disclosure-scrub.md
     action: created
@@ -121,12 +123,26 @@ changes:
         (e) .dockerignore coverage assertion against mandatory list (.env,
             **/.env, secrets/, *.pem, *.key, .claude/learning/, workspaces/,
             compose.override.yml, *.local, Gemfile.user.lock)
-        (f) machine hostnames + operator identifiers (per session-notes:42
-            disclosure class — Jacks-Mac-Studio etc.; operator-id, verified_id,
-            person_id from coordination-log records)
+        (f) machine hostnames + operator identifiers (placeholder pattern per
+            ci-runners.operator.local.example.md — `<operator-host-N>`-style
+            slugs; operator-id, verified_id, person_id literals from
+            coordination-log records)
         (g) GitHub org slugs beyond the public allowlist (terrene-foundation,
             esperie, nodesource, microsoft, anthropic-ai, openai, google,
             modelcontextprotocol, devcontainers)
+        (h) NEW — cloud account / project / org identifier shapes (per
+            security-reviewer R1 MED-1): AWS account IDs (12-digit numerics
+            in ARN, ECR URLs `<accountid>.dkr.ecr.<region>.amazonaws.com`,
+            IAM ARNs `arn:aws:iam::<accountid>:role/...`); GCP project IDs
+            (`gcr.io/<project-id>/...`, `<project>.iam.gserviceaccount.com`);
+            OpenAI org IDs (`org-<24-base62>`); Anthropic API key prefix
+            (`sk-ant-*` — distinct shape from OpenAI's `sk-*` which check (b)
+            catches by accident only when suffix is ≥15 chars); Cloudflare
+            API tokens (`CF-API-...`, account-id 32-hex strings).
+        (i) NEW — internal RFC-1918 / link-local IP shapes (per
+            security-reviewer R1 MED-1): `10.x.x.x`, `172.16-31.x.x`,
+            `192.168.x.x`, `169.254.x.x`. Non-trivial leak surface when
+            copy-pasted from staging compose files.
 
       Each check ships with FAIL output that names the file:line so the
       operator can fix at the source. The full M2_FILES file-set is:
@@ -136,9 +152,11 @@ changes:
 
       Runs both in CI (as the first workflow step BEFORE any image build)
       AND locally during developer pre-push. Mechanical, deterministic,
-      O(files * lines). The 7-check pattern is the structural defense
-      for the brief-anchored "public-surface constraint" — every Docker
-      artifact ships in a public template repository.
+      O(files * lines). The 9-check pattern (7 originally surfaced at M3
+      R1 + 2 extended at codify R1 per security-reviewer MED-1) is the
+      structural defense for the brief-anchored "public-surface
+      constraint" — every Docker artifact ships in a public template
+      repository.
     diff_lines: "+~180 -0"
     receipts:
       - "kailash-coc-rs commit a67758d: fix(docker): M3 R1 closure — README size accuracy + workflow path-filter + smoke tightening"
@@ -147,6 +165,7 @@ changes:
     review_recommendations:
       - "Suggested classification: COC tier — applies to every public-facing template"
       - "Consider cross-referencing rules/upstream-issue-hygiene.md MUST-2 (downstream context redaction in public surfaces) — this skill is the build-time enforcement counterpart to upstream-issue-hygiene's runtime-time enforcement"
-      - "The check (e) .dockerignore coverage list is currently hardcoded in the workflow; consider lifting to a manifest file (e.g., .claude/audit-fixtures/docker-disclosure-scrub/required-dockerignore.txt) so downstream consumers can extend without forking the skill prose"
+      - "The check (e) .dockerignore coverage list is currently hardcoded in the workflow; lift to a manifest file at .claude/audit-fixtures/docker-disclosure-scrub/required-dockerignore.txt at loom-side placement (per reviewer R1 MINOR observation) so downstream consumers can extend without forking the skill prose. Pairs with the existing loom audit-fixtures/ pattern per rules/hook-output-discipline.md MUST-4 + rules/cc-artifacts.md Rule 9."
+      - "Operator-host hostname strings: when authored at loom, the skill body MUST use `<operator-host-N>` placeholders per ci-runners.operator.local.example.md convention (NOT literal real-host strings). The literal strings that currently appear in docker-build.yml line 129 are a separate carry-forward concern — workflow scrub-to-placeholder lift is a separate follow-up issue against the rs template, NOT a blocker for this proposal."
 
 status: pending_review
