@@ -88,28 +88,46 @@ fi
 # --- GPG keyring bootstrap (FR-25) ------------------------------------------
 # If the user opted into the GPG side-mount in compose.override.yml
 # (`${HOME}/.gnupg:/host-gnupg:ro`), populate a fresh container-side ~/.gnupg
-# with ONLY the key material — never the host's UNIX socket/lock files.
+# from it — denylist-style: copy EVERYTHING except host UNIX sockets and lock
+# files. macOS-host gpg-agent uses platform-specific sockets that Linux
+# gpg-agent rejects with "General error" on startup; a direct mount of the
+# host's ~/.gnupg leaks those in and breaks signing silently. The side-mount
+# + selective copy crosses the macOS↔Linux gpg ABI gap cleanly: host keyring
+# is read-only at /host-gnupg (no container write to host); Linux gpg-agent
+# creates its own sockets in the writable container-side ~/.gnupg.
 #
-# Why this dance: macOS host gpg-agent uses platform-specific sockets that
-# Linux gpg-agent rejects with "General error" on startup; a direct mount of
-# the host's ~/.gnupg leaks those files in and breaks signing silently. The
-# side-mount + selective copy crosses the macOS↔Linux gpg ABI gap cleanly:
-# host keyring is read-only at /host-gnupg (no container write to host);
-# Linux gpg-agent creates its sockets in the writable container-side ~/.gnupg.
-#
-# Idempotent: re-runs refresh `private-keys-v1.d/` + `pubring.kbx` + trustdb
-# in case the user added a new key on the host between sessions.
+# Revocation-safe + version-drift-safe (sec-reviewer 176bd0b R1 closure):
+#   • PRUNE before copy so a key revoked on the host disappears from the
+#     container too — the prior additive-copy version silently kept revoked
+#     keys usable inside the container (HIGH finding).
+#   • Denylist (not allowlist) covers pubring.kbx (modern keybox) + pubring.gpg
+#     (legacy) + openpgp-revocs.d/ (auto-generated revocation certs) + tofu.db
+#     (Trust-On-First-Use) + gpg.conf + trustdb.gpg + any future GnuPG state
+#     without code edits (MEDIUM finding).
+#   • Real cp failures (disk-full, broken mount) are NOT silenced — only the
+#     missing-source case is tolerated (LOW finding; rules/zero-tolerance.md
+#     Rule 3 — no silent fallbacks).
 if [ -d /host-gnupg ]; then
-  echo "→ Bootstrapping GPG keyring (/host-gnupg → ~/.gnupg, sockets excluded)…"
+  echo "→ Bootstrapping GPG keyring (/host-gnupg → ~/.gnupg, sockets/locks excluded)…"
   GNUPGHOME="${GNUPGHOME:-$HOME/.gnupg}"
-  mkdir -p "$GNUPGHOME" && chmod 700 "$GNUPGHOME"
-  # Selective copy: key material only — NOT S.gpg-agent*, NOT .#lk* lock files.
-  [ -d /host-gnupg/private-keys-v1.d ] && cp -r /host-gnupg/private-keys-v1.d "$GNUPGHOME/" 2>/dev/null || true
-  [ -f /host-gnupg/pubring.kbx ]       && cp    /host-gnupg/pubring.kbx       "$GNUPGHOME/" 2>/dev/null || true
-  [ -f /host-gnupg/trustdb.gpg ]       && cp    /host-gnupg/trustdb.gpg       "$GNUPGHOME/" 2>/dev/null || true
-  [ -f /host-gnupg/gpg.conf ]          && cp    /host-gnupg/gpg.conf          "$GNUPGHOME/" 2>/dev/null || true
-  chmod -R go-rwx "$GNUPGHOME"
+  # Prune existing container-side material so host-side revocations propagate.
+  # The container-side ~/.gnupg is ephemeral (rebuilt on container recreate);
+  # within one container lifetime the prune-then-copy re-syncs on each setup.
+  rm -rf "$GNUPGHOME"
+  # Lock the directory mode BEFORE the copy so files are unreachable to
+  # group/other from the moment they land (no permissive-bits window).
+  ( umask 077 && mkdir -p "$GNUPGHOME" && chmod 700 "$GNUPGHOME" )
+  # Denylist copy via tar pipe — survives GnuPG version drift; cp errors
+  # are NOT silenced (set -e at the top of OVERLAYS_SH aborts on failure).
+  ( cd /host-gnupg \
+      && tar --exclude='S.gpg-agent*' --exclude='.#lk*' \
+             --exclude='./S.gpg-agent*' --exclude='./.#lk*' \
+             -cf - . \
+    ) | ( umask 077 && cd "$GNUPGHOME" && tar -xf - )
+  # GnuPG checks group/other bits on the secret-key + revocation subdirs
+  # specifically; pin them to 700 even when the parent is correct.
   [ -d "$GNUPGHOME/private-keys-v1.d" ] && chmod 700 "$GNUPGHOME/private-keys-v1.d"
+  [ -d "$GNUPGHOME/openpgp-revocs.d" ]  && chmod 700 "$GNUPGHOME/openpgp-revocs.d"
 fi
 OVERLAYS_EOF
 
