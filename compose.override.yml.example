@@ -31,19 +31,30 @@ services:
     #   - ${HOME}/.codex:/home/vscode/.codex
     #   - ${HOME}/.gemini:/home/vscode/.gemini
     #
-    # --- GPG commit-signing key (READ-ONLY mount — FR-25) --------------------
+    # --- GPG commit-signing key (READ-ONLY side-mount — FR-25) ---------------
     # Required when teammates make signed commits from inside the container.
-    # The key is never copied into a layer; mounted ro so the container cannot
-    # mutate the host's keyring. Pair with `GPG_TTY` (already exported in the
-    # base image) and the `pinentry-curses` non-interactive pinentry.
+    # The key is never copied into an IMAGE layer; the host's keyring is
+    # SIDE-mounted (NOT at /home/vscode/.gnupg) read-only, and `bin/dev setup`
+    # populates a fresh container-side `~/.gnupg` from it on first run.
     #
-    # TTY caveat: `GPG_TTY=/dev/console` in the image works for interactive
-    # `docker compose exec workspace bash` shells. For non-TTY one-shot calls
-    # (`docker compose exec -T`, CI) add `tty: true` below OR pass
+    # Why side-mount + copy (not direct mount): host gpg-agent and Linux
+    # gpg-agent use platform-specific UNIX socket files (e.g. `S.gpg-agent`).
+    # A direct `${HOME}/.gnupg:/home/vscode/.gnupg` mount leaks the host's
+    # socket files into the Linux agent's startup path — agent fails with
+    # `gpg: can't connect to the gpg-agent: General error`, and `git commit -S`
+    # SILENTLY FAILS. The side-mount carries the keyring files in read-only;
+    # `bin/dev setup` copies just the key material (`private-keys-v1.d/`,
+    # `pubring.kbx`, `trustdb.gpg`) into a fresh container-side `~/.gnupg`
+    # where the Linux agent can run cleanly. The host's keyring stays
+    # immutable from the container (`:ro` on the side mount).
+    #
+    # Pair with `GPG_TTY` (already exported in the base image) and the
+    # `pinentry-curses` non-interactive pinentry. For non-TTY one-shot calls
+    # (`docker compose exec -T`, CI) configure git to pass
     # `gpg --pinentry-mode loopback` so signing does not block on a missing
     # controlling terminal.
-    # tty: true
-    #   - ${HOME}/.gnupg:/home/vscode/.gnupg:ro
+    # volumes:
+    #   - ${HOME}/.gnupg:/host-gnupg:ro
     #
     # --- Per-project env overrides (in addition to anything in `.env`) -------
     # environment:

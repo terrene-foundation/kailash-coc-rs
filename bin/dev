@@ -38,6 +38,9 @@ ensure_env() {
 #   3. Ruby   overlay → /opt/gems FLAT layout (NFR-12; BUNDLE_PATH MUST be unset
 #      — verified live 2026-05-28, see journal/0009).
 #   4. npm    overlay → workspace node_modules (optional; runs only if package.json).
+#   5. GPG    keyring → container-side ~/.gnupg from /host-gnupg side-mount (FR-25;
+#      cross-platform host:Linux gpg-agent ABI gap — see compose.override.yml.example
+#      "GPG commit-signing key" block + journal/0012).
 read -r -d '' INSTALL_OVERLAYS_SH <<'OVERLAYS_EOF' || true
 set -e
 cd /workspace
@@ -80,6 +83,33 @@ if [ -f /workspace/package.json ]; then
   else
     ( cd /workspace && npm install --no-fund --no-audit )
   fi
+fi
+
+# --- GPG keyring bootstrap (FR-25) ------------------------------------------
+# If the user opted into the GPG side-mount in compose.override.yml
+# (`${HOME}/.gnupg:/host-gnupg:ro`), populate a fresh container-side ~/.gnupg
+# with ONLY the key material — never the host's UNIX socket/lock files.
+#
+# Why this dance: macOS host gpg-agent uses platform-specific sockets that
+# Linux gpg-agent rejects with "General error" on startup; a direct mount of
+# the host's ~/.gnupg leaks those files in and breaks signing silently. The
+# side-mount + selective copy crosses the macOS↔Linux gpg ABI gap cleanly:
+# host keyring is read-only at /host-gnupg (no container write to host);
+# Linux gpg-agent creates its sockets in the writable container-side ~/.gnupg.
+#
+# Idempotent: re-runs refresh `private-keys-v1.d/` + `pubring.kbx` + trustdb
+# in case the user added a new key on the host between sessions.
+if [ -d /host-gnupg ]; then
+  echo "→ Bootstrapping GPG keyring (/host-gnupg → ~/.gnupg, sockets excluded)…"
+  GNUPGHOME="${GNUPGHOME:-$HOME/.gnupg}"
+  mkdir -p "$GNUPGHOME" && chmod 700 "$GNUPGHOME"
+  # Selective copy: key material only — NOT S.gpg-agent*, NOT .#lk* lock files.
+  [ -d /host-gnupg/private-keys-v1.d ] && cp -r /host-gnupg/private-keys-v1.d "$GNUPGHOME/" 2>/dev/null || true
+  [ -f /host-gnupg/pubring.kbx ]       && cp    /host-gnupg/pubring.kbx       "$GNUPGHOME/" 2>/dev/null || true
+  [ -f /host-gnupg/trustdb.gpg ]       && cp    /host-gnupg/trustdb.gpg       "$GNUPGHOME/" 2>/dev/null || true
+  [ -f /host-gnupg/gpg.conf ]          && cp    /host-gnupg/gpg.conf          "$GNUPGHOME/" 2>/dev/null || true
+  chmod -R go-rwx "$GNUPGHOME"
+  [ -d "$GNUPGHOME/private-keys-v1.d" ] && chmod 700 "$GNUPGHOME/private-keys-v1.d"
 fi
 OVERLAYS_EOF
 
