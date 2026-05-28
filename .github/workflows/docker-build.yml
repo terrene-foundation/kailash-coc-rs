@@ -1,0 +1,199 @@
+# =============================================================================
+# Docker Build — multi-arch validation + disclosure gate (M3 — T14)
+# -----------------------------------------------------------------------------
+# Separate from validate.yml (structure-only). This workflow exercises the
+# Dockerfile + smoke-tests the built image + runs the FR-21 disclosure scrub
+# over committed Docker artifacts. The build IS the test (no published image).
+#
+# Arch matrix (per specs/ci-multiarch.md):
+#   - amd64 leg: NATIVE on `ubuntu-latest`, FAST, BLOCKING. The default PR gate.
+#   - arm64 leg: validated by Apple Silicon devs in their normal inner loop.
+#     A QEMU-emulated arm64 CI job is NOT in this workflow — it is slow and
+#     non-blocking by design. Add it under a separate `docker-build-arm64.yml`
+#     ONLY when an arm64 runner is provisioned or a periodic emulated build is
+#     wanted; do not add a QEMU job to this fast PR path.
+#
+# Path filter: only fires when Docker-relevant files change. Other PRs skip.
+# Concurrency: cancel-in-progress per rules/deploy-hygiene.md Rule 11 (build is
+# idempotent; superseded runs save CI minutes).
+# =============================================================================
+name: Docker Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "Dockerfile.user"
+      - "docker-compose.yml"
+      - ".dockerignore"
+      - ".devcontainer/**"
+      - "bin/dev"
+      - "requirements-user.txt"
+      - "Gemfile.user"
+      - "compose.override.yml.example"
+      - ".github/workflows/docker-build.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "Dockerfile.user"
+      - "docker-compose.yml"
+      - ".dockerignore"
+      - ".devcontainer/**"
+      - "bin/dev"
+      - "requirements-user.txt"
+      - "Gemfile.user"
+      - "compose.override.yml.example"
+      - ".github/workflows/docker-build.yml"
+
+concurrency:
+  group: docker-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  amd64-build:
+    name: Build + smoke (linux/amd64, native)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      IMG_TAG: kailash-coc-rs-workspace:ci-amd64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # Disclosure gate runs FIRST so a leak halts before we spend CI minutes
+      # on the build. Mirrors specs/credentials-secrets.md § FR-21 checklist.
+      - name: Disclosure scrub (FR-21 pre-build gate)
+        run: |
+          set -euo pipefail
+
+          M2_FILES=(
+            Dockerfile bin/dev docker-compose.yml .devcontainer/devcontainer.json
+            .dockerignore .gitignore .env.example
+            requirements-user.txt Gemfile.user Dockerfile.user
+            compose.override.yml.example
+          )
+
+          fail=0
+          echo "--- (a) operator-home leaks (non-comment, non-/home/vscode) ---"
+          for f in "${M2_FILES[@]}"; do
+            [ -f "$f" ] || continue
+            grep -HnE '/(Users|home)/[a-zA-Z0-9_.-]+/' "$f" 2>/dev/null \
+              | grep -vE '/home/vscode|/home/\$\{REMOTE_USER\}|/home/\$REMOTE_USER' \
+              | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' \
+              | grep -E '.' && fail=1 || true
+          done
+          [ $fail -eq 0 ] && echo "  CLEAN" || { echo "  ✗ operator-path leaks found"; exit 1; }
+
+          echo "--- (b) literal API-key shapes (excluding placeholder strings) ---"
+          for f in "${M2_FILES[@]}"; do
+            [ -f "$f" ] || continue
+            grep -HnE '(sk-[A-Za-z0-9_-]{15,}|ghp_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{30,}|eyJ[A-Za-z0-9._-]{60,}|AKIA[A-Z0-9]{16})' "$f" 2>/dev/null \
+              | grep -vE 'your-key-here|placeholder|EXAMPLE' \
+              && fail=1 || true
+          done
+          [ $fail -eq 0 ] && echo "  CLEAN" || { echo "  ✗ literal key shapes found"; exit 1; }
+
+          echo "--- (c) --build-arg with secret-shaped value ---"
+          for f in "${M2_FILES[@]}"; do
+            [ -f "$f" ] || continue
+            grep -HnE -- '--build-arg[[:space:]]+[A-Z_]*(KEY|TOKEN|SECRET|PASSWORD|API)=[^[:space:]"'"'"']' "$f" 2>/dev/null \
+              && fail=1 || true
+          done
+          [ $fail -eq 0 ] && echo "  CLEAN" || { echo "  ✗ secret build-arg found"; exit 1; }
+
+          echo "--- (d) COPY/ADD of secrets or host-config dirs ---"
+          for f in Dockerfile Dockerfile.user; do
+            [ -f "$f" ] || continue
+            grep -HnE '^(COPY|ADD)[[:space:]]+.*(\.env|\.claude/|\.codex/|\.gemini/|\.ssh/|\.gnupg/|secrets/)' "$f" 2>/dev/null \
+              && fail=1 || true
+          done
+          [ $fail -eq 0 ] && echo "  CLEAN" || { echo "  ✗ COPY/ADD of secrets found"; exit 1; }
+
+          echo "--- (e) .dockerignore coverage (mandatory items) ---"
+          for p in '.env' '**/.env' 'secrets/' '*.pem' '*.key' '.claude/learning/' 'workspaces/' 'compose.override.yml' '*.local' 'Gemfile.user.lock'; do
+            grep -qxF "$p" .dockerignore || { echo "  ✗ .dockerignore MISSING: $p"; fail=1; }
+          done
+          [ $fail -eq 0 ] && echo "  CLEAN" || exit 1
+
+          echo "--- (f) machine hostnames / operator identifiers ---"
+          for f in "${M2_FILES[@]}"; do
+            [ -f "$f" ] || continue
+            grep -HniE '(Jacks?-Mac|Esperies?-Mini|esperie-mac|operator-id|verified_id|person_id)' "$f" 2>/dev/null \
+              && fail=1 || true
+          done
+          [ $fail -eq 0 ] && echo "  CLEAN" || { echo "  ✗ machine/operator IDs found"; exit 1; }
+
+          echo "--- (g) GitHub org slugs beyond public allowlist ---"
+          for f in "${M2_FILES[@]}"; do
+            [ -f "$f" ] || continue
+            grep -HnE 'github\.com/[^/]+/' "$f" 2>/dev/null \
+              | grep -vE '(terrene-foundation|esperie|nodesource|microsoft|anthropic-ai|openai|google|modelcontextprotocol|devcontainers)' \
+              && fail=1 || true
+          done
+          [ $fail -eq 0 ] && echo "  CLEAN" || { echo "  ✗ unallowed org slug found"; exit 1; }
+
+          echo "✓ disclosure scrub passed (7/7)"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build slim default image (linux/amd64 native, slim — NO INCLUDE_ML, NO INCLUDE_RUST)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ${{ env.IMG_TAG }}
+          cache-from: type=gha,scope=docker-build-amd64
+          cache-to: type=gha,mode=max,scope=docker-build-amd64
+
+      - name: Smoke tests in built image (FR-02 + FR-03 + Rust-path assertion)
+        run: |
+          set -euo pipefail
+          IMG="${IMG_TAG}"
+
+          echo "--- (1) Rust-backed Python binding present + correct dist name ---"
+          docker run --rm "$IMG" python -c \
+            'import importlib.metadata as m, kailash; print("kailash-enterprise", m.version("kailash-enterprise"))'
+
+          echo "--- (2) Ruby gem installed (load attempt is informational — upstream ABI defect tracked) ---"
+          docker run --rm "$IMG" bash -lc \
+            'gem list kailash | head -1'
+
+          echo "--- (3) Three CLIs on PATH (FR-02) ---"
+          docker run --rm "$IMG" claude --version
+          docker run --rm "$IMG" codex  --version
+          docker run --rm "$IMG" gemini --version
+
+          echo "--- (4) Node + bundler resolvable, BUNDLE_PATH unset (NFR-12 invariant) ---"
+          docker run --rm "$IMG" bash -lc \
+            'node --version; which bundle; bundle --version; [ -z "${BUNDLE_PATH:-}" ] && echo "BUNDLE_PATH unset (OK)" || { echo "✗ BUNDLE_PATH leaked: $BUNDLE_PATH"; exit 1; }'
+
+          echo "--- (5) gnupg + pinentry present (FR-25 signing prereqs) ---"
+          docker run --rm "$IMG" bash -lc \
+            'gpg --version | head -1; which pinentry-curses'
+
+          echo "--- (6) Zero secrets in any image layer (transitive structural proof) ---"
+          docker history --no-trunc --format '{{.CreatedBy}}' "$IMG" \
+            | grep -iE '(API_KEY=|TOKEN=|SECRET=|PASSWORD=|sk-[A-Za-z0-9]{15,}|ghp_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{30,})' \
+            && { echo "✗ secret found in image layer"; exit 1; } \
+            || echo "  ✓ no secrets in any layer"
+
+          echo "✓ smoke tests passed"
+
+      - name: Image size budget (informational; NFR-03 target ~2.5GB documented, not promised)
+        run: |
+          set -euo pipefail
+          SIZE=$(docker image inspect "${IMG_TAG}" --format '{{.Size}}')
+          SIZE_MB=$(( SIZE / 1024 / 1024 ))
+          echo "slim image size: ${SIZE_MB} MB"
+          # No hard gate — NFR-03 is documented as a target, not a promise, per
+          # specs/base-image.md L44. CI surfaces the number; review can flag drift.

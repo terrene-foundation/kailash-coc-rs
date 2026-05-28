@@ -127,6 +127,87 @@ Hooks validate your environment on session start. Rules, skills, and specialist 
 
 ---
 
+## Run in Docker (alternative — one container, all three CLIs)
+
+If you do not want to install Python / Ruby / Node / the three CLIs on your host, run everything in a self-contained dev container instead. Same source-of-truth `.claude/`, same `/sync` flow, same per-CLI emissions — just shipped inside Docker.
+
+```bash
+# One command — builds the image (slim base, ~3 GB, ~10 min first time on Apple Silicon)
+# and drops you into a ready shell with all three CLIs + Python + Ruby + Postgres.
+./bin/dev
+
+# Inside the container — drive with any CLI:
+claude
+codex
+gemini
+```
+
+### What you get inside the container
+
+- **Three CLIs on `PATH`**: `claude` (Claude Code), `codex` (OpenAI Codex), `gemini` (Gemini CLI). Pinned to a major-line version (`@^2` / `@^0.134` / `@^0.43`).
+- **Kailash bindings**: `kailash-enterprise` Python wheel (`import kailash`) + `kailash` Ruby gem (subject to an upstream Ruby ABI defect — Python path is the working consumer today).
+- **Node 20 LTS** (the Gemini CLI runtime floor + the MCP guard runtime).
+- **PostgreSQL 16** wired to `DATABASE_URL` on the internal compose network (`postgres/postgres/kailash_dev` — throwaway, dev-only, not host-published).
+- **`gnupg` + `pinentry-curses`** for `git commit -S`.
+- **Single shared environment per language** (`/opt/venv` for Python, `/opt/gems` for Ruby) so the no-rebuild add-a-dep path lands in the same place the base bindings live.
+
+### Add a project dependency (no image rebuild)
+
+Edit one of the project-owned overlay files at the repo root — the template `/sync` never touches them:
+
+```bash
+# Python:           edit requirements-user.txt        → ./bin/dev setup → import works in same shell
+# Ruby:             edit Gemfile.user                 → ./bin/dev setup → require works in same shell
+# Node:             add package.json + (optional) package-lock.json
+# System (apt):     edit Dockerfile.user              → docker compose build → ./bin/dev (rebuild path)
+```
+
+No `sudo` inside the running container — OS-package work always goes through the rebuild path.
+
+### Authentication
+
+Two paths supported; pick either (or both):
+
+1. **API keys via `.env`** (headless / CI path). `bin/dev` copies `.env.example` → `.env` on first run; fill in `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` as needed. Keys arrive only at runtime — never baked into image layers (`docker history` reveals nothing).
+2. **Host login carry-in** (subscription / OAuth path). Copy `compose.override.yml.example` → `compose.override.yml` and uncomment the `${HOME}/.claude` / `${HOME}/.codex` / `${HOME}/.gemini` bind-mount lines. Existing host CLI sessions carry into the container; no fresh in-container OAuth needed.
+
+### Commit signing inside the container
+
+Uncomment the `${HOME}/.gnupg:/home/vscode/.gnupg:ro` line in `compose.override.yml` to carry your host GPG signing key in read-only. `GPG_TTY` is already exported in the image. For non-TTY one-shot invocations (CI, `docker compose exec -T`), see the `tty: true` / `gpg --pinentry-mode loopback` notes in the same file.
+
+### Opt-in heavy layers
+
+Both layers are excluded from the slim default image:
+
+```bash
+# Heavy ML/Align stack (torch / transformers / peft / trl; multi-GB):
+INCLUDE_ML=true docker compose build && ./bin/dev
+
+# Rust toolchain (cargo / rustc, for source-building bindings or SDK development):
+INCLUDE_RUST=true docker compose build && ./bin/dev
+
+# Both:
+INCLUDE_ML=true INCLUDE_RUST=true docker compose build && ./bin/dev
+```
+
+### Files
+
+| File                              | Owned by | Purpose                                                                        |
+| --------------------------------- | -------- | ------------------------------------------------------------------------------ |
+| `Dockerfile`                      | template | Slim base + Node 20 + 3 CLIs + bindings + gnupg + opt-in toggles               |
+| `docker-compose.yml`              | template | `workspace` + healthchecked `db` (internal-only)                               |
+| `.devcontainer/devcontainer.json` | template | Editor / Codespaces entry; delegates to the same service                       |
+| `bin/dev`                         | template | One-command entry + overlay-install setup script                               |
+| `.dockerignore`                   | template | Build-context hygiene + secrets / host-config exclusions                       |
+| `requirements-user.txt`           | project  | Your Python overlay (no-rebuild path)                                          |
+| `Gemfile.user`                    | project  | Your Ruby overlay (no-rebuild path)                                            |
+| `Dockerfile.user`                 | project  | Your apt overlay (rebuild path)                                                |
+| `compose.override.yml.example`    | project  | Copy to `compose.override.yml` for mounts / services / build-args (gitignored) |
+
+The `.github/workflows/docker-build.yml` CI workflow builds the slim image natively on `ubuntu-latest` (amd64), runs the smoke tests inside the built image, and runs the FR-21 disclosure scrub over every Docker artifact on every PR that touches the Docker surface. arm64 is validated by Apple Silicon developers in their normal inner loop (the same `./bin/dev` they run locally).
+
+---
+
 ## Repository Structure
 
 ```
