@@ -132,8 +132,9 @@ Hooks validate your environment on session start. Rules, skills, and specialist 
 If you do not want to install Python / Ruby / Node / the three CLIs on your host, run everything in a self-contained dev container instead. Same source-of-truth `.claude/`, same `/sync` flow, same per-CLI emissions — just shipped inside Docker.
 
 ```bash
-# One command — builds the image (slim base, ~3 GB, ~10 min first time on Apple Silicon)
-# and drops you into a ready shell with all three CLIs + Python + Ruby + Postgres.
+# One command — builds the slim image (~820 MB single-platform; ~10 min first
+# time on Apple Silicon) and drops you into a ready shell with all three CLIs +
+# Python + Ruby + Postgres.
 ./bin/dev
 
 # Inside the container — drive with any CLI:
@@ -145,7 +146,7 @@ gemini
 ### What you get inside the container
 
 - **Three CLIs on `PATH`**: `claude` (Claude Code), `codex` (OpenAI Codex), `gemini` (Gemini CLI). Pinned to a major-line version (`@^2` / `@^0.134` / `@^0.43`).
-- **Kailash bindings**: `kailash-enterprise` Python wheel (`import kailash`) + `kailash` Ruby gem (subject to an upstream Ruby ABI defect — Python path is the working consumer today).
+- **Kailash bindings**: `kailash-enterprise` Python wheel (`import kailash`) + `kailash` Ruby gem (Python is the recommended consumer today; the Ruby gem ships pending an upstream binary-compatibility fix).
 - **Node 20 LTS** (the Gemini CLI runtime floor + the MCP guard runtime).
 - **PostgreSQL 16** wired to `DATABASE_URL` on the internal compose network (`postgres/postgres/kailash_dev` — throwaway, dev-only, not host-published).
 - **`gnupg` + `pinentry-curses`** for `git commit -S`.

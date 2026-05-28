@@ -32,6 +32,7 @@ on:
       - "requirements-user.txt"
       - "Gemfile.user"
       - "compose.override.yml.example"
+      - ".env.example"
       - ".github/workflows/docker-build.yml"
   pull_request:
     branches: [main]
@@ -45,6 +46,7 @@ on:
       - "requirements-user.txt"
       - "Gemfile.user"
       - "compose.override.yml.example"
+      - ".env.example"
       - ".github/workflows/docker-build.yml"
 
 concurrency:
@@ -165,8 +167,10 @@ jobs:
             'import importlib.metadata as m, kailash; print("kailash-enterprise", m.version("kailash-enterprise"))'
 
           echo "--- (2) Ruby gem installed (load attempt is informational — upstream ABI defect tracked) ---"
+          # Use grep -q so an empty `gem list` (gem vanished from image) fails the test.
+          # head -1 alone exits 0 on empty input, hiding a regression.
           docker run --rm "$IMG" bash -lc \
-            'gem list kailash | head -1'
+            'gem list kailash | grep -q "^kailash " && gem list kailash | head -1'
 
           echo "--- (3) Three CLIs on PATH (FR-02) ---"
           docker run --rm "$IMG" claude --version
