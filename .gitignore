@@ -59,6 +59,12 @@ secrets/
 .claude/learning/
 .claude/rules/learned-instincts.md
 
+# Per-operator local identity + runtime telemetry (operator-local; NEVER committed/synced)
+# .claude/operator-id contains GPG verified_id fingerprint per multi-operator-coordination.md;
+# .claude/logs/ carries telemetry (coc-telemetry-autocommit.log etc.) per knowledge-convergence.md
+.claude/operator-id
+.claude/logs/
+
 # Internal docs (not for distribution)
 /docs/01-kailash-vibe-cc-internals/
 
