@@ -65,6 +65,19 @@ secrets/
 .claude/operator-id
 .claude/logs/
 
+# Operator-local deployment-value siblings (same disclosure class as .claude/operator-id).
+# Convention: <file>.operator.local.<ext> + <file>.local.<ext> hold deployment-specific
+# values (org slugs, runner hostnames, resolver path overrides). The paired
+# <file>.local.example.<ext> / <file>.operator.local.example.<ext> SCHEMAS stay tracked
+# — they are the operator-facing templates. Narrow per-dir patterns chosen so audit
+# fixtures under .claude/audit-fixtures/**/*.operator.local.* (intended-tracked) are
+# NOT over-ignored.
+.claude/rules/*.operator.local.md
+.claude/bin/*.local.json
+
+# CC worktree-isolation per-operator session state (one subdir per agent)
+.claude/worktrees/
+
 # Internal docs (not for distribution)
 /docs/01-kailash-vibe-cc-internals/
 
