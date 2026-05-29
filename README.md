@@ -143,6 +143,26 @@ codex
 gemini
 ```
 
+### Pull the prebuilt image (instead of building locally)
+
+Building locally with `./bin/dev` stays fully supported — but on tagged releases the
+same dev image is published multi-arch (amd64 + arm64) to one or more registries, so
+you can skip the first build and `docker pull` instead:
+
+```bash
+# Replace <registry-image> with whichever registry the maintainer publishes to,
+# e.g. ghcr.io/<owner>/kailash-coc-rs:<version>  or  docker.io/<ns>/kailash-coc-rs:<version>
+docker pull <registry-image>
+```
+
+Then run it with the same `docker-compose.yml` / `.env` / host-mount model as the
+local build. Publishing is release-gated (`.github/workflows/docker-publish.yml`, on
+`v*` tags); maintainers enable each registry by setting its repo variable + secrets
+(`DOCKERHUB_NAMESPACE` / `PRIVATE_REGISTRY` + the matching `*_USERNAME` / `*_TOKEN`;
+GHCR is on by default). **Note:** the Python binding (`import kailash`) works in the
+pulled image; the Ruby binding (`require "kailash"`) is pending an upstream fix
+(`kailash-rs#1151`) and is labelled `io.kailash.ruby-binding=blocked-upstream-kailash-rs-1151`.
+
 ### What you get inside the container
 
 - **Three CLIs on `PATH`**: `claude` (Claude Code), `codex` (OpenAI Codex), `gemini` (Gemini CLI). Pinned to a major-line version (`@^2` / `@^0.134` / `@^0.43`).
