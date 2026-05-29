@@ -137,10 +137,15 @@ jobs:
       - name: Layer-secret gate (no secrets in any layer)
         run: |
           set -euo pipefail
-          docker history --no-trunc --format '{{.CreatedBy}}' kailash-coc-rs:layer-gate \
-            | grep -iE '(API_KEY=|TOKEN=|SECRET=|PASSWORD=|sk-[A-Za-z0-9]{15,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9]{20,}|xox[baprs]-|glpat-|AIza[0-9A-Za-z_-]{30,}|ya29\.|BEGIN[ A-Z]*PRIVATE KEY)' \
-            && { echo "✗ secret found in an image layer — refusing to publish"; exit 1; } \
-            || echo "✓ no secrets in any layer"
+          # Capture FIRST so an absent/unloaded image (empty output) or a
+          # `docker history` error FAILS the gate — "scanned-clean" must be
+          # distinct from "did-not-scan" (sec-review HIGH-1).
+          out="$(docker history --no-trunc --format '{{.CreatedBy}}' kailash-coc-rs:layer-gate)"
+          [ -n "$out" ] || { echo "✗ docker history empty — image not built/loaded; refusing to publish"; exit 1; }
+          if printf '%s\n' "$out" | grep -iqE '(API_KEY=|TOKEN=|SECRET=|PASSWORD=|sk-[A-Za-z0-9]{15,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9]{20,}|xox[baprs]-|glpat-|AIza[0-9A-Za-z_-]{30,}|ya29\.|BEGIN[ A-Z]*PRIVATE KEY)'; then
+            echo "✗ secret found in an image layer — refusing to publish"; exit 1
+          fi
+          echo "✓ no secrets in any layer ($(printf '%s\n' "$out" | wc -l) layers scanned)"
 
       # --- Build multi-arch + push to ALL configured registries (one build) --
       - name: Build + push (amd64 + arm64) → all configured registries
@@ -156,9 +161,11 @@ jobs:
           cache-to: type=gha,mode=max,scope=docker-publish
 
       - name: Summary
+        env:
+          IMAGES: ${{ steps.refs.outputs.images }}
         run: |
           if [ "${DRY_RUN}" = "true" ]; then
             echo "DRY RUN — built multi-arch + passed layer-secret gate; pushed nothing."
           else
-            echo "Published to:"; echo "${{ steps.refs.outputs.images }}"
+            echo "Published to:"; printf '%s\n' "$IMAGES"
           fi
