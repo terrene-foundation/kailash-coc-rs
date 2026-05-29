@@ -94,11 +94,20 @@ RUN gem install bundler -v '~> 4.0' --no-document \
     && gem install "${KAILASH_RB_GEM}" --no-document
 
 # --- OPT-IN Rust toolchain (source builds / SDK-source dev only — ADR-03) ----
+# Install into out-of-home /opt/cargo + /opt/rustup so the toolchain is OWNED BY
+# and ON-PATH FOR the non-root `vscode` runtime user. A default rustup install as
+# root lands in /root/.cargo (unreadable + off-PATH for vscode) — the opt-in layer
+# would otherwise ship non-functional for the user the container runs as. (R2 M1 fix.)
+ENV CARGO_HOME=/opt/cargo \
+    RUSTUP_HOME=/opt/rustup
+ENV PATH="${CARGO_HOME}/bin:${PATH}"
 RUN if [ "${INCLUDE_RUST}" = "true" ]; then \
         curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal \
-            --default-toolchain stable; \
+            --default-toolchain stable --no-modify-path \
+        && "${CARGO_HOME}/bin/cargo" --version \
+        && "${CARGO_HOME}/bin/rustc" --version \
+        && chown -R "${REMOTE_USER}:${REMOTE_USER}" "${CARGO_HOME}" "${RUSTUP_HOME}"; \
     fi
-ENV PATH="/home/${REMOTE_USER}/.cargo/bin:${PATH}"
 
 # --- OPT-IN heavy ML/Align layer (torch-class, multi-GB — ADR-12) ------------
 # Dependency-agnostic: gated by the flag, not by a frozen package list.

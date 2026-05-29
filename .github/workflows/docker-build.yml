@@ -74,18 +74,26 @@ jobs:
         run: |
           set -euo pipefail
 
+          # README.md is template-owned and ships publicly — the largest prose
+          # surface, so it MUST be scanned (R2 H1 fix). The workflow file itself is
+          # intentionally NOT self-scanned: it carries the detection regexes as
+          # string literals (/Users/, sk-, ghp_, Jacks-Mac, …) which a
+          # grep-for-those-patterns scan would false-positive on every line; its
+          # safety is PR review + the fact that it holds only pattern literals,
+          # never real secrets or COPY directives.
           M2_FILES=(
             Dockerfile bin/dev docker-compose.yml .devcontainer/devcontainer.json
             .dockerignore .gitignore .env.example
             requirements-user.txt Gemfile.user Dockerfile.user
             compose.override.yml.example
+            README.md
           )
 
           fail=0
           echo "--- (a) operator-home leaks (non-comment, non-/home/vscode) ---"
           for f in "${M2_FILES[@]}"; do
             [ -f "$f" ] || continue
-            grep -HnE '/(Users|home)/[a-zA-Z0-9_.-]+/' "$f" 2>/dev/null \
+            grep -HnE '/(Users|home)/[a-zA-Z0-9_.-]+|~[a-z][a-zA-Z0-9_.-]*/|[A-Za-z]:\\Users\\' "$f" 2>/dev/null \
               | grep -vE '/home/vscode|/home/\$\{REMOTE_USER\}|/home/\$REMOTE_USER' \
               | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' \
               | grep -E '.' && fail=1 || true
@@ -95,7 +103,7 @@ jobs:
           echo "--- (b) literal API-key shapes (excluding placeholder strings) ---"
           for f in "${M2_FILES[@]}"; do
             [ -f "$f" ] || continue
-            grep -HnE '(sk-[A-Za-z0-9_-]{15,}|ghp_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{30,}|eyJ[A-Za-z0-9._-]{60,}|AKIA[A-Z0-9]{16})' "$f" 2>/dev/null \
+            grep -HnE '(sk-ant-[A-Za-z0-9_-]{15,}|sk-[A-Za-z0-9_-]{15,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{20}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{30,}|ya29\.[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9._-]{60,}|AKIA[A-Z0-9]{16}|-----BEGIN[ A-Z]*PRIVATE KEY-----)' "$f" 2>/dev/null \
               | grep -vE 'your-key-here|placeholder|EXAMPLE' \
               && fail=1 || true
           done
@@ -135,7 +143,7 @@ jobs:
           for f in "${M2_FILES[@]}"; do
             [ -f "$f" ] || continue
             grep -HnE 'github\.com/[^/]+/' "$f" 2>/dev/null \
-              | grep -vE '(terrene-foundation|esperie|nodesource|microsoft|anthropic-ai|openai|google|modelcontextprotocol|devcontainers)' \
+              | grep -vE 'github\.com/(terrene-foundation|esperie|nodesource|microsoft|anthropic-ai|openai|google|modelcontextprotocol|devcontainers)/' \
               && fail=1 || true
           done
           [ $fail -eq 0 ] && echo "  CLEAN" || { echo "  ✗ unallowed org slug found"; exit 1; }
@@ -187,7 +195,7 @@ jobs:
 
           echo "--- (6) Zero secrets in any image layer (transitive structural proof) ---"
           docker history --no-trunc --format '{{.CreatedBy}}' "$IMG" \
-            | grep -iE '(API_KEY=|TOKEN=|SECRET=|PASSWORD=|sk-[A-Za-z0-9]{15,}|ghp_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{30,})' \
+            | grep -iE '(API_KEY=|TOKEN=|SECRET=|PASSWORD=|sk-[A-Za-z0-9]{15,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9]{20,}|xox[baprs]-|glpat-|AIza[0-9A-Za-z_-]{30,}|ya29\.|BEGIN[ A-Z]*PRIVATE KEY)' \
             && { echo "✗ secret found in image layer"; exit 1; } \
             || echo "  ✓ no secrets in any layer"
 

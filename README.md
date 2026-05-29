@@ -174,7 +174,7 @@ Two paths supported; pick either (or both):
 
 ### Commit signing inside the container
 
-Uncomment the `${HOME}/.gnupg:/home/vscode/.gnupg:ro` line in `compose.override.yml` to carry your host GPG signing key in read-only. `GPG_TTY` is already exported in the image. For non-TTY one-shot invocations (CI, `docker compose exec -T`), see the `tty: true` / `gpg --pinentry-mode loopback` notes in the same file.
+Uncomment the `${HOME}/.gnupg:/host-gnupg:ro` **side-mount** line in `compose.override.yml`, then run `./bin/dev setup` — it populates a fresh container-side `~/.gnupg` from the read-only side-mount (copying key material, never the host's UNIX sockets). A direct `:/home/vscode/.gnupg` mount is deliberately NOT used: macOS and Linux gpg-agent use incompatible socket files, so a direct mount makes `git commit -S` fail silently (rationale in `compose.override.yml.example`). `GPG_TTY` is already exported in the image. For non-TTY one-shot invocations (CI, `docker compose exec -T`), see the `gpg --pinentry-mode loopback` notes in the same file.
 
 ### Opt-in heavy layers
 

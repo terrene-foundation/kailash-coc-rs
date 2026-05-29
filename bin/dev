@@ -42,7 +42,7 @@ ensure_env() {
 #      cross-platform host:Linux gpg-agent ABI gap — see compose.override.yml.example
 #      "GPG commit-signing key" block + journal/0012).
 read -r -d '' INSTALL_OVERLAYS_SH <<'OVERLAYS_EOF' || true
-set -e
+set -eo pipefail
 cd /workspace
 
 # `has_content` = at least one non-blank, non-comment line (pip-style overlays).
@@ -110,6 +110,16 @@ fi
 if [ -d /host-gnupg ]; then
   echo "→ Bootstrapping GPG keyring (/host-gnupg → ~/.gnupg, sockets/locks excluded)…"
   GNUPGHOME="${GNUPGHOME:-$HOME/.gnupg}"
+  # Destructive-op precondition (R2 M5 fix — sibling of git.md "reset --hard verify
+  # clean"): refuse to prune anything outside the container $HOME or any mountpoint,
+  # so a mis-set / inherited GNUPGHOME or a host-backed mount can never be rm -rf'd.
+  case "$GNUPGHOME" in
+    "$HOME"/*) : ;;
+    *) echo "✗ refusing to prune GNUPGHOME outside \$HOME: $GNUPGHOME" >&2; exit 1 ;;
+  esac
+  if command -v mountpoint >/dev/null 2>&1 && mountpoint -q "$GNUPGHOME" 2>/dev/null; then
+    echo "✗ refusing to prune a mounted GNUPGHOME: $GNUPGHOME" >&2; exit 1
+  fi
   # Prune existing container-side material so host-side revocations propagate.
   # The container-side ~/.gnupg is ephemeral (rebuilt on container recreate);
   # within one container lifetime the prune-then-copy re-syncs on each setup.
@@ -120,8 +130,10 @@ if [ -d /host-gnupg ]; then
   # Denylist copy via tar pipe — survives GnuPG version drift; cp errors
   # are NOT silenced (set -e at the top of OVERLAYS_SH aborts on failure).
   ( cd /host-gnupg \
-      && tar --exclude='S.gpg-agent*' --exclude='.#lk*' \
-             --exclude='./S.gpg-agent*' --exclude='./.#lk*' \
+      && tar --exclude='S.gpg-agent*' --exclude='./S.gpg-agent*' \
+             --exclude='S.dirmngr*'   --exclude='./S.dirmngr*' \
+             --exclude='S.scdaemon*'  --exclude='./S.scdaemon*' \
+             --exclude='.#lk*'        --exclude='./.#lk*' \
              -cf - . \
     ) | ( umask 077 && cd "$GNUPGHOME" && tar -xf - )
   # GnuPG checks group/other bits on the secret-key + revocation subdirs
@@ -142,6 +154,7 @@ case "${1:-up}" in
     if [ -f /.dockerenv ]; then
       bash -lc "$INSTALL_OVERLAYS_SH"
     else
+      ensure_env
       compose up -d
       setup_in_container
     fi
