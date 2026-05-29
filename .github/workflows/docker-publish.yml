@@ -160,6 +160,19 @@ jobs:
           cache-from: type=gha,scope=docker-publish
           cache-to: type=gha,mode=max,scope=docker-publish
 
+      # Keep the Docker Hub repo "overview" in sync with the in-repo source of
+      # truth on every publish (Docker Hub only; GHCR/private overviews are set
+      # elsewhere). Source: .github/DOCKERHUB-OVERVIEW.md.
+      - name: Sync Docker Hub overview (README → Hub repo description)
+        if: ${{ vars.DOCKERHUB_NAMESPACE != '' && env.DRY_RUN != 'true' }}
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ vars.DOCKERHUB_NAMESPACE }}/kailash-coc-rs
+          readme-filepath: ./.github/DOCKERHUB-OVERVIEW.md
+          short-description: "Multi-CLI (Claude Code/Codex/Gemini) dev env for the Kailash Rust SDK via Python+Ruby bindings."
+
       - name: Summary
         env:
           IMAGES: ${{ steps.refs.outputs.images }}
