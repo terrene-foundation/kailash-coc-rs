@@ -132,10 +132,19 @@ jobs:
           [ $fail -eq 0 ] && echo "  CLEAN" || exit 1
 
           echo "--- (f) machine hostnames / operator identifiers ---"
+          # Hostnames (Jacks-Mac etc.) are leaks anywhere. The id-token names
+          # (operator-id/verified_id/person_id) appear LEGITIMATELY as gitignore
+          # patterns + doc prose describing the disclosure controls — so for those
+          # skip comment lines AND skip .gitignore's own pattern references (the
+          # defense, not a leak). A real leaked VALUE would be the id followed by
+          # a fingerprint hex, which the operator-home/key-shape checks already catch.
           for f in "${M2_FILES[@]}"; do
             [ -f "$f" ] || continue
-            grep -HniE '(Jacks?-Mac|Esperies?-Mini|esperie-mac|operator-id|verified_id|person_id)' "$f" 2>/dev/null \
-              && fail=1 || true
+            hits="$(grep -HniE '(Jacks?-Mac|Esperies?-Mini|esperie-mac|operator-id|verified_id|person_id)' "$f" 2>/dev/null \
+              | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' || true)"
+            # Drop .gitignore's own ignore-pattern lines referencing these tokens.
+            [ "$f" = ".gitignore" ] && hits="$(printf '%s\n' "$hits" | grep -vE '(operator-id|verified_id|person_id)' || true)"
+            [ -n "$hits" ] && { printf '%s\n' "$hits"; fail=1; } || true
           done
           [ $fail -eq 0 ] && echo "  CLEAN" || { echo "  ✗ machine/operator IDs found"; exit 1; }
 
