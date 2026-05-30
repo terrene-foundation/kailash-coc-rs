@@ -113,7 +113,7 @@ cd my-project
 cp .env.example .env   # Fill in your API keys (Anthropic, OpenAI, or Google)
 
 # Install the Kailash Rust binding for your language
-pip install kailash-rs           # Python binding
+pip install kailash-enterprise   # Python binding (import kailash)
 # or
 gem install kailash              # Ruby binding
 
@@ -124,6 +124,108 @@ gemini              # Gemini CLI
 ```
 
 Hooks validate your environment on session start. Rules, skills, and specialist agents load automatically based on what you ask and which files you touch.
+
+---
+
+## Run in Docker (alternative — one container, all three CLIs)
+
+If you do not want to install Python / Ruby / Node / the three CLIs on your host, run everything in a self-contained dev container instead. Same source-of-truth `.claude/`, same `/sync` flow, same per-CLI emissions — just shipped inside Docker.
+
+```bash
+# One command — builds the slim image (~820 MB single-platform; ~10 min first
+# time on Apple Silicon) and drops you into a ready shell with all three CLIs +
+# Python + Ruby + Postgres.
+./bin/dev
+
+# Inside the container — drive with any CLI:
+claude
+codex
+gemini
+```
+
+### Pull the prebuilt image (instead of building locally)
+
+Building locally with `./bin/dev` stays fully supported — but on tagged releases the
+same dev image is published multi-arch (amd64 + arm64) to one or more registries, so
+you can skip the first build and `docker pull` instead:
+
+```bash
+# Replace <registry-image> with whichever registry the maintainer publishes to,
+# e.g. ghcr.io/<owner>/kailash-coc-rs:<version>  or  docker.io/<ns>/kailash-coc-rs:<version>
+docker pull <registry-image>
+```
+
+Then run it with the same `docker-compose.yml` / `.env` / host-mount model as the
+local build. Publishing is release-gated (`.github/workflows/docker-publish.yml`, on
+`v*` tags); maintainers enable each registry by setting its repo variable + secrets
+(`DOCKERHUB_NAMESPACE` / `PRIVATE_REGISTRY` + the matching `*_USERNAME` / `*_TOKEN`;
+GHCR is on by default). **Note:** the Python binding (`import kailash`) works in the
+pulled image; the Ruby binding (`require "kailash"`) is pending an upstream fix
+(`kailash-rs#1151`) and is labelled `io.kailash.ruby-binding=blocked-upstream-kailash-rs-1151`.
+
+### What you get inside the container
+
+- **Three CLIs on `PATH`**: `claude` (Claude Code), `codex` (OpenAI Codex), `gemini` (Gemini CLI). Pinned to a major-line version (`@^2` / `@^0.134` / `@^0.43`).
+- **Kailash bindings**: `kailash-enterprise` Python wheel (`import kailash`) + `kailash` Ruby gem (Python is the recommended consumer today; the Ruby gem ships pending an upstream binary-compatibility fix).
+- **Node 20 LTS** (the Gemini CLI runtime floor + the MCP guard runtime).
+- **PostgreSQL 16** wired to `DATABASE_URL` on the internal compose network (`postgres/postgres/kailash_dev` — throwaway, dev-only, not host-published).
+- **`gnupg` + `pinentry-curses`** for `git commit -S`.
+- **Single shared environment per language** (`/opt/venv` for Python, `/opt/gems` for Ruby) so the no-rebuild add-a-dep path lands in the same place the base bindings live.
+
+### Add a project dependency (no image rebuild)
+
+Edit one of the project-owned overlay files at the repo root — the template `/sync` never touches them:
+
+```bash
+# Python:           edit requirements-user.txt        → ./bin/dev setup → import works in same shell
+# Ruby:             edit Gemfile.user                 → ./bin/dev setup → require works in same shell
+# Node:             add package.json + (optional) package-lock.json
+# System (apt):     edit Dockerfile.user              → docker compose build → ./bin/dev (rebuild path)
+```
+
+No `sudo` inside the running container — OS-package work always goes through the rebuild path.
+
+### Authentication
+
+Two paths supported; pick either (or both):
+
+1. **API keys via `.env`** (headless / CI path). `bin/dev` copies `.env.example` → `.env` on first run; fill in `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` as needed. Keys arrive only at runtime — never baked into image layers (`docker history` reveals nothing).
+2. **Host login carry-in** (subscription / OAuth path). Copy `compose.override.yml.example` → `compose.override.yml` and uncomment the `${HOME}/.claude` / `${HOME}/.codex` / `${HOME}/.gemini` bind-mount lines. Existing host CLI sessions carry into the container; no fresh in-container OAuth needed.
+
+### Commit signing inside the container
+
+Uncomment the `${HOME}/.gnupg:/host-gnupg:ro` **side-mount** line in `compose.override.yml`, then run `./bin/dev setup` — it populates a fresh container-side `~/.gnupg` from the read-only side-mount (copying key material, never the host's UNIX sockets). A direct `:/home/vscode/.gnupg` mount is deliberately NOT used: macOS and Linux gpg-agent use incompatible socket files, so a direct mount makes `git commit -S` fail silently (rationale in `compose.override.yml.example`). `GPG_TTY` is already exported in the image. For non-TTY one-shot invocations (CI, `docker compose exec -T`), see the `gpg --pinentry-mode loopback` notes in the same file.
+
+### Opt-in heavy layers
+
+Both layers are excluded from the slim default image:
+
+```bash
+# Heavy ML/Align stack (torch / transformers / peft / trl; multi-GB):
+INCLUDE_ML=true docker compose build && ./bin/dev
+
+# Rust toolchain (cargo / rustc, for source-building bindings or SDK development):
+INCLUDE_RUST=true docker compose build && ./bin/dev
+
+# Both:
+INCLUDE_ML=true INCLUDE_RUST=true docker compose build && ./bin/dev
+```
+
+### Files
+
+| File                              | Owned by | Purpose                                                                        |
+| --------------------------------- | -------- | ------------------------------------------------------------------------------ |
+| `Dockerfile`                      | template | Slim base + Node 20 + 3 CLIs + bindings + gnupg + opt-in toggles               |
+| `docker-compose.yml`              | template | `workspace` + healthchecked `db` (internal-only)                               |
+| `.devcontainer/devcontainer.json` | template | Editor / Codespaces entry; delegates to the same service                       |
+| `bin/dev`                         | template | One-command entry + overlay-install setup script                               |
+| `.dockerignore`                   | template | Build-context hygiene + secrets / host-config exclusions                       |
+| `requirements-user.txt`           | project  | Your Python overlay (no-rebuild path)                                          |
+| `Gemfile.user`                    | project  | Your Ruby overlay (no-rebuild path)                                            |
+| `Dockerfile.user`                 | project  | Your apt overlay (rebuild path)                                                |
+| `compose.override.yml.example`    | project  | Copy to `compose.override.yml` for mounts / services / build-args (gitignored) |
+
+The `.github/workflows/docker-build.yml` CI workflow builds the slim image natively on `ubuntu-latest` (amd64), runs the smoke tests inside the built image, and runs the FR-21 disclosure scrub over every Docker artifact on every PR that touches the Docker surface. arm64 is validated by Apple Silicon developers in their normal inner loop (the same `./bin/dev` they run locally).
 
 ---
 
@@ -209,7 +311,7 @@ Do not hand-edit emitted files (`AGENTS.md`, `GEMINI.md`, `.codex/prompts/`, `.c
 
 This template targets downstream apps that consume the Kailash Rust SDK through bindings. You write:
 
-- **Python** — via `kailash-rs` wheels (PyO3 bindings)
+- **Python** — via `kailash-enterprise` wheels (PyO3 bindings)
 - **Ruby** — via the `kailash` gem (Magnus bindings)
 
 You do NOT write Rust in a project using this template. Rust lives in `esperie/kailash-rs` (the SDK source workspace), behind the binding layer. All skill code examples, test patterns, and rules in this template use Python or Ruby — never `cargo`, `use crate::`, or `#[derive]`.

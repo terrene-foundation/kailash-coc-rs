@@ -1,0 +1,35 @@
+# Dockerfile.user — PROJECT-OWNED OS/system-package overlay
+#                    (template /sync NEVER touches this)
+#
+# When to use this file
+# ---------------------
+# Only when your project needs APT packages (system libraries, native build
+# tools) inside the container. Language packages (pip / gem / npm) go through
+# the NO-REBUILD path via `requirements-user.txt` / `Gemfile.user` /
+# `package.json` + `./bin/dev setup`. Most projects never need this file —
+# try the no-rebuild path first.
+#
+# How to use this file
+# --------------------
+# Uncomment the body below and add your packages, then opt in by uncommenting
+# the matching block in `compose.override.yml` (see `compose.override.yml.example`
+# — it shows the `build.dockerfile: Dockerfile.user` switch). Rebuild with:
+#     docker compose build
+#     ./bin/dev
+#
+# Discipline
+# ----------
+# There is NO `sudo` in the running container (preserves the non-root design).
+# All `apt-get install` MUST happen here, at rebuild time, as `root` — then we
+# drop back to `vscode` for the runtime user.
+
+# --- Uncomment to enable: --------------------------------------------------
+#
+# FROM kailash-coc-rs-workspace
+# USER root
+# RUN apt-get update \
+#     && apt-get install -y --no-install-recommends \
+#            graphviz \
+#            libgmp-dev \
+#     && rm -rf /var/lib/apt/lists/*
+# USER vscode

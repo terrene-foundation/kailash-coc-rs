@@ -1,0 +1,24 @@
+# Gemfile.user — PROJECT-OWNED Ruby overlay (template /sync NEVER touches this)
+# (rs-template delta vs kailash-coc-py — Python templates have no Ruby overlay.)
+#
+# Add YOUR project's Ruby gems here using standard bundler DSL.
+#
+# After editing, run from the host:
+#     ./bin/dev setup
+# Gems install into the shared /opt/gems with the FLAT `Gem.path` layout, so
+# `ruby -e 'require "<your-gem>"'` works in the SAME shell — no image rebuild
+# and no `bundle exec` required.
+#
+# A `Gemfile.user.lock` is generated alongside this file on first install.
+# Commit it if you want reproducible builds across teammates (recommended for
+# application-shape projects); gitignore it if you prefer floating versions.
+#
+# OS / system packages (apt) → put them in `Dockerfile.user` (rebuild path).
+
+source "https://rubygems.org"
+
+# Examples (uncomment / extend as needed):
+#
+# gem "paint",  "~> 2.0"
+# gem "tzinfo"
+# gem "sequel", "~> 5.0"
