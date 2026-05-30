@@ -140,7 +140,7 @@ When launching ≥2 parallel agents whose worktrees touch the SAME sub-package, 
 
 ## Examples
 
-Codex lacks a native `codex_agent(...)` primitive; loom emits `.codex/prompts/specialist-<name>.md` per `.claude/agents/**/*.md`. Delegations below use natural-language worker subagent spawn (interactive Codex) paired with `/prompts:specialist-<name>` as the operating spec. Paths in this variant target the Rust BUILD repo (`kailash-rs`).
+Codex lacks a native `codex_agent(...)` primitive. OpenAI deprecated custom prompts 2026-05-28 (issue #385); repo-local `.codex/prompts/` is no longer loaded by Codex CLI 0.128+ (openai/codex#9848). loom still ships `.codex/prompts/specialist-<name>.md` per `.claude/agents/**/<name>.md` as on-disk operating-spec content; invoke by inline-cat injection via `bin/coc <phase> "$(cat .codex/prompts/specialist-<name>.md)\n\nTask: ..."` or by natural-language subagent spawn referencing the file path (interactive only). Paths in this variant target the Rust BUILD repo (`kailash-rs`).
 
 ### Quality Gates — Background Agent Pattern
 
@@ -265,7 +265,7 @@ Concurrent-operator capacity guidance — per-operator capacity bounded per-`ver
 See `.claude/guides/rule-extracts/coc-sync-landing.md` for BLOCKED-rationalizations, extended bash examples, origin post-mortem, MUST NOT clauses, and cross-rule relationships.
 
 
-Loom's `/sync-to-build` delivery MUST land on `main` BEFORE any other session work. Pairs with `.claude/hooks/coc-drift-warn.js` (SessionStart).
+Loom's `/sync-to-build` delivery MUST land on `main` BEFORE any other session work. Pairs with `.claude/hooks/multi-operator-sessionstart.js` (SessionStart).
 
 ## MUST Rules
 

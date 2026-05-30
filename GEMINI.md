@@ -279,7 +279,7 @@ Concurrent-operator capacity guidance — per-operator capacity bounded per-`ver
 See `.claude/guides/rule-extracts/coc-sync-landing.md` for BLOCKED-rationalizations, extended bash examples, origin post-mortem, MUST NOT clauses, and cross-rule relationships.
 
 
-Loom's `/sync-to-build` delivery MUST land on `main` BEFORE any other session work. Pairs with `.claude/hooks/coc-drift-warn.js` (SessionStart).
+Loom's `/sync-to-build` delivery MUST land on `main` BEFORE any other session work. Pairs with `.claude/hooks/multi-operator-sessionstart.js` (SessionStart).
 
 ## MUST Rules
 
