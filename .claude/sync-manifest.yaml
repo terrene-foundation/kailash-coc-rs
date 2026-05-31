@@ -159,6 +159,38 @@ multi_cli_overlays:
       # Consumer may add per-project overrides; reserved for future use.
       - .codex/local-config.toml
       - .gemini/local-settings.json
+    # F78 (#387): Docker / dev-container scaffold ships at /migrate time
+    # from the USE template's `consumer_template_owned:` set below, then
+    # is consumer-OWNED forever after. `/sync` MUST NEVER overwrite OR
+    # delete these — they are pulled-once-at-/migrate, then the consumer
+    # customizes them to their project's needs (build context, base
+    # image, port mappings, dev-shell tooling, etc.). Distinct from the
+    # `preserved:` block above (local overrides the consumer ADDS); this
+    # set is files the consumer ADAPTS from a USE-template-shipped
+    # default. Per ADR-10 in the rs USE template's project journal.
+    # Lang-overlay note: `consumer_template_owned` is the COMMON set
+    # (py + rs); the rs USE template additionally ships `Gemfile.user`
+    # (per F78/#387 — multi-language consumer support for Ruby app
+    # devs binding to kailash-rs); the py USE template MUST NOT
+    # distribute `Gemfile.user`. Enforced by the per-variant overlay
+    # filter in coc-sync Step 4.5/5/7 (see agent file).
+    consumer_template_owned:
+      - Dockerfile
+      - docker-compose.yml
+      - .devcontainer/devcontainer.json
+      - .dockerignore
+      - bin/dev
+      - requirements-user.txt
+      - Dockerfile.user
+      - compose.override.yml.example
+    # Variant overlay: paths in this list ship to the named variant
+    # template ONLY, on top of consumer_template_owned. F78 (#387):
+    # Gemfile.user is rs-only — Ruby app devs binding to kailash-rs;
+    # py templates do NOT receive it.
+    consumer_template_owned_variants:
+      rs:
+        - Gemfile.user
+      py: []
     # ─────────────────────────────────────────────────────────────
     # Post-distribute scaffold (multi-CLI USE templates only)
     # ─────────────────────────────────────────────────────────────
@@ -476,20 +508,22 @@ parity_enforcement:
   # Cross-CLI drift check — byte-identity on neutral-body + frontmatter
   # classification across every CLI emission of the same underlying
   # artifact. Syntactic-delegation tokens are scrubbed to avoid false
-  # positives (CC `Agent(` vs Codex `/prompts:specialist-<name>` vs
+  # positives (CC `Agent(` vs Codex inline-cat injection via bin/coc vs
   # Gemini `@specialist` are EXPECTED divergence, not drift). The
   # legacy `codex_agent(` token stays in the scrub list for backward
-  # compatibility while ternary py-codex / rs-codex overlays drain;
-  # new codex variants emit `/prompts:specialist-` exclusively per the
-  # 2026-05-15 deterministic shim landing (see
-  # .claude/bin/emit-cli-artifacts.mjs::emitCodexAgentPrompts).
+  # compatibility while ternary py-codex / rs-codex overlays drain.
+  # F79 migration CLOSED (Shard B R3): the legacy Codex prompts-deprecated
+  # token has been removed from the scrub list following the completion of
+  # the variant-overlay migration to inline-cat injection
+  # `"$(cat .codex/prompts/specialist-<name>.md)"` + bin/coc <phase>
+  # dispatcher (canonical Codex invocation path per F79 forest closure).
+  # A repo-wide grep for the deprecated invocation form returns zero matches.
   cross_cli_drift_audit:
     enabled: true
     compare_slots: ["neutral-body", "frontmatter.priority", "frontmatter.scope"]
     scrub_tokens:
       - "Agent("
       - "codex_agent("
-      - "/prompts:specialist-"
       - "@specialist"
       - "subagent_type"
       - "run_in_background"
@@ -808,6 +842,29 @@ tiers:
     - commands/release-claim.md
     # M0 whoami / operator-registration command (per architecture §8 A1):
     - commands/whoami.md
+    # M0 roster JSON Schema — data the substrate's hook consumers (roster-
+    # schema-validate.js, genesis-anchor-guard.js) load at runtime. Without
+    # this file at the consumer, validate() returns {valid:false} for every
+    # input, /whoami --register --enroll-genesis cannot validate any roster,
+    # and genesis-anchor-guard fail-closes every commit ("operators roster
+    # missing; trust root not established"). Coupling enforced structurally
+    # by emit.mjs::validateRosterSchemaCoupling (regression-lock per F67 /
+    # GH issue #379 / journal 0161). Path is the runtime-resolved location
+    # in roster-schema-validate.js:56-61; relocating requires touching
+    # every consumer of the path constant.
+    #
+    # CO-LOCATION INVARIANT (reviewer M2, journal 0162): the schema MUST
+    # live in the same tier as its hook consumers above (roster-schema-
+    # validate.js + genesis-anchor-guard.js auto-included via the
+    # `hooks/lib/**` + `hooks/**` globs in the coc tier). If the multi-
+    # operator substrate is ever promoted from `coc:` to a more
+    # universally-subscribed tier (e.g. `co:` per multi-operator-
+    # coordination.md F-series M9.x deferred-enrollment forest), the
+    # schema entry MUST move with it. V17 verifies tier-membership but
+    # does NOT verify tier-equality with consumers; co-location is
+    # operator-discipline-bound until a future validator codifies it
+    # (see forest item F69 — generalize V17 to hook⇔data coupling class).
+    - operators.roster.schema.json
     # M7 onboard surface (per M7 INTEGRATION-NOTES.md):
     - commands/onboard.md
     - skills/41-onboard/**
@@ -1769,6 +1826,23 @@ gitignore_additions:
   # lease IS the runtime-only signal of "an operator holds the codify
   # lock"; persisting it across clones would make the lease forgeable.
   - .claude/learning/codify-lease.json
+  # Telemetry autocommit log (per-clone runtime-generated; never synced
+  # via /sync). Surfaces as untracked drift every session if not gitignored
+  # at the consumer; trips SessionStart drift hooks as a false positive.
+  # GH #368 finding 2 — consumer drift evidence from rs USE-template-derived repos.
+  - .claude/logs/
+  # Journal-hook skip log (per-clone runtime-generated by the journal
+  # write-guard; never synced). Same drift-false-positive surface as
+  # .claude/logs/ above. GH #368 finding 2.
+  - "**/.journal-skipped.log"
+
+# Apply logic — sync-tier-aware.mjs reads `gitignore_additions:` and
+# idempotently merges the entries into each target template's `.gitignore`
+# via a managed block (markers: `# >>> coc:gitignore_additions ...` /
+# `# <<< coc:gitignore_additions <<<`). The block is byte-stable across
+# runs; lines OUTSIDE the markers are user-managed and never touched.
+# Re-runs with no manifest change produce action: "noop". GH #368
+# finding 1 landed; tests at .claude/test-harness/tests/sync-tier-aware.test.mjs.
 
 exclude:
   - learning/**
