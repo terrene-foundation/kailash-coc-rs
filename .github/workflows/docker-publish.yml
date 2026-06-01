@@ -39,9 +39,10 @@
 # COST FOOTPRINT (ci-runners §7/§10): tag-triggered (rare) + manual dispatch.
 #   ~15-25 min/run (amd64 native + arm64 via QEMU). No cron, no per-PR fire.
 #
-# F4 caveat: the image bakes the current Ruby binding, whose `require "kailash"`
-# is blocked upstream (kailash-rs#1151). Python binding works. Surfaced via the
-# `io.kailash.ruby-binding` OCI label + README so pullers see it.
+# Ruby binding: `require "kailash"` LOADS as of gem 4.3.1 (kailash-rs#1151 fat
+# gem) + the Dockerfile's Debian/Ubuntu libruby soname reconciliation. Both the
+# Python and Ruby bindings work. Surfaced via the `io.kailash.ruby-binding` OCI
+# label + README so pullers see the supported state.
 # =============================================================================
 name: Docker Publish
 
@@ -140,7 +141,7 @@ jobs:
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
           labels: |
             org.opencontainers.image.title=kailash-coc-rs dev environment
-            io.kailash.ruby-binding=blocked-upstream-kailash-rs-1151
+            io.kailash.ruby-binding=supported-gem-4.3.1-soname-reconciled
 
       # --- Defense-in-depth: build amd64 locally, prove zero secrets in layers
       #     BEFORE any push (gate). Structural guarantee already holds (no COPY

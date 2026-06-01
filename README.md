@@ -155,14 +155,15 @@ docker pull terrenefoundation/kailash-coc-rs:latest
 ```
 
 Then run it with the same `docker-compose.yml` / `.env` / host-mount model as the
-local build. **Note:** the Python binding (`import kailash`) works in the pulled
-image; the Ruby binding (`require "kailash"`) is pending an upstream fix
-(`kailash-rs#1151`) and is labelled `io.kailash.ruby-binding=blocked-upstream-kailash-rs-1151`.
+local build. Both bindings load in the pulled image: the Python binding
+(`import kailash`) and the Ruby binding (`require "kailash"`, via gem 4.3.1 +
+the image's libruby soname reconciliation), labelled
+`io.kailash.ruby-binding=supported-gem-4.3.1-soname-reconciled`.
 
 ### What you get inside the container
 
 - **Three CLIs on `PATH`**: `claude` (Claude Code), `codex` (OpenAI Codex), `gemini` (Gemini CLI). Pinned to a major-line version (`@^2` / `@^0.134` / `@^0.43`).
-- **Kailash bindings**: `kailash-enterprise` Python wheel (`import kailash`) + `kailash` Ruby gem (Python is the recommended consumer today; the Ruby gem ships pending an upstream binary-compatibility fix).
+- **Kailash bindings**: `kailash-enterprise` Python wheel (`import kailash`) + `kailash` Ruby gem ≥ 4.3.1 (`require "kailash"`). Both bindings load; the image reconciles the Debian/Ubuntu libruby soname so the precompiled Ruby native extension resolves at runtime.
 - **Node 20 LTS** (the Gemini CLI runtime floor + the MCP guard runtime).
 - **PostgreSQL 16** wired to `DATABASE_URL` on the internal compose network (`postgres/postgres/kailash_dev` — throwaway, dev-only, not host-published).
 - **`gnupg` + `pinentry-curses`** for `git commit -S`.
