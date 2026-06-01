@@ -90,8 +90,27 @@ RUN "${VIRTUAL_ENV}/bin/python" -c \
 # the `~> 4.0` major line so a future bundler-major bump cannot silently change
 # the verified flat-layout contract. The M2 overlay path (`Gemfile.user`) drives
 # bundle.
-RUN gem install bundler -v '~> 4.0' --no-document \
-    && gem install "${KAILASH_RB_GEM}" --no-document
+RUN set -eux; \
+    gem install bundler -v '~> 4.0' --no-document; \
+    # Pin the gem FLOOR to 4.3.1 — the first release that ships a per-Ruby-ABI
+    # fat gem (kailash-rs#1151). Below 4.3.1 the single precompiled .so links
+    # libruby-3.1 and is unloadable on this image's Ruby 3.2 regardless of the
+    # reconciliation below; the floor turns that into a loud build failure.
+    gem install "${KAILASH_RB_GEM}" -v '>= 4.3.1' --no-document; \
+    # Debian/Ubuntu soname reconciliation: the 4.3.1 fat-gem native ext links the
+    # vanilla-Ruby soname `libruby.so.X.Y`, but Debian/Ubuntu name the shared lib
+    # `libruby-X.Y.so.X.Y` (LIBRUBY_SO). Bridge with a symlink + ldconfig so the
+    # precompiled ext resolves libruby at load time. Arch-agnostic (amd64+arm64)
+    # via rbconfig. REMOVE when an upstream gem ships without the vanilla-soname
+    # NEEDED entry (tracked at kailash-rs#1151).
+    rubyabi="$(ruby -e 'print RbConfig::CONFIG["ruby_version"][/\d+\.\d+/]')"; \
+    archlibdir="$(ruby -e 'print RbConfig::CONFIG["archlibdir"]')"; \
+    libruby_so="$(ruby -e 'print RbConfig::CONFIG["LIBRUBY_SO"]')"; \
+    ln -sf "${archlibdir}/${libruby_so}" "${archlibdir}/libruby.so.${rubyabi}"; \
+    ldconfig; \
+    # Ruby-path assertion (parallel to the Python Rust-path assertion above): the
+    # binding must LOAD, not merely install. Fails the build loudly on regression.
+    ruby -e 'require "kailash"' && echo "ruby require \"kailash\" OK"
 
 # --- OPT-IN Rust toolchain (source builds / SDK-source dev only — ADR-03) ----
 # Install into out-of-home /opt/cargo + /opt/rustup so the toolchain is OWNED BY

@@ -183,11 +183,12 @@ jobs:
           docker run --rm "$IMG" python -c \
             'import importlib.metadata as m, kailash; print("kailash-enterprise", m.version("kailash-enterprise"))'
 
-          echo "--- (2) Ruby gem installed (load attempt is informational — upstream ABI defect tracked) ---"
-          # Use grep -q so an empty `gem list` (gem vanished from image) fails the test.
-          # head -1 alone exits 0 on empty input, hiding a regression.
-          docker run --rm "$IMG" bash -lc \
-            'gem list kailash | grep -q "^kailash " && gem list kailash | head -1'
+          echo "--- (2) Ruby Magnus binding LOADS (require, not just install) ---"
+          # 4.3.1 fat gem + the Dockerfile's libruby soname reconciliation make
+          # `require "kailash"` load on Ubuntu's Ruby 3.2. Assert the real load
+          # path, not `gem list` (which only proves the gem is on disk).
+          docker run --rm "$IMG" ruby -e \
+            'require "kailash"; puts "kailash gem loaded: #{Kailash.respond_to?(:constants)}"'
 
           echo "--- (3) Three CLIs on PATH (FR-02) ---"
           docker run --rm "$IMG" claude --version
