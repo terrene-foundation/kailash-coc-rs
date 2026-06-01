@@ -1,18 +1,57 @@
 # COC Sync Marker — kailash-coc-rs
-timestamp: 2026-06-01T07:15:00Z
+timestamp: 2026-06-01T13:16:36Z
 source: loom/.claude
-loom_sha: 1de1c41
-loom_version: 2.38.0
+loom_sha: e934018
+loom_version: 2.39.0
 variant: rs
-clis: [claude, codex, gemini]
+template_type: multi-cli
+clis: ["claude", "codex", "gemini"]
 stats:
-  content_synced_byte_equal: true
-  baseline_status: skip-headroom
-  preserved:
-    - CLAUDE.md
-    - README.md
+  copied: 1242
+  byte_verified: 1242
+  updated: 18
+  created: 4
+  deleted: 1
+  composed: 96          # rs variant overlays (slot + full) applied via compose/strip
+  preserved: 10         # CLAUDE.md + 9 consumer_template_owned scaffold files
+  obsoleted_purged: 0   # all obsoleted paths already absent
+  coc_obsoleted_entries: 47
+  baselines_emitted:
+    cc: 0               # CLAUDE.md preserved, not emitted
+    codex: 1            # AGENTS.md
+    gemini: 1           # GEMINI.md
+  baseline_emission_bytes:
+    block_cap_bytes: 61440
+    warn_cap_bytes: 32768
+    codex:
+      rules: 9
+      bytes: 54900
+      tier: WARN
+      headroom_bytes: 6540
+      headroom_pct: 10.64
+    gemini:
+      rules: 9
+      bytes: 54633
+      tier: WARN
+      headroom_bytes: 6807
+      headroom_pct: 11.08
   cli_artifacts:
-    codex: { prompts: emitted, skills: emitted }
-    gemini: { commands: emitted, skills: emitted, agents: emitted }
-  baselines_emitted: { cc: 0, codex: 0, gemini: 0 }   # headroom-floor BLOCK; prior baselines preserved
-  obsoleted_purge: variants-tree-confirmed-absent
+    codex:
+      prompts: 34       # 34 command-prompts + 21 agent-prompts = 55 files in prompts/
+      agent_prompts: 21
+      skills: 29
+    gemini:
+      commands: 34
+      skills: 29
+      agents: 21
+  codex_dispatcher:
+    bin_coc: true
+    per_phase_symlinks: 28
+  multi_cli_scaffold:
+    symlinks: 1         # .claude/codex-mcp-guard -> ../.codex-mcp-guard
+    manifest_distributed: true
+verify_overlays:
+  lang: rs
+  passing: 192
+  failing: 0
+disclosure_scan: clean   # 0 findings (scan-synced-disclosure --root)
