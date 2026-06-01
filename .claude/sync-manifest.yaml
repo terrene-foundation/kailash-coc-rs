@@ -73,6 +73,9 @@
 # Every artifact belongs to exactly one tier.
 # CC + CO + COC = global (synced to all targets).
 # Unlisted files default to COC (codegen, language-agnostic).
+# EXCEPTION — loom-only artifacts are declared POSITIVELY in the top-level
+# `loom_only:` stanza (F104) and are NEVER emitted to any target, overriding
+# the unlisted-defaults-to-COC behaviour. See `loom_only:` for the contract.
 
 # ─────────────────────────────────────────────────────────────────
 # Per-CLI emission exclusions  (v6 §7.3 Phase 3 Rule 2, option 2 — C6b)
@@ -585,15 +588,16 @@ tiers:
     - rules/probe-driven-verification.md
     - rules/journal.md
     - rules/zero-tolerance.md
-    # rules/terrene-naming.md + rules/independence.md moved to `coc` tier
-    # 2026-05-07 — Foundation-branding rules are not universal CO methodology;
-    # they belong with the Kailash-specific tier so the language-agnostic
-    # `base` USE templates (coc-base, coc-claude-base) do not enforce
-    # "Terrene Foundation" naming on non-Foundation downstream projects.
+    # rules/terrene-naming.md + rules/independence.md were moved to `coc` tier
+    # 2026-05-07, then removed from COC distribution 2026-05-31 (FB) —
+    # Foundation messaging governance, not COC; relocated to atelier
+    # Foundation-docs; obsoleted for downstream purge (see `obsoleted:` +
+    # journal/0184). Neither tier carries them now.
     - rules/git.md
     - rules/security.md
     - rules/agents.md
     - rules/worktree-isolation.md
+    - rules/governed-throughput.md
     - rules/artifact-flow.md
     - rules/rule-authoring.md
     - rules/specs-authority.md
@@ -661,12 +665,13 @@ tiers:
     - rules/knowledge-convergence.md
     - rules/user-flow-validation.md
   coc:
-    # Foundation-branding rules — moved from `co` tier 2026-05-07. These
-    # apply to Kailash/Foundation projects only; the language-agnostic
-    # `base` USE templates do not subscribe to `coc` and so do not ship
-    # these rules to non-Foundation downstream consumers.
-    - rules/terrene-naming.md
-    - rules/independence.md
+    # rules/terrene-naming.md + rules/independence.md — removed from COC
+    # distribution 2026-05-31 (FB) — Foundation messaging governance, not
+    # COC; relocated to atelier Foundation-docs; obsoleted for downstream
+    # purge (see `obsoleted:` below + journal/0184). Apache 2.0 imposes no
+    # obligations, so these were never license enforcement — their purpose
+    # was Terrene-internal brand/license-labeling/anti-derivative messaging,
+    # which is not a codegen-orchestration concern for non-Terrene consumers.
     # Multi-CLI orchestration agents (Phase E5, 2026-04-22; tier-classified 2026-05-06)
     # commands/cli-audit.md is in `co` tier above (added with posture.md).
     - agents/cli-orchestrator.md
@@ -677,16 +682,29 @@ tiers:
     - agents/quality/reviewer.md
     - agents/quality/gold-standards-validator.md
     - agents/quality/security-reviewer.md
-    - agents/open-source-strategist.md
+    # agents/open-source-strategist.md — removed from COC distribution 2026-05-31 (FB).
+    # The agent IS Terrene Foundation IP/open-core strategy (four-layer model,
+    # "Foundation owns all IP", EATP/Kailash open-vs-proprietary boundary,
+    # competitive positioning) — Foundation-specific governance, not a generic
+    # codegen-orchestration specialist. Shipping it gave non-Terrene consumers
+    # (RRPS/community) Terrene's strategic answers. Now loom-only (kept on disk
+    # for Terrene's own use, like agents/management/*). Obsoleted below for
+    # universal downstream purge. Receipt: journal/0184.
     - agents/testing/testing-specialist.md
     - agents/value-auditor.md
     - agents/implementation/build-fix.md
     - agents/implementation/pattern-expert.md
     - agents/implementation/tdd-implementer.md
     - agents/release/release-specialist.md
-    - agents/management/todo-manager.md
-    - agents/management/gh-manager.md
-    - agents/management/posture-auditor.md
+    # agents/management/{todo-manager,gh-manager,posture-auditor}.md — REMOVED
+    # from the coc tier 2026-06-01 (F104). They are loom-only management
+    # agents (CLAUDE.md "Management (loom-only, excluded from sync)") but were
+    # accidentally tier-listed here, so the cc file-copy path
+    # (sync-tier-aware.mjs::classifyFile) shipped them to cc consumers via
+    # tier_match — the fragile exclusion-by-omission F104 closes. They now
+    # live in the top-level `loom_only:` stanza (positive never-sync
+    # declaration); the mutual-exclusion validator (validate-emit.mjs check 8)
+    # blocks /sync if a loom_only path is ever re-added to a synced tier.
     - agents/frontend/**
     - agents/frameworks/dataflow-specialist.md
     - agents/frameworks/nexus-specialist.md
@@ -1055,10 +1073,12 @@ variants:
     rb: null
     prism: variants/prism/rules/zero-tolerance.md
     # rs + rb overlays removed 2026-05-01 (commits 7c4e7ed + 77b7cda — dead overlays).
-  # rules/independence.md + rules/terrene-naming.md — entries removed 2026-05-07.
-  # Both rules moved to coc tier + use_excluded; their per-language overlay
-  # files were declared use_obsoleted (lines below) and deleted from loom in
-  # the same cycle. Variants mapping retained for security.md only.
+  # rules/independence.md + rules/terrene-naming.md — variant-mapping entries
+  # removed 2026-05-07 (per-language overlays declared use_obsoleted + deleted
+  # from loom that cycle). The rules themselves were removed from COC
+  # distribution 2026-05-31 (FB) — Foundation messaging governance, not COC;
+  # relocated to atelier Foundation-docs; obsoleted for downstream purge (see
+  # `obsoleted:` + journal/0184). Variants mapping retained for security.md only.
   rules/security.md:
     py: null
     rs: variants/rs/rules/security.md
@@ -1782,6 +1802,60 @@ obsoleted:
   - .claude/skills/30-claude-code-patterns/artifact-design.md # why: skill audit 2026-05-09 (v2.29.0) — RESTRUCTURE 30 sub-file. Zero external references. Templates duplicated in actual existing artifacts. User-approved.
   - .claude/skills/30-claude-code-patterns/token-budget.md    # why: skill audit 2026-05-09 (v2.29.0) — RESTRUCTURE 30 sub-file. Zero external references. Token-cost numbers covered at high level in 30/SKILL.md. User-approved.
   - .claude/skills/management/             # why: residual stale skill in kailash-coc-claude-py only (rs/rb/prism don't ship it, loom doesn't ship it). Hollow frontmatter (no `description:` field) — surfaces as 0-char-description entry in CC skill listing, consuming slot without semantic value. Content is repo-maintainer notes for /sync /codify /inspect, not a semantic skill consumers should match against. Surfaced 2026-05-14 via coursewright skill-bloat audit. User-approved REMOVE.
+  - .claude/rules/terrene-naming.md         # why: removed from COC distribution 2026-05-31 (FB) — Foundation messaging governance (brand/terminology/license-labeling consistency), NOT a codegen-orchestration concern. Apache 2.0 imposes no obligations, so this was never license enforcement. Relocated to atelier Foundation-docs (separate repo). Universal purge so every consumer (incl. non-Terrene RRPS/community) drops its stale copy. Receipt: journal/0184. Supersedes the prior use_obsoleted entry (which purged USE templates + downstream only; this purges ALL targets).
+  - .claude/rules/independence.md           # why: removed from COC distribution 2026-05-31 (FB) — same disposition as terrene-naming.md above (Foundation no-commercial-coupling messaging governance, not COC). Relocated to atelier Foundation-docs. Universal purge. Receipt: journal/0184. Supersedes the prior use_obsoleted entry.
+  - .claude/agents/open-source-strategist.md # why: removed from COC distribution 2026-05-31 (FB) — the agent IS Terrene Foundation IP/open-core strategy (four-layer architecture, Foundation-owns-all-IP, EATP/Kailash open-vs-proprietary boundary, competitive positioning), not a generic codegen specialist. Shipping it gave non-Terrene consumers (RRPS/community) Terrene's strategic answers. Now loom-only (kept on disk like agents/management/*). Universal purge of the stale consumer copy. Receipt: journal/0184.
+  - .gemini/agents/open-source-strategist.md # why: paired Gemini emission of the open-source-strategist agent removed above (FB 2026-05-31). Agents emit to Gemini only (Codex has no agents surface); this purges the stale Gemini-side copy from every consumer. Receipt: journal/0184.
+  - .claude/agents/management/gh-manager.md      # why: loom-only management agent that LEAKED to cc consumers via the `coc` tier (the exact exclusion-by-omission F104 closes). F104 stops re-emission (loom_only:) but the stale `.claude/agents/management/gh-manager.md` copy persists on every consumer that synced during the leak window — this purges it. cc-path only (never shipped to codex/gemini per structural exclusion). Receipt: F104 / journal/0191.
+  - .claude/agents/management/posture-auditor.md # why: same as gh-manager above — loom-only trust-posture-state-audit agent that leaked to cc consumers via `coc`; loom_only: stops re-emission, this obsoleted entry purges the stale cc copy. cc-path only. Receipt: F104 / journal/0191.
+  - .claude/agents/management/todo-manager.md    # why: same as gh-manager above — loom-only management agent that leaked to cc consumers via `coc`; loom_only: stops re-emission, this obsoleted entry purges the stale cc copy. cc-path only. Receipt: F104 / journal/0191.
+  - .claude/variants/                       # why: loom-internal variant overlay tree (language × CLI slot bodies) — NEVER synced; its presence in ANY consumer is a sync-hygiene defect. Surfaced 2026-06-01 in kailash-coc-claude-rs (PUBLIC) as a 7-file tracked tree LEAKING operator-PII hostnames inline in variants/rs/rules/ci-runners.md. Direct git rm applied to claude-rs (cross-repo-authorized, journal/0198); this obsoleted entry drives the universal declarative purge so the never-synced tree is removed from EVERY consumer on next sync AND cannot re-introduce via a future sync bug. Receipt: journal/0198 + 0199.
+
+# ─────────────────────────────────────────────────────────────────
+# LOOM-ONLY — POSITIVE never-sync declaration (F104)
+# ─────────────────────────────────────────────────────────────────
+# Source-relative glob list (same shape as `obsoleted:` / `exclude:` —
+# bare paths WITHOUT the `.claude/` prefix; matched against the
+# manifest-relative path `agents/...`, `commands/...`, `skills/...`).
+#
+# A path matching any `loom_only:` glob is NEVER emitted to ANY target —
+# cc / codex / gemini across EVERY language axis (py / rs / rb / base).
+# This is the POSITIVE never-sync declaration F104 introduces to replace
+# the fragile exclusion-by-omission ("Unlisted files default to COC", line
+# ~75): a forgotten exclusion previously shipped a loom-only artifact to
+# all 30+ consumers (the PR #147 stale-file class). Declaring intent here
+# makes loom-only an asserted invariant rather than the absence of a tier
+# entry.
+#
+# Enforcement (both halves of the emission surface honour this list):
+#   - emit-cli-artifacts.mjs (codex / gemini): skips a matching source path
+#     for EVERY target, BEFORE tier classification.
+#   - sync-tier-aware.mjs (cc file-copy): classifies a matching path as
+#     `skip` with reason `loom_only`, BEFORE tier inclusion — a POSITIVE
+#     skip, not an accidental `no_tier_match`.
+#   - validate-emit.mjs check 8 (`loom-only-mutual-exclusion`): a loom_only
+#     path that is ALSO in a synced tier (co / coc / onboarding / ...) FAILS
+#     and BLOCKS /sync. A loom_only glob matching 0 on-disk files = WARN.
+#
+# COMPLEMENTS `obsoleted:` — does NOT replace it. `loom_only:` SUPPRESSES
+# loom-side emission (the artifact never leaves loom). `obsoleted:` drives
+# the DOWNSTREAM purge of any STALE copy already present in a consumer from
+# a prior cycle. A loom-only artifact that ever shipped (e.g.
+# open-source-strategist.md) needs BOTH: loom_only to stop re-emitting +
+# obsoleted to purge the existing stale copy. The 7 management agents never
+# shipped to codex/gemini (structural exclusion) and the 4 in `exclude:`
+# never shipped to cc; gh-manager/posture-auditor/todo-manager DID reach cc
+# consumers via the `coc` tier (the exact omission F104 closes — they are
+# removed from `coc` here so loom_only is their single source of truth).
+loom_only:
+  - agents/management/coc-sync.md       # why: Gate-2 distributor — loom-only orchestration; CLAUDE.md "Management (loom-only, excluded from sync)".
+  - agents/management/sync-reviewer.md  # why: Gate-1 BUILD-repo review/classify — loom-only orchestration.
+  - agents/management/repo-ops.md       # why: cross-repo inspection / drift / bulk git — loom-only orchestration.
+  - agents/management/settings-manager.md # why: Claude Code settings across global/project — loom-only orchestration.
+  - agents/management/posture-auditor.md  # why: trust-posture state audit — loom-only. Was accidentally in `coc` tier (synced to cc consumers); removed from `coc` at F104 so loom_only is the single source of truth.
+  - agents/management/todo-manager.md     # why: loom-only management agent. Was accidentally in `coc` tier (synced to cc consumers); removed from `coc` at F104.
+  - agents/management/gh-manager.md       # why: loom-only management agent. Was accidentally in `coc` tier (synced to cc consumers); removed from `coc` at F104.
+  - agents/open-source-strategist.md      # why: Terrene Foundation open-core strategy (four-layer model, Foundation-owns-all-IP, EATP/Kailash open-vs-proprietary boundary). loom-only per FB 2026-05-31 (journal/0184). Paired `obsoleted:` entries purge the stale consumer + Gemini copies.
 
 # ─────────────────────────────────────────────────────────────────
 # EXCLUSIONS
@@ -1836,6 +1910,38 @@ gitignore_additions:
   # .claude/logs/ above. GH #368 finding 2.
   - "**/.journal-skipped.log"
 
+# FA (2026-05-31) — Visibility-conditional gitignore additions.
+# These patterns are applied to a consumer's `.gitignore` ONLY when the
+# consumer declares `visibility: public` in its `.coc-sync-marker` (the
+# DEFAULT — see `.coc-sync-marker` § visibility below). They keep a
+# PUBLIC repo from committing operator-local session state + active
+# workspace working-notes (which are never synced CONTENT — sync walks
+# .claude/ only — but ARE created locally as a consumer works).
+#
+# Private/team consumers (`visibility: private`) do NOT receive these
+# entries → they TRACK session-notes + workspaces by default (shared
+# team institutional knowledge, mirroring loom itself), with opt-out via
+# `visibility_opt_out: [session-notes|workspaces]` in their marker.
+#
+# `_template` carve-out (load-bearing): `workspaces/_template/**` IS
+# synced content (tier: coc) and is git-tracked in every consumer — the
+# phase-scaffold. The `/workspaces/*` + `!/workspaces/_template/` pair
+# ignores ACTIVE workspaces while preserving the tracked scaffold. A
+# blanket `workspaces/` would untrack the scaffold on every public
+# consumer. Co-owner directive 2026-05-31: "public definitely no session
+# notes and workspaces"; receipt journal/0185.
+visibility_gitignore_additions:
+  public:
+    # Operator-local session continuity — per-clone, never synced.
+    - .session-notes
+    - .session-notes.d/
+    - .session-notes.shared.md
+    # Active workspace working-state — ignore all EXCEPT the tracked
+    # _template scaffold (synced content). Order matters: the negation
+    # MUST follow the broad ignore so git re-includes _template.
+    - /workspaces/*
+    - "!/workspaces/_template/"
+
 # Apply logic — sync-tier-aware.mjs reads `gitignore_additions:` and
 # idempotently merges the entries into each target template's `.gitignore`
 # via a managed block (markers: `# >>> coc:gitignore_additions ...` /
@@ -1843,6 +1949,12 @@ gitignore_additions:
 # runs; lines OUTSIDE the markers are user-managed and never touched.
 # Re-runs with no manifest change produce action: "noop". GH #368
 # finding 1 landed; tests at .claude/test-harness/tests/sync-tier-aware.test.mjs.
+# FA: when the consumer's marker visibility == "public", the
+# visibility_gitignore_additions.public[] entries are appended to the
+# managed block (minus any path in the marker's visibility_opt_out[]).
+# Default visibility is "public" (fail-safe: a marker with no visibility
+# field, or no marker at all, ignores its session state rather than
+# risking a public commit of operator-local notes).
 
 exclude:
   - learning/**
