@@ -16,14 +16,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notify Discord
-        run: |
-          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
-            PR="${{ github.event.pull_request.number }}"
-            TITLE="${{ github.event.pull_request.title }}"
-            REPO="${{ github.repository }}"
-            curl -s -H "Content-Type: application/json" \
-              -d "{\"embeds\":[{\"title\":\"[COC-SYNC PR #${PR}] ${TITLE}\",\"url\":\"https://github.com/${REPO}/pull/${PR}\",\"color\":3447003,\"description\":\"COC sync from BUILD repo — awaiting admin review.\"}]}" \
-              "$DISCORD_WEBHOOK_URL" || true
-          fi
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            payload=$(jq -n \
+              --arg t "[COC-SYNC PR #${PR_NUMBER}] ${PR_TITLE}" \
+              --arg url "https://github.com/${REPO}/pull/${PR_NUMBER}" \
+              '{embeds:[{title:$t,url:$url,color:3447003,description:"COC sync from BUILD repo — awaiting admin review."}]}')
+            curl -s -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL" || true
+          fi
