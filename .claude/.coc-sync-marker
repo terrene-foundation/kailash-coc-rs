@@ -1,45 +1,60 @@
 # COC Sync Marker — kailash-coc-rs
 visibility: public
-timestamp: 2026-06-10T04:30:00Z
+timestamp: 2026-06-10T15:40:56Z
 source: loom/.claude
-loom_sha: b8b3d1a
+loom_sha: 3880c5f
 loom_version: "2.39.0"
-template_version: 2.23.2
+pre_sync_version: 2.23.2
+template_version: 2.23.3
 variant: rs
 template_type: multi-cli
 clis: ["claude", "codex", "gemini"]
-operation: re-emit-multi-cli-trees-current-to-b8b3d1a
+operation: full-sync-rs-loom-2.39.0-3880c5f
 note: >
-  Follow-up to the 2026-06-10 /sync py+rs+base redistribution (loom@1daa45b
-  prior marker), which refreshed .claude/-content but did NOT re-run the
-  multi-CLI emit (Step 6.5/6.6/4.6). This cycle re-emits the per-CLI trees
-  from current loom HEAD b8b3d1a, AND flips this marker from the residual
-  JSON shape to the canonical YAML schema (Step 9 known-drift directive).
-  EMPIRICAL RESULT: baselines (AGENTS.md/GEMINI.md) byte-IDENTICAL — no
-  change. CLI trees stale in exactly ONE file per CLI —
-  codex/skills/rules-reference/SKILL.md + gemini/skills/rules-reference/
-  SKILL.md — reflecting the self-referential-codify.md paths: addition of
-  `tools/verify-overlays.sh` (loom commit c01a06d). Distributed
-  .claude/sync-manifest.yaml refreshed (manifest_distribute:true) to pick
-  up the journal/0250 multi-operator-substrate coc->co tier reclassification.
+  /sync rs Gate 2 (template 2/2: kailash-coc-rs, multi-CLI) from loom 2.39.0
+  @ 3880c5f (PR #479 / issue #477): extended BUILD-internal strip pattern set
+  (monorepo sub-packages + trailing-slash forms strip at write time) + 45
+  rs-lane variant_only -> variants: REPLACEMENT reclassifications. The rs lane
+  REGAINS skills/18-security-patterns/SKILL.md overlay dropped by a pre-#477
+  duplicate-variants-key bug (R1 reviewer MED). CONTENT CHANGE: 18-security
+  SKILL replaced generic global (9563 B, sha 0429d35) with rs overlay (11287 B,
+  sha baba7e38, 'Kailash Rust security ... Hardcoded secrets BLOCKED'), +1724 B.
+  Gate 1 SKIPPED (proposal status: distributed). Receipts: loom journal/0262 + 0263.
 stats:
-  cli_trees_changed: true
-  files_changed: 3        # codex rules-reference SKILL.md + gemini rules-reference SKILL.md + distributed sync-manifest.yaml
+  copied: 1151
+  verified: 1151          # 41 content-equal after BUILD-internal strip, 1110 byte-equal
+  stripped: 41
+  variant_only: 164       # byte-verified 164/164
+  overlays: 141           # variants: REPLACEMENT, byte-verified 141/141
+  rename: 1               # python-version-bump.md -> rust-version-bump.md
+  purged: 0
+  preserved: 1            # CLAUDE.md (template-owned)
+  skipped: { loom_local: 2, exclude: 865, use_exclude: 29, no_tier_match: 43 }
+  content_change:
+    file: .claude/skills/18-security-patterns/SKILL.md
+    before_bytes: 9563
+    before_sha256: "0429d35be48a38e0ea3eeaa8ef3b9e401ddd546345b636abd6d98cada3297bbf"
+    after_bytes: 11287
+    after_sha256: "baba7e38a2ab094cd4f165b0f8397c4761fbb5bd0312a8e2f5a8e9b180608736"
+    delta_bytes: 1724
   baselines_emitted:
-    cc: 0                 # CLAUDE.md preserved, not emitted
-    codex: 0              # AGENTS.md byte-identical to prior emit — not rewritten
-    gemini: 0             # GEMINI.md byte-identical to prior emit — not rewritten
-  baseline_emission_bytes:    # measured this cycle, strict-headroom PASS (default mode, exit 0)
+    cc: 0                  # CLAUDE.md preserved, not emitted
+    codex: 1               # AGENTS.md re-emitted (51853 B)
+    gemini: 1              # GEMINI.md re-emitted (51586 B)
+  baseline_emission_bytes:    # strict-headroom default, exit 0 (no floor breach; floor 10%)
     block_cap_bytes: 61440
     warn_cap_bytes: 32768
     codex:  { rules: 9, bytes: 51853, tier: WARN, headroom_bytes: 9587, headroom_pct: 15.60 }
     gemini: { rules: 9, bytes: 51586, tier: WARN, headroom_bytes: 9854, headroom_pct: 16.04 }
-  cli_artifacts:              # measured on-disk this cycle (emitter-owned trees)
-    codex:  { prompts: 55, skills: 31 }   # prompts = 34 commands + 21 agent-prompts; skills incl. rules-reference
-    gemini: { commands: 34, skills: 31, agents: 21 }
+  cli_artifacts:              # emitter-owned trees (emit-cli-artifacts --target rs, tier-filtered [cc,co,coc])
+    codex:  { prompts: 34, agent_prompts: 21, skills: 30, rules_reference: 1 }
+    gemini: { commands: 34, skills: 30, agents: 21, rules_reference: 1 }
   scaffold:
-    symlinks: 1           # .claude/codex-mcp-guard -> ../.codex-mcp-guard (verified OK)
+    symlinks: 1            # .claude/codex-mcp-guard -> ../.codex-mcp-guard (verified OK)
     manifest_distributed: true
-    bin_coc: true         # bin/coc present (unchanged)
-  sdk_pins: no_delta      # no Cargo.toml at target; requirements-user.txt + Gemfile.user are consumer-owned scaffold (F78)
-  headroom_floor_violations: []   # strict-headroom gate PASS (lowest 15.60% > 10% Risk-0004 floor)
+    bin_coc: true          # bin/coc + 28 per-phase symlinks (install -m 0755 atomic)
+  consumer_owned_preserved: 9   # F78: Dockerfile, docker-compose.yml, .devcontainer/, .dockerignore, bin/dev, requirements-user.txt, Dockerfile.user, compose.override.yml.example, Gemfile.user — all sha256-unchanged
+  verify_overlays: { lang: rs, passing: 610, failing: 0 }   # both rs templates, gate GREEN
+  sdk_pins: no_delta      # no Cargo.toml at target (multi-CLI downstream); kailash-rs 4.4.0 unchanged; cargo check n/a
+  hook_integrity: "28/28 settings.json hooks present; 0 stale scripts/hooks; 0 operator-PII path tokens"
+  headroom_floor_violations: []
