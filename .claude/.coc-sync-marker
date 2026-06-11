@@ -1,41 +1,28 @@
 # COC Sync Marker — kailash-coc-rs
 visibility: public
-timestamp: 2026-06-11T01:58:28Z
+timestamp: 2026-06-11T10:30:23Z
 source: loom/.claude
-loom_sha: 57c88cc
-loom_version: 2.40.0
+loom_sha: bbfa970
+loom_version: 2.41.0
 variant: rs
-template_type: multi-cli
 clis: ["claude", "codex", "gemini"]
 stats:
-  copied: 1152
+  copied: 1153
   variant_only: 164
-  overlays_applied: 141
-  stripped: 41
+  overlays: 141
+  composed: 0
+  preserved: 1   # CLAUDE.md
   purged: 0
-  preserved: ["CLAUDE.md", "Gemfile.user", "Docker/dev-container scaffold (F78)", ".codex/local-config.toml", ".gemini/local-settings.json", "settings.local.json", "learning/", ".proposals/", ".env"]
+  skipped: { loom_local: 2, exclude: 869, use_exclude: 29, no_tier_match: 43 }
   baselines_emitted: { cc: 0, codex: 1, gemini: 1 }
   baseline_emission_bytes:
     block_cap_bytes: 61440
     warn_cap_bytes: 32768
-    codex:  { rules: 9, bytes: 51853, tier: WARN, headroom_bytes: 9587, headroom_pct: 15.60 }
+    codex: { rules: 9, bytes: 51853, tier: WARN, headroom_bytes: 9587, headroom_pct: 15.60 }
     gemini: { rules: 9, bytes: 51586, tier: WARN, headroom_bytes: 9854, headroom_pct: 16.04 }
   cli_artifacts:
-    codex:  { prompts: 55, skills: 31 }
-    gemini: { commands: 34, skills: 31, agents: 21 }
-  codex_dispatcher: "bin/coc + 28 phase symlinks"
-  mcp_guard: { policies_populated: false }
-fsub_delta:
-  - .claude/hooks/lib/coc-emit.js (new)
-  - .claude/hooks/lib/codify-lease.js
-  - .claude/hooks/lib/coordination-log.js
-  - .claude/hooks/lib/journal-body-anchor.js
-  - .claude/hooks/lib/journal-reserve.js
-  - .claude/hooks/lib/operator-id.js (full-diff carry)
-  - .claude/commands/codify.md
-  - .claude/commands/journal.md
-  - .claude/rules/knowledge-convergence.md
-  - .claude/rules/self-referential-codify.md
-verify_overlays: "610/610 Failing:0"
-hooks_resolve: "38/38"
-sdk_pins: "kailash-rs 4.4.0 CURRENT vs BUILD; no drift"
+    codex: { prompts: 55, skills: 32 }
+    gemini: { commands: 34, skills: 32, agents: 21 }
+  codex_dispatcher: { bin_coc: 1, phase_symlinks: 28 }
+  sdk_pins_changed: { kailash-rs: "4.4.0 -> 4.5.0" }
+headline: "NEW skill 36-claude-managed-agents (CMA hosted-harness integration reference)"
