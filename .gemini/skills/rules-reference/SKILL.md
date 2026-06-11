@@ -58,7 +58,7 @@ A path-scoped rule you have not read is a rule you are not honoring.
 | Rule Authoring Meta-Rule | `**/.claude/rules/**`, `**/.claude/variants/**/rules/**` | `.claude/rules/rule-authoring.md` |
 | Schema & Data Migration Rules | `**/migrations/**`, `**/db/**`, `**/*.sql`, `**/models.py`, `**/schema.py`, `**/dataflow/**`, `**/*.py`, `**/*.rb` | `.claude/rules/schema-migration.md` |
 | Self-Referential /codify Discipline | `.claude/commands/**`, `.claude/rules/**`, `.claude/skills/**`, `.claude/hooks/**`, `.claude/bin/**`, `.claude/agents/management/**`, `.claude/audit-fixtures/**`, `.claude/sync-manifest.yaml`, `.claude/codex-mcp-guard/**`, `tools/verify-overlays.sh` | `.claude/rules/self-referential-codify.md` |
-| Spec Accuracy Rules | `**/specs/**`, `**/specs/_index.md`, `**/workspaces/**/specs/**`, `**/02-plans/**`, `**/briefs/**` | `.claude/rules/spec-accuracy.md` |
+| Spec Accuracy Rules | `**/specs/**`, `**/specs/_index.md`, `**/workspaces/**/specs/**`, `**/02-plans/**`, `**/briefs/**`, `**/README*.md`, `**/docs/**`, `**/skills/**/*.md` | `.claude/rules/spec-accuracy.md` |
 | Specs Authority Rules | `**/specs/**`, `**/specs/_index.md`, `**/workspaces/**`, `**/briefs/**`, `**/02-plans/**`, `**/todos/**` | `.claude/rules/specs-authority.md` |
 | State-File Write Guard — Validator-Driven Deploy Claims | `deploy/**`, `**/.last-deployed-*`, `**/.last-smoke-result-*`, `**/.last-interactions-smoke-result-*`, `**/state-file-write-guard.*`, `**/validate-state-file.*`, `**/post-deploy-smoke.*` | `.claude/rules/state-file-write-guard.md` |
 | Sweep / Multi-Step Protocol Completeness | `.claude/commands/sweep.md`, `.claude/commands/redteam.md`, `.claude/commands/codify.md`, `.claude/commands/wrapup.md`, `.claude/commands/cc-audit.md`, `.claude/commands/cli-audit.md`, `.claude/commands/i-audit.md`, `.claude/commands/i-harden.md`, `.claude/commands/i-polish.md`, `.claude/skills/sweep/**`, `.claude/skills/redteam/**`, `.claude/skills/codify/**`, `.claude/skills/spec-compliance/**`, `**/redteam-*.md`, `**/sweep-*.md`, `**/04-validate/**` | `.claude/rules/sweep-completeness.md` |
@@ -73,8 +73,9 @@ A path-scoped rule you have not read is a rule you are not honoring.
 | User-Flow Validation Rules | `**/*` | `.claude/rules/user-flow-validation.md` |
 | Value-Prioritization — Rank By User Value Before Shard-Fit | `**/workspaces/**`, `**/journal/**`, `**/.session-notes`, `**/.claude/commands/**`, `**/SWEEP*.md`, `**/WORKSPACE-DISPOSITION*.md`, `**/CHANGELOG*.md` | `.claude/rules/value-prioritization.md` |
 | Variant Authoring Meta-Rule | `**/.claude/variants/**`, `**/.claude/rules/**` | `.claude/rules/variant-authoring.md` |
+| Verify Code-Claims Against Ground Truth Before Durable Write | `**/*.md`, `**/CHANGELOG*`, `**/.session-notes`, `**/journal/**` | `.claude/rules/verify-claims-before-write.md` |
 | Verify Resource Existence Before Debugging Access | `**/*.py`, `**/*.rs`, `**/*.mjs`, `**/*.js`, `**/*.sh`, `**/workspaces/**`, `.claude/{commands,skills}/**` | `.claude/rules/verify-resource-existence.md` |
 | Wave-Loop — Verify-And-Feed-Forward Between Milestone-Groups | `**/workspaces/**`, `**/todos/**`, `**/.claude/commands/**`, `**/02-plans/**` | `.claude/rules/wave-loop.md` |
 | Worktree Isolation Rules | `.claude/agents/**`, `.claude/commands/**`, `.claude/skills/**`, `**/*worktree*`, `**/workspaces/**` | `.claude/rules/worktree-isolation.md` |
 
-58 path-scoped rules indexed.
+59 path-scoped rules indexed.

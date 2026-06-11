@@ -13,13 +13,13 @@ See `.claude/guides/rule-extracts/agents.md` for full evidence, extended example
 
 When working with Kailash frameworks, MUST consult the relevant specialist: **dataflow-specialist** (DB/DataFlow), **nexus-specialist** (API/deployment), **kaizen-specialist** (AI agents), **mcp-specialist** (MCP integration), **mcp-platform-specialist** (FastMCP platform), **pact-specialist** (governance), **ml-specialist** (ML lifecycle), **align-specialist** (LLM fine-tuning). See `rules/framework-first.md` for the domain-to-framework binding.
 
-**Why:** Framework specialists encode hard-won patterns and constraints generalist agents miss, leading to subtle misuse of DataFlow, Nexus, or Kaizen APIs.
+**Why:** Specialists encode hard-won patterns generalist agents miss, preventing subtle API misuse.
 
 ## Specs Context in Delegation (MUST)
 
 Every specialist delegation prompt MUST include relevant spec file content from `specs/`. Read `specs/_index.md`, select relevant files, include them inline. See `rules/specs-authority.md` MUST Rule 7 for the full protocol.
 
-**Why:** Specialists without domain context produce technically correct but intent-misaligned output (e.g., schemas without tenant_id because multi-tenancy wasn't communicated).
+**Why:** Specialists without domain context produce technically correct but intent-misaligned output (e.g., schemas missing tenant_id).
 
 ## Analysis Chain (Complex Features)
 
@@ -34,11 +34,11 @@ When multiple independent operations are needed, launch agents in parallel via t
 
 **Why:** Sequential execution of independent operations wastes the autonomous execution multiplier, turning a 1-session task into a multi-session bottleneck.
 
-**See also**: `rules/time-pressure-discipline.md` — when the user signals time pressure ("speed up", "deadline looming"), parallelization (parallel specialist delegation, parallel worktree waves of 3) IS the throughput response. Procedure drops are BLOCKED even when the user authorizes them; the structural alternative is more parallel work, not fewer steps.
+**See also**: `rules/time-pressure-discipline.md` — under time-pressure framings, parallelization IS the throughput response; procedure drops are BLOCKED even when the user authorizes them.
 
 ### MUST: Decompose Onto The Parallel Primitive By Default When The Work Earns It
 
-When the work surface is **≥3 independent items** OR has a **multi-stage shape** (analyze → implement → verify), the orchestrator MUST decompose onto the runtime's parallel orchestration primitive by DEFAULT — not only under `/autonomize`. The trigger is a real gate: a genuinely serial single-item task MUST stay serial. Governance per `rules/governed-throughput.md`; concurrency throttle-aware per `rules/worktree-isolation.md` Rule 4.
+When the work surface is **≥3 independent items** OR has a **multi-stage shape**, the orchestrator MUST decompose onto the runtime's parallel orchestration primitive by DEFAULT — not only under `/autonomize`. A genuinely serial single-item task MUST stay serial. Governance per `rules/governed-throughput.md`; throttle-aware per `rules/worktree-isolation.md` Rule 4.
 
 ```text
 # DO — 3 independent shards → one parallel wave
@@ -51,7 +51,7 @@ When the work surface is **≥3 independent items** OR has a **multi-stage shape
 
 ### MUST: Parallel Brief-Claim Verification When Issue Count ≥ 3
 
-When `/analyze` runs against a brief covering ≥ 3 distinct issues / failure modes / workstreams, the orchestrator MUST launch parallel deep-dive verification agents — one per claim cluster — to independently re-grep / re-read every factual claim in the brief tagged with file:line citations. Inaccuracies surfaced by the deep-dive sweep MUST be recorded in the workspace journal AND in the architecture plan's "Brief corrections" section AS THE GATE before `/todos`. Single-agent analysis on a ≥3-issue brief is BLOCKED — the framing inherited from the brief is the failure mode this rule prevents.
+When `/analyze` runs against a brief covering ≥ 3 distinct issues, the orchestrator MUST launch parallel deep-dive verification agents — one per claim cluster — to independently re-grep / re-read every factual claim. Inaccuracies MUST be recorded in the workspace journal AND the plan's "Brief corrections" section AS THE GATE before `/todos`. Single-agent analysis on a ≥3-issue brief is BLOCKED.
 
 (See **Example 1** in the examples slot below for CLI-specific dispatch syntax.)
 
@@ -65,15 +65,15 @@ When `/analyze` runs against a brief covering ≥ 3 distinct issues / failure mo
 - "The brief's claims are 'mostly correct', the rounding errors don't change the plan"
 - "If a claim turns out wrong, /todos can correct it"
 
-**Why:** Briefs reflect the author's mental model, which decays as code evolves. A ≥3-issue brief carries ≥3× the surface area for stale citations and misframed root causes; single-agent analysis cannot resist the brief's framing without independent reading. Parallel deep-dive verification is the structural defense — three agents, three claim-clusters, one wall-clock unit. See Origin for kailash-ml-1.5.x-followup evidence.
+**Why:** Briefs reflect the author's mental model, which decays as code evolves; single-agent analysis cannot resist the brief's framing without independent reading. Parallel deep-dive verification is the structural defense — N agents, N claim-clusters, one wall-clock unit.
 
-Origin: kailash-ml 1.5.x followup `/analyze` (2026-04-29) — `workspaces/kailash-ml-1.5.x-followup/journal/0001-DISCOVERY-brief-root-cause-incorrect-on-three-issues.md`. Meta-rule: applies to every COC `/analyze` invocation across every SDK, not just kailash-ml.
+Origin: kailash-ml 1.5.x followup `/analyze` (2026-04-29). Meta-rule: applies to every COC `/analyze` across every SDK.
 
 ## Quality Gates (MUST — Gate-Level Review)
 
 Reviews happen at COC phase boundaries, not per-edit. Skip only when explicitly told to. **MUST gates** are `/implement` and `/release`; reviewer + security-reviewer (and gold-standards-validator at `/release`) run as parallel background agents. RECOMMENDED gates run at `/analyze`, `/todos`, `/redteam`, `/codify`, and post-merge. See guide for the full gate table.
 
-**Why:** Skipping gate reviews lets analysis gaps, security holes, and naming violations propagate to downstream repos where they are far more expensive to fix.
+**Why:** Skipped gate reviews let gaps propagate downstream where they are far more expensive to fix.
 
 (See **Example 2** in the examples slot below for the background-dispatch pattern.)
 
@@ -87,7 +87,13 @@ Every gate-level reviewer prompt MUST include explicit mechanical sweeps that ve
 
 **BLOCKED rationalizations:** "The reviewer is smart enough to spot orphans" / "Mechanical sweeps are /redteam's job" / "Adding sweeps is repetitive".
 
-**Why:** Reviewers are constrained by the diff. The orphan failure mode in `orphan-detection.md` §1 is invisible at diff-level. A 4-second `grep -c` catches what 5 minutes of LLM judgment misses. See guide for full evidence.
+**Why:** Reviewers are constrained by the diff; the `orphan-detection.md` §1 failure mode is invisible at diff-level. A 4-second `grep -c` catches what LLM judgment misses. See guide.
+
+### MUST: Holistic Post-Multi-Wave Redteam Before Plan Close
+
+A plan shipped across ≥3 sharded waves MUST run ONE holistic redteam round across ALL merged shards on main — ≥3 parallel reviewers (reviewer + security-reviewer + closure-parity verifier) scoped to the union of merged PRs, not the latest shard's diff — BEFORE the plan is declared converged.
+
+**Why:** Per-shard redteams see only their own diff; cross-shard invariant breaks are invisible to every one of them. Evidence, BLOCKED corpus + posture wiring: guide § Holistic Post-Multi-Wave Redteam.
 
 ## Zero-Tolerance
 
@@ -97,15 +103,15 @@ Pre-existing failures MUST be fixed (`rules/zero-tolerance.md` Rule 1). No worka
 
 ## MUST: Verify Specialist Tool Inventory Before Implementation Delegation
 
-When delegating IMPLEMENTATION work (file edits, commits, build/test invocation, version bumps), the orchestrator MUST select a specialist whose declared tool set includes `Edit` AND `Bash`. Read-only specialists (`security-reviewer`, `analyst`, `reviewer`, `gold-standards-validator`, `value-auditor`) MUST NOT be delegated implementation tasks. Pure-research / pure-review delegations are fine. See guide for the specialist tool-inventory table and CLI-specific delegation syntax.
+When delegating IMPLEMENTATION work (file edits, commits, build/test invocation, version bumps), the orchestrator MUST select a specialist whose declared tool set includes `Edit` AND `Bash`. Read-only specialists (`security-reviewer`, `analyst`, `reviewer`, `gold-standards-validator`, `value-auditor`) MUST NOT be delegated implementation tasks. See guide for the tool-inventory table.
 
 **BLOCKED rationalizations:** "security-reviewer is the security domain, so security-relevant edits go there" / "The agent will figure out its tool limitations" / "I'll re-launch with a different specialist if it halts" / "Read-only review IS implementation when the diff is trivial" / "The agent has Write — that's enough for code edits".
 
-**Why:** Read-only specialists halt mid-instruction at file-edit boundaries — the agent emits "Now let me wire X" then exits with zero tool calls because Edit is unavailable. Verifying tool inventory pre-launch is O(1); re-launch is O(N) on shard size. See guide for rediscovery evidence.
+**Why:** Read-only specialists halt mid-instruction at file-edit boundaries. Verifying tool inventory pre-launch is O(1); re-launch is O(N) on shard size. See guide.
 
 ## MUST: Audit/Closure-Parity Verification Specialist Has Bash + Read
 
-When delegating a /redteam round whose mission includes **closure-parity verification** (mapping prior-wave findings to delivered code via `gh pr view`, `pytest --collect-only`, `grep`, `ast.parse()`, `find`, `cargo nextest`), the orchestrator MUST select a specialist whose tool set includes `Bash` AND `Read`. Read-only analyst (`Read, Grep, Glob`) MUST NOT be assigned closure-parity verification — its tool set silently FORWARDS verification rows the next round must redo. Extends § "Verify Specialist Tool Inventory" above from IMPLEMENTATION to AUDIT delegation.
+When delegating a /redteam round including **closure-parity verification** (mapping prior-wave findings to delivered code via `gh pr view`, `pytest --collect-only`, `grep`, `ast.parse()`), the orchestrator MUST select a specialist with `Bash` AND `Read`. Read-only analyst MUST NOT be assigned — its tool set silently FORWARDS verification rows the next round must redo. Extends the tool-inventory MUST above from IMPLEMENTATION to AUDIT delegation.
 
 (See **Example 4** for closure-parity dispatch; **Example 5** for the delegation-time scan pattern.)
 
@@ -125,7 +131,7 @@ The clause above generalizes beyond compilation: ANY background/parallel agent t
 
 **BLOCKED rationalizations:** "It's not a compiling agent, the worktree rule doesn't apply" / "The edit is quick, a collision is unlikely" / "Both agents are careful" / "I'll serialize them in my head".
 
-**Why:** A non-isolated editor's mid-edit WIP (e.g. a transiently-broken manifest) is visible in the shared checkout to every concurrent reader; a reader that copies the working tree mid-edit ships the broken state. Reading committed HEAD is the structural isolation when the editor was not worktree-isolated. See guide for the 2026-05-16 #243-vs-catch-up post-mortem.
+**Why:** A non-isolated editor's mid-edit WIP is visible in the shared checkout; a reader copying the working tree mid-edit ships the broken state. See guide for the 2026-05-16 post-mortem.
 
 ## MUST: Worktree Prompts Use Relative Paths Only
 
@@ -137,7 +143,7 @@ When prompting a worktree-isolated agent, the orchestrator MUST use paths RELATI
 
 ## MUST: Recover Orphan Writes From Zero-Commit Worktree Agents
 
-When a worktree agent reports done but its branch has zero commits and the worktree was auto-cleaned, the parent MUST check the MAIN checkout for orphaned untracked files (`git status`) and recover them on a `recovery/<branch>` branch before concluding work was lost — absolute-path writes resolve to main. Protocol + PR #574 evidence: `skills/30-claude-code-patterns/worktree-orchestration.md` Rule 4a.
+When a worktree agent reports done but its branch has zero commits and the worktree was auto-cleaned, the parent MUST check the MAIN checkout for orphaned untracked files and recover them on a `recovery/<branch>` branch — absolute-path writes resolve to main. Protocol: `worktree-orchestration.md` Rule 4a.
 
 ## MUST: Worktree Agents Commit Incremental Progress
 
@@ -155,7 +161,13 @@ When launching ≥2 parallel agents whose worktrees touch the SAME sub-package, 
 
 **BLOCKED rationalizations:** "Both agents are smart enough to see the existing version" / "We'll resolve at merge time" / "Each agent owns a section of the CHANGELOG".
 
-**Why:** Parallel agents see the same base SHA; each independently bumps `version` and writes a CHANGELOG entry. Merge picks one — discarding the other's prose silently. See guide for kailash-ml 0.13.0 evidence (PRs #552, #553).
+**Why:** Parallel agents on the same base SHA each independently bump `version` + CHANGELOG; merge discards one silently. See guide for PRs #552/#553 evidence.
+
+## MUST: Binding/Package-Scoped Shard PRs Touch Only Their Own Package's Files
+
+Concurrent binding/package-scoped shard PRs MUST limit their diff to their own package directory; incidental sibling-package fixes ship as a separate PR — bundling is BLOCKED.
+
+**Why:** A bundled sibling-package fix collides with the concurrent shard owning that package; the second-to-merge hits a mid-flight 3-way conflict. Detection sweep, posture wiring, BLOCKED corpus + PR #1084/#1085 evidence: guide § Binding-Scoped Shard PRs.
 
 ## MUST NOT
 
@@ -163,7 +175,7 @@ When launching ≥2 parallel agents whose worktrees touch the SAME sub-package, 
 - **Sequential when parallel is possible** — wastes the autonomous execution multiplier.
 - **Raw SQL / custom API / custom agents / custom governance** — see `rules/framework-first.md` and guide for per-framework rationale.
 
-Origin: Session 2026-04-19 worktree drift + Session 2026-04-20 parallel-release (PRs #552, #553) + Session 2026-04-27 W6 closure-parity. See guide for full session evidence. Refactor 2026-05-14 (issue #200): partitioned into `slot:neutral-body` + `slot:examples` per `rules/rule-authoring.md` MUST-8 to close cross-CLI drift surfaced by `tools/cli-drift-audit.mjs`. Trim 2026-05-22 (F20 rs lane): procedural depth of the Audit/Closure-Parity MUST extracted to `.claude/skills/30-claude-code-patterns/closure-parity-specialist-discipline.md` per rs Codex/Gemini headroom-floor recovery (journal/0143 → F20).
+Origin: sessions 2026-04-19/20/27 (worktree drift, parallel-release PRs #552/#553, W6 closure-parity); slot-partitioned 2026-05-14 (#200); F20 extraction 2026-05-22 (journal/0143); prose trim 2026-06-11 (Gate-1 paired extraction). Full evidence in guide.
 
 <!-- /slot:neutral-body -->
 
