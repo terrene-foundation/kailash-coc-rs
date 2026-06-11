@@ -1,60 +1,41 @@
 # COC Sync Marker — kailash-coc-rs
 visibility: public
-timestamp: 2026-06-10T15:40:56Z
+timestamp: 2026-06-11T01:58:28Z
 source: loom/.claude
-loom_sha: 3880c5f
-loom_version: "2.39.0"
-pre_sync_version: 2.23.2
-template_version: 2.23.3
+loom_sha: 57c88cc
+loom_version: 2.40.0
 variant: rs
 template_type: multi-cli
 clis: ["claude", "codex", "gemini"]
-operation: full-sync-rs-loom-2.39.0-3880c5f
-note: >
-  /sync rs Gate 2 (template 2/2: kailash-coc-rs, multi-CLI) from loom 2.39.0
-  @ 3880c5f (PR #479 / issue #477): extended BUILD-internal strip pattern set
-  (monorepo sub-packages + trailing-slash forms strip at write time) + 45
-  rs-lane variant_only -> variants: REPLACEMENT reclassifications. The rs lane
-  REGAINS skills/18-security-patterns/SKILL.md overlay dropped by a pre-#477
-  duplicate-variants-key bug (R1 reviewer MED). CONTENT CHANGE: 18-security
-  SKILL replaced generic global (9563 B, sha 0429d35) with rs overlay (11287 B,
-  sha baba7e38, 'Kailash Rust security ... Hardcoded secrets BLOCKED'), +1724 B.
-  Gate 1 SKIPPED (proposal status: distributed). Receipts: loom journal/0262 + 0263.
 stats:
-  copied: 1151
-  verified: 1151          # 41 content-equal after BUILD-internal strip, 1110 byte-equal
+  copied: 1152
+  variant_only: 164
+  overlays_applied: 141
   stripped: 41
-  variant_only: 164       # byte-verified 164/164
-  overlays: 141           # variants: REPLACEMENT, byte-verified 141/141
-  rename: 1               # python-version-bump.md -> rust-version-bump.md
   purged: 0
-  preserved: 1            # CLAUDE.md (template-owned)
-  skipped: { loom_local: 2, exclude: 865, use_exclude: 29, no_tier_match: 43 }
-  content_change:
-    file: .claude/skills/18-security-patterns/SKILL.md
-    before_bytes: 9563
-    before_sha256: "0429d35be48a38e0ea3eeaa8ef3b9e401ddd546345b636abd6d98cada3297bbf"
-    after_bytes: 11287
-    after_sha256: "baba7e38a2ab094cd4f165b0f8397c4761fbb5bd0312a8e2f5a8e9b180608736"
-    delta_bytes: 1724
-  baselines_emitted:
-    cc: 0                  # CLAUDE.md preserved, not emitted
-    codex: 1               # AGENTS.md re-emitted (51853 B)
-    gemini: 1              # GEMINI.md re-emitted (51586 B)
-  baseline_emission_bytes:    # strict-headroom default, exit 0 (no floor breach; floor 10%)
+  preserved: ["CLAUDE.md", "Gemfile.user", "Docker/dev-container scaffold (F78)", ".codex/local-config.toml", ".gemini/local-settings.json", "settings.local.json", "learning/", ".proposals/", ".env"]
+  baselines_emitted: { cc: 0, codex: 1, gemini: 1 }
+  baseline_emission_bytes:
     block_cap_bytes: 61440
     warn_cap_bytes: 32768
     codex:  { rules: 9, bytes: 51853, tier: WARN, headroom_bytes: 9587, headroom_pct: 15.60 }
     gemini: { rules: 9, bytes: 51586, tier: WARN, headroom_bytes: 9854, headroom_pct: 16.04 }
-  cli_artifacts:              # emitter-owned trees (emit-cli-artifacts --target rs, tier-filtered [cc,co,coc])
-    codex:  { prompts: 34, agent_prompts: 21, skills: 30, rules_reference: 1 }
-    gemini: { commands: 34, skills: 30, agents: 21, rules_reference: 1 }
-  scaffold:
-    symlinks: 1            # .claude/codex-mcp-guard -> ../.codex-mcp-guard (verified OK)
-    manifest_distributed: true
-    bin_coc: true          # bin/coc + 28 per-phase symlinks (install -m 0755 atomic)
-  consumer_owned_preserved: 9   # F78: Dockerfile, docker-compose.yml, .devcontainer/, .dockerignore, bin/dev, requirements-user.txt, Dockerfile.user, compose.override.yml.example, Gemfile.user — all sha256-unchanged
-  verify_overlays: { lang: rs, passing: 610, failing: 0 }   # both rs templates, gate GREEN
-  sdk_pins: no_delta      # no Cargo.toml at target (multi-CLI downstream); kailash-rs 4.4.0 unchanged; cargo check n/a
-  hook_integrity: "28/28 settings.json hooks present; 0 stale scripts/hooks; 0 operator-PII path tokens"
-  headroom_floor_violations: []
+  cli_artifacts:
+    codex:  { prompts: 55, skills: 31 }
+    gemini: { commands: 34, skills: 31, agents: 21 }
+  codex_dispatcher: "bin/coc + 28 phase symlinks"
+  mcp_guard: { policies_populated: false }
+fsub_delta:
+  - .claude/hooks/lib/coc-emit.js (new)
+  - .claude/hooks/lib/codify-lease.js
+  - .claude/hooks/lib/coordination-log.js
+  - .claude/hooks/lib/journal-body-anchor.js
+  - .claude/hooks/lib/journal-reserve.js
+  - .claude/hooks/lib/operator-id.js (full-diff carry)
+  - .claude/commands/codify.md
+  - .claude/commands/journal.md
+  - .claude/rules/knowledge-convergence.md
+  - .claude/rules/self-referential-codify.md
+verify_overlays: "610/610 Failing:0"
+hooks_resolve: "38/38"
+sdk_pins: "kailash-rs 4.4.0 CURRENT vs BUILD; no drift"
