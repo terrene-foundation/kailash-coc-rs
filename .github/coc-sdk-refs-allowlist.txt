@@ -50,3 +50,19 @@
 # src/kailash/ references. Auto-appended by coc-sync Step 7.5.
 .claude/audit-fixtures/scan-synced-disclosure/r3-smuggle-closed/.claude/rules/cleanlocks.md
 .claude/bin/scan-synced-disclosure.mjs
+
+# ─── auto-extended 2026-06-12 from loom v2.43.0 ──────
+# Files newly distributed in this sync that contain legitimate
+# src/kailash/ references. Auto-appended by coc-sync Step 7.5.
+./.claude/audit-fixtures/scan-synced-disclosure/r3-smuggle-closed/.claude/rules/cleanlocks.md
+./.claude/bin/scan-synced-disclosure.mjs
+./.claude/hooks/session-start.js
+./.claude/rules/build-repo-release-discipline.md
+./.claude/rules/dataflow-identifier-safety.md
+./.claude/skills/02-dataflow/cache-cas-fail-closed.md
+./.claude/skills/10-deployment-git/multi-package-release-wave.md
+./.claude/skills/15-enterprise-infrastructure/durability-patterns.md
+./.claude/skills/15-enterprise-infrastructure/scheduler-patterns.md
+./.claude/skills/29-pact/pact-conformance-features.md
+./.claude/skills/29-pact/pact-governance-engine.md
+./.claude/skills/30-claude-code-patterns/parallel-merge-workflow.md

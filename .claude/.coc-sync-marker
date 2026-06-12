@@ -1,9 +1,9 @@
 # COC Sync Marker — kailash-coc-rs
 visibility: public
-timestamp: 2026-06-11T23:30:00Z
+timestamp: 2026-06-12T00:00:00Z
 source: loom/.claude
-loom_sha: 1d6968e
-loom_version: 2.42.1
+loom_sha: d7ec0d2
+loom_version: 2.43.0
 variant: rs
 clis: ["claude", "codex", "gemini"]
 stats:
@@ -12,18 +12,18 @@ stats:
   overlays: 141
   composed: 0
   preserved: 1   # CLAUDE.md
-  purged: 1      # .claude/skills/management/ (obsoleted)
-  skipped: { loom_local: 2, exclude: 8000, use_exclude: 29, no_tier_match: 43 }
+  purged: 0      # no new obsoleted paths this cycle (.claude/skills/management/ already absent)
+  skipped: { loom_local: 2, exclude: 880, use_exclude: 29, no_tier_match: 43 }
   baselines_emitted: { cc: 0, codex: 1, gemini: 1 }
   baseline_emission_bytes:
     block_cap_bytes: 61440
     warn_cap_bytes: 32768
-    codex: { rules: 10, bytes: 54973, tier: WARN, headroom_bytes: 6467, headroom_pct: 10.53 }
-    gemini: { rules: 10, bytes: 54706, tier: WARN, headroom_bytes: 6734, headroom_pct: 10.96 }
+    codex: { rules: 10, bytes: 54282, tier: WARN, headroom_bytes: 7158, headroom_pct: 11.65 }
+    gemini: { rules: 10, bytes: 54015, tier: WARN, headroom_bytes: 7425, headroom_pct: 12.08 }
   cli_artifacts:
     codex: { prompts: 55, skills: 386 }
     gemini: { commands: 34, skills: 386, agents: 21 }
   codex_dispatcher: { bin_coc: 1, phase_symlinks: 28 }
-  sdk_pins_changed: { kailash-rs: "4.5.0 -> 4.6.0" }
-headline: "loom 2.42.1 Gate-2 completion re-sync; HALT (2.42.0 headroom floor breach) RESOLVED via PR #489 prose trims"
-notes: "2.42.0 cycle HALTed at Gate 2 step 6.5 (codex 8.58% + gemini 9.01% < 10% Risk-0004 floor). loom 2.42.1 recovered: codex 10.53% / gemini 10.96%, strict-headroom exit 0. F78 consumer-owned scaffold (9 files) hash-unchanged drift=0. verify-overlays.sh rs Failing:0."
+  sdk_pins_changed: {}   # kailash-rs 4.6.0 unchanged from 2.42.1 cycle
+headline: "loom 2.43.0 sync (#491) — agents.md worktree-cluster extraction + security.md global slot-partition (rs extensions-only overlay)"
+notes: "#491 content check (all 3 CLI surfaces): Redactor Contract grep=1 on .claude/rules/security.md + AGENTS.md + GEMINI.md; all 3 Rust MUST sections present on all 3 (Credential Comparison, Fail-Closed Security Defaults, Network Transport Hardening). Pre-#491 the baselines had the Rust MUST sections but had DRIFTED without the Redactor Contract — closed this cycle. emit.mjs --all --lang rs strict-headroom exit 0 (codex 11.65% / gemini 12.08%, both >10% floor). F78 consumer-owned scaffold (9 files incl. Gemfile.user) untouched. verify-overlays.sh rs Failing:0 (both rs templates; this template's rules/security.md pre-sync Failing:1 cleared by this sync)."

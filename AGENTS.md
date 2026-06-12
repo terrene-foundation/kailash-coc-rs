@@ -95,49 +95,25 @@ When delegating a /redteam round including **closure-parity verification** (mapp
 
 **Why:** Tool-inventory mismatch costs one full audit round; verifying pre-launch is O(1) while re-launch is O(N) on row count.
 
-## MUST: Worktree Isolation for Compiling Agents
+## MUST: Worktree Orchestration
 
-Agents that compile (Rust `cargo`, Python editable installs at scale) MUST use the CLI's worktree-isolation primitive — cargo holds an exclusive lock on `target/`, so each agent needs its own. See **Example 6**; `skills/30-claude-code-patterns/worktree-orchestration.md` (full 5-layer protocol — isolation is necessary but not sufficient).
+Depth (protocol, prompt templates, BLOCKED corpora, post-mortems): `skills/30-claude-code-patterns/worktree-orchestration.md`. Each bullet is a full MUST:
 
-## MUST: Worktree-Isolate Parallel Agents That Edit Shared Source; Concurrent Readers Read Committed HEAD
+- **Isolate compiling agents** — cargo locks `target/` exclusively; one worktree per compiling agent (skill Rule 1).
+- **Isolate ANY shared-source editor** (manifest, rules, `bin/`, config), compiling or not; concurrent readers read committed HEAD via `git show HEAD:<path>`, never the working tree (skill Rule 9).
+- **Relative paths only in worktree prompts** — absolute paths resolve to the parent checkout, silently defeating isolation (skill Rule 2).
+- **Commit per milestone; verify ≥1 commit** before declaring work landed — zero-commit worktrees auto-delete (skill Rule 3).
+- **Verify deliverables exist after exit** (`ls`/`Read` the claimed files) — budget exhaustion truncates writes mid-message (skill Rule 4).
+- **Recover orphan writes** of zero-commit auto-cleaned worktrees from the MAIN checkout onto `recovery/<branch>` (skill Rule 4a).
+- **One version owner per sub-package** when ≥2 parallel agents touch it; siblings are told "do NOT edit" the version anchor + CHANGELOG (skill Rule 5).
+- **Binding/package-scoped shard PRs touch only their own package** — sibling-package fixes ship as a separate PR; bundling is BLOCKED (skill Rule 10; posture wiring: guide § Binding-Scoped Shard PRs).
 
-The clause above generalizes beyond compilation: ANY background/parallel agent that EDITS shared repo source (`sync-manifest.yaml`, rules, `bin/`, config) MUST be worktree-isolated, even if it never compiles. Any concurrent agent that READS that source MUST read the committed HEAD (`git show HEAD:<path>`), never the working tree.
+```text
+# DO — isolated editor; HEAD-pinned readers; relative paths; per-milestone commits
+# DO NOT — shared-checkout editor + working-tree readers + absolute paths + 0 commits
+```
 
-(See **Example 10** in the examples slot below.)
-
-**Why:** A non-isolated editor's mid-edit WIP is visible in the shared checkout; a reader copying the working tree mid-edit ships the broken state. See guide for the 2026-05-16 post-mortem.
-
-## MUST: Worktree Prompts Use Relative Paths Only
-
-When prompting a worktree-isolated agent, the orchestrator MUST use paths RELATIVE to the repo root — absolute `/Users/`/`/home/` paths point back to the parent checkout and silently defeat isolation (2026-04-19: 300+ LOC lost).
-
-(See **Example 7**; `worktree-orchestration.md` Rule 2.)
-
-## MUST: Recover Orphan Writes From Zero-Commit Worktree Agents
-
-When a worktree agent reports done but its branch has zero commits and the worktree was auto-cleaned, the parent MUST check the MAIN checkout for orphaned untracked files and recover them on a `recovery/<branch>` branch — absolute-path writes resolve to main. Protocol: `worktree-orchestration.md` Rule 4a.
-
-## MUST: Worktree Agents Commit Incremental Progress
-
-Every worktree agent's prompt MUST instruct `git commit` per milestone; the orchestrator MUST verify ≥1 commit before declaring work landed (zero-commit worktrees are auto-deleted). See **Example 8**; `worktree-orchestration.md` Rule 3.
-
-## MUST: Verify Agent Deliverables Exist After Exit
-
-After an agent reports a file-writing task done, the parent MUST `ls`/`Read` the claimed file before trusting it — budget exhaustion truncates writes mid-message. `worktree-orchestration.md` Rule 4.
-
-## MUST: Parallel-Worktree Package Ownership Coordination
-
-When launching ≥2 parallel agents whose worktrees touch the SAME sub-package, the orchestrator MUST designate ONE agent as **version owner** (pyproject.toml + `__init__.py::__version__` + CHANGELOG) AND tell every sibling explicitly: "do NOT edit those files". Integration belongs to the orchestrator.
-
-(See **Example 9** in the examples slot below for the version-owner coordination pattern.)
-
-**Why:** Parallel agents on the same base SHA each independently bump `version` + CHANGELOG; merge discards one silently. See guide for PRs #552/#553 evidence.
-
-## MUST: Binding/Package-Scoped Shard PRs Touch Only Their Own Package's Files
-
-Concurrent binding/package-scoped shard PRs MUST limit their diff to their own package directory; incidental sibling-package fixes ship as a separate PR — bundling is BLOCKED.
-
-**Why:** A bundled sibling-package fix collides with the concurrent shard owning that package; the second-to-merge hits a mid-flight 3-way conflict. Detection sweep, posture wiring, BLOCKED corpus + PR #1084/#1085 evidence: guide § Binding-Scoped Shard PRs.
+**Why:** Each clause converts a silent parallel-work loss — lock serialization, phantom reads, checkout drift, auto-cleanup loss, truncated writes, version clobber, shard conflicts — into clean isolation or a loud refusal.
 
 ## MUST NOT
 
@@ -563,7 +539,12 @@ Note: at the orchestration root, targets are enumerated via `bin/lib/loom-links.
 
 ---
 
+# Security Rules
+
 ALL code changes in the repository.
+
+See `.claude/guides/rule-extracts/security.md` for extended examples, exhaustive sanitizer contract examples, and multi-site kwarg plumbing full post-mortem.
+
 
 ## No Hardcoded Secrets
 
@@ -605,32 +586,6 @@ All user-generated content MUST be encoded before display in HTML templates, JSO
 
 **Why:** Unencoded user content enables cross-site scripting (XSS), allowing attackers to execute arbitrary JavaScript in other users' browsers.
 
-## Sanitizer Contract — DataFlow Display Hygiene
-
-DataFlow's input sanitizer is a defense-in-depth display-path safety net, NOT the primary SQLi defense — parameter binding is (§ Parameterized Queries above). The contract is fixed:
-
-### 1. String Inputs MUST Be Token-Replaced, Not Quote-Escaped
-
-For declared-string fields, the sanitizer MUST replace dangerous SQL keyword sequences with grep-able sentinel tokens (`STATEMENT_BLOCKED`, `DROP_TABLE`, `UNION_SELECT`, etc.). Quote-escaping (`'` → `''`) is BLOCKED.
-
-**Why:** Token-replace makes attacker intent grep-able post-incident (`grep STATEMENT_BLOCKED audit.log`); quote-escape preserves the payload as data, masking the attack.
-
-### 2. Type-Confusion MUST Raise, Not Silently Coerce
-
-For declared-string fields receiving `dict` / `list` / `set` / `tuple` values, the sanitizer MUST raise `ValueError("parameter type mismatch: …")`. Silent coercion via `str(value)` is BLOCKED — it lets a nested structure bypass the string-only sanitizer.
-
-**Why:** A malicious upstream node passing `{"injection": "'; DROP TABLE …"}` for a str-declared field bypasses every string-only check; raising at the type-confusion boundary closes the bypass. See guide for exhaustive examples.
-
-### 3. Safe Types Are Returned As-Is
-
-Values of declared-safe types (`int`, `float`, `bool`, `Decimal`, `datetime`, `date`, `time`) MUST pass through unchanged. `dict` and `list` MUST also pass through unchanged when the field's declared type is `dict` or `list` (JSON / array columns).
-
-## Multi-Site Kwarg Plumbing
-
-When a security-relevant kwarg (classification policy, tenant scope, clearance context, audit correlation ID) is plumbed through a helper, EVERY call site of that helper MUST be updated in the SAME PR. Updating the "primary" call site and deferring siblings is BLOCKED.
-
-**Why:** A sibling left on the unqualified signature ships the exact failure mode the kwarg fixes (the "safe default" is the insecure default). Fix is mechanical: `grep -rn 'helper_name(' .` + patch every hit.
-
 ## MUST NOT
 
 - **No eval() on user input**: `eval()`, `exec()`, `subprocess.call(cmd, shell=True)` — BLOCKED
@@ -645,11 +600,49 @@ When a security-relevant kwarg (classification policy, tenant scope, clearance c
 
 **Why:** Once committed, secrets persist in git history even after removal, and are exposed to anyone with repo access.
 
+## Sanitizer Contract — DataFlow Display Hygiene
+
+DataFlow's input sanitizer (`dataflow/core/nodes.py::sanitize_sql_input`) is a defense-in-depth display-path safety net, NOT the primary SQLi defense — parameter binding is (§ Parameterized Queries above).
+
+### 1. String Inputs MUST Be Token-Replaced, Not Quote-Escaped
+
+For declared-string fields, the sanitizer MUST replace dangerous SQL keyword sequences with grep-able sentinel tokens (`STATEMENT_BLOCKED`, `DROP_TABLE`, `UNION_SELECT`, etc.). Quote-escaping (`'` → `''`) is BLOCKED.
+
+**Why:** Token-replace makes attacker intent grep-able post-incident (`grep STATEMENT_BLOCKED audit.log`); quote-escape preserves the payload as data, masking the attack.
+
+### 2. Type-Confusion MUST Raise, Not Silently Coerce
+
+For declared-string fields receiving `dict` / `list` / `set` / `tuple` values, the sanitizer MUST raise `ValueError("parameter type mismatch: …")`. Silent coercion via `str(value)` is BLOCKED.
+
+**Why:** A malicious upstream node passing `{"injection": "'; DROP TABLE …"}` for a str-declared field bypasses every string-only check; raising at the type-confusion boundary closes the bypass. See guide for exhaustive examples.
+
+### 3. Safe Types Are Returned As-Is
+
+Values of declared-safe types (`int`, `float`, `bool`, `Decimal`, `datetime`, `date`, `time`) MUST pass through unchanged. `dict` and `list` MUST also pass through unchanged when the field's declared type is `dict` or `list` (JSON / array columns). Bug #515: premature `json.dumps()` on dict/list breaks parameter binding.
+
+## Multi-Site Kwarg Plumbing
+
+When a security-relevant kwarg (classification policy, tenant scope, clearance context, audit correlation ID) is plumbed through a helper, EVERY call site of that helper MUST be updated in the SAME PR. Updating the "primary" call site and deferring siblings is BLOCKED.
+
+**Why:** A sibling left on the unqualified signature ships the exact failure mode the kwarg fixes (the "safe default" is the insecure default). Fix is mechanical: `grep -rn 'helper_name(' .` + patch every hit.
+
+## Redactor Contract
+
+Subject-keyed redactors (primitives scrubbing every string containing a `subject_id` substring) MUST enforce a minimum subject-id length floor (≥8 chars), failing closed with a typed error naming the floor and the received length. When a matching object KEY is scrubbed, BOTH key and value MUST be scrubbed — the key replaced with a numbered sentinel (`[REDACTED_KEY_N]`) preserving audit shape; the byte-level audit trail survives via the original-hash return.
+
+**Why:** 1–7-char ids substring-match benign strings ("alice" → "malice"); a preserved matching key under a `[REDACTED]` value leaks the subject's identity as audit metadata. See guide for kailash-rs PR #1123 evidence + cross-SDK landing requirement.
+
 ## Kailash-Specific Security
 
 - **DataFlow**: Access controls on models, validate at model level, never expose internal IDs
 - **Nexus**: Authentication on protected routes, rate limiting, CORS configured
 - **Kaizen**: Prompt injection protection, sensitive data filtering, output validation
+
+## Exceptions
+
+Security exceptions require: written justification, security-reviewer approval, documentation, and time-limited remediation plan.
+
+
 
 ## Rust: Credential Comparison (MUST)
 
@@ -671,9 +664,6 @@ HTTP MCP transports MUST validate `Origin`/`Host` against an allowlist before di
 
 **Why:** DNS rebinding defeats the localhost-is-trusted assumption — a website the operator visits can invoke local MCP tools via the browser; stdio spawn without allowlist is arbitrary code execution; unsanitized log content is a secret-exfiltration vector. Origin: R3 commits `173d054b`, `0d4ebd12`. Full pattern: `skills/18-security-patterns/network-security-rs.md`.
 
-## Exceptions
-
-Security exceptions require: written justification, security-reviewer approval, documentation, and time-limited remediation plan.
 
 ---
 
