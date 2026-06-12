@@ -1,19 +1,20 @@
 # COC Sync Marker — kailash-coc-rs
 visibility: public
-timestamp: 2026-06-12T00:00:00Z
+timestamp: 2026-06-12T12:00:00Z
 source: loom/.claude
-loom_sha: 1b26e91
-loom_version: 2.44.0
+loom_sha: 6d18fe9
+loom_version: 2.45.0
 variant: rs
 clis: ["claude", "codex", "gemini"]
 stats:
   copied: 1175
-  variant_only: 165   # +1 NEW ffi-handle-lifecycle.md (variant_only.rs ADDITION)
+  variant_only: 165
   overlays: 141
   composed: 0
   preserved: 1   # CLAUDE.md
-  purged: 0      # no new obsoleted paths this cycle
-  skipped: { loom_local: 2, exclude: 881, use_exclude: 29, no_tier_match: 43 }
+  purged: 0      # use_obsoleted union already-absent / re-emitted; no new obsoleted dirs
+  settings_canonicalized: 1   # settings.json: 10 MultiEdit deny entries removed + 2 matchers Edit|Write|MultiEdit|NotebookEdit -> Edit|Write|NotebookEdit (PR #500)
+  skipped: { loom_local: 2, exclude: 885, use_exclude: 29, no_tier_match: 43, loom_only: 9 }
   baselines_emitted: { cc: 0, codex: 1, gemini: 1 }
   baseline_emission_bytes:
     block_cap_bytes: 61440
@@ -24,6 +25,7 @@ stats:
     codex: { prompts: 55, skills: 32 }
     gemini: { commands: 34, skills: 32, agents: 21 }
   codex_dispatcher: { bin_coc: 1, phase_symlinks: 28 }
-  sdk_pins_changed: {}   # kailash-rs 4.6.0 unchanged from 2.43.0 cycle (no BUILD release this morning)
-headline: "loom 2.44.0 sync (Gate-1 rs ingest, PR #496) — rule extensions (zero-tolerance 3e binding-inheritance, testing ×3, value-prioritization MUST-2, worktree-isolation 2a) + rs variants (testing/patterns overlays) + NEW ffi-handle-lifecycle skill"
-notes: "CONTENT CHECK: .claude/skills/project/ffi-handle-lifecycle.md materialized + BYTE-EQUAL to loom variants/rs source (4840 B). Section greps: testing.md 'One Lock Domain'+'Self-Normalizing Ratios'+'Concurrent-Close'+'Every Test-Only' (1 each); patterns.md 'Feature-Gated Modules' (1). emit.mjs --all --lang rs strict-headroom DEFAULT exit 0 (codex 10.84% / gemini 11.28%, both >10% Risk-0004 floor; 15% proximity-band advisory). CLI artifacts: .codex/ (prompts 55, skills 32) + .gemini/ (commands 34, skills 32, agents 21) + .codex-mcp-guard/ + bin/coc (28 phase symlinks); Step 4.6 symlink .claude/codex-mcp-guard -> ../.codex-mcp-guard + sync-manifest.yaml distributed. F78 consumer-owned scaffold (9 files incl. Gemfile.user) untouched. verify-overlays.sh rs 612/612 Failing:0 (both rs templates). 0 operator-PII tokens; (Rust) label preserved; 38/38 hooks present."
+  sdk_pins_changed: {}   # artifact-only metadata cycle — kailash-rs 4.6.0 + full sdk_packages map unchanged
+manften_note: ".claude/skills/management/ (obsoleted:) intersect variant_only.rs skills/management/* — documented purge-restore churn; net end-state = 3 rs-management skills present; manifest NOT edited this cycle per MANIFTEN deferral"
+headline: "loom 2.45.0 sync (rs multi-CLI) — MultiEdit-removal canonicalization (PR #500, journals 0276+0277): settings.json deny-matrix + matchers canonicalized on all 3 CLI surfaces, codex-mcp-guard regenerated (validator-13 bijection 4/4), MUST-6 live-matcher prose; artifact-only metadata cycle (SDK pins unchanged)"
+notes: "PRE-SYNC FRESHNESS PASS (loom 6d18fe99==remote; rs 5a498067==remote). HALT-on-dirty clean. settings.json: target carried PRE-#500 (10 stale MultiEdit deny entries + 2 MultiEdit matchers); Step 6 distributed loom-canonicalized source with (Rust) Step-6b label; post-write 0 MultiEdit, 0 scripts/hooks, 0 operator-PII, all hook command files resolve. emit.mjs --all --lang rs strict-headroom DEFAULT exit 0 (codex 10.84% / gemini 11.28%, both >10% Risk-0004 floor). CLI artifacts: .codex/ (prompts 55, skills 32) + .gemini/ (commands 34, skills 32, agents 21) + .codex-mcp-guard/ + bin/coc (28 phase symlinks); Step 4.6 symlink .claude/codex-mcp-guard -> ../.codex-mcp-guard + sync-manifest.yaml distributed. F78 consumer-owned scaffold (9 files incl. Gemfile.user) hash-untouched (drift=0). .proposals/latest.yaml UNTOUCHED. verify-overlays.sh rs 612/612 Failing:0. Step 7.5 allowlist idempotent. NO Cargo.toml at template (multi-CLI) -> no cargo check."
