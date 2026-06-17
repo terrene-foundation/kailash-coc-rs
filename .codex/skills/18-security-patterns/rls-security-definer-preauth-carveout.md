@@ -510,8 +510,8 @@ Added in kailash-rs v3.21+ (issue #571).
 - Companion skill: `dataflow-rls-posture.md` (why DataFlow does not emit RLS by default).
 - Rule: `.claude/rules/tenant-isolation.md` (multi-tenant invariants beyond RLS).
 - Rule: `.claude/rules/security.md` (parameterized queries, input validation).
-- Rule: `.claude/rules/dataflow-identifier-safety.md` (the identifier validation contract the builder satisfies).
+- Rule: `.claude/rules/dataflow-identifier-safety.md` (the identifier validation contract the `SecurityDefinerBuilder` satisfies).
 
 ## Origin
 
-`terrene-foundation/kailash-coc-claude-rs#58` — lifted from an open-application M26 migration (`0027_users_rls_policy.sql`) + companion helpers (`0026c_sql_helpers.sql`) + bootstrap-blocker discovery journal. Generalized to a language-agnostic recipe so downstream COC-scaffolded projects can land the pattern without re-deriving the threat model.
+Surfaced via consumer feedback in 2026-04 — lifted from an open-application reference migration (`0027_users_rls_policy.sql`) + companion SQL helpers (`0026c_sql_helpers.sql`) + bootstrap-blocker discovery journal. Generalized to a language-agnostic recipe so downstream COC-scaffolded projects can land the pattern without re-deriving the threat model. The SQL, threat model, and test templates are language-neutral; the caller-side T7 timing-safe login example is written in Python but translates directly to any binding — constant-time bcrypt comparison is the universal requirement.

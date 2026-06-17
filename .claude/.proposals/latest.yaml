@@ -168,4 +168,23 @@ changes:
       - "The check (e) .dockerignore coverage list is currently hardcoded in the workflow; lift to a manifest file at .claude/audit-fixtures/docker-disclosure-scrub/required-dockerignore.txt at loom-side placement (per reviewer R1 MINOR observation) so downstream consumers can extend without forking the skill prose. Pairs with the existing loom audit-fixtures/ pattern per rules/hook-output-discipline.md MUST-4 + rules/cc-artifacts.md Rule 9."
       - "Operator-host hostname strings: when authored at loom, the skill body MUST use `<operator-host-N>` placeholders per ci-runners.operator.local.example.md convention (NOT literal real-host strings). The literal strings that currently appear in docker-build.yml line 129 are a separate carry-forward concern — workflow scrub-to-placeholder lift is a separate follow-up issue against the rs template, NOT a blocker for this proposal."
 
-status: pending_review
+status: distributed
+
+# ----------------------------------------------------------------------------
+# DISPOSITION (sync-upflow Wave-3 todo-14, 2026-06-17): DISTRIBUTED
+#
+# Both proposed skills were Gate-1 ingested at loom main as global coc-tier
+# skills by PR #523 (loom commit 131c5a1, "feat(skills): Gate-1 ingest — 2
+# global Docker dev-env skills from coc-rs proposal"):
+#   - .claude/skills/10-deployment-git/docker-dev-env-patterns.md  (185 lines @ loom main)
+#   - .claude/skills/18-security-patterns/docker-disclosure-scrub.md (120 lines @ loom main)
+# loom authored the global skills from the proposal's reason: substance and
+# folded the security-reviewer R1 MED obligations into the bodies. Both now
+# distribute as part of the normal global coc-tier artifact set (this wave's
+# /sync-to-use carries them to every subscribing template).
+#
+# Per artifact-flow.md § "Append, Never Overwrite": the 2 changes: entries
+# above are PRESERVED unchanged; this block is appended. status flipped
+# pending_review -> distributed (already classified AND distributed) so the
+# entry no longer dangles for a future Gate-1 ingest cycle.
+# ----------------------------------------------------------------------------
