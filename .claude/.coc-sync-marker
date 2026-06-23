@@ -1,31 +1,31 @@
 # COC Sync Marker — kailash-coc-rs (rs lane, multi-CLI)
-timestamp: 2026-06-17T13:51:33Z
+timestamp: 2026-06-23T06:16:50Z
 source: loom/.claude
-loom_sha: c1e52a62
+loom_sha: c9d7f17
 variant: rs
 clis: [claude, codex, gemini]
 visibility: public
 stats:
-  copied: 1205
-  variant_only: 165
+  copied: 1277
+  variant_only: 170
   overlay_applied: 142
   verify_failures: 0
   purged: 0
   preserved: [CLAUDE.md, .proposals/, learning/, settings.local.json, dev-container-scaffold]
   baselines_emitted:
     cc: 0          # CLAUDE.md preserved, not emitted
-    codex: 1       # AGENTS.md
-    gemini: 1      # GEMINI.md
+    codex: 1       # AGENTS.md (re-emitted byte-identical; ci-runners.md is path-scoped)
+    gemini: 1      # GEMINI.md (re-emitted byte-identical; ci-runners.md is path-scoped)
   baseline_emission:
     block_cap_bytes: 61440
     warn_cap_bytes: 32768
     headroom_floor_pct: 10
-    codex: { tier: WARN, headroom_pct: 10.84 }
-    gemini: { tier: WARN, headroom_pct: 11.28 }
+    codex: { tier: WARN, headroom_pct: 10.87 }
+    gemini: { tier: WARN, headroom_pct: 11.31 }
   cli_artifacts:
     codex: { prompts: 38, skills: 31, agent_prompts: 21 }
     gemini: { commands: 38, skills: 31, agents: 21 }
   codex_dispatcher: { bin_coc: 1, phase_shims: 28 }
   mcp_guard: { policies_populated: false }
-wave: sync-upflow-wave-3-todo-14
-note: FIRST real /sync-to-use of the Wave-1/2 sync-family artifacts; loom 2.45.0 unchanged (artifact wave).
+wave: f22-ci-runners-reverse-flow
+note: ci-runners.md §12 Docker-on-Linux + §13 PR-gate event-gating reverse-flow (loom PR #629 @ c9d7f17); loom 2.45.0 unchanged (content-refresh). ci-runners.md is scope:path-scoped — AGENTS.md/GEMINI.md re-emitted byte-identical (0 diff).
