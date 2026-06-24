@@ -147,4 +147,108 @@ changes:
       - "Keep the routing-pointer baseline rule SHORT (~30-40 lines, pointer-only) — depth stays in artifact-flow.md per rule-authoring.md brief-baseline + path-scoped-depth split; an always-loaded ~391-line rule would bloat every session's context."
       - "Baseline-headroom caution: codex-rs / gemini-rs baselines were ~10.8-11.3% headroom in recent sync receipts (within the 15% proximity band). A NEW always-loaded baseline rule adds to every CLI baseline — loom MUST re-check emit.mjs strict-headroom before landing change #1 as baseline; if it breaches, the fallback is the per-template CLAUDE.md route (change #3) which does not touch the codex/gemini baseline."
 
+  - file: .gitignore
+    action: modify
+    suggested_tier: coc
+    reason: |
+      ENROLLMENT GAP A (roster contamination vector) — surfaced when /whoami
+      --enroll-genesis was invoked at this USE template.
+
+      EVIDENCE (git check-ignore, this template): .claude/learning/ is
+      gitignored (.gitignore:74) so coordination-log.jsonl + posture.json +
+      .initialized are LOCAL-ONLY (never committed); .claude/operator-id is
+      gitignored. BUT .claude/operators.roster.json is NOT gitignored
+      (`git check-ignore` returns no match). A USE template is cloned publicly
+      / used-as-template by consumers. If an operator runs enrollment here, the
+      created roster IS committable and ships to every consumer clone, carrying
+      the template-operator's identity (display_id, github_login, GPG/SSH
+      PUBLIC KEY) declared role: owner, plus a genesis block pinning the
+      template's repo_owner + the template's OWN root_commit. Two failures: (1)
+      operator-identity DISCLOSURE to every public consumer; (2) a FOREIGN
+      trust-root that fold rule 9a (first-wins, immutable) forces on the
+      consumer — blocking the consumer's own genesis enrollment as a trust-root
+      fork (the genesis residual). The genesis-anchor RECORD is safe (it lives
+      in the gitignored log); the ROSTER is the leak.
+
+      FIX (loom Gate-1 decides the mechanism — both are defensible):
+      (a) gitignore .claude/operators.roster.json in the USE-template tier so a
+          template-operator's enrollment stays local-only exactly as the log
+          does — consumers create their own roster fresh on first enrollment; OR
+      (b) ship a PLACEHOLDER roster (PLACEHOLDER-prefixed entries per the
+          schema/guard's documented placeholder semantics) that is safe to
+          commit and that the consumer overwrites at enrollment.
+      The inconsistency (roster trackable while sibling state is gitignored) is
+      the root defect; pick one model and apply it tier-wide to ALL kailash-coc-*
+      templates. NOTE: in a BUILD/loom repo the roster IS a committed shared
+      substrate (correct there); the fix is USE-template-tier-specific, not
+      global to every repo class.
+
+  - file: .claude/operators.roster.README.md
+    action: create
+    suggested_tier: coc
+    reason: |
+      ENROLLMENT GAP B (placeholder semantics not cascaded).
+
+      The /whoami command body + genesis-anchor-guard reference
+      ".claude/operators.roster.README.md for placeholder semantics" and
+      "PLACEHOLDER-prefixed entries for fresh-genesis cases", but that README
+      is ABSENT in this template (verified: file does not exist). A template
+      consumer (or template-operator) has no documentation of what a
+      fresh/placeholder roster should look like, how PLACEHOLDER entries are
+      recognized by the guard, or how the first real owner replaces them.
+      FIX: cascade operators.roster.README.md to the USE-template tier (it is
+      currently loom-only or unshipped). Pairs with GAP A option (b) if loom
+      chooses the placeholder-roster model.
+
+  - file: guides/co-setup/11-genesis-ceremony.md
+    action: create
+    suggested_tier: coc
+    reason: |
+      ENROLLMENT GAP C (operational runbook is loom-only; not cascaded).
+
+      The /whoami command body defers the operational ceremony gotchas
+      ("enroll-before-commit ordering, the settings-deny ceremony-script-by-path
+      constraint, the admin-merge/push fallbacks, the Azure DevOps provider
+      runbook") to guides/co-setup/11-genesis-ceremony.md. That guide is ABSENT
+      in this template (verified). The template ships the ceremony CODE
+      (.claude/hooks/lib/genesis-ceremony.js, coc-sign.js,
+      roster-schema-validate.js, genesis-anchor-guard.js, the schema) but NOT
+      the procedure to run it — so an agent/operator at a template has the
+      machinery and no documented, guard-compatible way to drive it (the
+      observed blocker: settings.deny blocks Edit/Write to operators.roster.json
+      and the inline node -e path trips the state-mutation hook; the only
+      legitimate write path is "ceremony-script-by-path", which only the absent
+      runbook documents). FIX: cascade a USE-template-appropriate genesis
+      runbook (or the relevant excerpt) so templates carry procedure alongside
+      code. SCOPE the runbook to the template case (consumer-clone enrollment),
+      not the loom-internal bootstrap.
+
+  - file: .claude/commands/whoami.md
+    action: modify
+    suggested_tier: coc
+    reason: |
+      ENROLLMENT GAP D (command silent on the template-vs-consumer model).
+
+      Neither --enroll-genesis nor --register addresses what enrollment MEANS at
+      a USE template that will be cloned. There is no guidance ("this is a USE
+      template — genesis enrollment is a CONSUMER-clone action; do NOT commit a
+      populated roster into the template; the template ships placeholder/no
+      roster") and no guard preventing a contaminating enrollment (GAP A). The
+      command's "fresh repo: edit the bootstrap roster OR --register + promote"
+      instruction assumes a normal repo, not a public template, and silently
+      leads toward the contamination in GAP A.
+      FIX: add a repo-class check to the --enroll-genesis / --register flow —
+      when .claude/VERSION::type == coc-use-template AND the repo is a published
+      template (cloned by others), the command MUST surface the consumer-vs-
+      template distinction and refuse / loudly warn before writing a committable
+      roster with real operator identity. Mirrors the issue-triage-routing
+      repo-class dispatch in change #1 — both are "the command must branch on
+      .claude/VERSION::type" gaps.
+
+    review_recommendations:
+      - "These four entries (GAPs A-D) are ONE coherent finding: the genesis/enrollment ceremony was cascaded to USE templates as CODE without the CONTEXT (roster gitignore model), DOCUMENTATION (roster README + runbook), or GUARDS (command repo-class check) a publicly-cloned template needs. Classify together."
+      - "GAP A is the load-bearing/highest-severity one (active disclosure + foreign-trust-root contamination on every consumer clone). Recommend loom treat it as the priority fix and decide the gitignore-vs-placeholder model tier-wide."
+      - "Surfaced live: /whoami --enroll-genesis was invoked at kailash-coc-rs; all cryptographic eligibility checks PASSED (org-admin attestation, root-commit verified) but enrollment was correctly NOT performed because of GAP A. No roster, log, or anchor was written. No operator key fingerprint is quoted in this proposal (disclosure-scrubbed); the contamination is described structurally."
+      - "Cross-tier: GAPs A-D apply to EVERY kailash-coc-* USE template (claude-py, claude-rs, claude-rb, py, rs), not just rs — loom should fix tier-wide in one Gate-1 pass."
+
 status: pending_review
