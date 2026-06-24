@@ -111,8 +111,20 @@ Path-scoped rules (loaded when touching matching files):
 - **3-tier testing (binding perspective)** — `rules/testing.md` (`tests/**`, `**/*test*`, `**/*spec*`)
 - **Kailash patterns** — `rules/patterns.md`
 - **CC artifact quality** — `rules/cc-artifacts.md` (CC-only; excluded from Codex/Gemini emission)
+- **Artifact flow + issue routing** — `rules/artifact-flow.md` (`.claude/**`, `**/VERSION`, `*.md`); the routing summary is ALSO surfaced always-loaded in § "GitHub Issue Triage → Upflow Routing" below, because the path-scope above does NOT trip when triaging a GH issue via `gh` (no artifact file is touched)
 
 **Note**: Codex and Gemini do NOT honor YAML `paths:` frontmatter for path-scoped loading — both CLIs use directory-hierarchy loading only. See `.claude/agents/codex-architect.md` and `gemini-architect.md` for the native-surface mappings and known workarounds.
+
+## GitHub Issue Triage → Upflow Routing (always-loaded)
+
+This repo is a **USE template** (`.claude/VERSION::type: coc-use-template`) — the origination node for COC-artifact proposals to loom. A GitHub issue filed **here** about a COC artifact (rule / skill / agent / command / hook / `.codex-mcp-guard` tooling / lockfile of shipped tooling) is a **Route A filing** — a downstream consumer that pulled the artifact via `/sync-from-template`, hit a problem, and routed it UP to the template it pulled from (or the owner filing on its behalf). (Route A — an issue on the template — is the **fallback** downstream path; the **primary** is a Step-7c PR to this template's `.claude/.proposals/inbox/`, ingested by `/sync-from-downstream`, per `rules/artifact-flow.md` § Downstream-Consumer Routing. Either path makes the template the origination node.) Handle it as the origination node; do NOT improvise:
+
+1. **Consolidate** the open COC-artifact issues filed here — they are the Route A input surface.
+2. **`/codify` Step 7b** — originate a proposal into `.claude/.proposals/latest.yaml` carrying the fix (append, never overwrite, per `rules/artifact-flow.md` § Proposal Lifecycle).
+3. **loom `/sync-from-use`** ingests the proposal at Gate-1 (disclosure-scrub + classify global-vs-variant), applies to canonical source.
+4. **loom `/sync-to-use`** redistributes the fixed artifact back here + all sibling templates; consumers re-pull on their own cadence.
+
+**Do NOT** hand-edit loom directly (violates `artifact-flow.md` § "loom Splits, Never Originates"), and **do NOT** fix only by editing the synced artifact here — a local edit to a synced file is rebuilt away by `/sync-to-use` (Class-A non-durable, `artifact-flow.md` § Distribution-Durability Invariants). The durable surface is the **proposal**. `CLAUDE.md` is the exception — template-owned, preserved across syncs. Full contract (Route A/B, the four repo classes, lifecycle): `rules/artifact-flow.md` § "Issue Routing By Change Type".
 
 ## Agents
 
@@ -150,13 +162,13 @@ result = rt.execute(wf)
 
 The Rust SDK is a workspace of crates; downstream consumers install the binding wheels / gems:
 
-| Framework    | Purpose                                 | Binding install (Python)          | Binding install (Ruby)         |
-| ------------ | --------------------------------------- | --------------------------------- | ------------------------------ |
-| **Core SDK** | Workflow orchestration, 139+ nodes      | `pip install kailash-enterprise`  | `gem install kailash`          |
-| **DataFlow** | Zero-config database operations (sqlx)  | included in `kailash-enterprise`  | `gem install kailash-dataflow` |
-| **Nexus**    | Multi-channel deployment (axum + tower) | included in `kailash-enterprise`  | `gem install kailash-nexus`    |
-| **Kaizen**   | AI agent framework                      | included in `kailash-enterprise`  | `gem install kailash-kaizen`   |
-| **PACT**     | Organizational governance (D/T/R)       | included in `kailash-enterprise`  | `gem install kailash-pact`     |
+| Framework    | Purpose                                 | Binding install (Python)         | Binding install (Ruby)         |
+| ------------ | --------------------------------------- | -------------------------------- | ------------------------------ |
+| **Core SDK** | Workflow orchestration, 139+ nodes      | `pip install kailash-enterprise` | `gem install kailash`          |
+| **DataFlow** | Zero-config database operations (sqlx)  | included in `kailash-enterprise` | `gem install kailash-dataflow` |
+| **Nexus**    | Multi-channel deployment (axum + tower) | included in `kailash-enterprise` | `gem install kailash-nexus`    |
+| **Kaizen**   | AI agent framework                      | included in `kailash-enterprise` | `gem install kailash-kaizen`   |
+| **PACT**     | Organizational governance (D/T/R)       | included in `kailash-enterprise` | `gem install kailash-pact`     |
 
 Python: the Rust-backed binding ships as a single bundled wheel — `pip install kailash-enterprise`, import via `import kailash`. All frameworks (DataFlow, Nexus, Kaizen, PACT, EATP, Trust Plane, governance, kaizen-agents, RL, align-serving) are reachable from the one wheel via `from kailash.{dataflow,nexus,kaizen,pact,...} import ...`.
 
