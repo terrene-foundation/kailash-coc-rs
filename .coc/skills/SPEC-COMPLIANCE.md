@@ -1,5 +1,6 @@
 ---
 id: "SPEC-COMPLIANCE"
+name: spec-compliance
 description: "Spec compliance — verify code matches plan via AST/grep, not file existence. /redteam Step 1."
 ---
 

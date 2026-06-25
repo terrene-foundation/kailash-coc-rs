@@ -1,5 +1,6 @@
 ---
 id: "TEST-SKIP-DISCIPLINE"
+name: test-skip-discipline
 description: "test.skip discipline — distinguish acceptable (cannot execute) from BLOCKED (system broken)."
 ---
 

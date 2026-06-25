@@ -47,7 +47,7 @@ clean degrade, never a parse failure).
 - rules: 71
 - agents: 25
 - skills: 35
-- commands: 41
+- commands: 38
 
 ## Authorship
 

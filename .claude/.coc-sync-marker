@@ -1,31 +1,47 @@
 # COC Sync Marker — kailash-coc-rs (rs lane, multi-CLI)
-timestamp: 2026-06-23T06:16:50Z
+timestamp: 2026-06-25T07:12:00Z
 source: loom/.claude
-loom_sha: c9d7f17
+loom_sha: 8197257
 variant: rs
 clis: [claude, codex, gemini]
 visibility: public
 stats:
-  copied: 1277
+  copied: 1278
+  verified: 1278
+  verify_failures: 0
   variant_only: 170
   overlay_applied: 142
-  verify_failures: 0
-  purged: 0
+  overlay_verify_failures: 0
+  stripped: 39
+  purged: 9          # obsoleted: {cli-audit,sync-from-build,sync-from-use} across .claude/.codex/.gemini
   preserved: [CLAUDE.md, .proposals/, learning/, settings.local.json, dev-container-scaffold]
   baselines_emitted:
-    cc: 0          # CLAUDE.md preserved, not emitted
-    codex: 1       # AGENTS.md (re-emitted byte-identical; ci-runners.md is path-scoped)
-    gemini: 1      # GEMINI.md (re-emitted byte-identical; ci-runners.md is path-scoped)
+    cc: 0            # CLAUDE.md preserved, not emitted
+    codex: 1        # AGENTS.md
+    gemini: 1       # GEMINI.md
   baseline_emission:
     block_cap_bytes: 61440
     warn_cap_bytes: 32768
     headroom_floor_pct: 10
-    codex: { tier: WARN, headroom_pct: 10.87 }
-    gemini: { tier: WARN, headroom_pct: 11.31 }
+    codex: { rules: 10, bytes: 54110, tier: WARN, headroom_pct: 11.93 }
+    gemini: { rules: 10, bytes: 53843, tier: WARN, headroom_pct: 12.36 }
   cli_artifacts:
-    codex: { prompts: 38, skills: 31, agent_prompts: 21 }
-    gemini: { commands: 38, skills: 31, agents: 21 }
+    codex: { prompts: 37, skills: 33, agent_prompts: 21 }
+    gemini: { commands: 37, skills: 33, agents: 21 }
   codex_dispatcher: { bin_coc: 1, phase_shims: 28 }
+  coc_unified: { artifacts: 169, rules: 71, agents: 25, skills: 35, commands: 38 }
   mcp_guard: { policies_populated: false }
-wave: f22-ci-runners-reverse-flow
-note: ci-runners.md §12 Docker-on-Linux + §13 PR-gate event-gating reverse-flow (loom PR #629 @ c9d7f17); loom 2.45.0 unchanged (content-refresh). ci-runners.md is scope:path-scoped — AGENTS.md/GEMINI.md re-emitted byte-identical (0 diff).
+obsoleted_manifest_paths: 64   # .coc-obsoleted = obsoleted + use_obsoleted union
+verify_overlays: { langs: rs, total: 624, passing: 624, failing: 0 }
+scaffold: { symlink: ".claude/codex-mcp-guard -> ../.codex-mcp-guard", manifest_distributed: true }
+wave: mo-opt-w1-coordination-opt-in
+note: >-
+  MO-OPT W1 — coordination substrate made OPT-IN. New .claude/hooks/lib/coordination-mode.js
+  (isCoordinationEnabled predicate) + early-return passthrough hoists in integrity-guard.js,
+  journal-write-guard.js, signing-mutation-guard.js, lib/codify-lease.js, lib/operator-id.js,
+  adjacency-leasecheck.js. All GLOBAL hooks (no rs overlay). Un-enrolled/solo consumers get
+  clean passthrough instead of unconditional coordination-guard disruption. Multi-CLI emission
+  refreshed (AGENTS.md/GEMINI.md + .codex/.gemini/.coc trees + bin/coc dispatcher). loom 2.45.0
+  unchanged (W1 is unreleased loom-main drift @ 8197257). SDK pins preserved (kailash-rs 4.13.0
+  — BUILD on mid-feature branch). cargo check skipped (no Cargo.toml). Receipt: loom
+  journal/0330 + 0331.
