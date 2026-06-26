@@ -19,7 +19,8 @@ A path-scoped rule you have not read is a rule you are not honoring.
 | Rule | Applies when editing (paths) | Read |
 | ---- | ---------------------------- | ---- |
 | Agent Reasoning Architecture — LLM-First Rule | `**/kaizen/**`, `**/*agent*`, `**/agents/**`, `**/*classifier*`, `**/*extractor*`, `**/*delegate*`, `**/*router*`, `**/*dispatcher*`, `**/*intent*` | `.claude/rules/agent-reasoning.md` |
-| Artifact Flow Rules | `.claude/**`, `sync-manifest.yaml`, `**/VERSION`, `*.md` | `.claude/rules/artifact-flow.md` |
+| Analyze Output-Completeness — Every Compulsory Output Before Advancing | `**/.claude/commands/analyze.md`, `**/.claude/commands/todos.md`, `**/.claude/commands/implement.md`, `**/.claude/hooks/analyze-completeness-guard.js`, `**/workspaces/**` | `.claude/rules/analyze-output-completeness.md` |
+| Artifact Flow Rules | `.claude/**`, `sync-manifest.yaml`, `**/VERSION` | `.claude/rules/artifact-flow.md` |
 | BUILD Repo Release Discipline | `pyproject.toml`, `packages/**/pyproject.toml`, `CHANGELOG.md`, `packages/**/CHANGELOG.md`, `packages/**/__init__.py`, `src/kailash/__init__.py`, `.github/workflows/publish-pypi.yml`, `.github/workflows/publish-*.yml`, `.github/workflows/release*.yml`, `deploy/deployment-config.md` | `.claude/rules/build-repo-release-discipline.md` |
 | CI Runner Rules | `.github/workflows/**`, `**/ci/**`, `**/.github/**` | `.claude/rules/ci-runners.md` |
 | Connection Pool Safety Rules | `**/db/**`, `**/pool*`, `**/database*`, `**/infrastructure/**` | `.claude/rules/connection-pool.md` |
@@ -43,7 +44,7 @@ A path-scoped rule you have not read is a rule you are not honoring.
 | Infrastructure SQL Rules | `**/db/**`, `**/infrastructure/**` | `.claude/rules/infrastructure-sql.md` |
 | Journal Author Discipline — Verifiable, Not Trusted | `journal/**`, `**/journal/**` | `.claude/rules/journal-author-discipline.md` |
 | Journal Rules | `journal/**`, `**/journal/**` | `.claude/rules/journal.md` |
-| Knowledge Convergence — Multi-Operator Single-Writer Discipline | `.claude/rules/**`, `.claude/team-memory/**`, `.claude/learning/**`, `**/journal/**`, `.claude/commands/codify.md`, `.session-notes*`, `.session-notes.d/**`, `.claude/.proposals/**` | `.claude/rules/knowledge-convergence.md` |
+| Knowledge Convergence — Multi-Operator Single-Writer Discipline | `.claude/team-memory/**`, `.claude/learning/**`, `**/journal/**`, `.claude/commands/codify.md`, `.session-notes*`, `.session-notes.d/**`, `.claude/.proposals/**` | `.claude/rules/knowledge-convergence.md` |
 | Multi-Operator Coordination Substrate | `**/*` | `.claude/rules/multi-operator-coordination.md` |
 | Nexus HTTP Status Convention | `**/nexus/**`, `**/*handler*`, `**/*endpoint*` | `.claude/rules/nexus-http-status-convention.md` |
 | Nexus Webhook HMAC Rules | `**/nexus/**`, `**/webhook*`, `**/*hmac*`, `**/signature*` | `.claude/rules/nexus-webhook-hmac.md` |
@@ -68,15 +69,15 @@ A path-scoped rule you have not read is a rule you are not honoring.
 | Testing Rules | `tests/**`, `**/*test*`, `**/*spec*`, `conftest.py`, `**/.spec-coverage*`, `**/.test-results*`, `**/02-plans/**`, `**/04-validate/**` | `.claude/rules/testing.md` |
 | Time-Pressure Discipline — Parallelize, Never Shortcut | `**/workspaces/**`, `**/.claude/commands/**`, `**/.claude/agents/**`, `**/.session-notes`, `**/journal/**` | `.claude/rules/time-pressure-discipline.md` |
 | Trust-Plane Security Rules | `**/trust/**` | `.claude/rules/trust-plane-security.md` |
-| Trust Posture — Graduated Autonomy Discipline | `**/.claude/rules/**`, `**/.claude/skills/**`, `**/.claude/agents/**`, `**/.claude/hooks/**`, `**/.claude/commands/**`, `**/.claude/learning/**`, `**/.claude/settings.json`, `**/.claude/sync-manifest.yaml` | `.claude/rules/trust-posture.md` |
+| Trust Posture — Graduated Autonomy Discipline | `**/.claude/rules/**`, `**/.claude/hooks/**`, `**/.claude/commands/**`, `**/.claude/learning/**`, `**/.claude/settings.json`, `**/.claude/sync-manifest.yaml` | `.claude/rules/trust-posture.md` |
 | UI-Backend Defense Rules | `**/routes/**`, `**/handlers/**`, `**/api/**`, `**/*_endpoint*`, `**/*_handler*`, `**/*_route*` | `.claude/rules/ui-backend-defense.md` |
 | Upstream Issue Hygiene | `**/.github/**`, `**/CONTRIBUTING.md`, `**/SECURITY.md`, `**/.session-notes`, `**/journal/**`, `**/workspaces/**` | `.claude/rules/upstream-issue-hygiene.md` |
 | User-Flow Validation Rules | `**/*` | `.claude/rules/user-flow-validation.md` |
 | Value-Prioritization — Rank By User Value Before Shard-Fit | `**/workspaces/**`, `**/journal/**`, `**/.session-notes`, `**/.claude/commands/**`, `**/SWEEP*.md`, `**/WORKSPACE-DISPOSITION*.md`, `**/CHANGELOG*.md` | `.claude/rules/value-prioritization.md` |
-| Variant Authoring Meta-Rule | `**/.claude/variants/**`, `**/.claude/rules/**` | `.claude/rules/variant-authoring.md` |
+| Variant Authoring Meta-Rule | `**/.claude/variants/**` | `.claude/rules/variant-authoring.md` |
 | Verify Code-Claims Against Ground Truth Before Durable Write | `**/*.md`, `**/CHANGELOG*`, `**/.session-notes`, `**/journal/**` | `.claude/rules/verify-claims-before-write.md` |
 | Verify Resource Existence Before Debugging Access | `**/*.py`, `**/*.rs`, `**/*.mjs`, `**/*.js`, `**/*.sh`, `**/workspaces/**`, `.claude/{commands,skills}/**` | `.claude/rules/verify-resource-existence.md` |
 | Wave-Loop — Verify-And-Feed-Forward Between Milestone-Groups | `**/workspaces/**`, `**/todos/**`, `**/.claude/commands/**`, `**/02-plans/**` | `.claude/rules/wave-loop.md` |
 | Worktree Isolation Rules | `.claude/agents/**`, `.claude/commands/**`, `.claude/skills/**`, `**/*worktree*`, `**/workspaces/**` | `.claude/rules/worktree-isolation.md` |
 
-60 path-scoped rules indexed.
+61 path-scoped rules indexed.
