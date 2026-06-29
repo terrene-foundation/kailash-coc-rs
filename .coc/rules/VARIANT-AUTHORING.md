@@ -1,6 +1,6 @@
 ---
 id: "VARIANT-AUTHORING"
-paths: ["**/.claude/variants/**", "**/.claude/rules/**"]
+paths: ["**/.claude/variants/**"]
 ---
 
 # Variant Authoring Meta-Rule
