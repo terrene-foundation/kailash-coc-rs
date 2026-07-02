@@ -116,6 +116,7 @@ compose.override.yml
 .claude/learning/learning-digest.json
 .claude/learning/.heartbeat-cache*
 .claude/learning/.session-end-cache*
+.claude/learning/observations.archive/
 .claude/operators.roster.json
 .claude/logs/
 **/.journal-skipped.log
