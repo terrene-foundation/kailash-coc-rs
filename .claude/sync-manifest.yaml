@@ -557,7 +557,24 @@ cli_variants:
           # Rule 5 (commit-tagging for COC shape changes) actually fires
           # across all .claude/rules/ + sync-manifest.yaml edits — wider
           # than path predicate suggests.
-          "coc-sync-landing.md": 1400
+          #
+          # coc-sync-landing.md DEMOTED baseline → path-scoped 2026-07-03
+          # (F3/#678, journal/0414). The cc-rs baseline had drifted 266 B
+          # over the 10% Risk-0004 floor (9.57%, 55562B vs 55296B), BLOCKING
+          # the next /sync-to-use rs. Demoting frees ~1,747 B cc-rs baseline
+          # emission → clears the floor to ~12.4% (+1,487 B margin), on all 6
+          # lanes. Per-rule baseline budget no longer applies (path-scoped
+          # rules are not in the baseline the v6.2 floor measures); entry
+          # removed like the worktree-isolation.md, verify-resource-existence.md,
+          # and sweep-completeness.md demotion precedents above. Rule still
+          # loads on .claude/** edits (CC) + skill-channel (Codex/Gemini); the
+          # SessionStart drift alert (multi-operator-sessionstart.js) fires
+          # independent of rule load. Rule-11 corpus-level disposition per
+          # rule-authoring.md (recurrence signal: rs baseline relieved
+          # 2026-06-12 + 2026-07-03, breaching again) — forest item in
+          # journal/0414. The 2026-05-15 sweep-completeness selection note
+          # above (which deferred THIS demote in favor of sweep-completeness)
+          # is the vetted prior evaluation of this exact option.
           # framework-first.md PROMOTED path-scoped → baseline 2026-06-08
           # (#408 AC#5-c, journal/0237, co-owner-approved C-A). Compact
           # baseline body = binding table + Raw-Is-Wrong (measured 1,569 B
@@ -573,7 +590,8 @@ cli_variants:
           # baseline-emission budget and does not apply to a path-scoped rule.
           # The journal/0101 14000 B entry was removed at F4 Phase-2 redteam
           # reconciliation (reviewer HIGH-2; cc-architect's keep-it dissent
-          # rested on a misread of coc-sync-landing.md, which is scope:baseline).
+          # rested on a misread of coc-sync-landing.md, which was scope:baseline
+          # at the time (demoted → path-scoped 2026-07-03, F3/#678 — see above).
         per_rule_budget_tolerance: "±30%"
         per_rule_budget_block_threshold: "+30%"
     gemini:
@@ -805,7 +823,7 @@ parity_enforcement:
       # provenance (2) — per-lane delivery declared in provenance_parity above
       - "provenance-capture-prompt.js|provenance|HumanInput capture; lanes declared in provenance_parity"
       - "provenance-capture-tool.js|provenance|Action/Decision/Delegation capture; lanes in provenance_parity"
-      # cc-only (26) — CC-runtime / loom-substrate; NOT in the fresh extraction
+      # cc-only (27) — CC-runtime / loom-substrate; NOT in the fresh extraction
       - "integrity-guard.js|cc-only|gates Edit/Write to codify/<id>-<date> branches; coordination substrate (codify-branch state) — omits @coc-codex-edit-gate → excluded from apply_patch (FF-AC6-1 AC#2), not mirrored"
       - "journal-write-guard.js|cc-only|journal slot-reservation + overwrite guard; coordination substrate (journal-slot fold) — omits @coc-codex-edit-gate → excluded from apply_patch (FF-AC6-1 AC#2), not mirrored"
       - "adjacency-leasecheck.js|cc-only|multi-operator claim-adjacency lease check; coordination substrate (claims/roster, auto-claim writes) — omits @coc-codex-edit-gate → excluded from apply_patch (FF-AC6-1 AC#2), not mirrored"
@@ -831,6 +849,7 @@ parity_enforcement:
       - "validate-prod-deploy.js|cc-only|prod-deploy validation gate; CC-workflow"
       - "validate-workflow.js|cc-only|workflow validation gate; CC-workflow"
       - "wrapup-after-landing.js|cc-only|PostToolUse(Bash) wrapup-on-landing nudge on `gh pr merge`; advisory CC-workflow convenience (not a trust gate, no classifiable predicate, no @coc-codex-edit-gate) — the cross-CLI wrapup-on-landing DISCIPLINE reaches Codex/Gemini via the wave-loop.md G2 rule + release.md command emission, not this hook"
+      - "session-notes-incorporation-guard.js|cc-only|PostToolUse(Bash) session-notes reconcile advisory when the operator's own fragment trails HEAD after an incorporation command (#743 W2); advisory CC-workflow (not a trust gate, no classifiable predicate, no @coc-codex-edit-gate) — the coherence DISCIPLINE reaches Codex/Gemini via the session-notes-coherence spec + wave-loop rule, not this hook"
       - "analyze-completeness-guard.js|cc-only|PreToolUse(Skill) /analyze output-completeness gate (loom#675); keys on the CC-only Skill tool + PreToolUse(Skill) matcher (no Codex/Gemini equivalent) — the rule PROSE (analyze-output-completeness.md) reaches Codex/Gemini via the coc-core-tier skill-channel; the structural hook enforcement is CC-only"
 
 # ─────────────────────────────────────────────────────────────────
@@ -941,6 +960,7 @@ tiers:
     - rules/rule-authoring.md
     - rules/specs-authority.md
     - rules/spec-accuracy.md
+    - rules/symbol-anchored-citations.md
     # analyze-output-completeness (loom#675, 2026-06-26): the /analyze
     # phase-complete output-tree gate (01-analysis/02-plans/03-user-flows/specs
     # populated before /todos advances). coc-core tier reaches py + rs + base — every
@@ -1026,6 +1046,12 @@ tiers:
     # user-flow-validation.md: deliverable-discipline (co-owner-directed origination, journal/0134)
     - rules/multi-operator-coordination.md
     - rules/knowledge-convergence.md
+    # enrollment-operations.md (Gate-1 ingest 2026-07-03, kailash-py BUILD onboarding-suite
+    # codify): genesis-bootstrap + operator-enrollment MUST-clause discipline (signing-first,
+    # codify-branch, script-by-path, fold-clean, self-enroll, org-admin scope). Ceremony sibling
+    # of the two multi-operator rules above; path-scoped, ships NO new detector (no-check
+    # disposition recorded in its Trust Posture Wiring per sync-from-build new-rule discipline).
+    - rules/enrollment-operations.md
     - rules/user-flow-validation.md
     # Gate-1 ingest 2026-06-11 (BUILD streams, approved classification):
     # evidence-first-claims.md (kailash-rs 2026-05-31): universal agent-claim
@@ -1074,6 +1100,14 @@ tiers:
     - skills/42-certify/**
     - skills/43-ecosystem-init/**
     - skills/44-enroll/**
+    # Gate-1 ingest 2026-07-03 (kailash-py BUILD onboarding-suite codify): the fresh-repo
+    # first-owner genesis-bootstrap runbook skill + the operator-lifecycle specialist agent
+    # that drives it (agents/onboarding/coc-onboarding-specialist.md — tiered coc-core with the
+    # ceremony family it drives, NOT the onboarding: stack-detection tier its dir-siblings
+    # idiom-advisor/stack-detector use; coc-core reaches py/rs/base — the whole active USE set —
+    # per the co-owner directive to distribute the onboarding suite to ALL downstream USE templates).
+    - skills/45-genesis-bootstrap/**
+    - agents/onboarding/coc-onboarding-specialist.md
     - operators.roster.schema.json
     - team-memory/README.md
     - templates/specs/_certification.yaml
@@ -2431,6 +2465,31 @@ obsoleted:
   - .claude/projects/ # why: Claude Code's per-user session/state cache (`~/.claude/projects/<encoded-cwd>/`). loom-local; never artifact-managed. Surfaced in v2.10.x audit on rs USE templates carrying loom's own `-Users-esperie-repos-loom/` cache. Paired with the `projects/**` exclude entry below to prevent re-introduction.
   - .claude/scheduled_tasks.lock # why: Claude Code's per-user scheduled-task lock file. loom-local; never artifact-managed. Surfaced in v2.10.x audit (5 of 5 USE templates carried loom's lock). Paired with the `scheduled_tasks.lock` exclude entry.
   - .claude/test-harness/ # why: loom's multi-CLI parity test fixtures (~70 result logs + suites + run-all.sh). loom-only — consumers do not run the harness. Surfaced in v2.10.x audit on rs USE templates (644K, 100 files). Paired with the `test-harness/**` exclude entry.
+  # ── loom-only bin/*.test.mjs leak purge — BUILD lane (2026-07-01) ───────────
+  # These 13 node:test unit tests for loom's OWN bin tooling leaked via the
+  # synced bin/** ALWAYS_INCLUDE tier to BOTH lanes — USE templates AND BUILD
+  # repos (the test-harness/** exclude didn't reach them — they live under bin/,
+  # not test-harness/). Now excluded via the new `**/*.test.mjs` exclude entry.
+  # This block is the BUILD-lane purge (sync-tier-aware.mjs:1763-1765 reads
+  # `obsoleted` on the BUILD lane); the IDENTICAL 13 entries appear in
+  # `use_obsoleted:` below for the USE-lane purge — both are required because the
+  # leak hit both lanes. Consumers do not run loom's tests (same class as
+  # test-harness/ above). The sync-from-canon* siblings additionally carried
+  # synthetic disclosure fixtures (the Gate-2 scan-synced-disclosure --check
+  # tripwire that surfaced this).
+  - .claude/bin/check-sync-freshness.test.mjs # why: loom-only bin unit test leaked via bin/** tier; purge.
+  - .claude/bin/coc-run.test.mjs # why: loom-only bin unit test leaked via bin/** tier; purge.
+  - .claude/bin/deploy-config.test.mjs # why: loom-only bin unit test leaked via bin/** tier; purge.
+  - .claude/bin/emit-coc.test.mjs # why: loom-only bin unit test leaked via bin/** tier; purge.
+  - .claude/bin/emit-dev-container.test.mjs # why: loom-only bin unit test leaked via bin/** tier; purge.
+  - .claude/bin/lint-prose-drift.test.mjs # why: loom-only bin unit test leaked via bin/** tier; purge.
+  - .claude/bin/loom-doctor.test.mjs # why: loom-only bin unit test leaked via bin/** tier; purge.
+  - .claude/bin/surface-roles-emit.test.mjs # why: loom-only bin unit test leaked via bin/** tier; purge.
+  - .claude/bin/sync-from-canon-changeset.test.mjs # why: loom-only bin unit test (synthetic disclosure fixture) leaked via bin/** tier; purge.
+  - .claude/bin/sync-from-canon-fetch.test.mjs # why: loom-only bin unit test (synthetic disclosure fixture) leaked via bin/** tier; purge.
+  - .claude/bin/sync-from-canon-objects.test.mjs # why: loom-only bin unit test (synthetic disclosure fixture) leaked via bin/** tier; purge.
+  - .claude/bin/sync-from-canon.test.mjs # why: loom-only bin unit test (synthetic disclosure fixture — the Gate-2 --check tripwire) leaked via bin/** tier; purge.
+  - .claude/bin/validate-coc-parity.test.mjs # why: loom-only bin unit test leaked via bin/** tier; purge.
   - .claude/skills/07-development-guides/ # why: skill audit 2026-05-09 (PR #111, v2.29.0) — phantom-feature guide (cyclic v0.9.31 unimplemented) + duplicates 8 other skills + 4 specialists. Load-bearing primitives extracted to 01-core-sdk/parameter-scoping.md + 31-error-troubleshooting/node-lifecycle.md. Removed from every consumer.
   - .claude/skills/09-workflow-patterns/ # why: skill audit 2026-05-09 (v2.29.0) — naive industry-use templates (user's cited example of low-value skills). User-approved REMOVE.
   - .claude/skills/11-frontend-integration/ # why: skill audit 2026-05-09 (v2.29.0) — generic; no SDK-specific primitive. Coverage of frontend topics moved entirely to 23-uiux-design-principles + 25-ai-interaction-patterns.
@@ -2520,6 +2579,12 @@ loom_only:
   - disclosure-tenant-denylist.json # why: customer-identity / tenant token list the Gate-2 disclosure scanner (bin/scan-synced-disclosure.mjs `customer-identity-token` shape) flags against the SYNCED surface. TOP-LEVEL .claude/ file (NOT under bin/**) so it sits outside every synced-tier glob — this positive loom_only entry keeps it out of /sync without tripping loom-only-mutual-exclusion. The literal tokens must never reach a consumer (a consumer greps the synced scanner/list source → the leak the shape exists to prevent). At a consumer the file is absent → the shape is inert. loom-only per journal/0214 (loom#411 governance-as-DNA disclosure scrub).
   - public-release/ # why: loom-only source dir for the PUBLIC-FORK pipeline (scripts/publish-to-public.mjs) — holds the public README + Apache-2.0 LICENSE the pipeline copies into the terrene-foundation/loom snapshot. NOT framework a COC consumer uses; loom-internal publish machinery (same class as agents/management/*). Top-level .claude/ dir outside every synced-tier glob, so this loom_only entry keeps it out of /sync without tripping loom-only-mutual-exclusion. loom-only per journal/0215 (public-fork lane).
   - bin/ecosystem.json # why: the D6 ecosystem-shared remote-links + registry + vcs + deploy + upstream-canon registry (ECO-IMPL W1). Carries the REAL per-ecosystem org slugs by design; it is COMMITTED-and-shared WITHIN one ecosystem but MUST NEVER cross canon↔client or reach a consumer (a synced ecosystem.json leaks one ecosystem's orgs into another — the #255/#252 disclosure class across the ecosystem boundary). UNLIKE the top-level loom-only files above, this path IS under the synced `bin/**` tier, so this loom_only entry is LOAD-BEARING (not belt-and-suspenders): validate-emit.mjs check-8 converts it into a structural BLOCK. Each fork authors its OWN ecosystem.json; the committed `bin/ecosystem.example.json` (synthetic tokens) is the only ecosystem* file that DOES sync/publish. loom-only per ECO-IMPL W1 (journal/0292, design 02-plans/01 §4).
+  - canon-rollin-baseline.json # why: the DD-2 roll-in baseline — the per-path last-accepted-canon-blob marker state a client ecosystem FORK uses to compute "what is NEW in canon since this fork last accepted" (loom#576 SHARD A; `artifact-flow.md` § "Ecosystem Forks vs Downstream Consumers"). Per-fork PRIVATE state, COMMITTED-and-durable (top-level .claude/ file, NOT gitignored `.claude/learning/`), but MUST NEVER sync to a downstream consumer or another ecosystem — same fork-private-state class as bin/ecosystem.json / disclosure-tenant-denylist.json. TOP-LEVEL .claude/ file (NOT under bin/**) so it sits outside every synced-tier glob — this positive loom_only entry keeps it out of /sync without tripping loom-only-mutual-exclusion (the disclosure-tenant-denylist.json precedent). At canon (the root) the file is absent (canon has no upstream to roll in). loom#576 SHARD A.
+  - bin/sync-from-canon-objects.mjs # why: loom#576 SHARD A — the guarded scratch object-fetch + per-path candidate-diff builder for a client ecosystem FORK's gated canon pull. Platform-role, runs only at a fork's loom; a BUILD/USE consumer never runs sync-from-canon. Same loom-own cross-ecosystem-inbound-driver class as the sync-from-canon.md command above. UNLIKE the top-level loom-only files, this path IS under the synced `bin/**` tier, so this loom_only entry is LOAD-BEARING: validate-emit.mjs check-8 (LOOM_ONLY_TIER_CARVEOUTS) converts it into a structural BLOCK. loom#576 SHARD A.
+  - bin/lib/canon-rollin-baseline.mjs # why: loom#576 SHARD A — the read/write marker-state lib for the DD-2 roll-in baseline (canon-rollin-baseline.json above), consumed by bin/sync-from-canon-objects.mjs (read path, SHARD A) and the gated placement (write path, SHARD C). Same loom-own cross-ecosystem-inbound-driver class as bin/sync-from-canon-objects.mjs above; under the synced `bin/**` tier so this loom_only entry is LOAD-BEARING (LOOM_ONLY_TIER_CARVEOUTS carve-out). loom#576 SHARD A.
+  - bin/sync-from-canon-fetch.mjs # why: loom#576 SHARD 1 — the boundary check + read-only canon-tip resolver (the assertAllowedScheme + assertGitSafeArg + protocol.{ext,fd}.allow=never guard battery every canon-remote git call across the engine inherits via its _internal export). Same loom-own cross-ecosystem-inbound-driver class as bin/sync-from-canon-objects.mjs above; runs only at a fork's loom — a BUILD/USE consumer never runs sync-from-canon. Under the synced `bin/**` tier so this loom_only entry is LOAD-BEARING (LOOM_ONLY_TIER_CARVEOUTS structural BLOCK). Was the SHARD-1/B unfenced leak the W1 receipt (journal/0376) deferred to SHARD C; closed here. loom#576 SHARD C (closes SHARD-1 deferral).
+  - bin/sync-from-canon-changeset.mjs # why: loom#576 SHARD B — the per-path diff + classify + HUMAN-decide gate (buildChangeSet) that emits the ACCEPTED set the SHARD-C driver places. Same loom-own cross-ecosystem-inbound-driver class as bin/sync-from-canon-objects.mjs above; under the synced `bin/**` tier so this loom_only entry is LOAD-BEARING. Was the SHARD-B unfenced leak the W1 receipt (journal/0376) deferred to SHARD C; closed here. loom#576 SHARD C (closes SHARD-B deferral).
+  - bin/sync-from-canon.mjs # why: loom#576 SHARD C — the integrating gated-pull DRIVER (runSyncFromCanon): sequences buildCandidateSet (A) → buildChangeSet (B) → disclosure-scrub → IRREVERSIBLE file-level placement → transactional roll-in-baseline advance → scratch cleanup. The mutating half of the cross-ecosystem upstream-pull; fork-private, runs only at a fork's loom — a BUILD/USE consumer never runs it. Same loom-own cross-ecosystem-inbound-driver class as the A/B/lib siblings above; under the synced `bin/**` tier so this loom_only entry is LOAD-BEARING (LOOM_ONLY_TIER_CARVEOUTS structural BLOCK). loom#576 SHARD C.
 
 # ─────────────────────────────────────────────────────────────────
 # SURFACE ROLES (D3 — the ROLE axis: which ROLES surface an artifact)
@@ -2655,12 +2720,22 @@ gitignore_additions:
   # generated; no consumer produces it, so omitting is correct, not a gap):
   #   - .autocommit.lock — lock for coc-telemetry-autocommit.js, REMOVED
   #     pre-M9.1; a consumer never runs the writer, never creates the lock.
-  #   - observations.archive/ — auto-created by loom's learning-utils.js only.
-  #   - SURVEY-F40-4 / test-harness/.claude/ — loom-only evidence + test scratch.
-  # (A future validate-emit parity gate — gitignore_additions learning/** ⊇
-  #  loom's own .gitignore learning/** MINUS these documented exclusions —
-  #  closes the one-at-a-time-miss class structurally; filed as a forest item,
-  #  NOT a broad learning/** glob, which would invert the fail-safe polarity.)
+  #   - SURVEY-F40-4 / test-harness/.claude/ — loom-only evidence + test scratch
+  #     (NOT under .claude/learning/, so outside the parity gate's domain anyway).
+  # observations.archive/ was PREVIOUSLY mis-listed here as loom-only (PR #708,
+  # journal/0368). CORRECTED (#707 comment, 2026-06-29 base-lane sync finding):
+  # it is created by .claude/hooks/lib/learning-utils.js — a SYNCED hook lib that
+  # runs at EVERY consumer — so it is consumer-generated per-clone state and
+  # BELONGS in this list. Added below; the loom-only learning exclusion is now
+  # just .autocommit.lock.
+  #
+  # The parity gate that makes the one-at-a-time miss impossible is SHIPPED
+  # (#707): validate-emit.mjs::checkGitignoreLearningParity asserts this list's
+  # .claude/learning/** subset ⊇ loom's own .gitignore .claude/learning/** set
+  # MINUS LOOM_ONLY_LEARNING_EXCLUSIONS ({.autocommit.lock}), FAILing emission on
+  # any gap. Per-FILE positive-allowlist (cc-artifacts.md Rule 10), NOT a broad
+  # learning/** glob — a glob would invert the fail-safe polarity (a new learning/
+  # file would default to IGNORED/silent-over-ignore instead of TRACKED/catchable).
   - .claude/learning/coordination-log.jsonl*
   - .claude/learning/provenance/
   - .claude/learning/posture.json
@@ -2669,6 +2744,7 @@ gitignore_additions:
   - .claude/learning/learning-digest.json
   - .claude/learning/.heartbeat-cache*
   - .claude/learning/.session-end-cache*
+  - .claude/learning/observations.archive/
   # Operator roster (MO-OPT W2-c / GAP A — the state-locality policy).
   # The roster carries operator TRUST identity (genesis trust-root, GPG
   # pubkeys/fingerprints, role: owner) and is loom/build's COMMITTED shared
@@ -2806,6 +2882,7 @@ exclude:
   - projects/** # Claude Code's per-user session/state cache; loom-local. Pair: `obsoleted: .claude/projects/`.
   - scheduled_tasks.lock # Claude Code's per-user scheduled-task lock; loom-local. Pair: `obsoleted: .claude/scheduled_tasks.lock`.
   - test-harness/** # loom's multi-CLI parity test fixtures + result logs; consumers do not run the harness. Pair: `obsoleted: .claude/test-harness/`.
+  - "**/*.test.mjs" # loom's OWN unit tests (node:test suites under bin/ etc.) — SAME "consumers do not run loom's tests" class as test-harness/** above. They escaped that exclusion only by living under the synced bin/** tier (not test-harness/**), so 13 bin/*.test.mjs leaked to every USE template. Their fixtures legitimately embed synthetic disclosure shapes (sync-from-canon.test.mjs plants a synthetic /Users/jdoe/ operator-home-path), which is what tripped the Gate-2 scan-synced-disclosure --check at loom-source. Pair: scanner isExcluded source-only `*.test.mjs` skip + the per-file purge of the 13 leaked copies in BOTH `obsoleted:` (BUILD lane) and `use_obsoleted:` (USE lane) below.
   - worktrees/** # operator-local agent worktrees (worktree-isolation.md primitive). Transient scratch space; never synced. Pair: scanner isNeverSynced + .gitignore — three-layer defense-in-depth per journal/0142.
 
 # ─────────────────────────────────────────────────────────────────
@@ -2925,13 +3002,27 @@ use_exclude:
 # legitimately own these paths (cross-SDK parity, BUILD-internal
 # architecture narratives, sibling-SDK awareness, ops content).
 #
-# Symmetric with `obsoleted:` (universal purge on every target) but
-# scoped to USE-template-and-downstream only.
+# Paired with `obsoleted:` (the BUILD-lane purge — sync-tier-aware.mjs:1763-1765
+# reads `obsoleted` on the BUILD lane and `use_obsoleted` on the USE lane); this
+# list is the USE-template-and-downstream purge. The two lists are lane-specific,
+# NOT one universal + one scoped: a path that leaked to BOTH lanes (e.g. via
+# `bin/**` ALWAYS_INCLUDE) MUST appear in BOTH blocks to purge on both.
 
 use_obsoleted:
   # Paths that landed in USE templates from prior sync cycles before
   # they were classified BUILD-only. Now use_excluded; pre-existing
   # copies are stale and should be purged on next sync cycle.
+  # ── deprecated D8 redirect stub purge (2026-07-04) ─────────────────────────
+  # commands/sync.md is the removed D8 redirect stub (F10, 2026-06-25). It was
+  # added to `obsoleted:` above (the BUILD-lane + loom-emission purge source) but
+  # NOT to `use_obsoleted:` (the USE-template purge source) — so all 4 USE
+  # templates still tracked the stale stub. sync-tier-aware purges the USE lane
+  # from `use_obsoleted:` ONLY (its `purgeList` selects use_obsoleted on the USE
+  # lane, obsoleted on the BUILD lane), so a universal purge requires the path
+  # in BOTH blocks (the dual-listing
+  # pattern terrene-naming.md / independence.md already use). This entry closes
+  # the gap for the 4 USE templates. Ref: loom #36.
+  - .claude/commands/sync.md
   - .claude/rules/documentation.md
   - .claude/skills/30-claude-code-patterns/sdk-upstream-donation.md
   - .claude/guides/co-setup/
@@ -2953,6 +3044,28 @@ use_obsoleted:
   - .claude/variants/base/rules/independence.md
   - .claude/variants/prism/rules/independence.md
   - .claude/variants/prism/rules/terrene-naming.md
+  # ── loom-only bin/*.test.mjs leak purge — USE lane (2026-07-01) ──────────────
+  # SAME 13 entries as the `obsoleted:` block (BUILD lane) above. The leak
+  # shipped via `bin/**` ALWAYS_INCLUDE to BOTH lanes, so the purge MUST appear
+  # in BOTH blocks: `obsoleted:` purges BUILD repos (sync-tier-aware.mjs:1763-1765
+  # reads `obsoleted` on the BUILD lane), `use_obsoleted:` purges USE templates
+  # (reads `use_obsoleted` on the USE lane). USE templates carry 9 each; BUILD
+  # repos carry 8 (verified by dry-run purge counts). Exact-path purge is a safe
+  # no-op where a given file is absent. New `**/*.test.mjs` exclude stops FUTURE
+  # shipment on both lanes; these entries clean the already-shipped copies.
+  - .claude/bin/check-sync-freshness.test.mjs
+  - .claude/bin/coc-run.test.mjs
+  - .claude/bin/deploy-config.test.mjs
+  - .claude/bin/emit-coc.test.mjs
+  - .claude/bin/emit-dev-container.test.mjs
+  - .claude/bin/lint-prose-drift.test.mjs
+  - .claude/bin/loom-doctor.test.mjs
+  - .claude/bin/surface-roles-emit.test.mjs
+  - .claude/bin/sync-from-canon-changeset.test.mjs
+  - .claude/bin/sync-from-canon-fetch.test.mjs
+  - .claude/bin/sync-from-canon-objects.test.mjs
+  - .claude/bin/sync-from-canon.test.mjs
+  - .claude/bin/validate-coc-parity.test.mjs
 
 # ─────────────────────────────────────────────────────────────────
 # BUILD REPO MAPPING

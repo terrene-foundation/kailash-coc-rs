@@ -1,72 +1,79 @@
 # COC Sync Marker — kailash-coc-rs (rs lane, multi-CLI)
-timestamp: 2026-07-02T00:00:00Z
+timestamp: 2026-07-04T00:00:00Z
 source: loom/.claude
-loom_sha: 618e23d
+loom_sha: f259523
 variant: rs
 clis: [claude, codex, gemini]
 visibility: public
 stats:
-  copied: 1390
-  verified: 1390   # 57 content-equal after BUILD-internal strip, 1333 byte-equal
+  copied: 1396          # engine plan: 164 always_include + 1232 tier_match
+  content_changed: 72   # git diff --name-only (rest byte-equal)
+  net_new: 6            # agents/onboarding/, bin/sync-gate2-worktree.mjs, guides/rule-extracts/cross-sdk-inspection.md, hooks/lib/coc-ledger-driver.js, rules/enrollment-operations.md, skills/45-genesis-bootstrap/
   variant_only: 170
   overlay_applied: 142
-  purged: 9         # .claude/bin/*.test.mjs (obsoleted test harness)
-  preserved: [CLAUDE.md, .proposals/, learning/, settings.local.json, dev-container-scaffold]
+  overlay_orphans: 1    # .claude/skills/10-deployment-git/python-version-bump.md (known rs rename orphan → rust-version-bump.md; engine-domain, --verify CONSISTENT)
+  purge_candidates: 27  # obsoleted + use_obsoleted union (plan)
+  purge_applied_present: 1  # .claude/commands/sync.md (git status: deleted); other 26 already absent
   baselines_emitted:
     cc: 0            # CLAUDE.md preserved, not emitted
-    codex: 1        # AGENTS.md (emit.mjs --all --lang rs)
-    gemini: 1       # GEMINI.md (emit.mjs --all --lang rs)
+    codex: 1        # AGENTS.md — STALE (see note; NOT re-emitted this pass)
+    gemini: 1       # GEMINI.md — STALE (see note; NOT re-emitted this pass)
   baseline_emission_bytes:
     block_cap_bytes: 61440
     warn_cap_bytes: 32768
     headroom_floor_pct: 10
-    codex: { rules: 10, bytes: 54153, tier: WARN, headroom_bytes: 7287, headroom_pct: 11.86 }
-    gemini: { rules: 10, bytes: 53886, tier: WARN, headroom_bytes: 7554, headroom_pct: 12.29 }
+    # worktree values below are PRIOR-CYCLE (618e23d); fresh emit @f259523 = codex 53937B / gemini 53655B
+    codex: { rules: 10, bytes: 54153, tier: WARN, headroom_bytes: 7287, headroom_pct: 11.86, state: STALE_PENDING_REEMIT }
+    gemini: { rules: 10, bytes: 53886, tier: WARN, headroom_bytes: 7554, headroom_pct: 12.29, state: STALE_PENDING_REEMIT }
   cli_artifacts:
-    # codex prompts dir = 36 command-prompts + 21 agent-prompts = 57 files
-    # skills = 33 regular + 1 rules-reference = 34 skill dirs (unchanged vs prior)
-    codex: { prompts: 36, agent_prompts: 21, prompts_dir_total: 57, skills: 33, rules_reference: 1, skills_dir_total: 34 }
-    gemini: { commands: 36, skills: 33, rules_reference: 1, skills_dir_total: 34, agents: 21 }
-    orphans_purged: []   # counts stable; 0 skill-dir deletions (verified via git status)
-  coc_unified: { artifacts: 170, rules: 73, agents: 25, skills: 35, commands: 37, files: 172 }
+    # .codex/.gemini/.coc trees carry the prior-cycle (618e23d) emission — NOT re-emitted this pass (see note)
+    codex: { prompts: 36, agent_prompts: 21, prompts_dir_total: 57, skills: 33, rules_reference: 1, skills_dir_total: 34, state: STALE_PENDING_REEMIT }
+    gemini: { commands: 36, skills: 33, rules_reference: 1, skills_dir_total: 34, agents: 21, state: STALE_PENDING_REEMIT }
+    orphans_purged: []
+  coc_unified: { artifacts: 170, rules: 73, agents: 25, skills: 35, commands: 37, files: 172, state: STALE_PENDING_REEMIT }
   codex_dispatcher: { bin_coc: 1, phase_shims: 28 }
-  mcp_guard: { policies_populated: false }
+  mcp_guard: { policies_populated: false }   # computed WRAPPED_TOOLS.some(); guard synced verbatim, NOT flipped
 obsoleted_manifest_paths: 69   # .coc-obsoleted = obsoleted + use_obsoleted union (unchanged)
-gitignore: { managed_entries: 25, bytes_before: 3361, bytes_after: 3400 }
-verify_overlays: { langs: rs, total: 624, passing: 624, failing: 0 }
-scaffold: { symlink: ".claude/codex-mcp-guard -> ../.codex-mcp-guard", manifest_distributed: true }
-sdk_pins: { kailash-rs: 4.24.0 }   # 4.21.0->4.24.0, matches BUILD workspace.package.version
-deps_check: { tool: "n/a", reason: "no Cargo.toml/pyproject.toml (only Gemfile.user, project-owned)" }
-hook_integrity: { resolved: 39, total: 39, scripts_hooks_refs: 0, operator_pii_tokens: 0 }
-wave: 743-coherence-layer-item3-detector
+verify_overlays: { langs: rs, note: "engine --verify CONSISTENT per orchestrator hand-off; not re-run this enrichment pass" }
+scaffold: { symlink: ".claude/codex-mcp-guard -> ../.codex-mcp-guard (resolves, not dangling)", manifest_distributed: true, manifest_byte_equal_loom: true, codex_mcp_guard_synced: "server.js + test-server.mjs drift FIXED verbatim from loom (task#25 stale-guard); 9/9 files byte-equal" }
+sdk_pins: { kailash-rs: 4.24.2 }   # 4.24.0->4.24.2, matches BUILD kailash-rs workspace.package.version (BUILD @e575ee76)
+deps_check: { tool: "n/a", reason: "no Cargo.toml/pyproject.toml at this multi-CLI dev-container template (only Gemfile.user, project-owned) — cargo check + uv sync structurally N/A" }
+hook_integrity: { resolved: 39, total: 39, scripts_hooks_refs: 0, operator_pii_tokens: 0, description_label: "(Rust) correct" }
+inbox: { readme: present, gitkeep: present, action: "ensure-exists idempotent no-op" }
+wave: f259523-content-refresh + codex-specialist-count-bump (#802)
 note: >-
-  Content redistribution from loom@618e23d (loom 2.45.0 unchanged). Driving
-  change: #743 coherence layer + item-3 detector — 50 rules/commands/hooks/skills
-  modified + 10 net-new (session-notes-incorporation-guard.js, symbol-anchored-
-  citations.md rule, cross-ecosystem-disclosure-scanfn.js, open-pr-surface.js,
-  pending-dedup.js, lint-prose-drift.mjs + audit-fixtures). sync-tier-aware
-  --target rs --all-templates + --verify CONSISTENT: 1390/1390 delivered+verified
-  (57 content-equal after strip, 1333 byte-equal), 170/170 variant_only, 142/142
-  overlays byte-equal, 9 purged (.claude/bin/*.test.mjs obsoleted). MULTI-CLI:
-  emit-cli-artifacts.mjs --target rs wholesale-replaced .codex/{prompts=57,
-  skills=34 [33 regular + 1 rules-reference]} + .gemini/{commands=36,skills=34,
-  agents=21}; skill-dir count unchanged vs prior (0 deletions, verified via git
-  status; emit summary's skills=33 excludes the separately-counted
-  rules-reference skill). BASELINE: emit.mjs --all --lang rs
-  strict-headroom default exit 0 — AGENTS.md 54153B WARN headroom 11.86% +
-  GEMINI.md 53886B WARN headroom 12.29% (both >10% Risk-0004 floor). UNIFIED:
-  emit-coc.mjs --target rs exit 0 — .coc/ 172 files (170 artifacts). verify-
-  overlays.sh rs: 624/624 passing, 0 failing (HARD GATE PASS). SDK pin
-  kailash-rs 4.21.0->4.24.0 (matches BUILD workspace.package.version = 4.24.0).
-  No Cargo.toml/pyproject.toml at this multi-CLI dev-container template (only
-  Gemfile.user, project-owned) -> no cargo check / no uv sync (n/a). HOOKS:
-  39/39 settings.json commands resolve (up from 28 — #743 coherence hooks); 0
-  scripts/hooks refs; 0 operator-PII tokens; (Rust) description correct. INBOX:
-  .claude/.proposals/inbox/{README.md,.gitkeep} present (ensure-exists
-  idempotent). PRESERVED: CLAUDE.md, .codex/{config.toml,hooks.json},
-  .gemini/settings.json, .codex-mcp-guard/, bin/coc (+28 phase symlinks),
-  codex-mcp-guard symlink, distributed sync-manifest.yaml, settings.json,
-  visibility:public, dev-container scaffold (rs interim preserve-only, ABSENT
-  from loom_distributed). mcp-guard POLICIES_POPULATED stays false. BUMP:
-  template 2.23.16->2.23.17; loom_sha e2ac475->618e23d. upstream.version 2.45.0
-  unchanged.
+  ENRICHMENT PASS (Gate-2 STEP 2) over deterministic-engine compose from
+  loom@f259523 (loom 2.45.0 unchanged). Engine content compose ALREADY DONE +
+  --verify CONSISTENT per orchestrator hand-off: 1396 copy-plan (164
+  always_include + 1232 tier_match), 170/170 variant_only, 142/142 overlays, 1
+  overlay-orphan (python-version-bump.md — known rs rename to rust-version-bump.md),
+  27 purge candidates (1 present-and-deleted: .claude/commands/sync.md). Content
+  diff this cycle: 72 .claude/ files modified + 6 net-new (broad prose/citation
+  refresh across rules/skills + loom #802 codex specialist-count bump). ENRICHMENT
+  performed: (1) SDK pin kailash-rs 4.24.0->4.24.2 (BUILD kailash-rs
+  workspace.package.version=4.24.2 @e575ee76). (2) DEPS CHECK n/a — no
+  Cargo.toml/pyproject.toml (multi-CLI dev-container template serving Python/Ruby
+  binding consumers; only project-owned Gemfile.user) — cargo check + uv sync
+  structurally N/A. (3) MULTI-CLI SCAFFOLD: symlink .claude/codex-mcp-guard ->
+  ../.codex-mcp-guard resolves (not dangling); distributed sync-manifest.yaml
+  refreshed verbatim from loom (was DRIFT 219393B -> now 232430B byte-equal,
+  manifest_distribute:true); EXTERNAL ../.codex-mcp-guard target synced VERBATIM
+  from loom .claude/codex-mcp-guard/ — server.js (38064->42906B) + test-server.mjs
+  (23932->26656B) were STALE (task#25 stale-guard drift) now byte-equal; all 9
+  guard files byte-equal; POLICIES_POPULATED left as computed .some() (NOT
+  flipped). (4) HOOKS: 39/39 settings.json commands resolve on disk; 0
+  scripts/hooks refs; 0 operator-PII tokens; (Rust) description label correct. (5)
+  INBOX: .claude/.proposals/inbox/{README.md,.gitkeep} present (ensure-exists
+  idempotent). BUMP: template 2.23.17->2.23.18; loom_sha 618e23d->f259523.
+  upstream.version 2.45.0 unchanged. PRESERVED: CLAUDE.md, .codex/{config.toml,
+  hooks.json}, .gemini/settings.json, bin/coc (+28 phase symlinks), settings.json,
+  visibility:public, dev-container scaffold (rs interim preserve-only, ABSENT from
+  loom_distributed). ⚠️ BLOCKER FLAGGED TO ORCHESTRATOR: per-CLI EMISSION is
+  STALE — the 72 modified rules changed the baseline bodies but AGENTS.md /
+  GEMINI.md / .codex/ / .gemini/ / .coc/ were NOT re-emitted this cycle (git diff
+  shows no change to them). Fresh emit @f259523: AGENTS.md 53937B (worktree
+  54153B), GEMINI.md 53655B (worktree 53886B) — DIFFER. Orchestrator MUST run
+  emit.mjs --all --lang rs + emit-cli-artifacts.mjs --target rs + emit-coc.mjs
+  --target rs BEFORE finalize, else Codex/Gemini/.coc consumers receive
+  prior-cycle (618e23d) rules. NOT self-emitted (outside enrichment scope; partial
+  baseline-only emit would leave CLI trees divergent per journal/0339).
