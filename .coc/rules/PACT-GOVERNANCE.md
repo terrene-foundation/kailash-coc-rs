@@ -6,7 +6,6 @@ paths: ["**/pact/**", "**/governance/**"]
 # PACT Governance Rules
 
 
-
 ### 1. Frozen GovernanceContext
 
 Agents MUST receive `GovernanceContext(frozen=True)`, NEVER `GovernanceEngine`. The engine reference is private (`_engine`).
@@ -36,6 +35,8 @@ child_envelope.max_cost = parent_envelope.max_cost + 100  # Widening forbidden
 ```
 
 **Why:** Governance flows downward. A child can never have more permissions than its parent — violating this allows privilege escalation.
+
+Beyond envelope intersection (above), monotonic tightening ALSO governs MCP tool-policy RE-REGISTRATION (`_validate_monotonic_tightening`): a NEW fail-closed dimension added to a control at its eval surface (e.g. `clearance_required` at `_check_clearance`) MUST be learned by the re-registration validator in the SAME PR, with the SAME restrictiveness model (None=widest, unrecognized=tightest). This is a DISTINCT mechanism from envelope intersection — the two share no callee — see `security.md` § "Enforcement-Surface Parity". Origin: #1456 → pact 0.14.3 (#1459).
 
 ### 3. D/T/R Grammar
 
