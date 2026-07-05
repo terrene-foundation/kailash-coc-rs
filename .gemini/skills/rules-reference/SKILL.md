@@ -23,6 +23,7 @@ A path-scoped rule you have not read is a rule you are not honoring.
 | Artifact Flow Rules | `.claude/**`, `sync-manifest.yaml`, `**/VERSION` | `.claude/rules/artifact-flow.md` |
 | BUILD Repo Release Discipline | `pyproject.toml`, `packages/**/pyproject.toml`, `CHANGELOG.md`, `packages/**/CHANGELOG.md`, `packages/**/__init__.py`, `src/kailash/__init__.py`, `.github/workflows/publish-pypi.yml`, `.github/workflows/publish-*.yml`, `.github/workflows/release*.yml`, `deploy/deployment-config.md` | `.claude/rules/build-repo-release-discipline.md` |
 | CI Runner Rules | `.github/workflows/**`, `**/ci/**`, `**/.github/**` | `.claude/rules/ci-runners.md` |
+| COC Sync Landing — BUILD-Side Discipline | `.claude/**` | `.claude/rules/coc-sync-landing.md` |
 | Connection Pool Safety Rules | `**/db/**`, `**/pool*`, `**/database*`, `**/infrastructure/**` | `.claude/rules/connection-pool.md` |
 | Cross-CLI Artifact Hygiene | `workspaces/**/*.md`, `briefs/**/*.md` | `.claude/rules/cross-cli-artifact-hygiene.md` |
 | Cross-CLI Parity Meta-Rule | `**/.claude/rules/**`, `**/.claude/variants/**` | `.claude/rules/cross-cli-parity.md` |
@@ -36,6 +37,7 @@ A path-scoped rule you have not read is a rule you are not honoring.
 | Documentation Rules | `README.md`, `docs/**`, `CHANGELOG.md` | `.claude/rules/documentation.md` |
 | E2E God-Mode Testing Rules | `tests/e2e/**`, `**/*e2e*`, `**/*playwright*` | `.claude/rules/e2e-god-mode.md` |
 | EATP SDK Rules | `**/trust/**`, `**/eatp/**` | `.claude/rules/eatp.md` |
+| Enrollment Operations — Genesis Bootstrap Discipline | `.claude/operators.roster.json`, `.claude/commands/enroll.md`, `.claude/commands/whoami.md`, `.claude/commands/ecosystem-init.md`, `.claude/commands/onboard.md` | `.claude/rules/enrollment-operations.md` |
 | Environment Variables & Model Rules | `**/*.py`, `**/*.ts`, `**/*.js`, `**/*.rs`, `.env*` | `.claude/rules/env-models.md` |
 | Event-Payload Classification Rules | `**/dataflow/**`, `**/events*`, `**/domain_events/**`, `**/event_bus*` | `.claude/rules/event-payload-classification.md` |
 | Facade Manager Detection Rules | `packages/**`, `src/**`, `**/tests/**` | `.claude/rules/facade-manager-detection.md` |
@@ -81,4 +83,4 @@ A path-scoped rule you have not read is a rule you are not honoring.
 | Wave-Loop — Verify-And-Feed-Forward Between Milestone-Groups | `**/workspaces/**`, `**/todos/**`, `**/.claude/commands/**`, `**/02-plans/**` | `.claude/rules/wave-loop.md` |
 | Worktree Isolation Rules | `.claude/agents/**`, `.claude/commands/**`, `.claude/skills/**`, `**/*worktree*`, `**/workspaces/**` | `.claude/rules/worktree-isolation.md` |
 
-62 path-scoped rules indexed.
+64 path-scoped rules indexed.
