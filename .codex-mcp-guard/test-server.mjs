@@ -263,10 +263,13 @@ function loadFixture(name) {
       `timeout-shell.json: subprocess returned too fast (${elapsed}ms < ${server.SUBPROCESS_TIMEOUT_MS}ms)`,
     );
   } else {
-    // The server treats ETIMEDOUT as verdict='timeout' which is
-    // fail-open + log per cc-artifacts.md Rule 7. Expected_allow=true.
+    // This fixture exercises the timeout MECHANISM (the subprocess actually
+    // hits ETIMEDOUT at SUBPROCESS_TIMEOUT_MS) at the child_process layer; it
+    // does NOT drive evaluatePolicies. The server's DISPOSITION for a `timeout`
+    // verdict is now FAIL-CLOSED (deny) per #411 B1 — asserted via the
+    // un-evaluable-hook path in Fixture 9 (same code branch as error/missing).
     passes.push(
-      `timeout-shell.json: ETIMEDOUT after ${elapsed}ms (≥ ${server.SUBPROCESS_TIMEOUT_MS}ms threshold), allow=true (fail-open)`,
+      `timeout-shell.json: ETIMEDOUT after ${elapsed}ms (≥ ${server.SUBPROCESS_TIMEOUT_MS}ms threshold) — timeout mechanism fires (disposition tested in Fixture 9)`,
     );
   }
 }
@@ -459,6 +462,56 @@ const V4A_PATCH = {
 }
 
 // ────────────────────────────────────────────────────────────────
+// Fixture 9 — FAIL-CLOSED on an un-evaluable hook (#411 B1)
+// ────────────────────────────────────────────────────────────────
+// A hook the guard CANNOT evaluate — `missing` (source file absent for a gated
+// tool), and by the SAME code branch `timeout` (hung) / `error` (crash/spawn
+// failure) — MUST DENY (fail-closed), NOT silently forward. Inject a missing-hook
+// policy at the HEAD of shell's chain so the first (policy,target) pair is
+// un-evaluable; assert the call is denied with the fail_closed marker BEFORE the
+// real policies run. Distinct from `warn` (a hook that RAN and returned a clean
+// non-2 exit), which stays advisory-forward (Fixture 1's clean allow proves the
+// non-deny verdicts still forward).
+{
+  const realShell = server.POLICIES.shell;
+  server.POLICIES.shell = [
+    { source_file: "__nonexistent_b1_hook__.js" },
+    ...realShell,
+  ];
+  try {
+    const r = server.evaluatePolicies({
+      tool: "shell",
+      input: { command: "echo hi" },
+      cwd: process.cwd(),
+    });
+    const meta = r.mcpResponse?._meta || {};
+    if (r.allow !== false) {
+      failures.push(
+        `fail-closed (#411 B1): an un-evaluable (missing) hook MUST DENY, got allow=${r.allow}`,
+      );
+    } else if (!r.mcpResponse?.isError || meta.fail_closed !== true) {
+      failures.push(
+        `fail-closed (#411 B1): expected isError + _meta.fail_closed=true, got ${JSON.stringify(meta)}`,
+      );
+    } else if (meta.verdict !== "missing") {
+      failures.push(
+        `fail-closed (#411 B1): expected _meta.verdict=missing, got ${meta.verdict}`,
+      );
+    } else if (!/fail-closed/i.test(r.mcpResponse.content?.[0]?.text || "")) {
+      failures.push(
+        `fail-closed (#411 B1): deny text MUST explain fail-closed, got '${(r.mcpResponse.content?.[0]?.text || "").slice(0, 120)}'`,
+      );
+    } else {
+      passes.push(
+        "fail-closed (#411 B1): un-evaluable hook DENIES with the fail_closed marker (compliance-bus posture; distinct from cc-artifacts Rule 7 session-hook fail-open)",
+      );
+    }
+  } finally {
+    server.POLICIES.shell = realShell;
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
 // Server-level invariants
 // ────────────────────────────────────────────────────────────────
 {
@@ -475,6 +528,577 @@ const V4A_PATCH = {
     );
   } else {
     passes.push(`server.SUBPROCESS_TIMEOUT_MS=5000 (cc-artifacts.md Rule 7)`);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// #820 — hookSpecificOutput.permissionDecisionReason surfaces as deny text
+// ────────────────────────────────────────────────────────────────
+// A modern CC PreToolUse deny emits
+//   { continue:false, hookSpecificOutput:{ permissionDecision:"deny",
+//     permissionDecisionReason:"…" } }.
+// extractHookValidation MUST read permissionDecisionReason so translateDeny
+// surfaces the actionable reason instead of the generic fallback.
+{
+  const denyPayload = JSON.stringify({
+    continue: false,
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: "STOP — Tool call blocked. rm -rf / is destructive.",
+    },
+  });
+  const { validation } = server.extractHookValidation(denyPayload);
+  if (validation === "STOP — Tool call blocked. rm -rf / is destructive.") {
+    passes.push(
+      "#820: extractHookValidation surfaces hookSpecificOutput.permissionDecisionReason for a deny",
+    );
+  } else {
+    failures.push(
+      `#820: permissionDecisionReason not surfaced — expected the deny reason, got ${JSON.stringify(validation)}`,
+    );
+  }
+
+  // Precedence: legacy `validation` still wins over permissionDecisionReason.
+  const bothPayload = JSON.stringify({
+    continue: false,
+    hookSpecificOutput: {
+      validation: "LEGACY-VALIDATION-WINS",
+      permissionDecisionReason: "modern-reason",
+    },
+  });
+  const { validation: pref } = server.extractHookValidation(bothPayload);
+  if (pref === "LEGACY-VALIDATION-WINS") {
+    passes.push("#820: legacy `validation` retains precedence over permissionDecisionReason");
+  } else {
+    failures.push(
+      `#820: precedence wrong — expected LEGACY-VALIDATION-WINS, got ${JSON.stringify(pref)}`,
+    );
+  }
+
+  // Regression: a clean-call sentinel riding additionalContext is STILL gated
+  // out of the surface by isActionableValidation (no spurious advisory).
+  const cleanPayload = JSON.stringify({
+    continue: true,
+    hookSpecificOutput: { additionalContext: "Validated" },
+  });
+  const { validation: clean } = server.extractHookValidation(cleanPayload);
+  if (clean === "Validated" && server.isActionableValidation(clean) === false) {
+    passes.push(
+      "#820: clean sentinel 'Validated' extracted but NOT actionable (no clean-call advisory regression)",
+    );
+  } else {
+    failures.push(
+      `#820: clean-sentinel gate regressed — validation=${JSON.stringify(clean)} actionable=${server.isActionableValidation(clean)}`,
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// #820 — invokeHook stamps COC_RUNTIME=codex into the replayed-hook env
+// ────────────────────────────────────────────────────────────────
+// parseHook (lib/runtime.js) THROWS on unset COC_RUNTIME. Drive invokeHook
+// against a synthetic probe hook (in an OS tmpdir, addressed via a relative
+// path from the fixed HOOKS_DIR) that echoes its env; assert COC_RUNTIME=codex
+// AND that CLAUDE_PROJECT_DIR is still present (no regression of the prior stamp).
+{
+  const os = require("node:os");
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-guard-env-"));
+  const probePath = path.join(tmpDir, "env-probe.js");
+  fs.writeFileSync(
+    probePath,
+    "// Synthetic hook for test-server.mjs #820 COC_RUNTIME env fixture.\n" +
+      "const cocRuntime = process.env.COC_RUNTIME || 'UNSET';\n" +
+      "const projDir = process.env.CLAUDE_PROJECT_DIR ? 'set' : 'unset';\n" +
+      "process.stdout.write(JSON.stringify({ continue: true, hookSpecificOutput: {\n" +
+      "  validation: 'COC_RUNTIME=' + cocRuntime + ' CLAUDE_PROJECT_DIR=' + projDir } }));\n",
+  );
+  try {
+    const hookFile = path.relative(server.HOOKS_DIR, probePath);
+    const r = server.invokeHook({
+      hookFile,
+      payload: { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: {}, cwd: process.cwd() },
+    });
+    if (r.stdout.includes("COC_RUNTIME=codex")) {
+      passes.push("#820: invokeHook stamps COC_RUNTIME=codex into the replayed-hook env");
+    } else {
+      failures.push(
+        `#820: COC_RUNTIME not stamped — probe stdout=${JSON.stringify(r.stdout)} stderr=${JSON.stringify(r.stderr)}`,
+      );
+    }
+    if (r.stdout.includes("CLAUDE_PROJECT_DIR=set")) {
+      passes.push("#820: invokeHook still stamps CLAUDE_PROJECT_DIR (no regression)");
+    } else {
+      failures.push(
+        `#820: CLAUDE_PROJECT_DIR regression — probe stdout=${JSON.stringify(r.stdout)}`,
+      );
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// #820 (R1 LOW-1) — a PURE modern-shape deny (permissionDecision:"deny" at
+// exit 0, no `continue`) routes to verdict "deny", not fail-open allow
+// ────────────────────────────────────────────────────────────────
+{
+  // Unit: extractHookValidation surfaces the modern permissionDecision.
+  const modernDeny = JSON.stringify({
+    hookSpecificOutput: {
+      permissionDecision: "deny",
+      permissionDecisionReason: "modern-shape deny at exit 0",
+    },
+  });
+  const parsed = server.extractHookValidation(modernDeny);
+  if (parsed.permissionDecision === "deny") {
+    passes.push("#820 LOW-1: extractHookValidation returns permissionDecision='deny'");
+  } else {
+    failures.push(
+      `#820 LOW-1: permissionDecision not captured — got ${JSON.stringify(parsed.permissionDecision)}`,
+    );
+  }
+
+  // Behavioral: a probe hook emitting the pure modern deny shape at exit 0
+  // (NO continue field, NO exit 2) MUST resolve to verdict "deny".
+  const os = require("node:os");
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-guard-modern-deny-"));
+  const probePath = path.join(tmpDir, "modern-deny.js");
+  fs.writeFileSync(
+    probePath,
+    "// Synthetic hook: pure modern-shape deny at exit 0 (#820 LOW-1 fixture).\n" +
+      "process.stdout.write(JSON.stringify({ hookSpecificOutput: {\n" +
+      "  permissionDecision: 'deny', permissionDecisionReason: 'modern deny' } }));\n" +
+      "process.exit(0);\n",
+  );
+  try {
+    const hookFile = path.relative(server.HOOKS_DIR, probePath);
+    const r = server.invokeHook({
+      hookFile,
+      payload: { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: {}, cwd: process.cwd() },
+    });
+    if (r.verdict === "deny") {
+      passes.push("#820 LOW-1: pure modern-shape deny at exit 0 routes to verdict 'deny' (no fail-open)");
+    } else {
+      failures.push(
+        `#820 LOW-1: modern deny fell open — expected verdict 'deny', got '${r.verdict}' (exitCode=${r.exitCode})`,
+      );
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// CGUARDask — a modern-shape "ask" (permissionDecision:"ask" at exit 0)
+// routes to verdict "surface" (forward + surface reason), not fail-open allow
+// ────────────────────────────────────────────────────────────────
+{
+  // Unit: extractHookValidation captures the modern permissionDecision "ask".
+  const modernAsk = JSON.stringify({
+    hookSpecificOutput: {
+      permissionDecision: "ask",
+      permissionDecisionReason: "confirm before writing to the shared config",
+    },
+  });
+  const parsed = server.extractHookValidation(modernAsk);
+  if (parsed.permissionDecision === "ask") {
+    passes.push("CGUARDask: extractHookValidation returns permissionDecision='ask'");
+  } else {
+    failures.push(
+      `CGUARDask: permissionDecision not captured — got ${JSON.stringify(parsed.permissionDecision)}`,
+    );
+  }
+
+  // Behavioral: a probe hook emitting the pure modern "ask" shape at exit 0
+  // (NO continue field, NO exit 2) MUST resolve to verdict "surface" AND carry
+  // the reason — the Codex operator must SEE the advisory (not silent allow).
+  const os = require("node:os");
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-guard-modern-ask-"));
+  const probePath = path.join(tmpDir, "modern-ask.js");
+  fs.writeFileSync(
+    probePath,
+    "// Synthetic hook: pure modern-shape ask at exit 0 (CGUARDask fixture).\n" +
+      "process.stdout.write(JSON.stringify({ hookSpecificOutput: {\n" +
+      "  permissionDecision: 'ask', permissionDecisionReason: 'confirm first' } }));\n" +
+      "process.exit(0);\n",
+  );
+  try {
+    const hookFile = path.relative(server.HOOKS_DIR, probePath);
+    const r = server.invokeHook({
+      hookFile,
+      payload: { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: {}, cwd: process.cwd() },
+    });
+    if (r.verdict === "surface") {
+      passes.push("CGUARDask: pure modern-shape ask at exit 0 routes to verdict 'surface' (no silent allow)");
+    } else {
+      failures.push(
+        `CGUARDask: modern ask mis-routed — expected verdict 'surface', got '${r.verdict}' (exitCode=${r.exitCode})`,
+      );
+    }
+    if (r.verdict === "surface" && r.validation === "confirm first") {
+      passes.push("CGUARDask: the ask reason is surfaced to the Codex operator");
+    } else if (r.verdict === "surface") {
+      failures.push(
+        `CGUARDask: ask surfaced but reason not carried — expected 'confirm first', got ${JSON.stringify(r.validation)}`,
+      );
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+
+  // Behavioral: an "ask" that carries NO reason still surfaces (fallback message),
+  // never silently allows.
+  const tmpDir2 = fs.mkdtempSync(path.join(os.tmpdir(), "codex-guard-ask-noreason-"));
+  const probePath2 = path.join(tmpDir2, "ask-noreason.js");
+  fs.writeFileSync(
+    probePath2,
+    "// Synthetic hook: modern ask with no reason (CGUARDask fallback fixture).\n" +
+      "process.stdout.write(JSON.stringify({ hookSpecificOutput: {\n" +
+      "  permissionDecision: 'ask' } }));\n" +
+      "process.exit(0);\n",
+  );
+  try {
+    const hookFile = path.relative(server.HOOKS_DIR, probePath2);
+    const r = server.invokeHook({
+      hookFile,
+      payload: { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: {}, cwd: process.cwd() },
+    });
+    if (r.verdict === "surface" && typeof r.validation === "string" && r.validation.length > 0) {
+      passes.push("CGUARDask: reasonless ask surfaces a non-empty fallback advisory (no silent allow)");
+    } else {
+      failures.push(
+        `CGUARDask: reasonless ask mis-handled — expected verdict 'surface' with a fallback message, got verdict '${r.verdict}' validation=${JSON.stringify(r.validation)}`,
+      );
+    }
+  } finally {
+    fs.rmSync(tmpDir2, { recursive: true, force: true });
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// #71 — multi-line hook stdout: the permissionDecision (ask/deny) MUST be
+// captured even when it sits on a DIFFERENT line than the validation object.
+// The pre-fix single-`break` scan stopped at the first validation-bearing line
+// (scanning upward) and never read a decision on an as-yet-unscanned line, so a
+// split-line "ask" fell through to the code===0 branch and — with a non-actionable
+// validation — resolved to a silent "allow". Fix captures permissionDecision from
+// the FULL stdout; the single-line CC path MUST stay unchanged.
+// ────────────────────────────────────────────────────────────────
+{
+  const os = require("node:os");
+
+  // Unit: ask on an EARLIER line, a non-actionable validation object on a LATER
+  // line — the exact ordering the upward-scan `break` used to drop (validation
+  // line is scanned first, break fires, the ask line is never reached). Post-fix
+  // the "ask" is captured from the full stdout regardless of order.
+  const splitAsk =
+    JSON.stringify({
+      hookSpecificOutput: {
+        permissionDecision: "ask",
+        permissionDecisionReason: "confirm before writing shared config",
+      },
+    }) +
+    "\n" +
+    JSON.stringify({
+      hookSpecificOutput: { additionalContext: "non-actionable advisory context" },
+    });
+  const parsedSplit = server.extractHookValidation(splitAsk);
+  if (parsedSplit.permissionDecision === "ask") {
+    passes.push(
+      "#71: split-line ask (decision on an earlier line than the validation object) is captured",
+    );
+  } else {
+    failures.push(
+      `#71: split-line ask dropped — expected permissionDecision 'ask', got ${JSON.stringify(parsedSplit.permissionDecision)}`,
+    );
+  }
+
+  // Unit: split-line DENY (decision line ≠ validation line) is captured AND wins
+  // (most-restrictive) regardless of which line carries the validation body.
+  const splitDeny =
+    JSON.stringify({ hookSpecificOutput: { additionalContext: "some advisory" } }) +
+    "\n" +
+    JSON.stringify({
+      hookSpecificOutput: {
+        permissionDecision: "deny",
+        permissionDecisionReason: "blocked",
+      },
+    });
+  const parsedDeny = server.extractHookValidation(splitDeny);
+  if (parsedDeny.permissionDecision === "deny") {
+    passes.push(
+      "#71: split-line deny (decision on a different line than the validation object) is captured",
+    );
+  } else {
+    failures.push(
+      `#71: split-line deny dropped — expected 'deny', got ${JSON.stringify(parsedDeny.permissionDecision)}`,
+    );
+  }
+
+  // Behavioral: a probe hook emitting the split-line ask at exit 0 MUST resolve to
+  // verdict "surface" (advisory preserved), NOT the fail-open "allow" the pre-fix
+  // code produced when the validation body was non-actionable.
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-guard-71-splitask-"));
+  const probePath = path.join(tmpDir, "split-ask.js");
+  fs.writeFileSync(
+    probePath,
+    "// Synthetic hook: multi-line stdout — ask decision on line 1, a\n" +
+      "// non-actionable validation object on line 2 (#71 fixture).\n" +
+      "process.stdout.write(JSON.stringify({ hookSpecificOutput: {\n" +
+      "  permissionDecision: 'ask', permissionDecisionReason: 'confirm first' } }) + '\\n');\n" +
+      "process.stdout.write(JSON.stringify({ hookSpecificOutput: {\n" +
+      "  additionalContext: 'non-actionable advisory context' } }) + '\\n');\n" +
+      "process.exit(0);\n",
+  );
+  try {
+    const hookFile = path.relative(server.HOOKS_DIR, probePath);
+    const r = server.invokeHook({
+      hookFile,
+      payload: { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: {}, cwd: process.cwd() },
+    });
+    if (r.verdict === "surface") {
+      passes.push(
+        "#71: split-line ask at exit 0 routes to verdict 'surface' (advisory preserved, no silent allow)",
+      );
+    } else {
+      failures.push(
+        `#71: split-line ask mis-routed — expected verdict 'surface', got '${r.verdict}' (exitCode=${r.exitCode})`,
+      );
+    }
+    if (r.verdict === "surface" && typeof r.validation === "string" && r.validation.length > 0) {
+      passes.push("#71: split-line ask surfaces a non-empty advisory to the Codex operator");
+    } else if (r.verdict === "surface") {
+      failures.push(
+        `#71: split-line ask surfaced but advisory empty — got ${JSON.stringify(r.validation)}`,
+      );
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+
+  // Regression: single-line CC path UNCHANGED. A single JSON line carrying a
+  // clean (non-actionable) validation and NO permissionDecision still resolves to
+  // a plain "allow" — the #71 full-stdout scan introduces no spurious surface.
+  const tmpDir2 = fs.mkdtempSync(path.join(os.tmpdir(), "codex-guard-71-singleclean-"));
+  const probePath2 = path.join(tmpDir2, "single-clean.js");
+  fs.writeFileSync(
+    probePath2,
+    "// Synthetic hook: single-line clean all-clear (#71 single-line-unchanged fixture).\n" +
+      "process.stdout.write(JSON.stringify({ continue: true, hookSpecificOutput: {\n" +
+      "  additionalContext: 'Validated' } }));\n" +
+      "process.exit(0);\n",
+  );
+  try {
+    const hookFile = path.relative(server.HOOKS_DIR, probePath2);
+    const r = server.invokeHook({
+      hookFile,
+      payload: { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: {}, cwd: process.cwd() },
+    });
+    if (r.verdict === "allow") {
+      passes.push(
+        "#71: single-line clean all-clear still resolves to 'allow' (single-line CC path unchanged)",
+      );
+    } else {
+      failures.push(
+        `#71: single-line clean regressed — expected verdict 'allow', got '${r.verdict}' validation=${JSON.stringify(r.validation)}`,
+      );
+    }
+  } finally {
+    fs.rmSync(tmpDir2, { recursive: true, force: true });
+  }
+
+  // Regression: single-line CC ask still captured (the CGUARDask happy path,
+  // re-affirmed after the #71 full-stdout refactor is behavior-preserving).
+  const singleAsk = JSON.stringify({
+    hookSpecificOutput: { permissionDecision: "ask", permissionDecisionReason: "confirm" },
+  });
+  const parsedSingle = server.extractHookValidation(singleAsk);
+  if (parsedSingle.permissionDecision === "ask") {
+    passes.push(
+      "#71: single-line CC ask still captured (extractHookValidation refactor is behavior-preserving)",
+    );
+  } else {
+    failures.push(
+      `#71: single-line CC ask regressed — got ${JSON.stringify(parsedSingle.permissionDecision)}`,
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// #820 output-contract alignment — the guard RE-EMITS the CC PreToolUse
+// decision contract (permissionDecision / permissionDecisionReason /
+// additionalContext) on its MCP response `_meta`, stamped with COC_RUNTIME.
+// Distinct from #71 (which aligned the guard's PARSING of CC hook stdout);
+// this covers the guard's OWN emitted verdict shape. Structural assertions
+// (field presence + exact values per probe-driven-verification.md Rule 3),
+// behavioral (real exported functions + the real evaluatePolicies fail-closed
+// path), no mocking.
+// ────────────────────────────────────────────────────────────────
+{
+  // COC_RUNTIME is single-sourced as the Codex-lane label.
+  if (server.COC_RUNTIME === "codex") {
+    passes.push("#820 output-contract: COC_RUNTIME single-source === 'codex'");
+  } else {
+    failures.push(
+      `#820 output-contract: COC_RUNTIME expected 'codex', got ${JSON.stringify(server.COC_RUNTIME)}`,
+    );
+  }
+
+  // Helper unit — DENY shape: permissionDecision:'deny' + permissionDecisionReason,
+  // NO additionalContext, coc_runtime stamped.
+  const denyHSO = server.ccHookSpecificOutput({
+    decision: "deny",
+    reason: "rm -rf / is destructive",
+  });
+  if (
+    denyHSO.hookEventName === "PreToolUse" &&
+    denyHSO.permissionDecision === "deny" &&
+    denyHSO.permissionDecisionReason === "rm -rf / is destructive" &&
+    denyHSO.additionalContext === undefined &&
+    denyHSO.coc_runtime === "codex"
+  ) {
+    passes.push(
+      "#820 output-contract: ccHookSpecificOutput deny shape (permissionDecision+reason+coc_runtime, no additionalContext)",
+    );
+  } else {
+    failures.push(
+      `#820 output-contract: deny hookSpecificOutput malformed — got ${JSON.stringify(denyHSO)}`,
+    );
+  }
+
+  // Helper unit — ALLOW/advisory shape: permissionDecision:'allow' +
+  // additionalContext, NO permissionDecisionReason. A lexical/advisory match
+  // never carries a deny/block (hook-output-discipline.md MUST-2).
+  const allowHSO = server.ccHookSpecificOutput({
+    decision: "allow",
+    context: "curl|bash advisory",
+  });
+  if (
+    allowHSO.permissionDecision === "allow" &&
+    allowHSO.additionalContext === "curl|bash advisory" &&
+    allowHSO.permissionDecisionReason === undefined &&
+    allowHSO.coc_runtime === "codex"
+  ) {
+    passes.push(
+      "#820 output-contract: ccHookSpecificOutput advisory shape (permissionDecision:'allow'+additionalContext, never deny)",
+    );
+  } else {
+    failures.push(
+      `#820 output-contract: advisory hookSpecificOutput malformed — got ${JSON.stringify(allowHSO)}`,
+    );
+  }
+
+  // translateDeny end-to-end — the guard's deny emit-site carries the CC deny
+  // contract on _meta.hookSpecificOutput while isError stays true.
+  const denyStdout = JSON.stringify({
+    continue: false,
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: "STOP — Tool call blocked. rm -rf / is destructive.",
+    },
+  });
+  const denyResp = server.translateDeny({
+    hookFile: "validate-bash-command.js",
+    hookStdout: denyStdout,
+    hookStderr: "",
+  });
+  const denyMetaHSO = denyResp?._meta?.hookSpecificOutput || {};
+  if (
+    denyResp.isError === true &&
+    denyMetaHSO.permissionDecision === "deny" &&
+    typeof denyMetaHSO.permissionDecisionReason === "string" &&
+    denyMetaHSO.permissionDecisionReason.length > 0 &&
+    denyMetaHSO.coc_runtime === "codex"
+  ) {
+    passes.push(
+      "#820 output-contract: translateDeny re-emits the CC deny contract on _meta.hookSpecificOutput (isError preserved)",
+    );
+  } else {
+    failures.push(
+      `#820 output-contract: translateDeny _meta.hookSpecificOutput malformed — isError=${denyResp.isError} hso=${JSON.stringify(denyMetaHSO)}`,
+    );
+  }
+
+  // buildAllowResponse surface path — a forwarded halt-and-report carries the CC
+  // ALLOW+additionalContext contract; isError stays false (the tool IS forwarded).
+  const surfaceResp = server.buildAllowResponse({
+    allow: true,
+    warnings: [
+      {
+        source_file: "instruct-and-wait.js",
+        validation:
+          "ADVISORY — Acknowledge in next message. curl|bash detected.",
+      },
+    ],
+  });
+  const surfaceHSO = surfaceResp?._meta?.hookSpecificOutput || {};
+  if (
+    surfaceResp.isError !== true &&
+    surfaceHSO.permissionDecision === "allow" &&
+    typeof surfaceHSO.additionalContext === "string" &&
+    surfaceHSO.additionalContext.includes("curl|bash") &&
+    surfaceHSO.coc_runtime === "codex"
+  ) {
+    passes.push(
+      "#820 output-contract: buildAllowResponse surface path re-emits ALLOW+additionalContext (tool forwarded, never deny)",
+    );
+  } else {
+    failures.push(
+      `#820 output-contract: buildAllowResponse surface _meta.hookSpecificOutput malformed — isError=${surfaceResp.isError} hso=${JSON.stringify(surfaceHSO)}`,
+    );
+  }
+
+  // Plain allow (no warnings) stays the bare "permit" — NO hookSpecificOutput
+  // stamped (behavior-preserving; only deny + advisory surfaces carry the contract).
+  const plainResp = server.buildAllowResponse({ allow: true, warnings: [] });
+  if (!plainResp._meta || plainResp._meta.hookSpecificOutput === undefined) {
+    passes.push(
+      "#820 output-contract: plain allow stays bare 'permit' (no spurious hookSpecificOutput)",
+    );
+  } else {
+    failures.push(
+      `#820 output-contract: plain allow unexpectedly carries hookSpecificOutput — got ${JSON.stringify(plainResp._meta)}`,
+    );
+  }
+
+  // Fail-closed preserved AND CC-contract stamped — the un-evaluable (missing) hook
+  // path DENIES and its mcpResponse carries permissionDecision:'deny' on
+  // _meta.hookSpecificOutput. A guard that cannot evaluate policy MUST NOT fail open.
+  {
+    const realShell = server.POLICIES.shell;
+    server.POLICIES.shell = [
+      { source_file: "__nonexistent_820_hook__.js" },
+      ...realShell,
+    ];
+    try {
+      const r = server.evaluatePolicies({
+        tool: "shell",
+        input: { command: "echo hi" },
+        cwd: process.cwd(),
+      });
+      const fcHSO = r.mcpResponse?._meta?.hookSpecificOutput || {};
+      if (
+        r.allow === false &&
+        r.mcpResponse?.isError === true &&
+        r.mcpResponse?._meta?.fail_closed === true &&
+        fcHSO.permissionDecision === "deny" &&
+        typeof fcHSO.permissionDecisionReason === "string" &&
+        fcHSO.permissionDecisionReason.length > 0 &&
+        fcHSO.coc_runtime === "codex"
+      ) {
+        passes.push(
+          "#820 output-contract: fail-closed deny carries the CC deny contract on _meta.hookSpecificOutput (fail-closed preserved, never fail-open)",
+        );
+      } else {
+        failures.push(
+          `#820 output-contract: fail-closed deny missing CC contract — allow=${r.allow} isError=${r.mcpResponse?.isError} fail_closed=${r.mcpResponse?._meta?.fail_closed} hso=${JSON.stringify(fcHSO)}`,
+        );
+      }
+    } finally {
+      server.POLICIES.shell = realShell;
+    }
   }
 }
 

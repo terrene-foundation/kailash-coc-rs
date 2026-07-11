@@ -61,6 +61,8 @@ Users are expected to re-run `/sync` after a Codex-CLI upgrade to pick up the gr
 
 Users on the fallback path WILL observe slightly higher tool-call latency. This is acceptable for a guardrail that would otherwise be absent.
 
+**`permissionDecision:"ask"` has no hard-block on the Codex lane.** CC's modern `hookSpecificOutput.permissionDecision:"ask"` pauses for interactive human confirmation; the MCP companion has no confirm channel, so the guard collapses a pure `"ask"` (exit 0, no `continue:false`) to the `surface` verdict — it forwards the tool AND surfaces the reason, rather than silently allowing it. A hook that must HARD-BLOCK an operation on the Codex lane MUST emit `deny` (`permissionDecision:"deny"`) or exit 2 / `continue:false` — NOT `ask`. A `"deny"` co-emitted with an `"ask"` is honored as deny (the deny gate is evaluated first).
+
 ## Authoring
 
 The `POLICIES` table is generated from the hooks/\*.js AST + the project's `settings.json` matcher map by `extract-policies.mjs --write-policies`, which emits a sibling `policies.json`. `server.js` loads `policies.json` at startup; `POLICIES_POPULATED` flips true iff at least one wrapped Codex tool has ≥1 policy entry. Do NOT edit `policies.json` by hand — it is regenerated on every `/sync` from the single source of truth in `.claude/hooks/`.
