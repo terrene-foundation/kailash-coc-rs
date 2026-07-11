@@ -78,6 +78,15 @@ const POLICIES_PATH = path.join(HERE, "policies.json");
 const VIOLATIONS_PATH = path.join(COC_ROOT, "learning", "violations.jsonl");
 const SUBPROCESS_TIMEOUT_MS = 5000; // cc-artifacts.md Rule 7
 
+// #820: the runtime label this guard runs under, single-sourced so BOTH the
+// replayed-hook subprocess env stamp (invokeHook) AND the re-emitted CC-contract
+// output shape (ccHookSpecificOutput) carry the same value. A downstream reader of
+// the guard's MCP verdict can attribute it to the Codex enforcement lane, and any
+// replayed hook adopting lib/runtime.js::parseHook (which THROWS on unset
+// COC_RUNTIME) fails closed, not open, under the guard's replay. The guard replays
+// CC hooks in the Codex lane, so `codex` is the correct label.
+const COC_RUNTIME = "codex";
+
 // Tool-wrap scope (parity with cli_variants.hooks/*.js.codex.wraps).
 // Read-path tools (read, grep_tool, glob_tool) are INTENTIONALLY out of
 // scope in the MCP fallback path — hooks with read-only policies are
@@ -219,12 +228,16 @@ function logViolation(entry) {
 // Hook subprocess invocation — exact CC PreToolUse contract
 // ---------------------------------------------------------------------------
 // Exit code semantics per .claude/hooks/*.js convention:
-//   0 = allow, 2 = block, other = warn (treated as allow + logged)
-// Synthesizes the CC-shaped stdin payload from MCP args. Each policy
-// entry is a separate process; first non-zero, non-2 exit is logged
-// but not treated as block (cc-artifacts.md Rule 7 prefers fail-open
-// on hook unreliability vs. fail-closed which would block legitimate
-// tool calls when a hook script has a bug).
+//   0 = allow, 2 = block (deny), clean non-zero non-2 = warn (advisory-forward).
+// Synthesizes the CC-shaped stdin payload from MCP args. Each policy entry is a
+// separate process. A `warn` verdict (the hook RAN and returned a clean non-2
+// exit) is advisory-forward. But a hook that could NOT be evaluated — `timeout`
+// (hung), `error` (crash/spawn failure), or `missing` (no source file for a gated
+// tool) — FAILS CLOSED at evaluatePolicies (#411 compliance-bus posture): the
+// guard denies rather than silently forward. This guard is a security
+// policy-ENFORCEMENT surface, NOT a session-continuation hook, so cc-artifacts.md
+// Rule 7's session-hook fail-open (don't wedge the session on a buggy hook) does
+// NOT apply to an un-evaluable enforcement verdict here.
 function invokeHook({ hookFile, payload }) {
   const hookPath = path.join(HOOKS_DIR, hookFile);
   if (!fs.existsSync(hookPath)) {
@@ -239,7 +252,16 @@ function invokeHook({ hookFile, payload }) {
     input: JSON.stringify(payload),
     encoding: "utf8",
     timeout: SUBPROCESS_TIMEOUT_MS,
-    env: { ...process.env, CLAUDE_PROJECT_DIR: payload.cwd || process.cwd() },
+    // #820: stamp COC_RUNTIME=codex into the replayed-hook subprocess env.
+    // lib/runtime.js::parseHook validates COC_RUNTIME against the closed enum
+    // {cc,codex,gemini} and THROWS when it is unset — so any hook adopting
+    // parseHook would fail closed under the guard's replay. The guard replays CC
+    // hooks in the Codex enforcement lane, so `codex` is the correct label.
+    env: {
+      ...process.env,
+      CLAUDE_PROJECT_DIR: payload.cwd || process.cwd(),
+      COC_RUNTIME,
+    },
   });
   if (r.error && r.error.code === "ETIMEDOUT") {
     return {
@@ -259,16 +281,39 @@ function invokeHook({ hookFile, payload }) {
   }
   const code = r.status === null ? -4 : r.status;
   const stdout = r.stdout || "";
-  const { validation, continueFlag } = extractHookValidation(stdout);
+  const { validation, continueFlag, permissionDecision } =
+    extractHookValidation(stdout);
   let verdict;
   let surfaceValidation = null;
-  if (code === 2 || continueFlag === false) {
+  if (code === 2 || continueFlag === false || permissionDecision === "deny") {
     // exit 2 (the PreToolUse block contract) OR an explicit continue:false
-    // even at exit 0. A continue:false-with-exit-0 hook is contradictory; the
-    // guard honors the MORE-RESTRICTIVE block intent defensively rather than
+    // even at exit 0 OR the modern hookSpecificOutput.permissionDecision:"deny"
+    // (#820 R1 LOW-1 — a pure-modern-shape deny at exit 0 with no `continue`).
+    // A continue:false-with-exit-0 (or deny-at-exit-0) hook is contradictory;
+    // the guard honors the MORE-RESTRICTIVE block intent defensively rather than
     // forwarding a tool the hook signaled to block. translateDeny re-parses
     // stdout for the message.
     verdict = "deny";
+  } else if (permissionDecision === "ask") {
+    // #820 follow-up (CGUARDask): the modern CC PreToolUse "ask" decision
+    // (hookSpecificOutput.permissionDecision:"ask" at exit 0, no continue:false)
+    // requests INTERACTIVE user confirmation before the tool proceeds. The Codex
+    // enforcement lane has no interactive confirm channel at the guard, so "ask"
+    // collapses to SURFACE — forward the tool BUT surface the reason — mirroring
+    // CC's non-auto-approve → human-visible prompt. Silent ALLOW (the pre-fix
+    // fall-through) drops the signal entirely: the Codex operator loses the
+    // advisory a CC user would be prompted with (the #442 cross-CLI parity class,
+    // #820 LOW-1's sibling on the "ask" verb). Hard-DENY would over-block — "ask"
+    // is explicitly NOT "deny" (a deny is caught by the branch above). The reason
+    // rides permissionDecisionReason, which extractHookValidation already folds
+    // into `validation`; surface it even when it carries no
+    // ACTIONABLE_VALIDATION_HEADS head (an ask reason is a free-form string, not a
+    // canonical halt-and-report body, so isActionableValidation would gate it out).
+    verdict = "surface";
+    surfaceValidation =
+      validation ||
+      'Hook requested user confirmation (permissionDecision:"ask"); ' +
+        "no interactive confirm on the Codex lane — tool forwarded, review before relying on it.";
   } else if (code === 0) {
     // Exit 0 is allow — BUT a HALT-AND-REPORT hook also exits 0 (it emits
     // { continue:true, hookSpecificOutput:{validation} } per
@@ -315,29 +360,108 @@ function invokeHook({ hookFile, payload }) {
 // { continue:true, hookSpecificOutput:{validation} } (HALT-AND-REPORT, exit 0,
 // per hook-output-discipline.md MUST-2) OR { continue:true, systemMessage }
 // (Stop-class). Returns { validation, continueFlag }; validation null when none.
+// #71 restrictiveness ranking for a permissionDecision value across a multi-line
+// hook stdout. A NON-allow decision on ANY line MUST survive (fail-closed): deny
+// outranks ask outranks allow/absent/unrecognized. Unrecognized values rank 0 (NOT
+// tightest) deliberately — invokeHook only ACTS on "deny"/"ask", and ranking an
+// unknown string as deny would silently promote a typo'd decision to a block; the
+// fail-closed direction here is "a recognized non-allow decision is never dropped",
+// not "any unknown token blocks".
+function rankPermissionDecision(pd) {
+  if (pd === "deny") return 2;
+  if (pd === "ask") return 1;
+  return 0; // "allow" / absent / unrecognized
+}
+
 function extractHookValidation(hookStdout) {
   let validation = null;
   let continueFlag = null;
+  let permissionDecision = null;
   try {
     const lines = (hookStdout || "")
       .split("\n")
       .map((l) => l.trim())
       .filter(Boolean);
+    // #71: the permissionDecision + continue:false BLOCK signals are captured from
+    // the FULL stdout, independently of the first-validation `break` below. The
+    // prior single-`break` scan read permissionDecision only up to (and including)
+    // the first validation-bearing line found scanning upward; a hook emitting
+    // MULTI-LINE stdout whose validation object sits on a LATER line than a bare
+    // `{"hookSpecificOutput":{"permissionDecision":"ask"}}` object had its "ask"
+    // never read (the break fired at the validation line before the decision line
+    // was reached), fell through to the code===0 branch, and — if the validation
+    // was non-actionable — resolved to verdict "allow" with the advisory silently
+    // dropped. NOT reachable from realistic single-line CC output (verified), so
+    // this is hardening, not a live exploit. The single-line CC path is unchanged:
+    // one JSON line carries validation + continue + permissionDecision together, so
+    // all three are read from the same object exactly as before.
+    let validationCaptured = false;
     for (let i = lines.length - 1; i >= 0; i--) {
+      let obj;
       try {
-        const obj = JSON.parse(lines[i]);
-        validation =
-          obj?.hookSpecificOutput?.validation || obj?.systemMessage || null;
-        continueFlag = obj?.continue;
-        if (validation) break;
+        obj = JSON.parse(lines[i]);
       } catch {
         // not JSON; continue scanning upward
+        continue;
+      }
+      // #71: capture the modern permissionDecision from EVERY line, most-restrictive
+      // wins (deny > ask > allow/absent). A split-line ask/deny — the decision object
+      // on a different line than the validation object — is therefore always read,
+      // regardless of scan order, and a recognized non-allow decision can never be
+      // overwritten by a weaker one on another line.
+      const pd = obj?.hookSpecificOutput?.permissionDecision;
+      if (
+        pd &&
+        (permissionDecision === null ||
+          rankPermissionDecision(pd) >
+            rankPermissionDecision(permissionDecision))
+      ) {
+        permissionDecision = pd;
+      }
+      // #71: a `continue:false` on ANY line is a block signal — honor it fail-closed,
+      // not only from the validation-bearing line the single `break` used to stop at.
+      if (obj?.continue === false) continueFlag = false;
+      // #466 canonicalized the halting-hook output field from
+      // `hookSpecificOutput.validation` to `hookSpecificOutput.additionalContext`
+      // (the instruct-and-wait shape). Read BOTH so the surface-verdict still
+      // fires post-#466 — otherwise an exit-0 halt-and-report hook resolves to
+      // verdict "allow" and the Codex agent silently loses the advisory a CC
+      // agent gets (#442 cross-CLI parity regression). The clean-call sentinel
+      // ("Validated") still rides additionalContext too, but isActionableValidation
+      // gates it out, so clean-call ZERO-warning parity is preserved.
+      //
+      // #820: a modern CC PreToolUse DENY emits
+      // { hookSpecificOutput: { permissionDecision:"deny", permissionDecisionReason:"…" } }.
+      // Read permissionDecisionReason (positioned after legacy `validation`, before
+      // `additionalContext`) so translateDeny surfaces the actionable deny reason
+      // instead of the generic "hook blocked the tool invocation" fallback. Safe on
+      // the exit-0 allow/surface path: a deny reason does not begin with an
+      // ACTIONABLE_VALIDATION_HEADS head, so isActionableValidation still gates it
+      // out of the clean-call surface (no spurious advisory on a clean call).
+      //
+      // The validation body + its own `continue` come from the LAST validation-bearing
+      // line ONLY (first found scanning upward) — the pre-#71 break semantics — so the
+      // single-line CC path is byte-for-byte unchanged. A `continue:false` seen on any
+      // OTHER line still forces continueFlag=false above (fail-closed), never
+      // overwritten back to the validation line's `continue` here.
+      if (!validationCaptured) {
+        const v =
+          obj?.hookSpecificOutput?.validation ||
+          obj?.hookSpecificOutput?.permissionDecisionReason ||
+          obj?.hookSpecificOutput?.additionalContext ||
+          obj?.systemMessage ||
+          null;
+        if (v) {
+          validation = v;
+          if (continueFlag !== false) continueFlag = obj?.continue ?? null;
+          validationCaptured = true;
+        }
       }
     }
   } catch {
     /* parse failure — caller falls back */
   }
-  return { validation, continueFlag };
+  return { validation, continueFlag, permissionDecision };
 }
 
 // instruct-and-wait.js::buildValidationBody emits an ACTIONABLE validation body
@@ -362,6 +486,29 @@ function isActionableValidation(validation) {
   );
 }
 
+// #820 output-contract alignment: build the CC PreToolUse hookSpecificOutput
+// contract shape the guard RE-EMITS on its MCP response `_meta`, so a downstream
+// reader of the replayed verdict sees the SAME decision fields CC's own hooks emit
+// — `permissionDecision` + `permissionDecisionReason` for a deny (structural block),
+// `additionalContext` for an advisory/surface (forwarded halt-and-report) — stamped
+// with COC_RUNTIME so the verdict is attributable to the Codex enforcement lane.
+// This is PURELY ADDITIVE: the guard's isError/content decision and the existing
+// `_meta` fields are untouched, so the fail-closed policy behavior is preserved.
+// Per `hook-output-discipline.md` MUST-2 the SURFACE path stamps
+// permissionDecision:"allow" (a lexical/advisory match forwards the tool and rides
+// `additionalContext`, NEVER carrying a block); only a structural deny (hook exit 2 /
+// continue:false / permissionDecision:"deny") stamps permissionDecision:"deny".
+function ccHookSpecificOutput({ decision, reason, context }) {
+  const out = {
+    hookEventName: "PreToolUse",
+    permissionDecision: decision,
+    coc_runtime: COC_RUNTIME,
+  };
+  if (reason != null) out.permissionDecisionReason = reason;
+  if (context != null) out.additionalContext = context;
+  return out;
+}
+
 function translateDeny({ hookFile, hookStdout, hookStderr }) {
   const { validation, continueFlag } = extractHookValidation(hookStdout);
   const text =
@@ -374,6 +521,51 @@ function translateDeny({ hookFile, hookStdout, hookStderr }) {
     _meta: {
       hook: hookFile,
       continue: continueFlag,
+      // #820: re-emit the CC deny contract (permissionDecision + reason) so a
+      // consumer of the guard's verdict reconstructs the same decision CC's hook
+      // emitted, instead of re-parsing the human-readable text.
+      hookSpecificOutput: ccHookSpecificOutput({
+        decision: "deny",
+        reason: text,
+      }),
+    },
+  };
+}
+
+// Build the deny response for a FAIL-CLOSED block (#411): the guard could not
+// EVALUATE a policy (the hook crashed / hung / its source file is missing), so
+// the call is denied rather than silently forwarded. The agent-facing text names
+// the un-evaluable hook + WHY the call was blocked so the operator can fix the
+// hook (the deny is on the guard's inability to evaluate, NOT on the tool input).
+function failClosedDeny({ hookFile, verdict, stderr }) {
+  const why = {
+    timeout: "timed out (hung)",
+    error: "crashed or failed to spawn",
+    missing: "is missing (no policy source file for a gated tool)",
+  };
+  const text =
+    `codex-mcp-guard: BLOCKED (fail-closed) — the enforcement hook ${hookFile} ` +
+    `${why[verdict] || "could not be evaluated"}, so the guard cannot verify this ` +
+    `tool call against policy. On a governance/compliance bus a guard that cannot ` +
+    `evaluate denies rather than forwards (#411). Fix or restore the hook, then retry.` +
+    (stderr ? `\n\nstderr: ${String(stderr).slice(0, 400)}` : "");
+  return {
+    isError: true,
+    content: [{ type: "text", text }],
+    _meta: {
+      hook: hookFile,
+      continue: false,
+      fail_closed: true,
+      verdict,
+      // #820: a fail-closed block is still a DENY in the CC contract — the guard
+      // could not EVALUATE policy so it denies (never fails open). Re-emit the deny
+      // decision + reason alongside the fail_closed marker so a consumer sees both
+      // the CC-contract verdict AND that it came from the guard's inability to
+      // evaluate (not from the tool input).
+      hookSpecificOutput: ccHookSpecificOutput({
+        decision: "deny",
+        reason: text,
+      }),
     },
   };
 }
@@ -509,28 +701,78 @@ function evaluatePolicies({ tool, input, session_id, cwd }) {
         });
         continue;
       }
-      if (result.verdict === "timeout") {
-        // Per cc-artifacts.md Rule 7 — timeout falls open + logs.
+      if (result.verdict === "warn") {
+        // The hook RAN and returned a clean non-2, non-zero exit — an advisory
+        // deviation, NOT a guard failure. The hook successfully evaluated the
+        // policy and chose not to deny, so the call proceeds (advisory-forward).
+        // This is the only non-deny verdict that does NOT fail closed below: a
+        // ran-and-warned hook is distinct from a hook that could not be evaluated.
         logViolation({
-          kind: "codex_mcp_guard_timeout",
-          tool,
-          source_file: policy.source_file,
-          timeout_ms: SUBPROCESS_TIMEOUT_MS,
-        });
-      } else if (
-        result.verdict === "warn" ||
-        result.verdict === "error" ||
-        result.verdict === "missing"
-      ) {
-        // Non-blocking deviations are logged and the call still
-        // proceeds — the alternative (fail-closed on any hook bug)
-        // would deny every Codex call when one of N hooks regresses.
-        logViolation({
-          kind: "codex_mcp_guard_" + result.verdict,
+          kind: "codex_mcp_guard_warn",
           tool,
           source_file: policy.source_file,
           exit_code: result.exitCode,
         });
+        continue;
+      }
+      // FAIL-CLOSED (#411 compliance-bus posture). A verdict of `timeout` (hook
+      // hung), `error` (hook crashed / failed to spawn), or `missing` (the policy
+      // source file is absent for a tool the POLICIES_POPULATED gate says HAS
+      // policies) means the guard COULD NOT EVALUATE the policy — it has no basis
+      // to allow. On a governance/compliance bus a guard that cannot evaluate MUST
+      // DENY, never silently forward (the #411 "fail-open on hook crash" gap: a
+      // crashed enforcement hook silently disabling Codex policy enforcement
+      // defeats the "the model cannot bypass" guarantee). This is DISTINCT from
+      // `cc-artifacts.md` Rule 7's session-hook fail-open: that governs a
+      // session-CONTINUATION hook (a buggy hook must not wedge the whole session,
+      // so its instructAndWait fallback emits {continue:true}); THIS is a security
+      // policy-ENFORCEMENT guard whose whole purpose is to gate the call. First
+      // un-evaluable hook short-circuits the chain, same as a deny.
+      if (
+        result.verdict === "timeout" ||
+        result.verdict === "error" ||
+        result.verdict === "missing"
+      ) {
+        logViolation({
+          kind: "codex_mcp_guard_failclosed_" + result.verdict,
+          tool,
+          source_file: policy.source_file,
+          exit_code: result.exitCode,
+          timeout_ms:
+            result.verdict === "timeout" ? SUBPROCESS_TIMEOUT_MS : undefined,
+        });
+        return {
+          allow: false,
+          mcpResponse: failClosedDeny({
+            hookFile: policy.source_file,
+            verdict: result.verdict,
+            stderr: result.stderr,
+          }),
+          decisions,
+        };
+      }
+      // Defense-in-depth (#411 fail-closed completeness). The ONLY verdict that
+      // reaches here is "allow" — deny / surface / warn / timeout / error /
+      // missing each returned or continued above. A FUTURE, unmodeled verdict
+      // string MUST NOT silently fall through to the allow at the function tail:
+      // an unrecognized verdict means the guard cannot reason about the hook's
+      // intent, so it fails closed (same posture as the un-evaluable trio).
+      if (result.verdict !== "allow") {
+        logViolation({
+          kind: "codex_mcp_guard_failclosed_unmodeled",
+          tool,
+          source_file: policy.source_file,
+          verdict: result.verdict,
+        });
+        return {
+          allow: false,
+          mcpResponse: failClosedDeny({
+            hookFile: policy.source_file,
+            verdict: result.verdict || "unknown",
+            stderr: result.stderr,
+          }),
+          decisions,
+        };
       }
     }
   }
@@ -561,7 +803,18 @@ function buildAllowResponse(result) {
             warnText,
         },
       ],
-      _meta: { warnings: result.warnings },
+      _meta: {
+        warnings: result.warnings,
+        // #820: a forwarded halt-and-report is an ALLOW decision carrying an
+        // advisory — re-emit the CC contract with permissionDecision:"allow" +
+        // additionalContext (NEVER a block; per hook-output-discipline.md MUST-2 a
+        // lexical/advisory match must not carry deny). isError stays false: the
+        // tool IS forwarded, exactly as CC's continue:true + surfaced-message.
+        hookSpecificOutput: ccHookSpecificOutput({
+          decision: "allow",
+          context: warnText,
+        }),
+      },
     };
   }
   return { content: [{ type: "text", text: "permit" }] };
@@ -845,10 +1098,12 @@ module.exports = {
   evaluatePolicies,
   invokeHook,
   translateDeny,
+  ccHookSpecificOutput,
   extractHookValidation,
   isActionableValidation,
   buildAllowResponse,
   loadPolicies,
+  COC_RUNTIME,
   // Provenance capture (loom#411 item 1 / #440). CAPTURE_HOOKS + CAPTURE_TOOLS
   // are the SSOT the F101-4 validator reads to verify a `@codex-mcp-guard` cell.
   CAPTURE_HOOK,
@@ -860,4 +1115,5 @@ module.exports = {
   synthesizePolicyInputs,
   CODEX_TO_CC_TOOL,
   MAX_GATE_TARGETS,
+  HOOKS_DIR,
 };
