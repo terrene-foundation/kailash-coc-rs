@@ -46,6 +46,7 @@ A path-scoped rule you have not read is a rule you are not honoring.
 | Infrastructure SQL Rules | `**/db/**`, `**/infrastructure/**` | `.claude/rules/infrastructure-sql.md` |
 | Journal Author Discipline — Verifiable, Not Trusted | `journal/**`, `**/journal/**` | `.claude/rules/journal-author-discipline.md` |
 | Journal Rules | `journal/**`, `**/journal/**` | `.claude/rules/journal.md` |
+| Knowledge-Cascade Routing — Cascade-Valuable Knowledge Lands In A Manifest-Registered COC Artifact, Never Agent Memory | `**/MEMORY.md`, `**/memory/**/*.md`, `journal/**`, `**/.session-notes*`, `.claude/rules/**`, `.claude/.proposals/**` | `.claude/rules/knowledge-cascade-routing.md` |
 | Knowledge Convergence — Multi-Operator Single-Writer Discipline | `.claude/team-memory/**`, `.claude/learning/**`, `**/journal/**`, `.claude/commands/codify.md`, `.session-notes*`, `.session-notes.d/**`, `.claude/.proposals/**` | `.claude/rules/knowledge-convergence.md` |
 | Multi-Operator Coordination Substrate | `**/*` | `.claude/rules/multi-operator-coordination.md` |
 | Nexus HTTP Status Convention | `**/nexus/**`, `**/*handler*`, `**/*endpoint*` | `.claude/rules/nexus-http-status-convention.md` |
@@ -61,7 +62,7 @@ A path-scoped rule you have not read is a rule you are not honoring.
 | Refactor Invariant Rules | `**/*.py`, `packages/**` | `.claude/rules/refactor-invariants.md` |
 | Rule Authoring Meta-Rule | `**/.claude/rules/**`, `**/.claude/variants/**/rules/**` | `.claude/rules/rule-authoring.md` |
 | Schema & Data Migration Rules | `**/migrations/**`, `**/db/**`, `**/*.sql`, `**/models.py`, `**/schema.py`, `**/dataflow/**`, `**/*.py`, `**/*.rb` | `.claude/rules/schema-migration.md` |
-| Self-Referential /codify Discipline | `.claude/commands/**`, `.claude/rules/**`, `.claude/skills/**`, `.claude/hooks/**`, `.claude/bin/**`, `.claude/agents/management/**`, `.claude/audit-fixtures/**`, `.claude/test-harness/tests/**`, `.claude/sync-manifest.yaml`, `.claude/operators.roster.schema.json`, `.claude/disclosure-tenant-denylist.json`, `.claude/codex-mcp-guard/**`, `tools/verify-overlays.sh`, `scripts/publish-to-public.mjs` | `.claude/rules/self-referential-codify.md` |
+| Self-Referential /codify Discipline | `.claude/commands/**`, `.claude/rules/**`, `.claude/skills/**`, `.claude/hooks/**`, `.claude/bin/**`, `.claude/agents/management/**`, `.claude/audit-fixtures/**`, `.claude/test-harness/tests/**`, `.claude/sync-manifest.yaml`, `.claude/operators.roster.schema.json`, `.claude/disclosure-tenant-denylist.json`, `.claude/codex-mcp-guard/**`, `tools/verify-overlays.sh`, `scripts/publish-to-public.mjs`, `scripts/publish-to-private-template.mjs` | `.claude/rules/self-referential-codify.md` |
 | Spec Accuracy Rules | `**/specs/**`, `**/specs/_index.md`, `**/workspaces/**/specs/**`, `**/02-plans/**`, `**/briefs/**`, `**/README*.md`, `**/docs/**`, `**/skills/**/*.md` | `.claude/rules/spec-accuracy.md` |
 | Specs Authority Rules | `**/specs/**`, `**/specs/_index.md`, `**/workspaces/**`, `**/briefs/**`, `**/02-plans/**`, `**/todos/**` | `.claude/rules/specs-authority.md` |
 | State-File Write Guard — Validator-Driven Deploy Claims | `deploy/**`, `**/.last-deployed-*`, `**/.last-smoke-result-*`, `**/.last-interactions-smoke-result-*`, `**/state-file-write-guard.*`, `**/validate-state-file.*`, `**/post-deploy-smoke.*` | `.claude/rules/state-file-write-guard.md` |
@@ -83,4 +84,4 @@ A path-scoped rule you have not read is a rule you are not honoring.
 | Wave-Loop — Verify-And-Feed-Forward Between Milestone-Groups | `**/workspaces/**`, `**/todos/**`, `**/.claude/commands/**`, `**/02-plans/**` | `.claude/rules/wave-loop.md` |
 | Worktree Isolation Rules | `.claude/agents/**`, `.claude/commands/**`, `.claude/skills/**`, `**/*worktree*`, `**/workspaces/**` | `.claude/rules/worktree-isolation.md` |
 
-64 path-scoped rules indexed.
+65 path-scoped rules indexed.

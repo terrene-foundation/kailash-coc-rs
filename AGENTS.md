@@ -388,7 +388,7 @@ Any PR whose diff is metadata-only — version anchors (`pyproject.toml` / `Carg
 
 ### Pre-FIRST-Push CI Parity Discipline (MUST)
 
-Before the FIRST `git push` that creates a remote branch, the agent MUST run the project's local CI parity command set (Rust: `cargo +nightly fmt --all --check` + `cargo clippy -- -D warnings` + `cargo nextest run` + `RUSTDOCFLAGS="-Dwarnings" cargo doc`. Python: `pre-commit run --all-files` + `pytest` + `mypy --strict`). All MUST exit 0 → push.
+Before the FIRST `git push` that creates a remote branch, the agent MUST run the project's local CI parity command set (Rust: `cargo +nightly fmt --all --check` + `cargo clippy -- -D warnings` + `cargo nextest run` + `RUSTDOCFLAGS="-Dwarnings" cargo doc`. Python: `pre-commit run --all-files` — **only when a `.pre-commit-config.yaml` exists at repo root; a config-less repo SKIPS this step (it is not a parity failure) and its own configured checks (e.g. `ruff` / `pyright`) stand in** — + `pytest` + `mypy --strict`). All MUST exit 0 → push.
 
 **Why:** With `concurrency: cancel-in-progress: true`, cancelled in-flight runs are still billed for wall-clock consumed. Pre-flighting takes ~5-10 min; the alternative is N × 45 min of billed CI per fix-up cycle (push → CI fail → fix-up → push is the DO-NOT). See guide for the 71-minute mid-flight cancel evidence + full command set.
 
