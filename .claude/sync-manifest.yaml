@@ -1016,6 +1016,11 @@ tiers:
     - commands/start.md
     - commands/autonomize.md
     - commands/sweep.md
+    # skills/sweep/** added 2026-07-11 (journal/0467): the /sweep management-decision-report
+    # contract + Sweep-10 deferred-quality product-visibility revisit depth (extracted from
+    # commands/sweep.md to keep it near the ≤150 command budget per cc-artifacts.md Rule 3).
+    # Follows commands/sweep.md into coc-core so every consumer running /sweep carries the depth.
+    - skills/sweep/**
     # commands/worktree.md (2026-07-11, co-owner-directed origination journal/0463): universal
     # git-workflow helper — creates a durable SIBLING worktree for parallel/session development
     # (never nested under .claude/worktrees/; the rule-load-duplication trap). Default-surfaced
@@ -1093,6 +1098,19 @@ tiers:
     # redteam→codify→(re-)todos→implement loop applies to any project (py/rs/rb
     # + base), not loom-only. Path-scoped (workspaces/todos/commands/plans).
     - rules/wave-loop.md
+    # product-completion-first.md added 2026-07-11 (journal/0467, co-owner-directed
+    # origination). Universal COC governance: category-based triage of gate-surfaced
+    # findings (BUG + INVEST-NOW = immediate, severity-independent; INCREMENTAL =
+    # deferred-quality list). Governs every fix-vs-defer decision at every gate for
+    # any project. path-scoped (priority:10) to the gate surfaces (commands, rules;
+    # the § triage is inline in redteam.md/sweep.md so gate coverage holds without a
+    # workspaces/** glob, which was dropped to avoid tipping the loom#678 workspace-note
+    # injection profile) — codex/gemini baseline is saturated (codex 11.89% / gemini 12.35%
+    # headroom, within the 15% proximity band), so it delivers via the rules-reference
+    # skill-channel there rather than displacing baseline content — the identical
+    # disposition knowledge-cascade-routing.md took for the same constraint. Companion
+    # depth ships via skills/sweep/** (below).
+    - rules/product-completion-first.md
     # ─────────────────────────────────────────────────────────────
     # Multi-operator coordination substrate — commands + skills +
     # roster schema + team-memory README + certify template. MOVED

@@ -44,9 +44,9 @@ clean degrade, never a parse failure).
 
 ## Contents
 
-- rules: 75
+- rules: 76
 - agents: 26
-- skills: 38
+- skills: 39
 - commands: 41
 
 ## Authorship

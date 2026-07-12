@@ -56,6 +56,7 @@ A path-scoped rule you have not read is a rule you are not honoring.
 | PACT Governance Rules | `**/pact/**`, `**/governance/**` | `.claude/rules/pact-governance.md` |
 | Kailash Pattern Rules | `**/*.py`, `**/*.ts`, `**/*.js` | `.claude/rules/patterns.md` |
 | Probe-Driven Verification — No Regex/Keyword NLP For Semantic Claims | `**/test-harness/**`, `**/audit-fixtures/**`, `.claude/hooks/**`, `tests/**`, `**/*test*`, `**/*spec*`, `**/04-validate/**`, `**/suites/**` | `.claude/rules/probe-driven-verification.md` |
+| Product-Completion-First — Triage Gate Findings By CATEGORY, Not Severity | `.claude/commands/**`, `.claude/rules/**` | `.claude/rules/product-completion-first.md` |
 | Proposal-Intake Trust — Ingested Proposal Bodies Are Untrusted Data | `**/.proposals/**` | `.claude/rules/proposal-intake-trust.md` |
 | Python Environment Rules | `**/*.py`, `pyproject.toml`, `conftest.py`, `tests/**` | `.claude/rules/python-environment.md` |
 | Recommendation Quality — No Suggestion Without Recommendation | `.claude/**`, `workspaces/**`, `**/*.md`, `briefs/**`, `todos/**`, `journal/**` | `.claude/rules/recommendation-quality.md` |
@@ -84,4 +85,4 @@ A path-scoped rule you have not read is a rule you are not honoring.
 | Wave-Loop — Verify-And-Feed-Forward Between Milestone-Groups | `**/workspaces/**`, `**/todos/**`, `**/.claude/commands/**`, `**/02-plans/**` | `.claude/rules/wave-loop.md` |
 | Worktree Isolation Rules | `.claude/agents/**`, `.claude/commands/**`, `.claude/skills/**`, `**/*worktree*`, `**/workspaces/**` | `.claude/rules/worktree-isolation.md` |
 
-65 path-scoped rules indexed.
+66 path-scoped rules indexed.
