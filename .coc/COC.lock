@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "COC.md",
-      "sha256": "4aeddf01542e0a3ae8e8ca93e4d329f0c758e0fc43a3f62cc46c60136d7b7600"
+      "sha256": "d89799cc419b199edc167214bcda71c1635836eaf8f11c593a918c7a76391d79"
     },
     {
       "path": "agents/ALIGN-SPECIALIST.md",
@@ -147,7 +147,15 @@
     },
     {
       "path": "commands/CODIFY.md",
-      "sha256": "efa55c3f886af39c461aa7476dcd02ac50c93c4dd3d4c0f9bbfe1b00364a66a1"
+      "sha256": "63c60993a6acfa914af9d0f899ddf5a146baeb3e86f4b1466da345f6603da731"
+    },
+    {
+      "path": "commands/COST-AUDIT.md",
+      "sha256": "5500550e50d8e2f87bfc38fee2fc2476c360dfeee1940aa19644140a8423562b"
+    },
+    {
+      "path": "commands/CROSS-REPO-AUTHORIZE.md",
+      "sha256": "3545d63742a0b8cef22002200b81bf985a61b0420fe3bbef1b7366164905ed6e"
     },
     {
       "path": "commands/DB.md",
@@ -279,7 +287,7 @@
     },
     {
       "path": "rules/AGENTS.md",
-      "sha256": "c2016ecff1e6fa7c601a67de2bf533efc1b11eab26d2e96e7f7ce8964d904627"
+      "sha256": "963694d96ec3d73086477d05d46bbf07d74419be55529473c3d640450fe02bf6"
     },
     {
       "path": "rules/ANALYZE-OUTPUT-COMPLETENESS.md",
@@ -287,7 +295,7 @@
     },
     {
       "path": "rules/ARTIFACT-FLOW.md",
-      "sha256": "d67e50d69fbbeb8e7b3245f02f87fffef61ed462c24a3a386f1f4be286ebfdb4"
+      "sha256": "6bf74ef4fbd32ff37773a0cb0e58e72083691ff53a2113c9eb865cb6fc909c5a"
     },
     {
       "path": "rules/AUTONOMOUS-EXECUTION.md",
@@ -314,6 +322,10 @@
       "sha256": "be0dd3836238fc1fac938714ce364d89379491ece42364dfcfc05f28337534e3"
     },
     {
+      "path": "rules/CONFORMANCE-WALK.md",
+      "sha256": "4507742a610f4eeb4a10bd7457e5779f4c5019b628a6b27c757ce5f5805fbaac"
+    },
+    {
       "path": "rules/CONNECTION-POOL.md",
       "sha256": "925b89991ab8cb8eb8cd9c64fa4e2015d21631a3623d58fb758135d416390791"
     },
@@ -327,7 +339,7 @@
     },
     {
       "path": "rules/CROSS-SDK-INSPECTION.md",
-      "sha256": "068875fd3ccc2f6484e2c1711e4ee54448841d36ca3398fc838a579c3180a506"
+      "sha256": "5fe2f881622ff16f8b82ac96389c2fbdc2bf536eb9f0abf81ce605b5f7e1a98e"
     },
     {
       "path": "rules/DATAFLOW-CLASSIFICATION.md",
@@ -415,7 +427,7 @@
     },
     {
       "path": "rules/KNOWLEDGE-CASCADE-ROUTING.md",
-      "sha256": "3a534413b12535036cdb5be4d6481ced81034b66bd5f4c2f594431da46a44e4c"
+      "sha256": "a12ce4de984be449de66006c4f95d08a595daaa32eb1bf9e3b88503cc72f73e0"
     },
     {
       "path": "rules/KNOWLEDGE-CONVERGENCE.md",
@@ -423,7 +435,7 @@
     },
     {
       "path": "rules/MULTI-OPERATOR-COORDINATION.md",
-      "sha256": "8ef8340b0788ec9679d2875d884de2b80adda866a41f48d85550a485f242b7fc"
+      "sha256": "067ef89e7853b63838c672b1b378bb31b54202ad20b3b651a32177f50fe97fa1"
     },
     {
       "path": "rules/NEXUS-HTTP-STATUS-CONVENTION.md",
@@ -439,7 +451,7 @@
     },
     {
       "path": "rules/ORPHAN-DETECTION.md",
-      "sha256": "8258a49d377eea9192663c2dd30876d7d7270a094b711ad3242669601118164a"
+      "sha256": "542396af13fbb269e9739d8d9b80f7d70732d6056d246a91fbab83b10213b9cb"
     },
     {
       "path": "rules/PACT-GOVERNANCE.md",
@@ -475,7 +487,7 @@
     },
     {
       "path": "rules/REPO-SCOPE-DISCIPLINE.md",
-      "sha256": "8e8f95c4bcdb8f021586fdf67205a38a3e2c25050865aaf5d1d22aa4bfb08a4b"
+      "sha256": "7c4429f9909c4bc510fc37715068b9a4a32d6d66d72f587dcae5d40d42db3916"
     },
     {
       "path": "rules/RULE-AUTHORING.md",
@@ -491,15 +503,15 @@
     },
     {
       "path": "rules/SELF-REFERENTIAL-CODIFY.md",
-      "sha256": "bf491f37961026f273382d0ba6cd5c2c87cba8081edb82fbc797df4233529bd2"
+      "sha256": "4101b267461966dbb35dfecd6842f6e029ccca82e9fc9abeaf1a9e6a6e389314"
     },
     {
       "path": "rules/SPEC-ACCURACY.md",
-      "sha256": "fd45e06c8d336e22a63cd590c9e161ae924d59b19464305b0bb9a91e4356da9a"
+      "sha256": "f467643b87375127fa0bcb499f43f54f64f4f172e02f5175172a0a8901c417c2"
     },
     {
       "path": "rules/SPECS-AUTHORITY.md",
-      "sha256": "a8badabb808e42486bd4337c99254b2f1663a3c142d0e6f280c6fff6134fbaae"
+      "sha256": "605b3947c9cc71fe1b4f9605411bb45bda4e53a272a36a48519df948df5d783e"
     },
     {
       "path": "rules/STATE-FILE-WRITE-GUARD.md",
@@ -519,7 +531,7 @@
     },
     {
       "path": "rules/TENANT-ISOLATION.md",
-      "sha256": "0ab94f258776f8053275599d5ee750af2b41fba3ea1e07ec848e6e3cde465523"
+      "sha256": "2842bce93ad1cfd8e200243aa0601071bfabb05f4b6e03d4f9efe8ea83b8fe87"
     },
     {
       "path": "rules/TESTING.md",
@@ -586,12 +598,16 @@
       "sha256": "e30fbb030d47a8e5eb8ff9e7a739045c4189016c298e797b0b81c805089f7a6b"
     },
     {
+      "path": "skills/CONFORMANCE-WALK.md",
+      "sha256": "958942a10b972df49506580c15e920becaaaab0f1569ff4895d203996ed1a21f"
+    },
+    {
       "path": "skills/FRAMEWORK-FIRST.md",
       "sha256": "78ed8bc73da85f020faf3049f49a7b470784ec5e161e131c923f7adf62bbd9c0"
     },
     {
       "path": "skills/HOOK-AUTHORING.md",
-      "sha256": "f95e3ef82a811e68c507e9efcec9cb08b5c8841714eadd1f1febbafaee33279c"
+      "sha256": "0dbde76110eed6dafbb8eb924a696e4a83518be7b9ac7f4c5eeb11dd7f9cd608"
     },
     {
       "path": "skills/PROJECT.md",
@@ -707,7 +723,7 @@
     },
     {
       "path": "skills/S45-GENESIS-BOOTSTRAP.md",
-      "sha256": "32c026f848bbfb9cb7b404f060feeefbc6cfed50250126518121af913ef24cbf"
+      "sha256": "3606d1df0b932fd4e003a69e1015107cfe3c823fb900f09ea12c6da37ca6929c"
     },
     {
       "path": "skills/S46-CLEAN-INSTANTIATE.md",
