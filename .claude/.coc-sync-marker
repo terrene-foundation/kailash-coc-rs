@@ -1,28 +1,31 @@
 # COC Sync Marker — kailash-coc-rs (rs lane, multi-CLI)
-timestamp: 2026-07-12T07:05:49Z
+timestamp: 2026-07-17T01:30:41Z
 source: loom/.claude
-loom_sha: f403a49c
-loom_sha_full: f403a49c055d8a1efafe5a87e2263094590e01b9
+loom_sha: 964a0d96
+loom_sha_full: 964a0d961eb19610c0c32908c62800370076d32d
 variant: rs
 clis: [claude, codex, gemini]
 visibility: public
-cli_trees_status: RE-EMITTED@f403a49c   # Rule 8 full multi-CLI re-emit this cycle (reverses prior 2.23.19 scaffold-only); idempotency verified (0 diffs)
+distribution_mode: CONTENT-ONLY   # co-owner-ratified Option A: template semver + SDK pins UNCHANGED; only content + derived tree refreshed
+cli_trees_status: RE-EMITTED@964a0d96   # Rule 8 full multi-CLI re-emit; idempotency verified (0 diffs, byte-identical across two independent emit runs)
 stats:
-  # Content distribution performed by the engine (sync-tier-aware.mjs --target rs)
-  # BEFORE this enrichment pass; engine --verify reported CONSISTENT. Counts below
-  # from git status --porcelain after enrichment (ground truth).
-  engine_manifest: { added: 2, modified: 18, deleted: 0 }   # sync-tier-aware buildReceipt (.claude/**), incl. rs-specific build-speed.md + sync-from-template.md
-  derived_tree_drift: "~28 files (.codex/.gemini/.coc/AGENTS.md/GEMINI.md/.codex-mcp-guard) + manifest_distribute; 0 deletions (stable artifact set)"
+  # Content distribution by the engine (sync-tier-aware.mjs --target rs) BEFORE this
+  # enrichment pass; engine --verify reported CONSISTENT. Final counts below from
+  # git status --porcelain after enrichment (ground truth, whole worktree).
+  final_worktree: { added: 35, modified: 73, deleted: 32 }   # a/m/d across .claude/** + derived trees
+  engine_manifest: { added: 28, modified: 42, deleted: 31 }  # sync-tier-aware stage-only manifest (.claude/** content axis), changed_count 101
+  derived_tree: ".coc/ (20) + .codex/ (8) + .gemini/ (7) + AGENTS.md + GEMINI.md + .codex-mcp-guard/ (1); 0 orphan deletions (wholesale rm+cp on emitted subtrees)"
   baselines_emitted:
     cc: 0            # CLAUDE.md preserved
-    codex: 1         # AGENTS.md RE-EMITTED (Rule 8) — 54678B WARN steady-state, headroom 11.01% advisory
-    gemini: 1        # GEMINI.md RE-EMITTED (Rule 8) — 54396B WARN steady-state, headroom 11.46% advisory
-verify_stage: CONSISTENT   # engine sync-tier-aware.mjs --verify (pre-enrichment); 1568 in-plan files matched
+    codex: 1         # AGENTS.md RE-EMITTED — 55203B WARN steady-state; headroom 10.15% ADVISORY (clears 10% floor; the v6.2 agents.md Examples extraction unblocked this)
+    gemini: 1        # GEMINI.md RE-EMITTED — 55022B WARN steady-state; headroom 10.45% ADVISORY (clears 10% floor)
+verify_stage: CONSISTENT   # engine sync-tier-aware.mjs --verify (pre-enrichment); 1748 in-plan files matched, no obsoleted path present
+content_only_proof:
+  version_unchanged: "true — .claude/VERSION byte-identical to target origin/main (git diff origin/main empty)"
+  template_version: "2.23.20 (UNCHANGED)"
 sdk_pins:
-  kailash-rs: 4.28.0        # UNCHANGED (set prior 2.23.19 cycle; PyPI kailash-enterprise 4.28.0 HTTP 200 re-verified 2026-07-12)
-  # py-flavored map unchanged (loom platform 2.45.0 unchanged)
-build_source_of_truth:
-  kailash-rs: { pinned: 4.28.0, pypi_binding: "kailash-enterprise 4.28.0 (HTTP 200 re-verified 2026-07-12)", build_verified_this_cycle: false, rationale: "pin one day old + PyPI-resolvable; no BUILD bump evidence in COC-only 5eea21d3->f403a49c delta; repo-scope constraint blocks BUILD Cargo re-check; kept as-is (no guessing)" }
+  kailash-rs: 4.28.0        # UNCHANGED (content-only mode; crate 4.35.0 AHEAD of PyPI-published 4.34.0 — a bump would break uv sync, sidestepped by content-only)
+  # py-flavored map in VERSION.sdk_packages unchanged (loom platform 2.45.0 unchanged)
 pin_surface:
   pyproject_toml: "N/A — no pyproject.toml at this multi-CLI artifact template"
   cargo_toml: "N/A — no Cargo crate at this template"
@@ -32,43 +35,43 @@ cargo_check: "N/A — no Cargo.toml at template"
 multi_cli_scaffold:
   template_type: multi-cli
   symlinks: [".claude/codex-mcp-guard -> ../.codex-mcp-guard (verified resolves)"]
-  manifest_distribute: "true — .claude/sync-manifest.yaml refreshed from loom f403a49c (now IDENTICAL; loom manifest +18 lines 5eea21d3->f403a49c)"
-  external_symlink_target: ".codex-mcp-guard/ synced current to loom .claude/codex-mcp-guard/ (9 files); policies.json unchanged"
+  manifest_distribute: "true — .claude/sync-manifest.yaml refreshed from loom 964a0d96"
+  external_symlink_target: ".codex-mcp-guard/ synced to loom .claude/codex-mcp-guard/ (9 files)"
+  codex_dispatcher: "bin/coc + 28 per-phase symlinks (coc-<phase>) installed"
+codex_mcp_guard_disposition:
+  finding_2_server_js: "NOT TRIGGERED — loom + target server.js byte-identical (both 52279B); no 3-way source-length disagreement this session"
+  package_json_leak_fix: "target origin/main carried stale private-org leak `esperie-enterprise/loom.git`; loom current source has genericized `<owner>/<repo>`. Distributed loom's current guard tree → leak genericized (correct for PUBLIC terrene-foundation template). Only file changed in .codex-mcp-guard/."
 cli_trees:
   status: RE-EMITTED
   note: >-
-    Rule 8 (sync-completeness.md, grace ends 2026-07-18) MANDATES the full
-    multi-CLI derived-tree re-emit — reversing the prior 2.23.19 'scaffold-only'
-    behavior. This cycle regenerated via canonical emit tools: emit.mjs --all
-    --lang rs (AGENTS.md/GEMINI.md), emit-cli-artifacts --target rs
-    (.codex/{prompts=62,skills=38} + .gemini/{commands=40,skills=38,agents=22}),
-    emit-coc --target rs (.coc/ 184 files/182 artifacts). Idempotency verified:
-    re-emit produced 0 diffs (.coc) + byte-identical AGENTS/GEMINI. Wholesale
-    rm+cp: 0 orphan deletions. Config bases + bin/coc + 28 phase shims refreshed.
-hook_integrity: { unique_command_scripts: 39, resolved: 39, scripts_hooks_refs: 0, operator_pii_tokens: 0 }
+    Full multi-CLI derived-tree re-emit (sync-completeness Rule 8, BOTH halves).
+    (a) derived tree: emit.mjs --all --lang rs (AGENTS.md/GEMINI.md), emit-cli-artifacts
+    --target rs (.codex/{prompts=41,skills=38,agent-prompts=22} + .gemini/{commands=41,
+    skills=38,agents=22}), emit-coc --target rs (.coc/ 188 files / 186 artifacts:
+    rules=77 agents=26 skills=40 commands=43). (b) scaffold: config bases + hooks.json,
+    bin/coc + 28 phase shims, .codex-mcp-guard synced, symlink intact, manifest_distribute
+    refreshed. Idempotency: 2nd independent emit produced byte-identical trees (diff rc=0,
+    porcelain hash unchanged) + byte-identical AGENTS/GEMINI. Wholesale rm+cp: 0 orphan deletions.
+hook_integrity: { unique_command_scripts: 29, resolved: 29, scripts_hooks_refs: 0, operator_pii_tokens: 0 }
 description_label: "(Rust) — correct"
-headroom: "AGENTS.md 54678B / GEMINI.md 54396B — WARN refactoring-signal tier (steady state per v6 §2.2); headroom ~11% advisory (within 15% proximity band, not blocking)"
+headroom: "AGENTS.md 55203B / GEMINI.md 55022B — WARN refactoring-signal tier (steady state per v6 §2.2); headroom codex 10.15% / gemini 10.45% ADVISORY (clears 10% floor, within 15% proximity band, not blocking)"
 inbox: "present (README.md + .gitkeep) — ensure-exists idempotent, zero diff"
 preserved: [CLAUDE.md, settings.json, "visibility:public"]
-dev_container: "emit-dev-container NOT run — rs is preserve-only (ABSENT from loom_distributed; local-build, no registry break). No dev-container files touched."
-gate2_receipt: { loom_sha: f403a49c055d8a1efafe5a87e2263094590e01b9, base_sha: 317b5af9cf21a833991e8834c0db8277f3d05e32, target: rs, lane: use }
-wave: f9-gate2-re-sync-2026-07-12
+dev_container: "emit-dev-container NOT run — rs is preserve-only at this template (ABSENT from loom_distributed for this lane; no dev-container files touched)."
+gate2_receipt: { loom_sha: 964a0d961eb19610c0c32908c62800370076d32d, base_sha: 89ed674e84e3e4a248713497835eb4e2b46d4680, target: rs, lane: use }
+wave: fsync-gate2-use-rs-2026-07-16
 note: >-
-  F9 Gate-2 re-sync of /sync-to-use rs (multi-CLI lane) from loom@f403a49c
-  (origin/main, authorized source; loom platform 2.45.0 unchanged), per
-  sync-completeness Rule 8 cascade. Engine sync-tier-aware.mjs --target rs
-  applied + --verify CONSISTENT in an isolated worktree from target origin/main
-  317b5af9 BEFORE this enrichment (20-file .claude delta: 2 added
-  rules/product-completion-first.md + skills/sweep/, 18 modified incl.
-  rs-specific build-speed.md + sync-from-template.md). RULE 8 FULL MULTI-CLI
-  RE-EMIT (the key change vs prior 2.23.19 scaffold-only): AGENTS/GEMINI +
-  .codex/.gemini/.coc regenerated via canonical emit tools; idempotency verified
-  (0 diffs). SCAFFOLD: manifest_distribute refreshed; .codex-mcp-guard synced;
-  symlink intact. SDK PINS UNCHANGED: kailash-rs 4.28.0 (PyPI HTTP 200
-  re-verified; BUILD Cargo re-check blocked by repo-scope constraint; kept as-is).
-  py-flavored sdk_packages unchanged. NO pyproject/Cargo pin surface. HOOKS:
-  39/39 resolve; 0 scripts/hooks refs; 0 operator-PII. PRESERVED: CLAUDE.md,
-  settings.json, visibility:public. emit-dev-container NOT run (rs preserve-only).
-  VERSION SCHEMA: upstream.version 2.45.0 tracks loom platform (UNCHANGED). BUMP:
-  template 2.23.19->2.23.20; loom_sha 5eea21d3->f403a49c. spec-accuracy/specs-authority
-  + build-speed.md ship at f403a49c versions; un-merged feat/mesh-d6-d7 edits excluded.
+  FSYNC Gate-2 /sync-to-use rs (multi-CLI lane, LAST template) from loom@964a0d96
+  (origin/main; carries the v6.2 agents.md Examples extraction that unblocked the rs
+  codex headroom floor — codex now 10.15% / gemini 10.45%, both ADVISORY). CONTENT-ONLY
+  distribution (co-owner-ratified Option A): template semver 2.23.20 + SDK pins UNCHANGED;
+  VERSION byte-identical to target origin/main. Engine sync-tier-aware.mjs --target rs
+  applied + --verify CONSISTENT in an isolated worktree from target origin/main 89ed674e
+  BEFORE this enrichment. RULE 8 FULL MULTI-CLI RE-EMIT (both halves): AGENTS/GEMINI +
+  .codex/.gemini/.coc regenerated via canonical emit tools + scaffold (symlinks, manifest,
+  bin/coc + 28 shims, .codex-mcp-guard); idempotency verified byte-identical. codex-mcp-guard
+  finding #2 (server.js) NOT triggered (byte-identical); package.json stale private-org leak
+  esperie-enterprise/loom.git genericized to <owner>/<repo> from loom current (public-safe fix).
+  HOOKS: 29/29 resolve; 0 scripts/hooks refs; 0 operator-PII. PRESERVED: CLAUDE.md,
+  settings.json, visibility:public. Inbox ensure-exists idempotent. NO pyproject/Cargo pin
+  surface; SDK pin lives only in VERSION.sdk_packages (kailash-rs 4.28.0, UNCHANGED).

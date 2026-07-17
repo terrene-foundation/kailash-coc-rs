@@ -116,6 +116,7 @@ cli_emit_exclusions:
     # whole value, so the glob MUST stand alone.
     - skills/test-harness-probe/**
     - skills/maintenance-sweep/**
+    - skills/publish-template/**
     - agents/cc-architect.md
     - agents/gemini-architect.md
     # W4 D1 (validate-coc-parity): per-CLI architects + cli-orchestrator are loom AUTHORING
@@ -127,6 +128,7 @@ cli_emit_exclusions:
     - rules/cc-artifacts.md
     - guides/claude-code/**
     - commands/cc-audit.md
+    - commands/cost-audit.md
   gemini:
     - skills/30-claude-code-patterns/**
     - skills/co-reference/**
@@ -135,6 +137,7 @@ cli_emit_exclusions:
     # orphan fate). Globs stand alone (no inline comment).
     - skills/test-harness-probe/**
     - skills/maintenance-sweep/**
+    - skills/publish-template/**
     - agents/cc-architect.md
     - agents/codex-architect.md
     # W4 D2 (validate-coc-parity): per-CLI architects + cli-orchestrator are loom AUTHORING
@@ -146,6 +149,7 @@ cli_emit_exclusions:
     - rules/cc-artifacts.md
     - guides/claude-code/**
     - commands/cc-audit.md
+    - commands/cost-audit.md
     - guides/codex/**
 
 # ─────────────────────────────────────────────────────────────────
@@ -210,9 +214,11 @@ multi_cli_overlays:
     #   3. project_owned_preserve  — never overwritten, never purged (the
     #      consumer's own overlay layer).
     #
-    # ⚠️ ACTIVATION STATE IS PER-VARIANT (W6b-i, 2026-06-17; the D6
-    # getRegistry() primitive shipped — journal/0293; specs/04 §6 Path-A,
-    # py-scoped, USER-RATIFIED). The variants diverge in activation state:
+    # ⚠️ BOTH VARIANTS ARE D6-ACTIVE (loom owns + distributes both); they
+    # diverge ONLY in REGISTRY SUBSTITUTION (W6b-i py 2026-06-17, the D6
+    # getRegistry() primitive — journal/0293; F404 base-only rs-flip
+    # 2026-07-15 — journal/0485). py hardcodes the canon registry
+    # (registry_substitution:true); rs is local-build (registry_substitution:false):
     #
     #   • py = D6-ACTIVE. loom OWNS + EMITS + DISTRIBUTES the
     #     `publisher_internal` + `consumer_shipped` classes for py from the
@@ -226,35 +232,40 @@ multi_cli_overlays:
     #     image-publish + pull for `publisher_internal`, /sync regeneration
     #     for `consumer_shipped` — is LIVE for py.
     #
-    #   • rs = INTERIM preserve-only. rs builds locally (compose `build:`,
-    #     no `image:` pointer) → ZERO canon-registry break → no
-    #     parameterization needed and nothing to distribute. coc-sync Step
-    #     4.5/7 preserve + purge-exempt the UNION of all classes for rs (= the
-    #     prior F78 behavior — loom carries no rs copy, never emits, never
-    #     clobbers, never deletes rs files), so no rs ownership class flips.
-    #     A loom-owned rs dev-container source is a broader goal not driven by
-    #     any verified break (out of W6b-i scope).
+    #   • rs = D6-ACTIVE (local-build; F404 base-only rs-flip, journal/0485).
+    #     loom OWNS + EMITS + DISTRIBUTES the `publisher_internal` +
+    #     `consumer_shipped` classes for rs from
+    #     `.claude/dev-container-templates/rs/` (with `.env.example` shared from
+    #     `_base/`), but with registry_substitution:false — rs builds locally
+    #     (compose `build:`, no `image:` pointer) → ZERO canon-registry break →
+    #     NO token to substitute; the rs overlay ships verbatim. coc-sync Step
+    #     4.5/7 still preserve + purge-exempt `project_owned_preserve` (incl.
+    #     rs `Gemfile.user`), the prior F78 guarantee unchanged. rs CI workflows
+    #     stay project-owned (rs derives its registry at runtime).
     #
-    # Class membership below is BOTH the interim PRESERVE union (both
-    # variants — absent files are a preserve no-op) AND, for the variant
-    # named in `loom_distributed` (py), the DISTRIBUTION set. The full
-    # specs/04 §2 target membership is ALREADY ADDED for py (now D6-active):
+    # Class membership below is BOTH the PRESERVE union (both
+    # variants — absent files are a preserve no-op) AND, for the variants
+    # named in `loom_distributed` (py + rs), the DISTRIBUTION set. The full
+    # specs/04 §2 target membership is ADDED for py (D6-active):
     # publisher_internal += requirements-coc.txt, requirements-coc-ml.txt,
     # publish-dev-image.yml (py via publisher_internal_variants.py);
     # consumer_shipped += .devcontainer/postCreate.sh, .env.example (the
     # repo-root README is deliberately EXCLUDED — it is the consumer's own
     # repo doc, not a dev-container scaffold); project_owned_preserve += the
     # *.user.* / compose.override.yml globs (interim exact-match guard;
-    # glob semantics activate with the broader D6 glob work). For rs these
-    # additions remain a preserve no-op (rs ships none of them).
+    # glob semantics activate with the broader D6 glob work). These additions
+    # are PY-SPECIFIC (in the *_variants.py arrays); rs ships none of them —
+    # rs distributes its OWN overlay set instead (its publisher_internal +
+    # consumer_shipped base files, from the rs/ overlay + _base/).
     dev_container_ownership:
-      # ── D6-ACTIVATION expanded to the full specs/04 §2 membership (W6b-i, 2026-06-17).
-      # SCOPE = py image-pull architecture (specs/04 §6 launch-time amendment, USER-RATIFIED):
-      # only py hardcodes the canon registry org; rs builds locally (compose `build:`, no
-      # `image:` pointer) → ZERO registry break → rs stays interim-preserve-only (loom carries
-      # no copy for rs). The class lists are BOTH the interim PRESERVE union (both variants —
-      # absent files are a preserve no-op) AND, for the variant named in `loom_distributed`
-      # below, the DISTRIBUTION set sourced from `.claude/dev-container-templates/<variant>/`.
+      # ── D6-ACTIVATION: both variants distribute (W6b-i py 2026-06-17; F404 rs-flip
+      # 2026-07-15, journal/0485). py image-pull hardcodes the canon registry org →
+      # registry_substitution:true; rs builds locally (compose `build:`, no `image:`
+      # pointer) → ZERO registry break → registry_substitution:false (loom owns + distributes
+      # the rs overlay, substituting no token). The class lists are BOTH the PRESERVE union
+      # (both variants — absent files are a preserve no-op) AND, for the variants named in
+      # `loom_distributed` below (py + rs), the DISTRIBUTION set sourced from
+      # `.claude/dev-container-templates/<variant>/`.
       publisher_internal:
         # `Dockerfile` is the BASE recipe → loom-owned + distributed (py, D6-active);
         # the consumer's `Dockerfile.user` overlay stays project_owned_preserve (below).
@@ -274,7 +285,6 @@ multi_cli_overlays:
         - docker-compose.yml
         - .devcontainer/devcontainer.json
         - bin/dev
-        - requirements-user.txt
         # `compose.override.yml.example` is the STUB (an `*.example` →
         # consumer_shipped/regenerated per specs/04 §2). The consumer-created
         # live `compose.override.yml` is project_owned_preserve (§2 class 3);
@@ -294,6 +304,12 @@ multi_cli_overlays:
           - .devcontainer/postCreate.sh
           - .devcontainer/postCreate.user.sh.example
           - Dockerfile.user.example
+          # `requirements-user.txt` is py-ONLY (a Python project-overlay scaffold);
+          # moved here from the `consumer_shipped` BASE in F404 Shard 3 so rs — which
+          # bakes its runtimes via apt in its Dockerfile and ships no requirements-*.txt
+          # — does not inherit it and throw `source file missing` on the rs emit. py's
+          # resolved set is unchanged (base → variant is the same file, same result).
+          - requirements-user.txt
         rs: []
       project_owned_preserve:
         - Dockerfile.user
@@ -310,21 +326,53 @@ multi_cli_overlays:
         rs:
           - Gemfile.user
         py: []
-      # ── D6 distribution declaration (W6b-i, py-scoped): which variants loom DISTRIBUTES
-      # (not merely preserves) the publisher_internal + consumer_shipped classes for, from
-      # which loom-tracked source, with ecosystem-relative registry substitution. A variant
-      # ABSENT here = interim preserve-only (loom carries no copy). coc-sync reads this to
-      # decide distribute-vs-preserve per variant (Step 4.5/7) — see specs/04 §6.
+      # ── D6 distribution declaration (W6b-i py; F404 rs-flip, journal/0485): which variants
+      # loom DISTRIBUTES (not merely preserves) the publisher_internal + consumer_shipped
+      # classes for, from which loom-tracked source, with ecosystem-relative registry
+      # substitution WHEN registry_substitution:true (py) — rs distributes verbatim at
+      # registry_substitution:false. A variant ABSENT here = interim preserve-only (loom carries
+      # no copy). coc-sync reads this to decide distribute-vs-preserve per variant
+      # (Step 4.5/7) — see specs/04 §6.
       loom_distributed:
         py:
+          # variant overlay root — every non-base file reads from here (F404 Shard 2).
           source: .claude/dev-container-templates/py/
+          # shared base root — genuinely-common files (byte-identical across variants)
+          # read from here (one copy), overlaid by the variant `source` above. The
+          # ratified overlay model is FILE-LEVEL (a file is wholly base OR wholly
+          # variant; no line-merge), so only truly-common files are listed in
+          # base_files; divergent files (Dockerfile, docker-compose.yml, etc.) stay
+          # per-variant overlays read from `source`. See _base/PARTITION.md.
+          base_source: .claude/dev-container-templates/_base/
+          base_files:
+            - .env.example
           classes:
             - publisher_internal
             - consumer_shipped
           # {{REGISTRY_HOST}}/{{REGISTRY_ORG}} placeholders in the source → getRegistry()
           # {host,org} substituted at /sync-to-use distribution time (ecosystem-relative).
           registry_substitution: true
-        # rs: ABSENT → interim preserve-only (rs owns its local-build dev-container; no break).
+        rs:
+          # variant overlay root — rs's own concrete overlay files (authored F404
+          # Shard 3): Dockerfile, .dockerignore, docker-compose.yml, bin/dev,
+          # .devcontainer/devcontainer.json, compose.override.yml.example.
+          source: .claude/dev-container-templates/rs/
+          # shared base root — the SAME _base/ as py; the genuinely-common
+          # `.env.example` is read from here (one copy) for rs too, per the
+          # file-level overlay model. See _base/PARTITION.md.
+          base_source: .claude/dev-container-templates/_base/
+          base_files:
+            - .env.example
+          classes:
+            - publisher_internal
+            - consumer_shipped
+          # rs is LOCAL-BUILD (compose `build:`, no `image:` pointer) → ZERO canon
+          # registry break → the rs source carries NO {{REGISTRY_*}} placeholders.
+          # registry_substitution:false → emit-dev-container performs NO substitution
+          # for rs (verified: zero {{REGISTRY_ tokens across rs/**). This is the
+          # base-only rs-flip ratified in journal/0485 (loom owns + distributes the
+          # agnostic base; the rs Dockerfile stays a local-build variant-delta).
+          registry_substitution: false
     # ─────────────────────────────────────────────────────────────
     # Post-distribute scaffold (multi-CLI USE templates only)
     # ─────────────────────────────────────────────────────────────
@@ -754,13 +802,27 @@ parity_enforcement:
       - "Delegation|provenance-capture-tool.js|PreToolUse"
     lanes:
       - "codex|HumanInput|deferred|#411|Codex native hooks fire on shell only; UserPromptSubmit slot vestigial/unconfirmed-firing — UNVERIFIABLE from loom (item 1)"
-      - "codex|Action|wired|provenance-capture-tool.js|PreToolUse shell (native, the cell's wired-proof) — classify() maps shell/unified_exec to Action; the apply_patch Action slice is ADDITIONALLY captured via the codex-mcp-guard side-effect, verified by codex-guard-capture.test.mjs not this parity cell (#440)"
+      - "codex|Action|wired|provenance-capture-tool.js|PreToolUse shell (native, the cell's wired-proof) — LOOM-SELF-ONLY: the wired-proof reads loom's OWN dogfood .codex/hooks.json, which registers provenance-capture-tool.js; the SHIPPED codex-templates/hooks.json does NOT (downstream codex·Action capture is DEFERRED, declared in loom_self_only below, #411). classify() maps shell/unified_exec to Action; the apply_patch Action slice is ADDITIONALLY captured via the codex-mcp-guard side-effect, verified by codex-guard-capture.test.mjs not this parity cell (#440)"
       - "codex|Decision|wired|provenance-capture-tool.js@codex-mcp-guard|apply_patch V4A path → Decision via the codex-mcp-guard capture side-effect (codex#16732: apply_patch has no native hook; #440)"
       - "codex|Delegation|deferred|#411|Codex delegation is inline-cat injection via bin/coc — not a tool call, no capture point exists (item 1)"
       - "gemini|HumanInput|deferred|#411|BeforeModel is closest but its stdin payload (carries prompt text?) is UNVERIFIABLE without a live Gemini run (item 1)"
-      - "gemini|Action|wired|provenance-capture-tool.js|BeforeTool — classify() maps write_file/replace/run_shell_command to Action"
-      - "gemini|Decision|wired|provenance-capture-tool.js|BeforeTool — classify() maps write_file on a journal-DECISION path to Decision"
+      - "gemini|Action|wired|provenance-capture-tool.js|BeforeTool — LOOM-SELF-ONLY: the wired-proof reads loom's OWN dogfood .gemini/settings.json, which registers provenance-capture-tool.js; the SHIPPED gemini-templates/settings.json does NOT (downstream gemini·Action capture is DEFERRED, declared in loom_self_only below, #411). classify() maps write_file/replace/run_shell_command to Action"
+      - "gemini|Decision|wired|provenance-capture-tool.js|BeforeTool — LOOM-SELF-ONLY: same divergence as gemini·Action (wired in loom-local .gemini/settings.json, absent from the shipped template; deferred downstream, declared in loom_self_only below, #411). classify() maps write_file on a journal-DECISION path to Decision"
       - "gemini|Delegation|deferred|#411|@agent fires BeforeAgent (subagent lifecycle), a different payload shape than classify() consumes — BeforeAgent shape unverified (item 1)"
+    # F820b (#820, journal/0477) — TEMPLATE-vs-LOOM-LOCAL parity. A codex OR gemini
+    # `wired` NATIVE cell's presence proof (check provenance-parity) reads loom's OWN
+    # dogfood config (.codex/hooks.json / .gemini/settings.json). When a hook is wired
+    # there but ABSENT from the SHIPPED template (codex-templates/hooks.json /
+    # gemini-templates/settings.json), the `wired` guarantee is loom-self-only and
+    # downstream consumers silently drop that capture. Each such divergence MUST be
+    # declared here with a #NNN tracking ref so it is explicit + non-decaying
+    # (value-prioritization.md MUST-2), not a silent drop. Entries are HOOK-keyed
+    # (one entry covers a hook's divergence across every lane it diverges on). The
+    # validator FAILs (a) any codex/gemini wired-loom-local-and-absent-from-template
+    # hook NOT listed here, AND (b) any stale entry with no live divergence.
+    # Format: "<hook>.js|#NNN|<reason…>".
+    loom_self_only:
+      - "provenance-capture-tool.js|#411|loom dogfoods provenance capture — codex·Action via PreToolUse shell (.codex/hooks.json) + gemini·Action/Decision via BeforeTool (.gemini/settings.json); wiring it into the shipped codex-templates/hooks.json + gemini-templates/settings.json is itself a provenance-granularity choice coupled to #411 DECISION-1 (accountable-principal attribution, pending works-council sign-off) — deferred downstream, wired loom-self"
     # F128/#445 — DEPTH axis (subagent-internal capture). Orthogonal to the
     # {kind}×{cli} top-level matrix above: it does NOT flip a cell — it asks
     # whether provenance capture reaches a delegated subagent's INTERNAL tool
@@ -990,6 +1052,17 @@ tiers:
     # the rule PROSE and wire their own PreToolUse hook — the same documented
     # pattern as rules/state-file-write-guard.md above.
     - rules/analyze-output-completeness.md
+    # conformance-walk (loom#1146, 2026-07-16, /govern co-owner-directed origination
+    # journal/0518): the surface-neutral freeze-then-judge verification discipline
+    # (frozen-expectation-vs-floor + deterministic-load-bearing/semantic-advisory +
+    # coverage-separate-from-pass-rate + discrete verdict taxonomy). Same CO
+    # verification-discipline class as probe-driven-verification.md / user-flow-validation.md
+    # above; path-scoped (priority:10) to any testable surface, so it delivers via the
+    # rules-reference skill-channel on codex/gemini rather than displacing baseline.
+    # coc-core reaches py + rs + base — every axis that runs a testable surface. Its
+    # companion skill ships via skills/conformance-walk/** below (Validator 15 blocks
+    # /sync if either is authored but unregistered — both land THIS codify).
+    - rules/conformance-walk.md
     - rules/deploy-hygiene.md
     - rules/upstream-issue-hygiene.md
     # proposal-intake-trust (sync-upflow todo 08): the reviewer-side
@@ -1027,6 +1100,14 @@ tiers:
     # for every role (build + use + platform all create worktrees), like start/learn/journal —
     # no surface_roles restriction. Pairs with rules/worktree-isolation.md Rule 7.
     - commands/worktree.md
+    # commands/cross-repo-authorize.md (2026-07-14, journal/0488): the User-Authorized
+    # Exception ceremony affordance for rules/repo-scope-discipline.md (a baseline/coc-core
+    # rule reaching py + rs + base). It writes the cross-repo-authorization receipt to
+    # .claude/cross-repo-authz/ (NOT /codify-gated journal/), closing the RC6 deadlock where
+    # the receipt was un-producible in a normal session. Ships to consumers alongside the rule
+    # it serves — a consumer that loads repo-scope-discipline.md needs the affordance to satisfy
+    # the exception. Default-surfaced (no surface_roles restriction): every role does cross-repo work.
+    - commands/cross-repo-authorize.md
     # commands/sync-from-downstream.md + commands/sync-from-template.md MOVED here from kailash
     # (2026-06-25, F10 cascade-tiering): methodology-generic consumer-run cascade verbs (sync-from-template.md
     # has zero Kailash coupling). coc-core reaches py + rs + base, so the non-Kailash `base` USE-template axis
@@ -1154,6 +1235,11 @@ tiers:
     - commands/doctor.md
     - commands/clean-instantiate.md
     - commands/reconcile-notes.md
+    # /cost-audit (per-project Claude Code cost from local ~/.claude/projects transcripts) — a
+    # CC-runtime utility, CC-only (excluded from codex/gemini emission below; those CLIs have no
+    # ~/.claude/projects analog). Backing bin/cc-cost.mjs ships via the fail-closed
+    # ALWAYS_INCLUDE list (sync-tier-aware.mjs) — F1030d retired the fail-open .claude/bin/** glob.
+    - commands/cost-audit.md
     - skills/32-trust-posture/**
     - skills/41-onboard/**
     - skills/42-certify/**
@@ -1231,6 +1317,12 @@ tiers:
     - agents/frontend/**
     # General methodology / quality / frontend skills
     - skills/spec-compliance/**
+    # skills/conformance-walk/** (loom#1146, 2026-07-16, /govern journal/0518): the
+    # methodology + normative adapter-registry interface backing rules/conformance-walk.md
+    # above. Surface-neutral (BE/FE/API/CLI/MCP adapters), NOT CC-specific, so it is NOT
+    # in cli_emit_exclusions — it reaches CC + Codex + Gemini, same as spec-compliance.
+    # Validator 15 hard-blocks /sync if the skill dir is authored but unregistered.
+    - skills/conformance-walk/**
     - skills/test-skip-discipline/**
     - skills/12-testing-strategies/**
     - skills/16-validation-patterns/**
@@ -1407,7 +1499,14 @@ tiers:
     # correctly — fixed in v2.9.6.
     - hooks/**
     - hooks/lib/**
-    - bin/**
+    # `- bin/**` REMOVED 2026-07-15 (F1030d / #1051): it was the SECOND fail-open
+    # bin force-ship path (the first was sync-tier-aware.mjs::ALWAYS_INCLUDE). The
+    # consumer-runtime bin surface is now a FAIL-CLOSED explicit allowlist in
+    # ALWAYS_INCLUDE (which reaches every consumer incl. the non-kailash `base`
+    # axis, so this tier glob was redundant anyway). Removing it dissolves the
+    # tier-collision premise the ~19 `bin/`-prefixed LOOM_ONLY_TIER_CARVEOUTS rested
+    # on (they are pruned in validate-emit.mjs the same change; the `hooks/lib/weft-*`
+    # carve-outs stay — hooks/lib/** below is still a broad synced glob). journal/0500.
     # ── Tier reconciliation 2026-05-16 (journal 0078) ──────────────
     # Same root cause as the `coc-core`-tier block above (unmaintained tier
     # lists vs. the live rule corpus). These are Kailash/Python-specific
@@ -2485,6 +2584,12 @@ variant_only:
 #     VERSION (typically two release cycles), the entry MAY be removed
 #     from this list — but the `obsoleted:` section itself stays.
 obsoleted:
+  # ── #1067 F1030d-B — o1-citation-check.js fence purge ──────────────────────
+  # hooks/lib/o1-citation-check.js is newly loom_only (#1067); it shipped broadly via the
+  # synced hooks/lib/** tier since 2026-06-24, so purge the stale consumer copy (loom_only
+  # suppresses re-emission, obsoleted purges the already-distributed copy). Hooks are the
+  # CC lane only (never emitted to codex/gemini), so a single obsoleted entry suffices.
+  - .claude/hooks/lib/o1-citation-check.js # why: loom-only O1-citation gate (only /govern + sync-from-canon-objects.mjs use it, both loom-only); purge the stale consumer copy. #1067.
   # ── loom-only sync-from-* leak purge (2026-06-23) ──────────────────────────
   # commands/sync-from-build.md + commands/sync-from-use.md are loom's OWN Gate-1
   # inbound ingest verbs (moved to loom_only above). They reached cc + codex + gemini
@@ -2589,6 +2694,45 @@ obsoleted:
   - .claude/variants/ # why: loom-internal variant overlay tree (language × CLI slot bodies) — NEVER synced; its presence in ANY consumer is a sync-hygiene defect. Surfaced 2026-06-01 in kailash-coc-claude-rs (PUBLIC) as a 7-file tracked tree LEAKING operator-PII hostnames inline in variants/rs/rules/ci-runners.md. Direct git rm applied to claude-rs (cross-repo-authorized, journal/0198); this obsoleted entry drives the universal declarative purge so the never-synced tree is removed from EVERY consumer on next sync AND cannot re-introduce via a future sync bug. Receipt: journal/0198 + 0199.
   - .claude/codex-templates/ # why: loom-internal Codex emitter SOURCE tree (authored at loom; the README self-identifies "emitted by coc-sync into each USE template's .codex/ at Gate 2") — NEVER belongs on a consumer surface. Same defect class as .claude/variants/ above. Surfaced 2026-06-26 (F1-distribution redteam, MED) in kailash-coc-claude-rs + kailash-coc-rs, where a loom v2.31.0 catch-up sync had committed it (py/base templates were always clean). Direct git rm applied to both rs templates; this obsoleted entry drives the universal declarative purge so the tree is removed from EVERY consumer on next sync AND cannot re-introduce via a future sync bug.
   - .claude/gemini-templates/ # why: loom-internal Gemini emitter SOURCE tree, peer to .claude/codex-templates/ above (emitted into each USE template's .gemini/ at Gate 2) — same loom-source-leak class, same F1-distribution-redteam MED finding (2026-06-26), same disposition (git rm + declarative purge) as codex-templates/.
+  # ── F1030a loom-links cluster purge (BUILD lane) — #1030 follow-up ───────────
+  # The 9 loom-links orchestration tools were fenced loom_only (above) this cycle.
+  # loom_only stops FUTURE emission but the stale copies persist on every consumer
+  # that received them via the bin/** ALWAYS_INCLUDE tier; these entries purge the
+  # BUILD-lane copies (use_obsoleted below purges the USE-lane copies — dual-listing
+  # per the F104 pattern: loom_only suppresses, obsoleted/use_obsoleted purge).
+  - .claude/bin/lib/loom-links.mjs # why: F1030a — fenced loom_only; purge the stale BUILD-lane copy.
+  - .claude/bin/loom-links-init.mjs # why: F1030a — fenced loom_only; purge the stale BUILD-lane copy.
+  - .claude/bin/sync-tier-aware.mjs # why: F1030a — fenced loom_only; purge the stale BUILD-lane copy.
+  - .claude/bin/sync-gate2-worktree.mjs # why: F1030a — fenced loom_only; purge the stale BUILD-lane copy.
+  - .claude/bin/repin-downstream.mjs # why: F1030a — fenced loom_only; purge the stale BUILD-lane copy.
+  - .claude/bin/check-sync-freshness.mjs # why: F1030a — fenced loom_only; purge the stale BUILD-lane copy.
+  - .claude/bin/lib/fleet-deps.mjs # why: F1030a — fenced loom_only; purge the stale BUILD-lane copy.
+  - .claude/bin/lib/fleet-freshness.mjs # why: F1030a — fenced loom_only; purge the stale BUILD-lane copy.
+  - .claude/bin/lib/fleet-compliance-posture.mjs # why: F1030a — fenced loom_only; purge the stale BUILD-lane copy.
+  # ── F1030c orchestration-only bin tools purge (BUILD lane) — #1030 follow-up ──
+  # The 7 F1030c tools were fenced loom_only (above) this cycle; purge the stale
+  # BUILD-lane copies that shipped via the bin/** ALWAYS_INCLUDE tier.
+  - .claude/bin/validate-coc-parity.mjs # why: F1030c — fenced loom_only; purge the stale BUILD-lane copy.
+  - .claude/bin/lint-prose-drift.mjs # why: F1030c — fenced loom_only; purge the stale BUILD-lane copy.
+  - .claude/bin/check-rule-injection-budget.mjs # why: F1030c — fenced loom_only; purge the stale BUILD-lane copy.
+  - .claude/bin/sync-consumer-dryrun.mjs # why: F1030c — fenced loom_only; purge the stale BUILD-lane copy.
+  - .claude/bin/lib/fleet-dashboard.mjs # why: F1030c — fenced loom_only; purge the stale BUILD-lane copy.
+  - .claude/bin/lib/fleet-freshness-ledger.mjs # why: F1030c — fenced loom_only; purge the stale BUILD-lane copy.
+  - .claude/bin/lib/fleet-maintain.mjs # why: F1030c — fenced loom_only; purge the stale BUILD-lane copy.
+  - .claude/audit-fixtures/lint-prose-drift/ # why: F1030c — fenced loom_only; purge the stale BUILD-lane orphan fixture data for the loom-only lint-prose-drift.mjs.
+  # ── F1030d net-new stops — the fail-closed ALWAYS_INCLUDE allowlist (#1051) ──
+  # These 3 orch-only paths shipped via the fail-OPEN `bin/**` tier but are NOT on the
+  # new consumer-runtime allowlist (validate-emit.mjs::ALWAYS_INCLUDE) and are NOT
+  # loom_only. Under fail-closed they stop shipping; purge the stale consumer copies
+  # (same discipline as the F1030a/c fences above). NOT added to loom_only (the
+  # fail-closed default already keeps them OUT of /sync — but note that if any of these
+  # three is ISPUBLISHED it would still enter the COMMUNITY edition, since community =
+  # published ∖ loom_only; the "collapse the redundant bin/ loom_only entries" plan was
+  # evaluated in F1030d-B/#1067 and REJECTED for exactly that reason — see the bin/ note
+  # in the loom_only stanza below).
+  - .claude/bin/validate-envelope-dna.mjs # why: F1030d — orch-only #411 governance envelope-DNA validator (no shipped invoker); off the fail-closed allowlist. Purge stale consumer copy.
+  - .claude/bin/emit-dev-container.mjs # why: F1030d — loom Gate-2 dev-container emitter (invoked only by the loom-only coc-sync agent); off the allowlist. Purge stale consumer copy.
+  - .claude/bin/repin-targets.local.example.json # why: F1030d — example config for the loom_only repin-downstream.mjs (a consumer never repins downstream); off the allowlist. Purge stale consumer copy.
 
 # ─────────────────────────────────────────────────────────────────
 # LOOM-ONLY — POSITIVE never-sync declaration (F104)
@@ -2633,6 +2777,8 @@ loom_only:
   - commands/sync-from-use.md # why: loom's OWN Gate-1 inbound ingest verb (loom ingests the USE-template proposal stream) — sibling of sync-from-build.md above; same coc-tier-leak fix 2026-06-23. (sync-from-downstream/template are NOT here — they are consumer-RUN verbs that correctly ship.)
   - commands/sync-from-canon.md # why: loom's OWN cross-ecosystem inbound pull verb (a client ecosystem FORK pulls UPSTREAM from canon — `artifact-flow.md` § "Ecosystem Forks vs Downstream Consumers"). Platform-role, runs only at a fork's loom; a BUILD/USE consumer never runs it. Same loom-own inbound-verb class as the sync-from-build/use siblings above — loom_only keeps it off the codex/gemini lane (emit-cli-artifacts emits any command NOT in loom_only). loom#576 SHARD 1 (read-only driver; gated merge is SHARD 2).
   - commands/govern.md # why: loom platform-governance ORIGINATION command (O1 / co-owner-directed lane, W2-d / onboarding-portability ROLE axis). It is platform-role — only loom originates governance/compliance artifacts directly; a BUILD/USE consumer never runs it. The artifacts /govern ORIGINATES distribute normally via the coc-core/kailash tiers; the COMMAND itself stays loom-only (DISTRIBUTE ≠ SURFACE). Same loom-own-verb class as the sync-* siblings above.
+  - commands/publish-template.md # why: loom EDITION-RELEASE driver (#886 S9, journal/0514) — emits + gates + delivers the community & client-template editions from the single dev tree via .claude/bin/edition-emit.mjs + scripts/publish-to-public.mjs + scripts/publish-to-private-template.mjs (all loom-private edition machinery). Platform-role: only loom runs edition emission/delivery; a BUILD/USE consumer has no editions to publish and never runs it. Same loom-own-verb class as /govern + the sync-* siblings above (DISTRIBUTE ≠ SURFACE). loom_only (NOT exclude:) so emit-cli-artifacts keeps it off the codex/gemini lane (feedback_emit_cli_ignores_exclude).
+  - commands/distill.md # why: loom's UP-cascade ingestion verb (knowledge-mesh Wave 3) — the /codify analog for KNOWLEDGE PRODUCTS. Platform-role: loom REGISTERS a kp:// identity into its control-plane registry; a BUILD/USE consumer never runs it (a consumer MINTS its handle locally + BINDS its own knowledge-product: link, but does not register at loom's control-plane). Same loom-own-verb class as /govern + the sync-* siblings above. loom_only (NOT exclude:) so emit-cli-artifacts keeps it off the codex/gemini lane (feedback_emit_cli_ignores_exclude). knowledge-cascade-routing MUST-2 distribution fate for the COMMAND = loom-only. Its registrar engine bin/mesh-distill.mjs ships via the F1030d ALWAYS_INCLUDE consumer-runtime allowlist (post-#1051; was the synced `bin/**` tier pre-F1030d) — the SAME mesh-tooling convention as its Wave-1 siblings (mesh-urn/mesh-content-commitment/mesh-node-record/mesh-registry-*), documented at § mesh_artifact_classes: inert + ecosystem-agnostic (no client tokens), so it is NOT loom_only. Wave-3 roadmap `workspaces/knowledge-mesh-2026-07-10/02-plans/01-wave-roadmap.md` § Wave 3.
   # ── additional loom-orchestration leaks found answering "what OTHER loom only commands did you leak?" (2026-06-23) ──
   # These shipped to codex/gemini consumers because emit-cli-artifacts emits any command NOT in loom_only;
   # the `exclude:` block below only fences the cc /sync-to-use lane (sync-tier-aware), NOT the codex/gemini lane.
@@ -2645,6 +2791,7 @@ loom_only:
   - commands/test-harness-probe.md # why: loom-only orchestrator for `.claude/test-harness/` probe scoring (body line 8 self-declares "Loom-only"; consumers don't run the harness). Was exclude-only (cc-fenced) but leaked to codex/gemini — the exclude:-MINUS-loom_only residual the self-ref gate's exhaustive set-difference surfaced. obsoleted ×2 (codex+gemini; never reached cc).
   - skills/test-harness-probe/** # why: the runbook backing commands/test-harness-probe.md above — loom-only for the same reason (consumers do not run the harness). Was an unmanaged orphan surfaced by the extended Validator 15 (2026-07-05, knowledge-cascade-routing MUST-2); declared loom_only to match its command's fate.
   - skills/maintenance-sweep/** # why: the runbook backing commands/maintain.md (loom_only, above) — loom-only to MATCH its command's fate. /maintain's Step 1 runs loom-only /inspect via the orchestration-root carve-out a consumer lacks, so both command and skill stay loom-only; a coc-core skill backing a loom_only command would ship consumers a runbook for a command they do not have (self-ref redteam R3 security cascade-coherence fix, 2026-07-05).
+  - skills/publish-template/** # why: the runbook backing commands/publish-template.md (loom_only, above, #886 S9 journal/0514) — loom-only to MATCH its command's fate. /publish-template drives loom-private edition machinery (edition-emit.mjs + the two publish-to-* scripts) a consumer never runs; a coc-core skill backing a loom_only command would ship consumers a runbook for a command they do not have (the maintenance-sweep / test-harness-probe cascade-coherence precedent).
   - agents/management/coc-sync.md # why: Gate-2 distributor — loom-only orchestration; CLAUDE.md "Management (loom-only, excluded from sync)".
   - agents/management/sync-reviewer.md # why: Gate-1 BUILD-repo review/classify — loom-only orchestration.
   - agents/management/repo-ops.md # why: cross-repo inspection / drift / bulk git — loom-only orchestration.
@@ -2654,7 +2801,29 @@ loom_only:
   - agents/management/gh-manager.md # why: loom-only management agent. Was accidentally in `kailash` tier (synced to cc consumers); removed from `kailash` at F104.
   - agents/open-source-strategist.md # why: Terrene Foundation open-core strategy (four-layer model, Foundation-owns-all-IP, EATP/Kailash open-vs-proprietary boundary). loom-only per FB 2026-05-31 (journal/0184). Paired `obsoleted:` entries purge the stale consumer + Gemini copies.
   - disclosure-tenant-denylist.json # why: customer-identity / tenant token list the Gate-2 disclosure scanner (bin/scan-synced-disclosure.mjs `customer-identity-token` shape) flags against the SYNCED surface. TOP-LEVEL .claude/ file (NOT under bin/**) so it sits outside every synced-tier glob — this positive loom_only entry keeps it out of /sync without tripping loom-only-mutual-exclusion. The literal tokens must never reach a consumer (a consumer greps the synced scanner/list source → the leak the shape exists to prevent). At a consumer the file is absent → the shape is inert. loom-only per journal/0214 (loom#411 governance-as-DNA disclosure scrub).
+  - disclosure-benign-collisions.json # why: #1068 — the LLM-adjudicated, human-ratified benign-collision registry the identity/tenant disclosure gate reads (scripts/publish-to-public.mjs::runIdentityTokenGate via bin/lib/disclosure-adjudication.mjs). It records (token, host-identifier) pairs judged benign substring collisions (e.g. a short tenant token substring-matching an unrelated SDK identifier like `HttpClient`) so the fail-closed gate stops halting on them with zero recall loss. Its `token` field CONTAINS the literal tenant token, so — exactly like disclosure-tenant-denylist.json above — it must NEVER reach a consumer. TOP-LEVEL .claude/ file (NOT under bin/**) so it sits outside every synced-tier glob — this positive loom_only entry keeps it out of /sync without tripping loom-only-mutual-exclusion (the disclosure-tenant-denylist.json precedent). At a consumer the gate is absent → the file is inert. loom-only per journal/0502 (#1068).
   - public-release/ # why: loom-only source dir for the PUBLIC-FORK pipeline (scripts/publish-to-public.mjs) — holds the public README + Apache-2.0 LICENSE the pipeline copies into the terrene-foundation/loom snapshot. NOT framework a COC consumer uses; loom-internal publish machinery (same class as agents/management/*). Top-level .claude/ dir outside every synced-tier glob, so this loom_only entry keeps it out of /sync without tripping loom-only-mutual-exclusion. loom-only per journal/0215 (public-fork lane).
+  # ── Post-F1030d (#1051) note — the `bin/`-prefixed entries below ──────────────
+  # F1030d removed `bin/**` from every synced tier + flipped ALWAYS_INCLUDE to a
+  # fail-closed allowlist, so each `bin/` loom_only entry now passes validate-emit.mjs
+  # check-8 as a plain "never-sync, in no synced tier" PASS (no /sync-tier COLLISION to
+  # convert into a structural BLOCK; see sync-tier-aware.mjs::classifyFile step 2b). Their
+  # per-entry "under the synced `bin/**` tier → LOAD-BEARING carve-out / structural BLOCK"
+  # rationale describes the PRE-F1030d /sync mechanism, not current check-8 behavior.
+  #
+  # BUT these entries are NOT redundant — #1067 (F1030d-B) verified the opposite and did
+  # NOT remove them. The #825 COMMUNITY EDITION projection is `community = published ∖
+  # loom_only` (bin/lib/in-community-edition.mjs), so `loom_only` is the community-edition
+  # SUBTRACTION set — NOT only a /sync fence. A `bin/` orchestration tool that is
+  # isPublished (i.e. NOT self-fenced in community-membership.mjs EXCLUDE_WITHIN — e.g.
+  # every sync-from-canon* / loom-links / fleet-* / repin / check-sync-freshness entry)
+  # relies on THIS loom_only entry to stay OUT of the community/public edition; removing it
+  # LEAKS the loom-orchestration tool into the community edition (verified: inCommunityEdition
+  # flips true) and fails in-community-edition.test.mjs invariants 2/4 + community-membership
+  # HIGH-1. The journal/0500 Decision-3 "collapse the redundant bin/ entries" plan is
+  # SUPERSEDED — it accounted only for the F1030d /sync change, not #825's edition formula.
+  # KEEP these entries. (The `hooks/lib/weft-*` + o1-citation-check cluster additionally
+  # collides with the still-broad `hooks/lib/**` synced glob → LOOM_ONLY_TIER_CARVEOUTS.)
   - bin/ecosystem.json # why: the D6 ecosystem-shared remote-links + registry + vcs + deploy + upstream-canon registry (ECO-IMPL W1). Carries the REAL per-ecosystem org slugs by design; it is COMMITTED-and-shared WITHIN one ecosystem but MUST NEVER cross canon↔client or reach a consumer (a synced ecosystem.json leaks one ecosystem's orgs into another — the #255/#252 disclosure class across the ecosystem boundary). UNLIKE the top-level loom-only files above, this path IS under the synced `bin/**` tier, so this loom_only entry is LOAD-BEARING (not belt-and-suspenders): validate-emit.mjs check-8 converts it into a structural BLOCK. Each fork authors its OWN ecosystem.json; the committed `bin/ecosystem.example.json` (synthetic tokens) is the only ecosystem* file that DOES sync/publish. loom-only per ECO-IMPL W1 (journal/0292, design 02-plans/01 §4).
   - canon-rollin-baseline.json # why: the DD-2 roll-in baseline — the per-path last-accepted-canon-blob marker state a client ecosystem FORK uses to compute "what is NEW in canon since this fork last accepted" (loom#576 SHARD A; `artifact-flow.md` § "Ecosystem Forks vs Downstream Consumers"). Per-fork PRIVATE state, COMMITTED-and-durable (top-level .claude/ file, NOT gitignored `.claude/learning/`), but MUST NEVER sync to a downstream consumer or another ecosystem — same fork-private-state class as bin/ecosystem.json / disclosure-tenant-denylist.json. TOP-LEVEL .claude/ file (NOT under bin/**) so it sits outside every synced-tier glob — this positive loom_only entry keeps it out of /sync without tripping loom-only-mutual-exclusion (the disclosure-tenant-denylist.json precedent). At canon (the root) the file is absent (canon has no upstream to roll in). loom#576 SHARD A.
   - bin/sync-from-canon-objects.mjs # why: loom#576 SHARD A — the guarded scratch object-fetch + per-path candidate-diff builder for a client ecosystem FORK's gated canon pull. Platform-role, runs only at a fork's loom; a BUILD/USE consumer never runs sync-from-canon. Same loom-own cross-ecosystem-inbound-driver class as the sync-from-canon.md command above. UNLIKE the top-level loom-only files, this path IS under the synced `bin/**` tier, so this loom_only entry is LOAD-BEARING: validate-emit.mjs check-8 (LOOM_ONLY_TIER_CARVEOUTS) converts it into a structural BLOCK. loom#576 SHARD A.
@@ -2675,6 +2844,44 @@ loom_only:
   - hooks/lib/weft-distributor.js # why: loom#830/#834 WEFT Wave 2b — the WEFT distributor-side gates (assertDistributorReady V6 fail-closed hard-refuse + gateObsoletion V9 content-vs-structural contestable gate + attestReach V10 window-decline + assertSeparationOfDuties V11 reach-threshold recusal), consumed only by the loom-only WEFT conformance suite. PURE closed logic — imports NOTHING (adapter-only R7; does not touch the live actuation-types/cascade-gate/fleet-freshness/adjacency gates). Same loom-reference-role / orphan-on-ship rationale as hooks/lib/weft-jcs.js above; under the synced `hooks/**` tier so this loom_only entry is LOAD-BEARING (LOOM_ONLY_TIER_CARVEOUTS structural BLOCK).
   - hooks/lib/weft-dataprotection.js # why: loom#830/#834 WEFT Wave 4 — the WEFT data-protection mechanisms (vector 12 CLASS-A software MUSTs per mint F5, authorized READ 2026-07-07): pseudonymize/projectPseudonymously (DP-1 keyed-recoverable pseudonymity SUPPORT in the WEFT projection, NOT _projectOperatorRef per R11) + logProvenanceAccess (DP-4 access-log mechanism). Imports ONLY weft-jcs.js (seam-untouched R1/R7). The GDPR-shaped default-on/retention/lawful-basis parts are class-B DEPLOYMENT obligations, out of software scope. Consumed only by the loom-only WEFT conformance suite. Same loom-reference-role / orphan-on-ship rationale as hooks/lib/weft-jcs.js above; under the synced `hooks/**` tier so this loom_only entry is LOAD-BEARING (LOOM_ONLY_TIER_CARVEOUTS structural BLOCK).
   - hooks/lib/weft-anchor.js # why: loom#830/#834 WEFT F4 shard D3 — the ENTERPRISE (signed) WEFT profile's content anchor (subject_hash = ed25519_sign(sha256(jcs(subject)))), native node:crypto Ed25519 (crypto.sign/crypto.verify, NO external dep, NO subprocess). Imports ONLY weft-jcs.js (jcsCanonicalize — seam-untouched R1/R7, same import discipline as weft-dataprotection.js above). Distinct from an operator's verified_id / coc-sign.js identity-signing surface — this is a CONTENT anchor over the profile's own Ed25519 key, never an actor signature. Consumed only by the loom-only WEFT conformance suite + its behavioral tests (.claude/test-harness/tests/weft-anchor.test.mjs, never synced). Same loom-reference-role / orphan-on-ship rationale as hooks/lib/weft-jcs.js above (a USE/BUILD consumer is not a WEFT distributor and never anchors); under the synced `hooks/**` tier so this loom_only entry is LOAD-BEARING (LOOM_ONLY_TIER_CARVEOUTS structural BLOCK). F4 shard D3.
+  - hooks/lib/o1-citation-check.js # why: #1067 F1030d-B — the O1-citation SHAPE gate run ONLY by the loom-only /govern command (platform-role O1 origination) + the loom-only bin/sync-from-canon-objects.mjs pre-screen; NO consumer hook imports it (verified: no settings.json / hooks/*.js registration) and no consumer runs /govern. Under the still-synced `hooks/lib/**` tier (ALWAYS_INCLUDE), so — like the weft-* siblings above — this loom_only entry is LOAD-BEARING (validate-emit.mjs check-8 LOOM_ONLY_TIER_CARVEOUTS structural BLOCK). Its PUBLISHED test (test-harness/tests/o1-citation-check.test.mjs) is separately fenced via community-membership.mjs EXCLUDE_WITHIN — the #840 broken-on-import pattern: in the COMMUNITY edition (published ∖ loom_only) this lib is SUBTRACTED, so a still-published test module-scope-requiring it would ERR_MODULE_NOT_FOUND (matches the #840 edition-test precedent; the public-fork projection does NOT subtract loom_only, so fencing the test there is harmless belt-and-suspenders). Fences the F1030d-B audit's one genuinely orch-only lib. loom-only per #1067; O1 gate per onboarding-portability W2-d.
+  # ── F1030a: loom-links orchestration cluster (#1030 follow-up) ─────────────
+  # Loom-platform tools a USE/BUILD consumer structurally never runs
+  # (repo-scope-discipline.md). ESM imports resolve at module-LOAD time, so the
+  # ONLY consumer-shipped importer that ever LOADED loom-links was
+  # bin/loom-doctor.mjs (backs default-surfaced /doctor); it now lazy-degrades
+  # (Shard 1: try/catch dynamic import → null, duck-typed LinkError, local
+  # VALID_ROLES mirror), so the whole cluster is safe to fence. All 9 sit under
+  # the synced `bin/**` tier → LOAD-BEARING (LOOM_ONLY_TIER_CARVEOUTS structural
+  # BLOCK); paired obsoleted + use_obsoleted purge the stale consumer copies
+  # (loom_only suppresses future emission, obsoleted/use_obsoleted purge the copies).
+  - bin/lib/loom-links.mjs # why: F1030a — the canonical NAME→location resolver (cross-repo.md MUST-1). Loom-platform: a consumer resolves nothing cross-repo. Only loom-doctor.mjs imported it at a consumer (now lazy-degrades). Under the synced bin/** tier → LOAD-BEARING carve-out.
+  - bin/loom-links-init.mjs # why: F1030a — the loom-links.local.json seeder (loom-doctor --fix spawns it, now fs.existsSync-guarded). Loom-platform; a consumer never seeds resolver links. Under bin/** tier → LOAD-BEARING carve-out.
+  - bin/sync-tier-aware.mjs # why: F1030a — loom's Gate-2 tier-aware distribution engine (imports loom-links resolveRepo). Runs ONLY at loom (/sync-to-*, all loom_only); a consumer never distributes. Under bin/** tier → LOAD-BEARING carve-out.
+  - bin/sync-gate2-worktree.mjs # why: F1030a — the Gate-2 worktree-from-remote-main driver (imports loom-links resolveRepo). Loom-platform distribution engine; a consumer never runs Gate-2. Under bin/** tier → LOAD-BEARING carve-out.
+  - bin/repin-downstream.mjs # why: F1030a — the fleet SDK-version repin tool (imports loom-links). Loom-orchestration; a consumer never repins the fleet. Under bin/** tier → LOAD-BEARING carve-out.
+  - bin/check-sync-freshness.mjs # why: F1030a — the pre-sync local-vs-remote freshness gate for /sync-to-* (dynamic-imports loom-links). Gates loom_only sync commands; a consumer never runs it. Under bin/** tier → LOAD-BEARING carve-out.
+  - bin/lib/fleet-deps.mjs # why: F1030a — fleet dependency probe (dynamic-imports loom-links to resolve fleet repos). Loom-orchestration; a consumer has no fleet. Under bin/** tier → LOAD-BEARING carve-out.
+  - bin/lib/fleet-freshness.mjs # why: F1030a — fleet freshness probe (dynamic-imports loom-links). Sibling of fleet-deps; loom-orchestration only. Under bin/** tier → LOAD-BEARING carve-out.
+  - bin/lib/fleet-compliance-posture.mjs # why: F1030a — fleet compliance-posture probe (dynamic-imports loom-links). Sibling of fleet-deps; loom-orchestration only. Under bin/** tier → LOAD-BEARING carve-out.
+  # ── F1030c: orchestration-only bin tools the F1030a pass missed (#1030 follow-up) ─
+  # Verified fence-safe by consumer-run-closure analysis: NO shipped command/agent/skill
+  # invokes them (the emit/validate cluster — emit.mjs/emit-cli-artifacts/compose/validate-emit
+  # + slot-parser/variant-overlay/cli-delivery/coc-manifest/strip-build-internal — IS consumer-run
+  # via /migrate + /cc-audit and STAYS shipped; these 7 are not), and NO shipped module or
+  # audit-fixture imports them. All 7 under the synced bin/** tier → LOAD-BEARING (LOOM_ONLY_TIER_CARVEOUTS
+  # structural BLOCK); paired obsoleted + use_obsoleted purge the stale consumer copies.
+  - bin/validate-coc-parity.mjs # why: F1030c — the distribution-path parity gate over loom's OWN multi-CLI emission (source→codex/gemini). Runs at loom over loom's output; a consumer validates no such emission. Imports emit-cli-artifacts (stays shipped → no dangling). Under bin/** tier → LOAD-BEARING carve-out.
+  - bin/lint-prose-drift.mjs # why: F1030c — the SSOT prose-drift linter over loom's rule/guide corpus. Loom-orchestration; a consumer does not run loom's drift linter. Under bin/** tier → LOAD-BEARING carve-out.
+  - bin/check-rule-injection-budget.mjs # why: F1030c — loom's rule-corpus token-budget regression guard (headroom floor over the always-on rule set). Loom-orchestration; a consumer does not run loom's corpus budget gate. Under bin/** tier → LOAD-BEARING carve-out.
+  - bin/sync-consumer-dryrun.mjs # why: F1030c — loom's harness that SIMULATES a consumer /sync boundary (sha256 reads + --dry-run plan only). Loom-side testing of the distributor; a consumer does not run loom's simulation of itself. Under bin/** tier → LOAD-BEARING carve-out.
+  - bin/lib/fleet-dashboard.mjs # why: F1030c — fleet status dashboard lib. Direct sibling of the F1030a-fenced fleet trio, missed in that pass; a consumer has no fleet. Imported only by fenced fleet-deps/fleet-compliance-posture. Under bin/** tier → LOAD-BEARING carve-out.
+  - bin/lib/fleet-freshness-ledger.mjs # why: F1030c — fleet freshness-ledger lib. Sibling of the F1030a fleet trio; a consumer has no fleet. Imported only by fenced fleet-* + weft-distributor (all loom_only). Under bin/** tier → LOAD-BEARING carve-out.
+  - bin/lib/fleet-maintain.mjs # why: F1030c — fleet maintenance-cadence lib (backs loom-only /maintain). Sibling of the F1030a fleet trio; a consumer has no fleet. Zero non-test importers. Under bin/** tier → LOAD-BEARING carve-out.
+  # NOTE: the audit-fixture data for lint-prose-drift.mjs (fenced above) is orphan
+  # at a consumer but lives under the broad `audit-fixtures/**` synced tier, so it
+  # is fenced via the universal `exclude:` list (a `**`-glob cannot be a wildcard-free
+  # LOOM_ONLY_TIER_CARVEOUTS entry). See `exclude:` → audit-fixtures/lint-prose-drift/**.
 
 # ─────────────────────────────────────────────────────────────────
 # SURFACE ROLES (D3 — the ROLE axis: which ROLES surface an artifact)
@@ -2863,6 +3070,37 @@ gitignore_additions:
   # write-guard; never synced). Same drift-false-positive surface as
   # .claude/logs/ above. GH #368 finding 2.
   - "**/.journal-skipped.log"
+  # knowledge-mesh LOCAL HANDLE VAULT (spec-02 clause e.4) — the client↔handle
+  # DEANONYMIZATION map. Gitignored at EVERY consumer: a committed vault is in
+  # git history forever AND is `git fetch`ed UP into loom-command as the
+  # deanonymization table for every project (clause c/e.2). Keys live in
+  # env/keychain ONLY, never in this file. NOT under `.claude/learning/**`, so
+  # it is outside the gitignore-learning-parity gate (#707); the belt-and-
+  # suspenders cp -r fences are clean-instantiate DELETE + publish-to-public KILL.
+  # BASENAME-ANYWHERE (**/): mesh-urn writes the vault at a caller-chosen
+  # --root/cwd, so a nested vault under a tracked subdir must also be ignored
+  # (redteam #965 R1-HIGH — a root-anchored pattern missed the nested case).
+  # TRAILING `*` (redteam #965 R2 F-BAK — Enforcement-Surface Parity): a manual
+  # `handle-vault.json.bak`/rename escaped the exact-match fences that clean-instantiate's
+  # `startsWith` DELETE already caught; the `*` brings this consumer fence to the same
+  # contract. Written verbatim between the managed markers (sync-tier-aware.mjs), NOT fed
+  # to the tier/loom_only glob matcher, so the trailing `*` is a git-native gitignore line.
+  - "**/handle-vault.json*"
+  # knowledge-mesh KEY MATERIAL (spec-02 clause e.2) — mirror of the loom `.gitignore`
+  # key patterns, gitignored at EVERY consumer. Keys `k`/`k_eco`/`*.key`/`*.pem`/`*.secret`
+  # MUST live in env/keychain ONLY; the runtime tripwire is detection-only, so this is the
+  # commit-time PREVENTION layer (redteam #965 R2 F-KEY, HIGH). SCOPED to `.claude/mesh/`
+  # (the tripwire's scan scope) so it never globally untracks a legitimate consumer cert.
+  # INNER `**/` is recursive-under-mesh (redteam #965 R4 F-KEY-DEPTH): matches a key at
+  # `.claude/mesh/<subdir>/k_eco` too, parity with the recursive tripwire + clean-instantiate delete.
+  - "**/.claude/mesh/**/k"
+  - "**/.claude/mesh/**/k_eco"
+  - "**/.claude/mesh/**/keys"
+  - "**/.claude/mesh/**/keys.json"
+  - "**/.claude/mesh/**/vault-key"
+  - "**/.claude/mesh/**/*.key"
+  - "**/.claude/mesh/**/*.pem"
+  - "**/.claude/mesh/**/*.secret"
 
 # loom#676 — Re-include guarantees (UNIVERSAL: USE templates AND BUILD repos).
 # DISTINCT from gitignore_additions above (which are state-locality IGNORES,
@@ -2956,6 +3194,7 @@ exclude:
   - learning/**
   - .coc-sync-marker
   - .proposals/**
+  - audit-fixtures/lint-prose-drift/** # F1030c — orphan fixture data for the loom-only lint-prose-drift.mjs; excluded here (not loom_only) because a `**`-glob under the broad audit-fixtures/** tier cannot be a wildcard-free LOOM_ONLY_TIER_CARVEOUTS entry. exclude is checked before tier match in classifyFile so it fences cleanly without tripping check-8; the paired obsoleted/use_obsoleted entries purge the already-shipped copies. Fixture DATA (not a codex/gemini-emitted command) so the emit-cli-ignores-exclude concern does not apply.
   - "**/.env" # never propagate stray .env files (hook-generated template content belongs only in .env.example at the template root)
   - settings.local.json
   - settings.json
@@ -2986,9 +3225,15 @@ exclude:
 # BUILD-EXCLUDE (USE templates only — never synced to BUILD repos)
 # ─────────────────────────────────────────────────────────────────
 # BUILD repos release packages via /release; they do NOT deploy applications.
-# The /deploy command, deploy-hygiene rule, and application-deployment skill
-# are only meaningful in downstream USE template projects (apps that ship
-# running code to production environments).
+# USE-side artifacts that are meaningless / mis-seating in a canon BUILD repo:
+#   - /deploy + deploy-hygiene + application-deployment: only meaningful in a
+#     downstream USE-template project (apps that ship running code to prod).
+#   - /sync-from-template + /sync-from-downstream: consumer/template-RUN inbound
+#     verbs. A canon BUILD repo is an ORIGINATOR (/codify ->
+#     .claude/.proposals/latest.yaml -> loom Gate-1/2), NOT a USE-template puller
+#     (sync-from-template) and has no downstream inbox (sync-from-downstream) — so
+#     their presence in a BUILD repo mis-seats the originator mental model
+#     ("loom -> USE template -> THIS REPO <- you are here"). journal/0515.
 #
 # /sync-to-build MUST skip everything listed here.
 # /sync (Gate 2 to USE templates) ignores this list — these files DO sync there.
@@ -2997,6 +3242,36 @@ build_exclude:
   - commands/deploy.md
   - rules/deploy-hygiene.md
   - skills/10-deployment-git/application-deployment.md
+  - commands/sync-from-template.md
+  - commands/sync-from-downstream.md
+
+# ─────────────────────────────────────────────────────────────────
+# BUILD-OBSOLETED (PURGE from BUILD repos — the BUILD-lane mirror of use_obsoleted)
+# ─────────────────────────────────────────────────────────────────
+# Paths /sync-to-build DELETES from a BUILD repo if present (sync-tier-aware.mjs
+# composes these into the BUILD purge alongside the universal `obsoleted:`).
+# Distinct from `obsoleted:`: build_obsoleted is BUILD-LANE-ONLY — it is NEVER
+# emitted into the USE-facing `.coc-obsoleted` union, so a downstream USE
+# consumer's /sync-from-template does NOT purge these (USE consumers legitimately
+# RUN them). Use this — not `obsoleted:` — for a file that is orphaned in BUILD
+# repos ONLY. Idempotent: purges on EVERY /sync-to-build (a standing guarantee,
+# not a one-time delete). journal/0516.
+#
+# The two consumer/template pull verbs below are ALSO in build_exclude above
+# (don't ship NEW copies); build_obsoleted deletes any STALE copy already present
+# in a BUILD repo (the residual journal/0515 / #1130 could not purge).
+#
+# PATH CONVENTION (differs from build_exclude!): purge entries are REPO-ROOT-
+# relative and MUST carry the `.claude/` prefix — they are `safeJoinUnder(dir, p)`
+# directly (sync-tier-aware.mjs, executePlan purge loop), matching every
+# `obsoleted:`/`use_obsoleted:` entry. build_exclude entries, by contrast, are
+# `.claude/`-RELATIVE (no prefix — matched in classifyFile). A BUILD repo only
+# receives the CC `.claude/` tree (/sync-to-build never emits .codex/.gemini), so
+# no codex/gemini mirror entries are needed here.
+
+build_obsoleted:
+  - .claude/commands/sync-from-template.md
+  - .claude/commands/sync-from-downstream.md
 
 # ─────────────────────────────────────────────────────────────────
 # USE-EXCLUDE (BUILD repos only — never synced to USE templates)
@@ -3102,8 +3377,9 @@ use_exclude:
 # Paired with `obsoleted:` (the BUILD-lane purge — sync-tier-aware.mjs:1763-1765
 # reads `obsoleted` on the BUILD lane and `use_obsoleted` on the USE lane); this
 # list is the USE-template-and-downstream purge. The two lists are lane-specific,
-# NOT one universal + one scoped: a path that leaked to BOTH lanes (e.g. via
-# `bin/**` ALWAYS_INCLUDE) MUST appear in BOTH blocks to purge on both.
+# NOT one universal + one scoped: a path that leaked to BOTH lanes (e.g. via a broad
+# ALWAYS_INCLUDE glob — historically `bin/**` pre-F1030d/#1051, now hooks/** +
+# hooks/lib/**) MUST appear in BOTH blocks to purge on both.
 
 use_obsoleted:
   # Paths that landed in USE templates from prior sync cycles before
@@ -3163,6 +3439,31 @@ use_obsoleted:
   - .claude/bin/sync-from-canon-objects.test.mjs
   - .claude/bin/sync-from-canon.test.mjs
   - .claude/bin/validate-coc-parity.test.mjs
+  # ── F1030a loom-links cluster purge (USE lane) — #1030 follow-up ─────────────
+  # USE-lane twin of the obsoleted BUILD-lane purge: the 9 loom-links orchestration
+  # tools fenced loom_only this cycle. bin/** ships to USE templates via
+  # ALWAYS_INCLUDE, so stale copies persist until purged. loom_only suppresses
+  # future emission; this list purges the already-distributed USE-template copies.
+  - .claude/bin/lib/loom-links.mjs
+  - .claude/bin/loom-links-init.mjs
+  - .claude/bin/sync-tier-aware.mjs
+  - .claude/bin/sync-gate2-worktree.mjs
+  - .claude/bin/repin-downstream.mjs
+  - .claude/bin/check-sync-freshness.mjs
+  - .claude/bin/lib/fleet-deps.mjs
+  - .claude/bin/lib/fleet-freshness.mjs
+  - .claude/bin/lib/fleet-compliance-posture.mjs
+  # ── F1030c orchestration-only bin tools purge (USE lane) — #1030 follow-up ────
+  # USE-lane twin of the obsoleted BUILD-lane purge for the 7 F1030c tools fenced
+  # loom_only this cycle; purge the already-distributed USE-template copies.
+  - .claude/bin/validate-coc-parity.mjs
+  - .claude/bin/lint-prose-drift.mjs
+  - .claude/bin/check-rule-injection-budget.mjs
+  - .claude/bin/sync-consumer-dryrun.mjs
+  - .claude/bin/lib/fleet-dashboard.mjs
+  - .claude/bin/lib/fleet-freshness-ledger.mjs
+  - .claude/bin/lib/fleet-maintain.mjs
+  - .claude/audit-fixtures/lint-prose-drift/
 
 # ─────────────────────────────────────────────────────────────────
 # BUILD REPO MAPPING
@@ -3430,3 +3731,69 @@ repos:
 # consumer's own provisioning, never with client identifiers in loom
 # canonical (see issue #248).
 consumer_overlays: {}
+
+# ─────────────────────────────────────────────────────────────────
+# MESH ARTIFACT CLASSES — knowledge-mesh Wave-1 distribution-fate
+# declarations (knowledge-cascade-routing.md MUST-2: an artifact class
+# absent from the manifest silently falls out of /sync and never cascades).
+# ─────────────────────────────────────────────────────────────────
+# Authority (referenced, never restated — specs-authority.md Rule 9):
+#   workspaces/knowledge-mesh-2026-07-10/specs/02-knowledge-product-identity.md
+#     § "The registry tuple (13 fields)" · clause (c)/(e) (vault) · clause (g) (node record)
+#   workspaces/knowledge-mesh-2026-07-10/specs/04-plane-split.md § "Seam contracts"
+#
+# This section is DOCUMENTED FATE for the mesh DATA artifact classes (authored
+# at PROJECTS, not at loom). It is read by no existing emit consumer — each
+# consumer reads only its own named stanza — so it is a conscious, greppable
+# declaration, not an emit input. The mesh TOOLING (.claude/bin/mesh-*.mjs +
+# .claude/bin/lib/mesh-keys.mjs) is NOT listed here: bin scripts are
+# sync-tier-aware.mjs::ALWAYS_INCLUDE, so they ship DOWN to consumers as explicit
+# consumer-runtime allowlist entries (the F1030d/#1051 fail-closed allowlist; was the
+# `bin/**` tier pre-#1051) — projects need the minter/validator/commitment/scrub tools
+# to AUTHOR their own registries — a conscious ship fate, NOT loom_only.
+mesh_artifact_classes:
+  # 1a — the identity registry tuple (13 fields). INERT AT LOOM: loom WRITES no
+  # tuple (specs-authority.md Rule 10 invariant 5); each PROJECT authors its own
+  # and it is UP-PULLED to loom-command (a `git fetch` of the project's committed
+  # registry text). It MUST NOT appear in any DOWN-sync tier — its direction is
+  # UP-only. Fail-safe: absent from every tier ⇒ never DOWN-synced (correct).
+  registry_tuple:
+    direction: up-pull-only
+    inert_at_loom: true
+    down_synced: false
+    project_path: .claude/mesh/registry/ # PROJECT-side (committed, UP-pulled); loom holds none
+    fence: mesh-registry-scrub.mjs # scrub-at-source (S1), wired pre-commit by mesh-content-commitment.mjs --author (1c)
+    validator: mesh-registry-validate.mjs # 1a tuple-shape validator (ships via the F1030d ALWAYS_INCLUDE allowlist; was bin/** pre-#1051)
+  # 1d — the ancestor-chain node record (handles only). DISTRIBUTION FATE:
+  # down-cascade via Gate-2 so each project can read its OWN record and build its
+  # positional address in handle space (specs/02 clause (g)). Wave-1 DELIVERS the
+  # artifact CLASS + its validator + this DECLARED fate — that is the RES-14(ii)
+  # class/source obligation. NOTE (redteam #965 R1 F1 — accuracy correction): this
+  # stanza is DOCUMENTED fate, NOT a live sync input — no emit/sync consumer reads
+  # `mesh_artifact_classes` (see the section header). loom generates ZERO
+  # node-record data today, so nothing cascades yet; the actual DOWN-tier wiring
+  # (adding `.claude/mesh/node-records/**` to a real sync-tier-aware DOWN tier) is
+  # a NAMED future obligation that lands WITH node-record generation in a later
+  # wave. Until then "down-cascade" is declared intent, not wired transport — do
+  # NOT read the earlier "this declaration IS recognition" as live mechanical wiring.
+  node_record:
+    direction: down-cascade
+    down_synced: false # NOT yet wired to a sync tier (loom holds zero node-record data); see note + cascade_wiring
+    cascade_wiring: pending # future obligation: add .claude/mesh/node-records/** to a real DOWN tier when record generation ships
+    gate: gate-2 # the fenced DOWN distribution leg it will cascade over (handles only — nothing to scrub)
+    project_path: .claude/mesh/node-records/ # DOWN-cascade target once wiring lands
+    validator: mesh-node-record.mjs # 1d validator/constructor (ships via the F1030d ALWAYS_INCLUDE allowlist; was bin/** pre-#1051)
+  # 1b — the LOCAL HANDLE VAULT (client↔handle map). NEVER synced, NEVER cascaded,
+  # NEVER pulled UP, NEVER committed, NEVER published (specs/02 clause (c)/(e)).
+  # It is the DEANONYMIZATION table. Fences: gitignore_additions (never committed
+  # at any consumer) + community-membership.mjs EXCLUDE_WITHIN/KILL_BASENAMES
+  # (never published) + clean-instantiate DELETE (never inherited from a template).
+  # Keys (k, k_eco) live in env/keychain via bin/lib/mesh-keys.mjs — never a file.
+  handle_vault:
+    direction: local-only
+    synced: false
+    cascaded: false
+    up_pulled: false
+    committed: false
+    published: false
+    local_path: .claude/mesh/handle-vault.json # gitignored; OUTSIDE the registry pull path

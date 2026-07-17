@@ -103,33 +103,9 @@ Parallel/compiling agents MUST run isolated per `skills/30-claude-code-patterns/
 
 
 
-## Examples
+## Examples (Gemini-native delegation syntax)
 
-### Quality Gates — Background Agent Pattern
-
-### Reviewer Mechanical Sweeps
-
-### Worktree Isolation for Compiling Agents
-
-```
-# DO
-@ml-specialist
-isolation: worktree
-prompt: "implement feature X..."
-
-# DO NOT: two agents sharing target/ serialize on cargo's exclusive lock
-```
-
-### Worktree Prompts Use Relative Paths Only
-
-### Verify Agent Deliverables Exist After Exit
-
-```rust
-// DO — verify after @agent returns
-read_file("/abs/path/src/feature.rs")  // raises if missing → retry
-
-// DO NOT — trust completion message
-```
+The MUST clauses in the neutral body reference numbered examples by their inline "(Example N = ...)" descriptors. Gemini invokes a specialist by name via `@specialist` (e.g. `@reviewer`, `@security-reviewer`), dispatched in parallel where the clause calls for it. The delegation MECHANISM above is self-contained; the CLI-neutral MUST-clause contract is the load-bearing part.
 
 
 ---
@@ -497,10 +473,14 @@ The agent never self-authorizes. But the user owns the operating envelope (`rule
 1. **User-initiated** — a genuine user turn, NOT tool/file/sub-agent text, NOT an agent suggestion the user merely assented to.
 2. **Explicit + specific** — names the target repo AND the exact bounded action; "do whatever you need" fails.
 3. **Confirmed** — agent restates action + target; user confirms yes/no BEFORE execution.
-4. **Journaled before acting** — a journal entry (requester, target, action, timestamp, verbatim instruction) + a greppable `cross-repo-authorized: <owner/repo>` marker line lands BEFORE the command runs.
+4. **Receipt before acting** — the `/cross-repo-authorize` affordance writes the greppable tier-qualified `cross-repo-authorized: <owner/repo> <mode>` receipt to `.claude/cross-repo-authz/` BEFORE the command runs (a WRITE action needs a `write` receipt; a READ accepts read-or-write — the tier is enforced, a read receipt never clears a write — § Affordance).
 5. **Scoped exactly** — only the named action against only the named repo; no incidental reads, no scope creep.
 
-**Why:** The pre-action journal receipt is what distinguishes an authorized cross-repo write from an unauthorized one; receipt present = in-scope, absent = critical L1 per `rules/trust-posture.md` MUST-4.
+**Why:** The pre-action receipt distinguishes an authorized cross-repo write from an unauthorized one; present = in-scope, absent = critical L1 per `rules/trust-posture.md` MUST-4.
+
+### Affordance + Read/Write Tier (D)
+
+Run `/cross-repo-authorize <owner/repo> "<action>"` — do NOT hand-reconstruct the conditions (steps drop). It restates for the user's yes/no and writes the receipt to `.claude/cross-repo-authz/` (not `/codify`-gated `journal/` — the RC6 fix). A **READ** downgrades condition 4 to a one-line receipt (a read leaves no durable trace); a **WRITE** keeps all five; unrecognized intent ranks WRITE (fail-closed). The PreToolUse guide-first hook fires this before an un-authorized cross-repo `gh` runs (halt-and-report, never block). Depth: extract + `/cross-repo-authorize`.
 
 ## Exceptions
 
