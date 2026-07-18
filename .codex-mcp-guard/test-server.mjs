@@ -1103,6 +1103,127 @@ const V4A_PATCH = {
 }
 
 // ────────────────────────────────────────────────────────────────
+// F-CGUARD-EXIT1 — exit-1 load-crash fails CLOSED; the Rule-7 advisory
+// exit-1 ({continue:true} then exit 1) still forwards (journal/0535)
+// ────────────────────────────────────────────────────────────────
+// The crash-vs-advisory discriminator: a clean non-zero-non-2 exit is `warn`
+// (advisory-forward) ONLY when stdout carried a parseable canonical decision (the
+// 45 real Rule-7 timeout-fallback advisories); a decision-less load-crash is
+// `crash` → FAIL-CLOSED (deny). Regression guards both directions.
+{
+  const os = require("node:os");
+
+  // Unit: hasParseableHookDecision discriminates decision-bearing stdout from a crash.
+  const P = server.hasParseableHookDecision;
+  const predCases = [
+    ['{"continue":true}', true, "bare continue:true (the Rule-7 advisory)"],
+    ['{"continue":true}\n', true, "continue:true with trailing newline"],
+    ['{"hookSpecificOutput":{"validation":"x"}}', true, "hookSpecificOutput shape"],
+    ['{"systemMessage":"x"}', true, "systemMessage (Stop-class) shape"],
+    ["Error: boom\n    at Object.<anonymous>", false, "a stack trace (crash, no decision)"],
+    ["", false, "empty stdout (crash before any write)"],
+    ["not json at all", false, "non-JSON garbage"],
+    ['{"unrelated":1}', false, "JSON with no recognized decision key"],
+    ['{"decision":"block"}', false, "top-level decision — NOT consumed by the guard → fail-closed (R1 sec-reviewer)"],
+  ];
+  for (const [stdout, expected, label] of predCases) {
+    if (P(stdout) === expected) {
+      passes.push(`F-CGUARD-EXIT1: hasParseableHookDecision — ${label} → ${expected}`);
+    } else {
+      failures.push(
+        `F-CGUARD-EXIT1: hasParseableHookDecision — ${label} expected ${expected}, got ${P(stdout)}`,
+      );
+    }
+  }
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-guard-exit1-"));
+  try {
+    // Behavioral A: a hook node LAUNCHES then throws (uncaught) → exit 1, NO stdout
+    // decision → invokeHook verdict "crash".
+    const crashPath = path.join(tmpDir, "load-crash.js");
+    fs.writeFileSync(
+      crashPath,
+      "// Synthetic hook: launches then crashes (uncaught throw), no stdout (F-CGUARD-EXIT1).\n" +
+        "throw new Error('simulated load crash — no parseable decision emitted');\n",
+    );
+    const crashHookFile = path.relative(server.HOOKS_DIR, crashPath);
+    const rCrash = server.invokeHook({
+      hookFile: crashHookFile,
+      payload: { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: {}, cwd: process.cwd() },
+    });
+    if (rCrash.verdict === "crash") {
+      passes.push(
+        "F-CGUARD-EXIT1: exit-1 load-crash (no stdout decision) routes to verdict 'crash' (was fail-open 'warn')",
+      );
+    } else {
+      failures.push(
+        `F-CGUARD-EXIT1: load-crash mis-routed — expected verdict 'crash', got '${rCrash.verdict}' (exitCode=${rCrash.exitCode})`,
+      );
+    }
+
+    // Behavioral B: a Rule-7 timeout-fallback advisory writes {continue:true} to stdout
+    // THEN exits 1 → invokeHook verdict "warn" (advisory-forward, UNCHANGED — the 45-hook
+    // regression guard: the crash fix MUST NOT convert legitimate advisories into denials).
+    const advisoryPath = path.join(tmpDir, "rule7-advisory.js");
+    fs.writeFileSync(
+      advisoryPath,
+      "// Synthetic hook: cc-artifacts.md Rule-7 timeout-fallback advisory (F-CGUARD-EXIT1).\n" +
+        "process.stdout.write(JSON.stringify({ continue: true }) + '\\n');\n" +
+        "process.exit(1);\n",
+    );
+    const advisoryHookFile = path.relative(server.HOOKS_DIR, advisoryPath);
+    const rAdvisory = server.invokeHook({
+      hookFile: advisoryHookFile,
+      payload: { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: {}, cwd: process.cwd() },
+    });
+    if (rAdvisory.verdict === "warn") {
+      passes.push(
+        "F-CGUARD-EXIT1: Rule-7 advisory exit-1 (continue:true then exit 1) stays verdict 'warn' (45-hook regression guard)",
+      );
+    } else {
+      failures.push(
+        `F-CGUARD-EXIT1: Rule-7 advisory mis-routed — expected verdict 'warn', got '${rAdvisory.verdict}' (exitCode=${rAdvisory.exitCode})`,
+      );
+    }
+
+    // Behavioral D: end-to-end through evaluatePolicies — a crash hook at the HEAD of
+    // shell's chain MUST DENY with the fail_closed marker and _meta.verdict='crash'
+    // (mirrors the Fixture-9 missing-hook fail-closed assertion for the new verdict).
+    const realShell = server.POLICIES.shell;
+    server.POLICIES.shell = [{ source_file: crashHookFile }, ...realShell];
+    try {
+      const r = server.evaluatePolicies({
+        tool: "shell",
+        input: { command: "echo hi" },
+        cwd: process.cwd(),
+      });
+      const meta = r.mcpResponse?._meta || {};
+      if (r.allow !== false) {
+        failures.push(
+          `F-CGUARD-EXIT1: a load-crash enforcement hook MUST DENY (fail-closed), got allow=${r.allow}`,
+        );
+      } else if (!r.mcpResponse?.isError || meta.fail_closed !== true) {
+        failures.push(
+          `F-CGUARD-EXIT1: expected isError + _meta.fail_closed=true on crash, got ${JSON.stringify(meta)}`,
+        );
+      } else if (meta.verdict !== "crash") {
+        failures.push(
+          `F-CGUARD-EXIT1: expected _meta.verdict=crash, got ${meta.verdict}`,
+        );
+      } else {
+        passes.push(
+          "F-CGUARD-EXIT1: end-to-end — a load-crash enforcement hook DENIES with the fail_closed marker (verdict 'crash', #411 posture)",
+        );
+      }
+    } finally {
+      server.POLICIES.shell = realShell;
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
 // Report
 // ────────────────────────────────────────────────────────────────
 if (failures.length === 0) {
