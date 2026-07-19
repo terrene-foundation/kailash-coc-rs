@@ -228,14 +228,17 @@ function logViolation(entry) {
 // Hook subprocess invocation — exact CC PreToolUse contract
 // ---------------------------------------------------------------------------
 // Exit code semantics per .claude/hooks/*.js convention:
-//   0 = allow, 2 = block (deny), clean non-zero non-2 = warn (advisory-forward).
+//   0 = allow, 2 = block (deny). A clean non-zero non-2 exit splits (F-CGUARD-EXIT1):
+//   `warn` (advisory-forward) IF stdout carried a parseable decision — the Rule-7
+//   timeout-fallback advisory — else `crash` (fail-closed, a load-crash with no decision).
 // Synthesizes the CC-shaped stdin payload from MCP args. Each policy entry is a
-// separate process. A `warn` verdict (the hook RAN and returned a clean non-2
-// exit) is advisory-forward. But a hook that could NOT be evaluated — `timeout`
-// (hung), `error` (crash/spawn failure), or `missing` (no source file for a gated
-// tool) — FAILS CLOSED at evaluatePolicies (#411 compliance-bus posture): the
-// guard denies rather than silently forward. This guard is a security
-// policy-ENFORCEMENT surface, NOT a session-continuation hook, so cc-artifacts.md
+// separate process. A `warn` verdict (the hook RAN, returned a clean non-2 exit, AND
+// emitted a parseable decision) is advisory-forward. But a hook that could NOT be
+// evaluated — `timeout` (hung), `error` (spawn failure), `missing` (no source file for a
+// gated tool), or `crash` (node launched it, it threw / failed to load, and it exited
+// non-zero with NO parseable stdout decision) — FAILS CLOSED at evaluatePolicies (#411
+// compliance-bus posture): the guard denies rather than silently forward. This guard is a
+// security policy-ENFORCEMENT surface, NOT a session-continuation hook, so cc-artifacts.md
 // Rule 7's session-hook fail-open (don't wedge the session on a buggy hook) does
 // NOT apply to an un-evaluable enforcement verdict here.
 function invokeHook({ hookFile, payload }) {
@@ -334,7 +337,17 @@ function invokeHook({ hookFile, payload }) {
       verdict = "allow";
     }
   } else {
-    verdict = "warn";
+    // Clean non-zero non-2 exit (most commonly exit 1). F-CGUARD-EXIT1 (journal/0535):
+    // distinguish a DELIBERATE cc-artifacts.md Rule-7 timeout-fallback advisory (wrote a
+    // parseable {continue:true} to stdout THEN exited 1 — 45 real hooks do this) from a
+    // LOAD-CRASH (node launched the hook, it threw / failed to parse, exited non-zero
+    // having written NO parseable decision to stdout). The advisory is advisory-forward
+    // ("warn", byte-behavior-unchanged); the crash is UN-EVALUABLE on this enforcement
+    // surface and MUST fail closed (deny) — the same #411 posture the timeout/error/missing
+    // trio takes, matching the guard's own "crash fails closed" contract. extractHookValidation
+    // cannot tell them apart (a bare {continue:true} returns all-nulls, like a crash), so the
+    // discriminator keys on hasParseableHookDecision(stdout).
+    verdict = hasParseableHookDecision(stdout) ? "warn" : "crash";
   }
   return {
     verdict,
@@ -464,6 +477,52 @@ function extractHookValidation(hookStdout) {
   return { validation, continueFlag, permissionDecision };
 }
 
+// Crash-vs-advisory discriminator for a clean non-zero-non-2 hook exit (F-CGUARD-EXIT1,
+// journal/0535). A hook that DELIBERATELY exits non-zero as a cc-artifacts.md Rule-7
+// timeout-fallback advisory FIRST writes a canonical decision to stdout
+// (`{"continue":true}` — the shape 45 real hooks emit, e.g. posture-gate.js:44) and THEN
+// exits 1. A hook that node LAUNCHED but that CRASHED (uncaught throw / syntax / load
+// error) exits non-zero having written NO parseable decision to stdout (its stack trace
+// goes to stderr). This predicate returns true iff stdout carries an intentional decision:
+//   true  => honor as advisory-forward ("warn");
+//   false => a load-crash the enforcement lane MUST fail closed on (same #411 posture as
+//            the timeout/error/missing trio).
+// NOTE: extractHookValidation alone cannot discriminate — a bare `{"continue":true}` (no
+// validation body, `continue !== false`) returns all-nulls, identical to a crash that
+// emitted nothing — hence this dedicated presence check over the recognized decision keys.
+// The key-set is EXACTLY what the guard actually consumes downstream: `continue`
+// (extractHookValidation continueFlag + the code===2/continue:false deny branch),
+// `hookSpecificOutput` (permissionDecision deny/ask + validation/additionalContext), and
+// `systemMessage` (Stop-class advisory). A hook's TOP-LEVEL `decision` field is NOT read
+// anywhere in this guard, so it is deliberately EXCLUDED — recognizing a key the guard
+// cannot act on would let a `{"decision":...}`-then-crash read as an advisory instead of
+// failing closed (R1 security-reviewer, resolved by construction: fail-closed on any stdout
+// carrying no guard-consumable decision).
+function hasParseableHookDecision(hookStdout) {
+  const lines = (hookStdout || "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  for (const line of lines) {
+    let obj;
+    try {
+      obj = JSON.parse(line);
+    } catch {
+      continue; // not JSON (e.g. a stack-trace line) — keep scanning
+    }
+    if (
+      obj &&
+      typeof obj === "object" &&
+      ("continue" in obj ||
+        "hookSpecificOutput" in obj ||
+        "systemMessage" in obj)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // instruct-and-wait.js::buildValidationBody emits an ACTIONABLE validation body
 // beginning with exactly one of these canonical heads. An all-clear sentinel
 // ("Validated" / "Not a deployment file") carries NO head — it flows through the
@@ -542,6 +601,8 @@ function failClosedDeny({ hookFile, verdict, stderr }) {
     timeout: "timed out (hung)",
     error: "crashed or failed to spawn",
     missing: "is missing (no policy source file for a gated tool)",
+    crash:
+      "launched then crashed (uncaught exception / load error) before emitting a decision",
   };
   const text =
     `codex-mcp-guard: BLOCKED (fail-closed) — the enforcement hook ${hookFile} ` +
@@ -716,22 +777,27 @@ function evaluatePolicies({ tool, input, session_id, cwd }) {
         continue;
       }
       // FAIL-CLOSED (#411 compliance-bus posture). A verdict of `timeout` (hook
-      // hung), `error` (hook crashed / failed to spawn), or `missing` (the policy
-      // source file is absent for a tool the POLICIES_POPULATED gate says HAS
-      // policies) means the guard COULD NOT EVALUATE the policy — it has no basis
-      // to allow. On a governance/compliance bus a guard that cannot evaluate MUST
-      // DENY, never silently forward (the #411 "fail-open on hook crash" gap: a
-      // crashed enforcement hook silently disabling Codex policy enforcement
-      // defeats the "the model cannot bypass" guarantee). This is DISTINCT from
-      // `cc-artifacts.md` Rule 7's session-hook fail-open: that governs a
+      // hung), `error` (hook failed to spawn), `missing` (the policy source file is
+      // absent for a tool the POLICIES_POPULATED gate says HAS policies), or `crash`
+      // (F-CGUARD-EXIT1: the hook node LAUNCHED then threw / failed to load, exiting
+      // non-zero with NO parseable stdout decision) means the guard COULD NOT EVALUATE
+      // the policy — it has no basis to allow. On a governance/compliance bus a guard
+      // that cannot evaluate MUST DENY, never silently forward (the #411 "fail-open on
+      // hook crash" gap: a crashed enforcement hook silently disabling Codex policy
+      // enforcement defeats the "the model cannot bypass" guarantee). This is DISTINCT
+      // from `cc-artifacts.md` Rule 7's session-hook fail-open: that governs a
       // session-CONTINUATION hook (a buggy hook must not wedge the whole session,
       // so its instructAndWait fallback emits {continue:true}); THIS is a security
-      // policy-ENFORCEMENT guard whose whole purpose is to gate the call. First
-      // un-evaluable hook short-circuits the chain, same as a deny.
+      // policy-ENFORCEMENT guard whose whole purpose is to gate the call. The `crash`
+      // discriminator (hasParseableHookDecision) is what lets that same Rule-7
+      // {continue:true}-then-exit-1 advisory be HONORED (verdict `warn`) while a
+      // decision-less load-crash fails closed here. First un-evaluable hook
+      // short-circuits the chain, same as a deny.
       if (
         result.verdict === "timeout" ||
         result.verdict === "error" ||
-        result.verdict === "missing"
+        result.verdict === "missing" ||
+        result.verdict === "crash"
       ) {
         logViolation({
           kind: "codex_mcp_guard_failclosed_" + result.verdict,
@@ -1100,6 +1166,7 @@ module.exports = {
   translateDeny,
   ccHookSpecificOutput,
   extractHookValidation,
+  hasParseableHookDecision,
   isActionableValidation,
   buildAllowResponse,
   loadPolicies,
