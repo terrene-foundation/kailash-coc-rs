@@ -24,26 +24,15 @@ Every specialist delegation prompt MUST include relevant spec file content from 
 
 ## Parallel Execution
 
-When multiple independent operations are needed, launch agents in parallel via the CLI's delegation primitive, wait for all, aggregate results. MUST NOT run sequentially when parallel is possible.
+Launch independent operations in parallel via the CLI's delegation primitive, wait for all, aggregate. MUST NOT run sequentially when parallel is possible — the always-on form of the § Triad clause below (under time-pressure framings, parallelization IS the throughput response — `rules/time-pressure-discipline.md`).
 
-**Why:** Sequential execution of independent operations wastes the autonomous execution multiplier, turning a 1-session task into a multi-session bottleneck. (Under time-pressure framings, parallelization IS the throughput response — `rules/time-pressure-discipline.md`.)
+### MUST: The Default Execution Mode Is The Triad — Parallelize + /autonomize + /redteam-to-convergence
 
-### MUST: Decompose Onto The Parallel Primitive By Default When The Work Earns It
-
-When the work surface is **≥3 independent items** OR has a **multi-stage shape**, the orchestrator MUST decompose onto the runtime's parallel orchestration primitive by DEFAULT — not only under `/autonomize`. A genuinely serial single-item task MUST stay serial. Governance per `rules/governed-throughput.md`; throttle-aware per `rules/worktree-isolation.md` Rule 4.
-
-```text
-# DO — 3 independent shards → one parallel wave
-# DO NOT — 1 serial rewrite → stay serial
-```
-
-**Why:** Parallel decomposition is the baseline throughput response, not a per-session opt-in; the serial-single-item gate prevents over-decomposing sequential work.
+**The default execution mode for every actionable input is the TRIAD, each DEFAULT-ON (not only under `/autonomize`, not serial/inline):** (1) **parallelize** — decompose onto the parallel primitive wherever the input has **≥2 independent sub-parts OR a multi-stage shape**; (2) **/autonomize** — execute autonomously under the permission envelope (`commands/autonomize.md`); (3) **/redteam-to-convergence** — adversarially verify every substantive change to 2 consecutive clean rounds before "done" (reinforces § Quality Gates + § Holistic Post-Multi-Wave Redteam + `rules/self-referential-codify.md` Rule 1). Drops to serial/inline ONLY for a genuinely-atomic single-item task OR a factual/confirmation/recommendation reply. Executing a decomposable input inline-serially, or idling while independent work is dispatchable, is BLOCKED. The triad FILLS the default posture, NEVER overrides a gate — BOUNDED by the same gates as `rules/wave-loop.md` MUST-6; `/autonomize` is self-bounding. **DO/DO-NOT, full BLOCKED corpus, bounding-gate enumeration, Why: `skills/30-claude-code-patterns/parallel-dispatch-default.md`; CLI dispatch syntax → the `examples` slot.**
 
 ### MUST: Parallel Brief-Claim Verification When Issue Count ≥ 3
 
-When `/analyze` runs against a brief covering ≥ 3 distinct issues, the orchestrator MUST launch parallel deep-dive verification agents — one per claim cluster — to independently re-grep / re-read every factual claim. Inaccuracies MUST be recorded in the workspace journal AND the plan's "Brief corrections" section AS THE GATE before `/todos`. Single-agent analysis on a ≥3-issue brief is BLOCKED. (Example 1 = CLI-specific dispatch syntax.)
-
-**Why:** Briefs reflect the author's mental model, which decays as code evolves; single-agent analysis cannot resist the brief's framing without independent reading. Parallel deep-dive verification is the structural defense — N agents, N claim-clusters, one wall-clock unit.
+When `/analyze` runs against a brief covering ≥ 3 distinct issues, the orchestrator MUST launch parallel deep-dive verification agents — one per claim cluster — to independently re-grep / re-read every factual claim; inaccuracies recorded in the workspace journal AND the plan's "Brief corrections" section AS THE GATE before `/todos`. Single-agent analysis on a ≥3-issue brief is BLOCKED. BLOCKED corpus + Why: `skills/30-claude-code-patterns/parallel-dispatch-default.md` § 2. (Example 1 = dispatch syntax.)
 
 ## Quality Gates (MUST — Gate-Level Review)
 
@@ -51,7 +40,7 @@ Reviews happen at COC phase boundaries, not per-edit. Skip only when explicitly 
 
 **Why:** Skipped gate reviews let gaps propagate downstream where they are far more expensive to fix. (Example 2 = background-dispatch pattern.)
 
-**BLOCKED responses when skipping MUST gates:** "Skipping review to save time" / "Reviews will happen in a follow-up session" / "The changes are straightforward, no review needed" / "Already reviewed informally during implementation".
+**BLOCKED responses when skipping MUST gates:** full corpus in guide § "Quality Gates — BLOCKED responses".
 
 ### MUST: Reviewer Prompts Include Mechanical AST/Grep Sweep
 
@@ -67,9 +56,7 @@ A plan shipped across ≥3 sharded waves MUST run ONE holistic redteam round acr
 
 ### MUST: Redteam Reviewer Dispatch — Errored/Empty Is Zero Evidence, Never A Clean Round
 
-A `/redteam` round dispatches reviewers in PARALLEL; rate-limiting can throttle the fan-out so an agent returns errored/empty, reading as "0 findings" → false convergence. Two axes: **(1) EVIDENCE GATE** — every dispatched reviewer MUST return a ran/evidence signal; an errored/empty/timed-out return is ZERO evidence (per `rules/evidence-first-claims.md` MUST-3), MUST be re-run, and MUST NOT count clean; convergence is claimable ONLY when EVERY agent genuinely ran. **(2) CONCURRENCY BACK-OFF** — on a throttle signal, reduce dispatch concurrency (per `rules/worktree-isolation.md` Rule 4's adaptive model) and re-run the throttled reviewers. COMPLEMENTS parallel-by-default; does NOT override it. DO/DO-NOT + BLOCKED corpus + Wiring: `skills/30-claude-code-patterns/redteam-dispatch-evidence-gate.md`.
-
-**Why:** An errored agent and a genuinely-clean agent are indistinguishable in a "0 findings" tally yet opposite in meaning; counting the errored return as clean ships an un-reviewed shard under a converged banner.
+A `/redteam` round dispatches reviewers in PARALLEL; a throttled fan-out can return errored/empty, reading as "0 findings" → false convergence. **(1) EVIDENCE GATE** — every dispatched reviewer MUST return a ran/evidence signal; an errored/empty/timed-out return is ZERO evidence (`rules/evidence-first-claims.md` MUST-3), MUST be re-run, MUST NOT count clean; convergence is claimable ONLY when EVERY agent genuinely ran. **(2) CONCURRENCY BACK-OFF** — on a throttle signal, reduce concurrency (`rules/worktree-isolation.md` Rule 4) and re-run the throttled reviewers. Complements parallel-by-default, does not override it. DO/DO-NOT + BLOCKED corpus + Wiring + Why: `skills/30-claude-code-patterns/redteam-dispatch-evidence-gate.md`.
 
 ## Zero-Tolerance
 
@@ -83,6 +70,8 @@ When delegating IMPLEMENTATION work (file edits, commits, build/test invocation,
 
 **Why:** Read-only specialists halt mid-instruction at file-edit boundaries; pre-launch tool-inventory verify is O(1), re-launch is O(N) on shard size.
 
+**Read-only reviewer materialization (INCREMENTAL):** `security-reviewer` is read-only (no `Bash`) → materialize the diff/changed files to a scratchpad path and name it in the prompt, so it reviews the change instead of halting for context it cannot fetch.
+
 ## MUST: Audit/Closure-Parity Verification Specialist Has Bash + Read
 
 When delegating a /redteam round including **closure-parity verification** (mapping prior-wave findings to delivered code via `gh pr view`, `pytest --collect-only`, `grep`, `ast.parse()`), the orchestrator MUST select a specialist with `Bash` AND `Read`. Read-only analyst MUST NOT be assigned — its tool set silently FORWARDS verification rows the next round must redo. Extends the tool-inventory MUST above from IMPLEMENTATION to AUDIT delegation. Examples 4+5 (dispatch + delegation-time scan), the BLOCKED corpus, the delegation-time detection signals, and the multi-incident Origin live in `.claude/skills/30-claude-code-patterns/closure-parity-specialist-discipline.md`.
@@ -91,7 +80,7 @@ When delegating a /redteam round including **closure-parity verification** (mapp
 
 ## MUST: Worktree Orchestration
 
-Parallel/compiling agents MUST run isolated per `skills/30-claude-code-patterns/worktree-orchestration.md` (Rules 1–10 — each a full MUST). The 10 sub-rules: isolate compiling agents + ANY shared-source editor (concurrent readers read committed HEAD via `git show HEAD:<path>`, never the working tree); relative paths only in prompts; commit per milestone + verify ≥1 commit; verify deliverables exist after exit; recover orphan writes onto `recovery/<branch>`; one version owner per sub-package; binding-scoped shard PRs touch only their own package. The depth-file carries each rule's failure-mode evidence, prompt templates, DO/DO-NOT blocks, BLOCKED-rationalization corpus, and Trust Posture Wiring.
+Parallel/compiling agents MUST run isolated per `skills/30-claude-code-patterns/worktree-orchestration.md` (Rules 1–10 — each a full MUST): isolate compiling agents + any shared-source editor (concurrent readers read committed HEAD via `git show HEAD:<path>`); relative paths in prompts; commit per milestone + verify ≥1 commit; verify deliverables after exit; recover orphan writes onto `recovery/<branch>`; one version owner per sub-package; binding-scoped shard PRs. The skill carries each rule's evidence, prompt templates, DO/DO-NOT, BLOCKED corpus, and Wiring.
 
 **Why:** Each sub-rule converts a silent parallel-work loss (lock serialization, phantom reads, checkout drift, auto-cleanup loss, truncated writes, version clobber, shard conflicts) into clean isolation or a loud refusal.
 
@@ -100,8 +89,6 @@ Parallel/compiling agents MUST run isolated per `skills/30-claude-code-patterns/
 - **Framework work without specialist** — misuse violates invariants (pool sharing, session lifecycle, trust boundaries).
 - **Sequential when parallel is possible** — wastes the autonomous execution multiplier.
 - **Raw SQL / custom API / custom agents / custom governance** — see `rules/framework-first.md` and guide for per-framework rationale.
-
-
 
 ## Examples (Gemini-native delegation syntax)
 
