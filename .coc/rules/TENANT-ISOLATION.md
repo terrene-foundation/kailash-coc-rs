@@ -5,7 +5,6 @@ paths: ["**/tenant*", "**/multi_tenant*", "**/dataflow/**", "**/cache/**", "**/a
 
 # Tenant Isolation Rules
 
-
 In a multi-tenant SaaS, tenant isolation is the difference between an API that scales to a thousand customers and a P0 incident that destroys the company's reputation. Cross-tenant data leaks happen because some piece of state — a cache key, a query filter, a metric label, an audit row — was constructed without a tenant dimension. The leak doesn't surface until two tenants happen to share a primary key, at which point one of them sees the other's data.
 
 This rule mandates a tenant dimension on every piece of state that can hold per-tenant data. The audit is mechanical: grep for cache key construction, query filter construction, metric label construction, and verify that each one accepts a `tenant_id` and uses it.

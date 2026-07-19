@@ -5,8 +5,6 @@ paths: ["**/nexus/**", "**/webhook*", "**/*hmac*", "**/signature*"]
 
 # Nexus Webhook HMAC Rules
 
-
-
 HMAC webhook signatures verify that the bytes a third-party provider sent (Stripe, GitHub, Slack, Twilio, etc.) are the exact bytes the handler is about to process. The provider computes `HMAC(secret, raw_body)` and sends it in a header; the handler recomputes `HMAC(secret, received_raw_body)` and compares. Any mutation of the body between the provider and the handler — even whitespace-equivalent re-serialization — breaks the signature.
 
 Nexus handlers receive pre-parsed JSON. The raw byte stream is consumed and discarded before the handler runs. HMAC verification computed inside a Nexus handler — over a re-serialized copy of the parsed JSON — is structurally broken: the recomputed body will not match the bytes the provider signed, and verification will fail or (worse) succeed only by coincidence.

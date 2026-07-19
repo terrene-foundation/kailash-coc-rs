@@ -5,9 +5,6 @@ paths: ["**/db/**", "**/pool*", "**/database*", "**/infrastructure/**"]
 
 # Connection Pool Safety Rules
 
-
-
-
 ### 1. Never Use Default Pool Size in Production
 
 Set `DATAFLOW_MAX_CONNECTIONS` env var. Default (25/worker) exhausts PostgreSQL on small instances.

@@ -1,8 +1,5 @@
 # Agent Orchestration Rules
 
-See `.claude/guides/rule-extracts/agents.md` for full evidence, extended examples, post-mortems, recovery-protocol commands, the gate-review table, and CLI-syntax variants.
-
-
 ## Specialist Delegation (MUST)
 
 When working with Kailash frameworks, MUST consult the relevant specialist (**dataflow** / **nexus** / **kaizen** / **mcp** / **mcp-platform** / **pact** / **ml** / **align**-specialist). The work-domain → specialist binding is `rules/framework-first.md`'s domain table.
@@ -39,8 +36,6 @@ When `/analyze` runs against a brief covering ≥ 3 distinct issues, the orchest
 Reviews happen at COC phase boundaries, not per-edit. Skip only when explicitly told to. **MUST gates** are `/implement` and `/release`; reviewer + security-reviewer (and gold-standards-validator at `/release`) run as parallel background agents. RECOMMENDED gates: `/analyze`, `/todos`, `/redteam`, `/codify`, post-merge. Full gate table: guide.
 
 **Why:** Skipped gate reviews let gaps propagate downstream where they are far more expensive to fix. (Example 2 = background-dispatch pattern.)
-
-**BLOCKED responses when skipping MUST gates:** full corpus in guide § "Quality Gates — BLOCKED responses".
 
 ### MUST: Reviewer Prompts Include Mechanical AST/Grep Sweep
 
@@ -90,17 +85,9 @@ Parallel/compiling agents MUST run isolated per `skills/30-claude-code-patterns/
 - **Sequential when parallel is possible** — wastes the autonomous execution multiplier.
 - **Raw SQL / custom API / custom agents / custom governance** — see `rules/framework-first.md` and guide for per-framework rationale.
 
-## Examples (Gemini-native delegation syntax)
-
-The MUST clauses in the neutral body reference numbered examples by their inline "(Example N = ...)" descriptors. Gemini invokes a specialist by name via `@specialist` (e.g. `@reviewer`, `@security-reviewer`), dispatched in parallel where the clause calls for it. The delegation MECHANISM above is self-contained; the CLI-neutral MUST-clause contract is the load-bearing part.
-
-
 ---
 
 # Autonomous Execution Model
-
-See `.claude/guides/rule-extracts/autonomous-execution.md` for extended examples + Rule-4 Origin evidence.
-
 
 COC executes through **autonomous AI agent systems**, not human teams. All deliberation, analysis, recommendations, and effort estimates MUST assume autonomous execution unless the user explicitly states otherwise.
 
@@ -214,7 +201,6 @@ Concurrent-operator capacity guidance (per-`verified_id` budgets, NON-SAME-adjac
 
 # Communication Style
 
-
 Many COC users are non-technical. Default to plain language; match the user's level if they speak technically.
 
 ## Report in Outcomes, Not Implementation
@@ -261,8 +247,6 @@ At gates (end of `/todos`, before `/deploy`), ask:
 
 # Evidence-First Claims — No Assertion Without Quoted Evidence
 
-See `.claude/guides/rule-extracts/evidence-first-claims.md` for full DO/DO-NOT blocks, BLOCKED-rationalization corpora, the `cat -v` decode walkthrough, the structural-finding carve-out, and the complete E1/E2/E3 origin narrative.
-
 Diagnostic, root-cause, anomaly, and security claims MUST be grounded in evidence quoted **inline, in the same message as the claim**. Inference is permitted — but labeled as inference, never asserted as fact. The security/anomaly subclass carries the strictest bar: quote the triggering bytes, decoded.
 
 ## MUST Rules
@@ -298,10 +282,6 @@ A command that exited non-zero, hit an invalid flag, timed out, or returned empt
 - Treat an errored, timed-out, or empty command result as confirmation of any hypothesis — **Why:** absence-of-result is not evidence.
 - Assert a root-cause claim before reading the log / output / file that would show the cause — **Why:** the log disambiguates; asserting first builds the next action on a guess.
 
-## Distinct From / Cross-References
-
-Extends `verify-resource-existence.md` MUST-2 to ALL diagnostic/anomaly/security claims. Pairs with `recommendation-quality.md` MUST-3, `probe-driven-verification.md`, `user-flow-validation.md` MUST-2. Distinct from `communication.md` (HOW vs WHETHER) and `verify-claims-before-write.md` (code-surface claims at durable-write time vs diagnostic/security claims inline).
-
 ## Origin
 
 2026-05-31 — a Rust SDK session: three escalating assert-before-verify errors (E1 "timeout" misdiagnosis vs a 53s log-visible failure; E2 errored command nearly read as runner-deletion; E3 fabricated "curl|bash prompt-injection" from a `cat -v`-rendered em-dash — the detection grep never ran). User directive after E3: "how can you just fabricate a security claim, its not normal, please investigate fully" → forensics → `/codify`. Full narrative in the guide extract.
@@ -309,7 +289,6 @@ Extends `verify-resource-existence.md` MUST-2 to ALL diagnostic/anomaly/security
 ---
 
 # Framework-First: Use the Highest Abstraction Layer
-
 
 ## ABSOLUTE: Work-Domain → Framework Binding
 
@@ -338,9 +317,6 @@ When a Kailash framework exists for your use case, MUST NOT write raw code that 
 ---
 
 # Git Workflow Rules
-
-See `.claude/guides/rule-extracts/git.md` for extended bash examples, full BLOCKED rationalization lists, repository protection table, and Origin evidence.
-
 
 ## Conventional Commits
 
@@ -429,9 +405,30 @@ CC system prompt provides the template. Always include a `## Related issues` sec
 
 ---
 
-# Repo Scope Discipline — Stay In This Repo
+# Issue Triage → Upflow Routing (always-loaded)
 
-See `.claude/guides/rule-extracts/repo-scope-discipline.md` for examples, the BLOCKED corpus, the User-Authorized Exception walkthrough, and the origin post-mortem.
+When triaging a GitHub issue on THIS repo, the agent MUST route it by the repo's CLASS before any disposition. A `gh issue` triage touches none of the artifact-file globs the routing DEPTH is path-scoped behind, so this always-loaded pointer is the reachability floor.
+
+## MUST: Route Every Triaged Issue By The Repo `type`, Never By Convenience
+
+Read `.claude/VERSION::type` FIRST, then route:
+
+- **`coc-use-template`** → the origination node: `/codify` Step 7b proposal → loom `/sync-from-use` Gate-1 classify → `/sync-to-use` redistributes.
+- **`coc-project`** (downstream consumer) → UP to the template pulled from: `/codify` Step 7c PR to the template inbox (primary) OR a Route-A issue on the template (fallback). NEVER file on your own repo (orphan — never pulled upstream); NEVER file on loom (bypasses USE-template review).
+- **`coc-build`** → SDK code: cross-SDK FIRST → `/codify` Step 7a.
+- **`coc-source`** (loom) → Splits, Never Originates: INGEST via `/sync-from-build` + `/sync-from-use`, Gate-1 classify; never author a local artifact.
+
+NEVER hand-edit loom to "resolve" an issue; NEVER "fix" one by editing a synced artifact locally (Class-A non-durable — rebuilt by `/sync-to-use`). The durable surface is the proposal. Depth (the four classes, Route A/B, origination taxonomy): the paired `issue-triage-routing` skill + `rules/artifact-flow.md` § "Issue Routing By Change Type".
+
+**Why:** A `gh` triage never matches the `.claude/**` / `sync-manifest.yaml` / `*.md` globs the path-scoped routing depth sits behind, so only an always-loaded pointer fires at triage time; without it a COC-method fix lands on a code-only lane or an SDK bug on the artifact lane, bypassing the Gate-1 split and losing provenance.
+
+## Origin
+
+2026-07-19 — `/sync-from-use` kailash-coc-rs Gate-1 ingest (journal/0550). Closes the reachability gap: the routing depth in `rules/artifact-flow.md` § "Issue Routing By Change Type" is path-scoped behind artifact-file globs (`.claude/**`, `sync-manifest.yaml`, `**/VERSION`, `*.md`), none of which a `gh issue list` / `gh issue view` triage touches, so the routing rule never loaded at triage time across templates + downstream consumers. Baseline body kept pointer-only (~30-line neutral-body); depth extracted to the paired `issue-triage-routing` skill to stay under the 15% proximity band per `rule-authoring.md` MUST-10 (Rule-10 path-(a) paired extraction; sibling precedent `framework-first.md` → `framework-first` skill).
+
+---
+
+# Repo Scope Discipline — Stay In This Repo
 
 The session's CWD repo is the agent's entire scope. The agent MUST NOT read, edit, push to, file issues against, comment on, or propose work in any other repository (siblings, USE templates, `loom/`/`atelier/`, downstream consumers, any other repo) **under any circumstance it self-authorizes**. The sole exception is the user-authorized action below.
 
@@ -481,116 +478,117 @@ Note: at the orchestration root, targets resolve via `bin/lib/loom-links.mjs::re
 
 ALL code changes in the repository.
 
-See `.claude/guides/rule-extracts/security.md` for extended examples, exhaustive sanitizer contract examples, multi-site kwarg plumbing full post-mortem, and the Enforcement-Surface Parity shared-rank-function pattern + Detection procedure.
-
-
 ## No Hardcoded Secrets
 
 All sensitive data MUST use environment variables.
 
-**Why:** Hardcoded secrets end up in git history, CI logs, and error traces, making them permanently extractable even after deletion.
+**Why:** Hardcoded secrets persist in git history, CI logs, and error traces — permanently extractable even after deletion.
 
 ## Parameterized Queries
 
 All database queries MUST use parameterized queries or ORM.
 
-**Why:** Without parameterized queries, user input becomes executable SQL, enabling data theft, deletion, or privilege escalation.
+**Why:** Without parameterization, user input becomes executable SQL — data theft, deletion, or privilege escalation.
 
 ## Credential Decode Helpers
 
-Connection strings carry credentials URL-encoded; every decode site MUST route through a shared helper module. Call-site `unquote(parsed.password)` is BLOCKED.
+Connection strings carry credentials URL-encoded; every decode site MUST route through a shared helper module. Call-site `unquote(parsed.password)` BLOCKED.
 
 ### 1. Null-Byte Rejection At Every Credential Decode Site (MUST)
 
-Every URL parsing site that extracts `user`/`password` from `urlparse(connection_string)` MUST route through a single shared helper that rejects null bytes after percent-decoding. Hand-rolled `unquote(parsed.password)` at a call site is BLOCKED.
+Every `urlparse(connection_string)` user/password extraction MUST route through a single shared helper that rejects null bytes after percent-decoding; call-site `unquote(parsed.password)` is BLOCKED.
 
-**Why:** A crafted `mysql://user:%00bypass@host/db` truncates at the null byte to an empty password on the MySQL C client. See guide for full evidence.
+**Why:** A crafted `mysql://user:%00bypass@host/db` truncates at the null byte to an empty password on the MySQL C client. See guide.
 
 ### 2. Pre-Encoder Consolidation (MUST)
 
-Password pre-encoding helpers (`quote_plus` of `#$@?` etc.) MUST live in the same shared helper module as the decode path. Per-adapter copies are BLOCKED.
+Password pre-encoding helpers (`quote_plus` of `#$@?` etc.) MUST live in the same shared helper module as the decode path; per-adapter copies are BLOCKED.
 
-**Why:** Encode and decode are dual halves of one contract; splitting them across modules guarantees one half drifts.
+**Why:** Encode and decode are dual halves of one contract; splitting them across modules guarantees drift.
 
 ## Input Validation
 
-All user input MUST be validated before use: type checking, length limits, format validation, whitelist when possible. Applies to API endpoints, CLI inputs, file uploads, form submissions.
+All user input MUST be validated before use (type/length/format checks, whitelist when possible) across every attack surface — API, CLI, uploads, forms.
 
-**Why:** Unvalidated input is the entry point for injection attacks, buffer overflows, and type confusion across every attack surface.
+**Why:** Unvalidated input is the entry point for injection, buffer overflows, and type confusion.
 
 ## Output Encoding
 
 All user-generated content MUST be encoded before display in HTML templates, JSON responses, and log output.
 
-**Why:** Unencoded user content enables cross-site scripting (XSS), allowing attackers to execute arbitrary JavaScript in other users' browsers.
+**Why:** Unencoded user content enables XSS — attackers execute arbitrary JavaScript in other users' browsers.
 
 ## MUST NOT
 
 - **No eval() on user input**: `eval()`, `exec()`, `subprocess.call(cmd, shell=True)` — BLOCKED
 
-**Why:** `eval()` on user input is arbitrary code execution — the attacker runs whatever they want on the server.
+**Why:** `eval()` on user input is arbitrary code execution — the attacker runs whatever they want.
 
 - **No secrets in logs**: MUST NOT log passwords, tokens, or PII
 
-**Why:** Log files are widely accessible (CI, monitoring, support staff) and rarely encrypted, turning every logged secret into a breach.
+**Why:** Log files are widely accessible and rarely encrypted, turning every logged secret into a breach.
 
 - **No .env in Git**: .env in .gitignore, use .env.example for templates
 
-**Why:** Once committed, secrets persist in git history even after removal, and are exposed to anyone with repo access.
+**Why:** Once committed, secrets persist in git history even after removal, exposed to anyone with repo access.
 
-## Sanitizer Contract — DataFlow Display Hygiene
+## Sanitizer Contract — Display Hygiene
 
-DataFlow's `sanitize_sql_input` is a defense-in-depth display-path safety net, NOT the primary SQLi defense — parameter binding is.
+DataFlow's `sanitize_sql_input` is defense-in-depth display hygiene, NOT the primary SQLi defense (parameter binding is).
 
 ### 1. String Inputs MUST Be Token-Replaced, Not Quote-Escaped
 
-For declared-string fields, the sanitizer MUST replace dangerous SQL keyword sequences with grep-able sentinel tokens (`STATEMENT_BLOCKED`, `DROP_TABLE`, `UNION_SELECT`, etc.). Quote-escaping (`'` → `''`) is BLOCKED.
+For declared-string fields, the sanitizer MUST token-replace SQL keyword sequences with grep-able sentinels (`STATEMENT_BLOCKED`, etc.); quote-escaping (`'` → `''`) is BLOCKED.
 
-**Why:** Token-replace makes attacker intent grep-able post-incident; quote-escape preserves the payload as data, masking the attack.
+**Why:** Token-replace makes attacker intent grep-able post-incident; quote-escape preserves the payload as data, masking it.
 
 ### 2. Type-Confusion MUST Raise, Not Silently Coerce
 
-For declared-string fields receiving `dict` / `list` / `set` / `tuple` values, the sanitizer MUST raise `ValueError("parameter type mismatch: …")`. Silent coercion via `str(value)` is BLOCKED.
+For declared-string fields receiving `dict`/`list`/`set`/`tuple` values, the sanitizer MUST raise `ValueError("parameter type mismatch: …")`. Silent `str(value)` coercion is BLOCKED.
 
-**Why:** A malicious upstream node passing a nested `dict`/`list` for a str-declared field bypasses every string-only check; raising at the type-confusion boundary closes the bypass. See guide for exhaustive examples.
+**Why:** A nested `dict`/`list` for a str-declared field bypasses every string-only check; raising at the type-confusion boundary closes the bypass. See guide.
 
 ### 3. Safe Types Are Returned As-Is
 
-Values of declared-safe types (`int`, `float`, `bool`, `Decimal`, `datetime`, `date`, `time`) MUST pass through unchanged. `dict` and `list` MUST also pass through unchanged when the field's declared type is `dict` or `list` (JSON / array columns). See guide (Bug #515).
+Declared-safe types (`int`, `float`, `bool`, `Decimal`, `datetime`, `date`, `time`) MUST pass through unchanged; so MUST `dict`/`list` when the declared type is `dict`/`list` (JSON/array columns). See guide (Bug #515).
 
 ## Multi-Site Kwarg Plumbing
 
-When a security-relevant kwarg (classification policy, tenant scope, clearance context, audit correlation ID) is plumbed through a helper, EVERY call site MUST be updated in the SAME PR. Updating the "primary" site and deferring siblings is BLOCKED.
+When a security-relevant kwarg (classification policy, tenant/clearance scope, audit ID) is plumbed through a helper, EVERY call site MUST be updated in the SAME PR (`grep` every caller); primary-site-only is BLOCKED.
 
-**Why:** A sibling left on the unqualified signature ships the exact failure mode the kwarg fixes (the "safe default" is the insecure default). Fix is mechanical — `grep` every caller, patch each. See guide.
+**Why:** A sibling on the unqualified signature ships the exact failure mode the kwarg fixes — the "safe default" is the insecure default. See guide.
 
-## Enforcement-Surface Parity — A New Fail-Closed Dimension Lands At Every Enforcement Surface, Same PR
+## Enforcement-Surface Parity — New Fail-Closed Dimension Lands At Every Surface
 
-When a fix PROMOTES a field to a fail-closed authorization control at the EVALUATION surface, EVERY INDEPENDENT validation surface for that control — especially a monotonic-tightening / re-registration validator — MUST learn the new dimension in the SAME PR (the eval-helper call-site grep CANNOT reach a separate validator with no shared callee). The two surfaces MUST consume a SINGLE shared restrictiveness/ordering function; an unrecognized value MUST rank TIGHTEST (fail-closed) — an unrecognized→recognized transition is a WIDENING and MUST raise. See guide for the shared-rank pattern, the pinned-parity-test requirement, BLOCKED corpus, and Detection.
+When a fix PROMOTES a field to a fail-closed authorization control at the eval surface, EVERY independent validation surface for it — especially a re-registration validator with no shared callee — MUST learn it in the SAME PR via ONE shared restrictiveness function ranking unrecognized values TIGHTEST (fail-closed); an unrecognized→recognized transition WIDENS and MUST raise. Depth: guide.
 
-**Why:** A new fail-closed gate the independent tightening validator never learned lets a re-registration lower the bar as "tightening" — a privilege escalation the FIX ITSELF introduced.
+**Why:** A fail-closed gate the tightening validator never learned lets a re-registration lower the bar as "tightening" — a privilege escalation the fix itself introduced.
 
 ## Redactor Contract
 
-Subject-keyed redactors (scrubbing every string containing a `subject_id` substring) MUST enforce a minimum subject-id length floor (≥8 chars), failing closed with a typed error naming the floor + received length. When a matching object KEY is scrubbed, BOTH key and value MUST be scrubbed — the key replaced with a numbered sentinel (`[REDACTED_KEY_N]`); the audit trail survives via the original-hash return.
+Subject-keyed redactors (substring-matching a `subject_id`) MUST enforce a subject-id length floor (≥8 chars), failing closed with a typed error naming floor + received length. A scrubbed matching object KEY MUST scrub BOTH key and value — key → `[REDACTED_KEY_N]`, audit trail via the original-hash return.
 
-**Why:** 1–7-char ids substring-match benign strings ("alice" → "malice"); a preserved matching key under a `[REDACTED]` value leaks the subject's identity as audit metadata. See guide for the PR #1123 evidence + cross-SDK landing requirement.
+**Why:** 1–7-char ids substring-match benign strings ("alice" → "malice"); a preserved matching key under `[REDACTED]` leaks the subject's identity. See guide.
+
+## Path Containment — Resolve And Normalize Before The Trust Decision
+
+A filesystem-path containment OR spawn/executable-allowlist decision MUST test the REAL canonical form — BOTH candidate AND boundary root resolved through the SAME resolver (`realpathSync` / `std::fs::canonicalize` / `os.path.realpath`) AND OS-normalized — never the lexical string; fail closed if the path will not resolve.
+
+**Why:** A symlink at a lexically-contained path whose target escapes the boundary passes every string check and would read/exec out-of-tree content; resolving BOTH sides is the only sound comparison. Scoped **necessary-but-not-sufficient**: the resolve closes the lexical-bypass class but does NOT by itself defeat the check-to-use TOCTOU (a symlink swap between check and the exec/read sink) — that needs fd-based / `O_NOFOLLOW` enforcement AT the sink. Depth (TOCTOU-at-sink enforcement, the OS-normalization matrix, cross-language DO/DO-NOT): `skills/18-security-patterns/path-containment.md`.
 
 ## Kailash-Specific Security
 
-- **DataFlow**: Access controls on models, validate at model level, never expose internal IDs
-- **Nexus**: Authentication on protected routes, rate limiting, CORS configured
-- **Kaizen**: Prompt injection protection, sensitive data filtering, output validation
+DataFlow — model-level access control, never expose internal IDs. Nexus — auth on protected routes, rate limiting, CORS. Kaizen — prompt-injection protection, output validation.
 
 ## Exceptions
 
-Security exceptions require: written justification, security-reviewer approval, documentation, and time-limited remediation plan.
+Security exceptions require: written justification, security-reviewer approval, documentation, and a time-limited remediation plan.
 
 ## Rust: Credential Comparison (MUST)
 
 Every credential / token / HMAC / API key comparison in Rust code MUST use `kailash_auth::api_key::ApiKeyConfig::validate_key` (list) or `subtle::ConstantTimeEq::ct_eq` (single) — NEVER `==`, NEVER `.any()` over a constant-time inner comparison.
 
-**Why:** `.any()` returns on first match, revealing _which position_ matched via response timing. During key rotation this narrows brute force by one key's worth of entropy per observation. Origin: R3 red team finding `0021-RISK-r3-timing-leak-mcp-auth.md`, fixed in commit `173d054b`. Full pattern: `skills/18-security-patterns/constant-time-comparison-rs.md`.
+**Why:** `.any()` returns on first match, revealing _which position_ matched via response timing. During key rotation this narrows brute force by one key's worth of entropy per observation.
 
 ## Rust: Fail-Closed Security Defaults (MUST)
 
@@ -598,20 +596,18 @@ Every `Default` impl, `default()` constructor, and builder-chain starting value 
 
 Applies to: classification/clearance levels, registry insert, file permissions (0o600 on audit/evidence files), path containment (allowlist, not free path), posture/tenant selection, delegation keys, and unsafe `Send`/`Sync` invariants.
 
-**Why:** Four of six HIGH findings in R1 shared a single root cause — permissive defaults silently disabled security features that operators believed were enabled. Origin: `0018-RISK-six-high-security-findings.md`, fixed in PR #334. Full pattern: `skills/18-security-patterns/fail-closed-defaults-rs.md`.
+**Why:** Four of six HIGH findings in R1 shared a single root cause — permissive defaults silently disabled security features that operators believed were enabled.
 
 ## Rust: Network Transport Hardening (MUST)
 
 HTTP MCP transports MUST validate `Origin`/`Host` against an allowlist before dispatching any JSON-RPC method. Stdio MCP transports MUST restrict spawn to an allowlisted `{command, arg regex, env key}` triple. Log lines including rejected credential / token / identifier content MUST fingerprint the content, never echo it.
 
-**Why:** DNS rebinding defeats the localhost-is-trusted assumption — a website the operator visits can invoke local MCP tools via the browser; stdio spawn without allowlist is arbitrary code execution; unsanitized log content is a secret-exfiltration vector. Origin: R3 commits `173d054b`, `0d4ebd12`. Full pattern: `skills/18-security-patterns/network-security-rs.md`.
+**Why:** DNS rebinding defeats the localhost-is-trusted assumption — a website the operator visits can invoke local MCP tools via the browser; stdio spawn without allowlist is arbitrary code execution; unsanitized log content is a secret-exfiltration vector.
 
 
 ---
 
 # Zero-Tolerance Rules
-
-See `.claude/guides/rule-extracts/zero-tolerance.md` for extended examples, sub-rule detail, and Phase 5 audit evidence.
 
 ## Scope
 

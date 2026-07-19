@@ -5,8 +5,6 @@ paths: [".github/workflows/**", "**/ci/**", "**/.github/**"]
 
 # CI Runner Rules
 
-
-
 Self-hosted CI runner hygiene for the Rust SDK (macOS self-hosted runners, `<org>/<repo>` repo). Language-agnostic MUSTs apply to every project using GitHub Actions self-hosted runners; §6 and §7 below capture Rust-SDK-specific dispatcher-state remediation with runner hostnames and `launchctl` invocations.
 
 For recovery protocols, service-management commands, and step-by-step troubleshooting, see `skills/10-deployment-git/ci-runner-troubleshooting.md`.

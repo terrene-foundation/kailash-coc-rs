@@ -5,7 +5,6 @@ paths: ["**/nexus/**", "**/*handler*", "**/*endpoint*"]
 
 # Nexus HTTP Status Convention
 
-
 Every response a Nexus handler emits carries an HTTP status code that operators read as a triage signal at 03:00. The status taxonomy below is a contract: a handler returning the wrong code sends the operator to the wrong on-call page. This rule freezes the mapping from `NexusError` variants and handler-side errors to HTTP status codes, plus the JSON error body shape that rides on every 4xx/5xx response.
 
 The source of truth is the SDK `NexusError` / `NexusApiError` type: its `status_code()` method defines the variant → HTTP mapping and its `into_response()` method defines the JSON body shape. Documents, skills, downstream templates, and new handler code MUST match the SDK shape bit-for-bit.

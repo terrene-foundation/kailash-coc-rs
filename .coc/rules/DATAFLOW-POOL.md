@@ -5,8 +5,6 @@ paths: ["**/dataflow/**"]
 
 # DataFlow Pool Configuration Rules
 
-
-
 > **Scope**: Application code MUST go through DataFlow's high-level API (`@db.model`, `db.express`) — see `framework-first.md` § Work-Domain Binding. The patterns here are for tuning the DataFlow connection pool itself, not for bypassing it.
 
 ### 1. Single Source of Truth for Pool Size

@@ -6,7 +6,6 @@ applies_to: ["claude-code"]
 
 # CC Artifact Quality Rules
 
-
 CC-specific residue. Runtime-neutral artifact quality (DO/DO NOT examples, Why: rationale, Loud/Linguistic/Layered test) lives in `rules/rule-authoring.md`; cross-CLI artifact rules live in `rules/variant-authoring.md`. See those for the general principles. The no-dangling-cross-references discipline (verify cross-refs after extraction; grep for references after removal) is the MUST NOT § "No Dangling Cross-References After Extraction" below.
 
 ### 1. Agent Descriptions Under 120 Characters
@@ -191,6 +190,8 @@ Fixtures MAY use per-case sidecar files (as shown above) OR inline-case definiti
 **Why:** Mechanical audit tools have non-obvious scope-restriction predicates (block-scoping, glob anchoring, regex word boundaries) that future modifications can silently weaken. Committed fixtures make those regressions mechanically detectable before the audit produces false positives at scale and gets disabled, which would restore the original bug class.
 
 Origin: atelier `cc-audit-lint-generalize` 2026-05-03 (load-bearing `i==1` invariant case study + adversarial /vet round). Inbound from atelier `/sync-to-coc`.
+
+**Generalized to ALL COC artifact types + a semantic-probe half by `rules/coc-artifact-eval-coverage.md`.** This rule mandates committed structural fixtures for mechanical audit TOOLS; `coc-artifact-eval-coverage.md` lifts that contract to every COC artifact type (rule / agent / skill / command / hook) AND adds the LLM-judge probe tier (a structural fixture proves SHAPE; a probe proves EFFICACY). A `type:tool` entry stays fixture-only (`probes:null` per its bootstrap note — an audit tool's correctness is its committed fixtures/self-tests, not an LLM-judge probe of the very engine that dispatches probes), so this Rule 9 remains the governing contract for the tool subset; the two-tier generalization applies to the prose/behavioral artifact types. Informational cross-reference only — no new MUST here.
 
 ### 10. Mechanical Sweeps Use Positive Allowlists Where Vocabulary Is Enumerable
 

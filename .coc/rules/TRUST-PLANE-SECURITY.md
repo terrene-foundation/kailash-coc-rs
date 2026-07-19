@@ -5,7 +5,6 @@ paths: ["**/trust/**"]
 
 # Trust-Plane Security Rules
 
-
 ### 1. No Bare `open()` or `Path.read_text()` for Record Files
 
 ```python

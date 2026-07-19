@@ -5,7 +5,6 @@ paths: ["**/dataflow/**", "**/events*", "**/domain_events/**", "**/event_bus*"]
 
 # Event-Payload Classification Rules
 
-
 Every `DomainEvent` payload emitted from DataFlow write paths MUST be free of raw classified field values. Classified PK values (e.g. an `Account` keyed by `email` with `@classify("email", PII)`) MUST be hashed before emission; classified field names MUST NOT appear in event payloads that list mutated fields (`fields_changed` and friends).
 
 The `DomainEvent` surface is strictly wider than the log surface. Every subscriber, every tracing span, every third-party observability vendor, and every downstream microservice sees event payloads. A value leaked into an event payload is strictly harder to recall than one in a log aggregator — the log-surface rule (`rules/observability.md` Rule 8) level-gates schema-revealing field names; the event-surface rule MUST filter or hash, because events have no level.

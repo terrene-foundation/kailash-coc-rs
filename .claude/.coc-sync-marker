@@ -1,64 +1,65 @@
 # COC Sync Marker — kailash-coc-rs (rs lane, multi-CLI)
-timestamp: 2026-07-19T01:55:50Z
+timestamp: 2026-07-19T14:25:00Z
 source: loom/.claude
-loom_sha: 11c9b94a
-loom_sha_full: 11c9b94a0c263c3da558a30ee3f0e64006b318dd
+loom_sha: 4bd993ac
+loom_sha_full: 4bd993ac689931cf57f1a65e3d78807cdab19d9e
+loom_sha_note: >-
+  4bd993ac is loom origin/main HEAD (PR #1243 merge). The staging worktree read from a
+  tree-identical loom checkout (6df8c94b); git tree SHA 1a5920ed matches origin/main exactly.
 variant: rs
 clis: [claude, codex, gemini]
 visibility: public
-distribution_mode: CONTENT+FULL-RULE8-REEMIT+PIN-REFRESH   # content axis + full multi-CLI derived-tree re-emit + all SDK pins -> PyPI-latest; PATCH semver bump
+distribution_mode: CONTENT+FULL-RULE8-REEMIT+PIN-REFRESH   # content axis + full multi-CLI derived-tree re-emit + SDK pins -> PyPI/BUILD ground truth; PATCH semver bump
 headline: >-
-  Gate-2 /sync-to-use rs (multi-CLI lane) from loom@774a199e->11c9b94a (operator-authorized fleet
-  fan-out; cross-repo-authz receipt 2026-07-19-terrene-foundation-kailash-coc-rs-gate-2-sync-to).
-  CLEAN RE-CUT superseding closed PR #51 (content-axis + partial pins) and PR #52 (included the
-  loom#1209 artifact-activation hooks now made loom_only). loom main 11c9b94a carries the loom_only
-  fix (PR #1229): the 4 hooks are engine-excluded + ABSENT from this template. Content axis + FULL
-  Rule-8 derived-tree re-emit + ALL SDK pins -> PyPI-latest. Engine --verify CONSISTENT. Semver 2.23.20->2.23.21.
-loom_only_hook_exclusion:
-  status: VERIFIED-ABSENT
-  hooks: [.claude/hooks/emit-artifact-activation.js, .claude/hooks/emit-artifact-activation-session.js, .claude/hooks/lib/artifact-activation-event.js, .claude/hooks/lib/artifact-activation-ledger.js]
-  proof: "not in staged git-status set AND not present on disk in the worktree tree (engine loom_only exclusion working). Engine file count dropped 31 -> 27 (exactly the 4 removed from the prior cut's added set)."
+  Gate-2 /sync-to-use rs (multi-CLI lane) from loom@11c9b94a->4bd993ac. FINAL target of the
+  Wave-2 fleet fan-out (9th of 9). rs was DEFERRED last session at 6.56pct codex/gemini baseline
+  headroom BLOCK; loom PR #1240/#1243 (abridger v6.3 metadata strips) recovered rs baseline
+  headroom to 10.8pct, unblocking this cut. Content axis + FULL Rule-8 multi-CLI derived-tree
+  re-emit + SDK pins -> PyPI/BUILD ground truth. Engine --verify CONSISTENT. Semver 2.23.21->2.23.22.
 stats:
-  engine_manifest: { added: 6, modified: 21, deleted: 0, changed_count: 27 }   # .claude content axis (was 10/21 pre-loom_only)
-  copied: 1450            # 60 content-equal after BUILD-internal strip, 1390 byte-equal
-  variant_only: "170/170 byte-equal"
+  engine_manifest: { added: 14, modified: 18, deleted: 0, changed_count: 32 }   # .claude content axis
+  copied: 1469            # 60 content-equal after BUILD-internal strip, 1409 byte-equal
+  variant_only: "173/173 byte-equal"
   overlays: "142/142 byte-equal"
   purged: 0
-  skipped: { loom_local: 0, exclude: 713, use_exclude: 31, no_tier_match: 89 }
-verify_stage: CONSISTENT   # engine sync-tier-aware.mjs --verify (pre-enrichment); 1762 in-plan files matched, no obsoleted path present
+  skipped: { loom_local: 0, exclude: 720, use_exclude: 34, no_tier_match: 109 }
+verify_stage: CONSISTENT   # engine sync-tier-aware.mjs --verify (pre-enrichment); 1784 in-plan files matched, no obsoleted path present
 rule8_reemit:
   status: DONE
-  evidence_first_drift: "CONFIRMED — worktree carried stale origin/main AGENTS.md/GEMINI.md; fresh emit.mjs --all --lang rs differed."
-  baselines: "emit.mjs --all --lang rs exit 0 — AGENTS.md 55108B WARN (codex headroom 10.31% ADVISORY), GEMINI.md 54927B WARN (gemini headroom 10.60% ADVISORY); both >10% Risk-0004 floor. Validators 12-18 PASS."
-  cli_trees: "emit-cli-artifacts.mjs --target rs — .codex/{prompts=41 cmd + 22 agent-prompts = 63, skills=38 + 1 rules-reference = 39} + .gemini/{commands=41, skills=39, agents=22}. 0 orphan deletions."
-  coc_unified: "emit-coc.mjs --target rs — .coc/ 186 artifacts / 188 files (rules=77 agents=26 skills=40 commands=43), coc.version 1.0.0. Idempotency: 2nd emit byte-identical (0 diffs)."
-  scaffold: "config bases (.codex/{config.toml,hooks.json}, .gemini/settings.json) refreshed from loom templates; bin/coc dispatcher + 28 per-phase symlinks; .codex-mcp-guard/ (9 files) rsync'd from loom; symlink .claude/codex-mcp-guard -> ../.codex-mcp-guard resolves (server.js reachable)."
-codex_mcp_guard_disposition:
-  package_json_repo_url: "genericized <owner>/<repo>.git in .codex-mcp-guard/package.json — public-safe for terrene-foundation."
-sdk_pins:   # ALL verified against PyPI directly (resolvable) and bumped to PyPI-latest per co-owner directive
-  kailash: "2.45.3 -> 2.54.0 (PyPI-latest)"
-  kailash-dataflow: "2.13.16 -> 2.18.0 (PyPI-latest)"
-  kailash-nexus: "2.11.0 -> 2.12.0 (PyPI-latest)"
-  kailash-kaizen: "2.28.0 -> 2.35.0 (PyPI-latest)"
-  kailash-pact: "0.14.3 -> 0.15.0 (PyPI-latest)"
-  kailash-mcp: "0.2.15 -> 0.4.0 (PyPI-latest)"
-  kaizen-agents: "0.9.11 -> 0.10.0 (PyPI-latest)"
-  kailash-rs: "4.28.0 -> 4.38.0 (kailash-enterprise PyPI-latest, live; also on-disk BUILD Cargo [workspace.package].version=4.38.0, tag v4.38.0). Prior 4.28.0 now ABSENT/404 on PyPI."
-  kailash-ml: "2.2.2 HELD — already PyPI-latest"
-  kailash-align: "0.7.4 HELD — already PyPI-latest"
+  baselines: "emit.mjs --all --lang rs exit 0 — AGENTS.md + GEMINI.md both 54806B WARN; codex/gemini headroom 6634B = 10.8pct (>10pct Risk-0004 floor; 15pct-proximity ADVISORY only). Validators 12-18 PASS."
+  cli_trees: "emit-cli-artifacts.mjs --target rs exit 0 — .codex/{prompts=63 (41 cmd + 22 agent-prompts), skills=40 (39 + 1 rules-reference)} + .gemini/{commands=41, skills=40, agents=22}. 0 orphan deletions."
+  coc_unified: "emit-coc.mjs --target rs exit 0 — .coc/ 194 artifacts / 196 files (rules=82 agents=26 skills=42 commands=44), coc.version 1.0.0."
+  idempotency: "2nd emit byte-identical to worktree derived trees across AGENTS.md, GEMINI.md, .codex/{prompts,skills}, .gemini/{commands,skills,agents}, .coc/ — ZERO drift."
+  scaffold: "config bases (.codex/{config.toml,hooks.json}, .gemini/settings.json) refreshed from loom templates; bin/coc dispatcher (install -m 0755) + 28 per-phase symlinks regenerated from wrappers/schemas; .codex-mcp-guard/ (9 files) copied from loom; symlink .claude/codex-mcp-guard -> ../.codex-mcp-guard resolves (server.js reachable)."
+sdk_pins:   # PyPI JSON-API ground truth (each is the current published latest, hence PyPI-resolvable); kailash-rs vs BUILD Cargo.toml
+  kailash: "2.54.0 -> 2.55.0 (PyPI-latest)"
+  kailash-dataflow: "2.18.0 HELD (already PyPI-latest)"
+  kailash-nexus: "2.12.0 -> 2.12.1 (PyPI-latest)"
+  kailash-kaizen: "2.35.0 -> 2.37.1 (PyPI-latest)"
+  kailash-pact: "0.15.0 HELD (already PyPI-latest)"
+  kailash-mcp: "0.4.0 HELD (already PyPI-latest)"
+  kailash-ml: "2.2.2 HELD (already PyPI-latest)"
+  kailash-align: "0.7.4 HELD (already PyPI-latest)"
+  kaizen-agents: "0.10.0 -> 0.11.2 (PyPI-latest)"
+  kailash-rs: "4.38.0 HELD — not on PyPI/crates.io (private crate); confirmed vs BUILD kailash-rs Cargo.toml [workspace.package].version=4.38.0"
 pin_surface:
   pyproject_toml: "N/A — no pyproject.toml at this multi-CLI artifact template"
   cargo_toml: "N/A — no Cargo crate at this template"
-  uv_lock: "N/A — no uv.lock at this template; install-verify not applicable (only project-owned Gemfile.user + requirements-user.txt tracked)"
-  version_sdk_packages: "authoritative map — all pins now PyPI-latest"
-install_verify: "N/A — no pyproject/uv/Cargo install surface; SDK pins are VERSION.sdk_packages metadata only (co-owner-acknowledged)."
+  uv_lock: "N/A — no uv.lock; SDK pins are VERSION.upstream.sdk_packages metadata only"
+  version_sdk_packages: "authoritative map — refreshed to PyPI/BUILD ground truth"
+install_verify: "N/A — no pyproject/uv/Cargo install surface; SDK pins are VERSION metadata only"
 hook_integrity: { unique_command_scripts: 29, resolved: 29, missing: 0, scripts_hooks_refs: 0, operator_pii_tokens: 0 }
-operator_pii_note: "settings.json 0 tokens. Emitted-tree grep flagged 1 hit: /Users/runner/ in .codex/.gemini skills/10-deployment-git/ci-runner-troubleshooting.md — allowlisted CI-runner (GitHub Actions macOS runner home) doc reference, byte-identical in loom source, NOT operator PII."
+hook_registration_reverse_check: "PASS — every loom-registered hook present in target settings.json (no propagation gap, Step 6c)"
+operator_pii_note: "settings.json + .gemini/settings.json + .codex/{config.toml,hooks.json}: 0 operator-PII tokens (Step 6a scan clean)."
+sdk_refs_allowlist: "idempotent — 12 src/kailash refs in .claude/, all 28 already allowlisted; 0 new entries appended (Step 7.5)"
 description_label: "(Rust) — correct"
-preserved: [CLAUDE.md, settings.json, "visibility:public"]
-inbox: "present (README.md + .gitkeep) — ensure-exists idempotent"
-dev_container: "emit-dev-container NOT run — rs is preserve-only at this template (ABSENT from loom_distributed for this lane; no dev-container files touched)."
-gate2_receipt: { loom_sha: 11c9b94a0c263c3da558a30ee3f0e64006b318dd, base_sha: 774a199e5c17, target: rs, lane: use, no_merge: true }
-supersedes: "closed PRs terrene-foundation/kailash-coc-rs#51 (content-axis + partial pins) and #52 (shipped now-loom_only artifact-activation hooks); this cut excludes them per loom#1229."
-authorization: "cross-repo-authz receipt .claude/cross-repo-authz/2026-07-19-terrene-foundation-kailash-coc-rs-gate-2-sync-to.md (mode write, in-window)."
-wave: gate2-use-rs-fleet-fanout-2026-07-18
+preserved: [CLAUDE.md, README.md, "requirements-user.txt", "Gemfile.user", "Dockerfile.user", "compose.override.yml (live)", "visibility:public"]
+dev_container:
+  status: NOT-DISTRIBUTED-THIS-CUT
+  authoritative_state: "rs IS under multi_cli_overlays.multi-cli.dev_container_ownership.loom_distributed (D6-ACTIVE, registry_substitution:false, local-build) per current manifest AND at loom 11c9b94a."
+  correction: "The prior sync marker (PR #53, loom 11c9b94a) claimed 'rs is preserve-only ... ABSENT from loom_distributed' — that justification is FACTUALLY WRONG (rs was already loom_distributed at 11c9b94a)."
+  drift: "emit-dev-container --dry-run for rs resolves 7 files (Dockerfile, .dockerignore, docker-compose.yml, .devcontainer/devcontainer.json, bin/dev, compose.override.yml.example, .env.example); ALL 7 DIFFER from the worktree's current (base) versions — real staleness."
+  deferral_rationale: "Distributing dev-container ONLY on this 9th/final fleet target would diverge from the prior 8 Wave-2 targets and carries high blast radius (replaces live docker-compose.yml + Dockerfile). Deferred to a fleet-level decision + follow-up rather than a one-off unilateral scope expansion on the last target. FLAGGED for orchestrator."
+gate2_receipt: { loom_sha: 4bd993ac689931cf57f1a65e3d78807cdab19d9e, base_sha: fb4ff85837db5121a83a4ff50c80bf3dc9fb6dd7, target: rs, lane: use, no_merge: true }
+authorization: "cross-repo-authz receipt .claude/cross-repo-authz/2026-07-19-terrene-foundation-kailash-coc-rs-sync-to-use-ga.md (mode write, in-window; approved sync-to-use to all 6 use templates)."
+wave: gate2-use-rs-wave2-9of9-2026-07-19
