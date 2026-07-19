@@ -5,8 +5,6 @@ paths: ["**/dataflow/**", "**/sql*", "**/dialect*", "**/migrations/**"]
 
 # DataFlow Identifier Safety Rules
 
-
-
 SQL parameter binding works for VALUES, not for identifiers. Column names, table names, index names, and schema names cannot be passed as bound parameters — they MUST be interpolated into the SQL string. That interpolation is an injection vector if the value comes from user input, from a model name, from a tenant prefix, or from any dynamic source.
 
 The fix is mandatory identifier quoting via a dialect helper that BOTH validates the input against a strict allowlist regex AND quotes it in a dialect-appropriate way. The regex-only approach is insufficient because some dialects have reserved words that look valid to a regex but break at execution; the quote-only approach is insufficient because quoted identifiers with escaped quote characters are still an injection vector.

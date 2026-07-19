@@ -4,7 +4,6 @@ id: "FRAMEWORK-FIRST"
 
 # Framework-First: Use the Highest Abstraction Layer
 
-
 ## ABSOLUTE: Work-Domain → Framework Binding
 
 | Work domain                                                           | MANDATORY framework       |
@@ -32,6 +31,5 @@ When a Kailash framework exists for your use case, MUST NOT write raw code that 
 **Why:** Raw code bypasses framework guarantees (validation, audit logging, connection pooling, dialect portability), creating maintenance debt that grows with every framework upgrade.
 
 **Depth → `framework-first` skill**: the four-layer hierarchy, DO/DO-NOT examples, the specialist-consultation pattern-lookup table, the version-stable external-integration discipline, and the Rust-bindings framing. The specialist-consultation MANDATE is always-on via `rules/agents.md` § Specialist Delegation — consult the named specialist before any raw/primitive pattern (`zero-tolerance.md` Rule 4 otherwise).
-
 
 Origin: the work-domain → framework binding mandate is the highest-leverage defense against raw-code-bypass debt (the #1 source of "we'll migrate later" that never migrates), which is what makes it baseline-worthy. Promoted path-scoped → baseline + depth extracted to the `framework-first` skill per journal/0237 (#408 AC#5-c, Rule-10 paired extraction).

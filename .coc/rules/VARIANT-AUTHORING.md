@@ -5,7 +5,6 @@ paths: ["**/.claude/variants/**"]
 
 # Variant Authoring Meta-Rule
 
-
 Loom's variant system has two axes: **language** (`py`/`rs`/`rb`/`prism`) and **CLI** (`cc`/`codex`/`gemini`). Variant files overlay global artifacts at sync time. This rule defines how overlays MUST be authored so the composed output stays correct across all target matrix cells.
 
 Authoring a variant wrong doesn't fail at author time — it fails at emit time across every downstream USE template. One bad overlay desynchronises N × M targets.
@@ -21,12 +20,10 @@ A variant file MUST contain ONLY slot-keyed replacement bodies, never a full alt
 ````markdown
 # DO — variant file contains ONLY divergent slots
 
-
 ```rust
 // Rust-specific example
 let db = DataFlow::new(...);
 ```
-
 
 # DO NOT — variant file is a full copy with 5% diff
 

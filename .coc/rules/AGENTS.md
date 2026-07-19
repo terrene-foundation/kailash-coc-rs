@@ -6,7 +6,6 @@ id: "AGENTS"
 
 See `.claude/guides/rule-extracts/agents.md` for full evidence, extended examples, post-mortems, recovery-protocol commands, the gate-review table, and CLI-syntax variants.
 
-
 ## Specialist Delegation (MUST)
 
 When working with Kailash frameworks, MUST consult the relevant specialist (**dataflow** / **nexus** / **kaizen** / **mcp** / **mcp-platform** / **pact** / **ml** / **align**-specialist). The work-domain → specialist binding is `rules/framework-first.md`'s domain table.
@@ -112,8 +111,6 @@ Applies to the **§ Triad** clause ONLY (added 2026-07-18, `journal/0543`); ship
 - **Origin:** `journal/0543` (co-owner-directed); see § Origin below.
 
 Origin: sessions 2026-04-19/20/27 (worktree drift, parallel-release PRs #552/#553, W6 closure-parity); slot-partitioned 2026-05-14 (#200); F20 extraction 2026-05-22 (journal/0143); prose trim 2026-06-11 (Gate-1 paired extraction); worktree-cluster extraction to skill Rules 1–10 + Examples 6–10 retired 2026-06-12 (#491, journal/0271); triad default-execution-mode clause + paired extraction to `parallel-dispatch-default.md` 2026-07-18 (co-owner-directed origination, `journal/0543`). Full evidence in guide.
-
-
 
 ## Examples (CLI-specific delegation syntax)
 

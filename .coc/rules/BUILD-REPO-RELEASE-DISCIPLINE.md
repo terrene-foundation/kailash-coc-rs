@@ -5,7 +5,6 @@ paths: ["pyproject.toml", "packages/**/pyproject.toml", "CHANGELOG.md", "package
 
 # BUILD Repo Release Discipline
 
-
 ## Scope
 
 ALL sessions in a BUILD repo (the SDK source repo this rule ships to) that merge code to main. Does NOT apply to downstream USE projects (template repos, application repos, external consumers) — those consume BUILD artifacts via PyPI / crates.io / gems and do not run `/release`.

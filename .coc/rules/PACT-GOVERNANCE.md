@@ -5,7 +5,6 @@ paths: ["**/pact/**", "**/governance/**"]
 
 # PACT Governance Rules
 
-
 ### 1. Frozen GovernanceContext
 
 Agents MUST receive `GovernanceContext(frozen=True)`, NEVER `GovernanceEngine`. The engine reference is private (`_engine`).

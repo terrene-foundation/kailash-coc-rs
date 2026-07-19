@@ -5,7 +5,6 @@ paths: ["**/.claude/rules/**", "**/.claude/variants/**"]
 
 # Cross-CLI Parity Meta-Rule
 
-
 Loom emits the same underlying artifact (rule / agent / skill / command) to three CLI targets (CC, Codex, Gemini). Parity means: the semantic content users depend on is identical across all three; only the delegation syntax and surface format differ. This rule defines what MUST match and what MAY diverge so the cross-CLI drift audit has a deterministic contract.
 
 Parity violations don't fail at emit time — they fail at user time, when a rule shipped to Codex is quietly weaker than the same rule shipped to CC.
@@ -21,10 +20,7 @@ The `neutral-body` slot MUST be byte-identical (modulo whitespace normalization)
 ```markdown
 # DO — neutral-body is identical; only examples slot diverges
 
-
 Every bulk operation MUST log per-row failures at WARN level.
-
-
 
 (CC variant) (Codex variant) (Gemini variant)
 `python                      `python `python
@@ -33,7 +29,6 @@ Agent(                         codex_agent(                   {{ @specialist }}
 )                              )                              `
 
 # DO NOT — CLI-specific carve-outs in neutral-body
-
 
 Every bulk op MUST log at WARN. On Codex, this applies only to mutating tools.
 

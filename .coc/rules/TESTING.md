@@ -7,7 +7,6 @@ paths: ["tests/**", "**/*test*", "**/*spec*", "conftest.py", "**/.spec-coverage*
 
 See `.claude/guides/rule-extracts/testing.md` for full evidence, the kailash-ml W33b post-mortem, the test-skip triage decision tree, the test-resource-cleanup post-mortems (PR #466 63-warning sweep, 11,917-test block, env-var race), and protocol blocks.
 
-
 ## Test-Once Protocol (Implementation Mode)
 
 During `/implement`, tests run ONCE per code change, not once per phase. Full suite per todo, pre-commit Tier 1 safety net, CI full matrix as final gate. Re-run only on commit-hash mismatch, infra change, or specific test suspected wrong.
@@ -279,9 +278,6 @@ native_call(ptr)              # Close can free into this window → UAF
 **Why:** Intermittent failures erode trust; shared state → order-dependent results that pass individually but fail in CI where order differs.
 
 Origin: warnings sweep + test-skip triage + paired-variant coverage + env-var race + E2E regression + 2026-04-27 AST-counts review. See guide for full session evidence.
-
-
-
 
 ## rs USE-template testing — binding-consumer context
 

@@ -5,8 +5,6 @@ paths: ["**/dataflow/**", "**/kailash-dataflow/**", "**/*classification*", "**/*
 
 # DataFlow Classification Redaction Rules
 
-
-
 Classification-aware fields (PII, CONFIDENTIAL, SECRET) are redacted by a single helper — `apply_read_classification(model.fields, record)` — that the read path calls before returning rows to the caller. The failure mode this rule targets is silent and systemic: a framework that applies redaction on `read()` / `list()` but NOT on mutation return-paths (`create()`, `upsert()`, `bulk_create()`, any future `INSERT ... RETURNING` primitive) leaks every classified field on every write, regardless of caller clearance.
 
 The implicit assumption "reads are the read path" is wrong the moment a mutation primitive returns a row. INSERT RETURNING, UPSERT RETURNING, UPDATE RETURNING, and DELETE RETURNING are all read surfaces dressed as mutations; each one MUST route its return value through the same redaction helper as `read()` or it re-opens the leak.
