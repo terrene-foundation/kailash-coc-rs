@@ -138,4 +138,5 @@ compose.override.yml
 !.claude/bin/lib/
 !.claude/hooks/lib/
 !.claude/test-harness/lib/
+!.claude/audit-fixtures/**
 # <<< coc:gitignore_additions <<<
