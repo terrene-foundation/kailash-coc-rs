@@ -1,0 +1,51 @@
+# Step-7c downstream upflow inbox proposal — hop-level provenance only (origin: downstream).
+# The consumer is deliberately NOT identified; the lane head is template_slug.
+origin: downstream
+codify_date: 2026-07-21
+codify_session: "codify(rules): schema-migration paired-artifact set + approver-identity server-derived (governance-fix redteam)"
+template_slug: kailash-coc-rs
+template_version: "2.23.22"
+loom_sha: "22fff0a"
+changes:
+  - file: .claude/rules/schema-migration.md
+    action: modified
+    base_version: "2.23.22"
+    reason: >-
+      A new DataFlow @db.model field added to a table that is ALREADY provisioned
+      on a persistent store needs the FULL paired-artifact set, not just the model
+      edit. create_tables() is CREATE TABLE IF NOT EXISTS — it emits the new column
+      only for a FRESH table and never ALTERs an existing one, so the column stays
+      absent on the live store. The new field also flips the model-set schema
+      fingerprint, so a schema-head-sync deploy gate goes GREEN while the column is
+      still missing (the gate verifies head-sync, not column presence). This is
+      CI-INVISIBLE — a fresh test database gets the column from create_tables(), so
+      every test passes green; the gap manifests only on the persistent production
+      store that predates the field. The paired-artifact set is THREE, discovered
+      across successive CI rounds: (a) a packaged ALTER TABLE ... ADD COLUMN IF NOT
+      EXISTS migration registered in the packaged store-DDL manifest; (b) a
+      field-classification regen so the new field carries its data-classification
+      (a classification-divergence gate blocks otherwise); (c) a manifest-count
+      spec/citation-test bump (the new manifest entry changes the pinned count).
+      The migration ALONE is insufficient — the classification + manifest-count
+      gates block independently. Fresh-DB CI is authoritative over a local suite
+      that never runs the classification/manifest-count gates.
+    diff_lines: "+18 -2"
+  - file: .claude/rules/security.md
+    action: modified
+    base_version: "2.23.22"
+    reason: >-
+      The approver/decider/actor identity in any approval, decision, authorization,
+      or self-approval-distinctness check MUST be derived server-side from the
+      authenticated session, never from a request-body field. BOTH sides of a
+      distinct-principal comparison must be server-derived — binding only the
+      requester while trusting a body-supplied approver defeats the control (the
+      attacker sets the approver to any distinct id and passes the distinctness
+      gate, self-approving and falsifying the audit trail). A self-approval identity
+      must ADDITIONALLY be captured IMMUTABLY at create-time, never re-resolved at
+      decision-time from mutable role occupancy — occupancy can change so the
+      requester and approver resolve to different ids for the same human. This is an
+      Enforcement-Surface-Parity instance: when one approval endpoint is fixed,
+      sweep ALL sibling decision endpoints for the same body-trust pattern in the
+      same change.
+    diff_lines: "+22 -0"
+status: pending_review
