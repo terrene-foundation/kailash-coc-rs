@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "COC.md",
-      "sha256": "132783245e123e2aced2ba944226c79bf327bf6355540791b7f2e08cb2f828ef"
+      "sha256": "11c299efc16a9af8910493f03a7dc1f427ebfc56a9b2a680e293dd10ed764639"
     },
     {
       "path": "agents/ALIGN-SPECIALIST.md",
@@ -115,7 +115,7 @@
     },
     {
       "path": "commands/ANALYZE.md",
-      "sha256": "0ac454157ae1d4a6a0b3fa91164f1d5fde490889b7b00a9f00b73b1d2e539816"
+      "sha256": "f94a4dc9091f1715749612e176e713e3754449003d28331871e7559f1db1953f"
     },
     {
       "path": "commands/API.md",
@@ -147,7 +147,11 @@
     },
     {
       "path": "commands/CODIFY.md",
-      "sha256": "63c60993a6acfa914af9d0f899ddf5a146baeb3e86f4b1466da345f6603da731"
+      "sha256": "f9741366dc5e96f8cfca1038054f17a5b65570a3e3c1d28e1a7f49da2d763ab9"
+    },
+    {
+      "path": "commands/CONFORMANCE-WALK.md",
+      "sha256": "af7baa98d4655c64fa76985cffe59cbbebfbab3836fb9b75310ffd31c5a29a4f"
     },
     {
       "path": "commands/COST-AUDIT.md",
@@ -163,7 +167,7 @@
     },
     {
       "path": "commands/DEPLOY.md",
-      "sha256": "9658ff7f96e200e5afb97e6d62693770037b2e9ccb330f6276e60e38a61a9ad5"
+      "sha256": "1928a9171f3b6563b0640aa2d332a9877c9d674e732fd2f49879fa16df21c560"
     },
     {
       "path": "commands/DESIGN.md",
@@ -195,7 +199,7 @@
     },
     {
       "path": "commands/IMPLEMENT.md",
-      "sha256": "00f0f9d07602cf0e70e0188d66cdc2f1bbb8c306b74b78ad7842caa2f4a12747"
+      "sha256": "981b3ce72c1086e5238bb1ce6a7f4884a4b4097e604a2f01b26b960257ce9566"
     },
     {
       "path": "commands/JOURNAL.md",
@@ -223,7 +227,7 @@
     },
     {
       "path": "commands/REDTEAM.md",
-      "sha256": "49c1f3d5cd207d2dd0e92ba063c8e5f6941c37d281fffbee2939a182ff3387c3"
+      "sha256": "79c3e259045b2397a11470630e2b1f03dc6c2a504617c45457d6b64fabb17569"
     },
     {
       "path": "commands/RELEASE-CLAIM.md",
@@ -251,7 +255,7 @@
     },
     {
       "path": "commands/SYNC-FROM-TEMPLATE.md",
-      "sha256": "6c76b2fed09569e88af2927e75c34ee90329a13431bbdaf6158ae6f46df6f200"
+      "sha256": "945650ee6644ca448186f3221abb0b405aed4b04d1899f582b6709c322b43bd9"
     },
     {
       "path": "commands/TEST-HARNESS-PROBE.md",
@@ -263,7 +267,7 @@
     },
     {
       "path": "commands/TODOS.md",
-      "sha256": "f039d745446e5e08a08dbafe411b2b4c9396419c3bfa237c03b19074a7cf0d2b"
+      "sha256": "941499ec6c62a7cb60fa656d7d2c10363b1983acab492459b47322435f901666"
     },
     {
       "path": "commands/VALIDATE.md",
@@ -275,7 +279,7 @@
     },
     {
       "path": "commands/WORKTREE.md",
-      "sha256": "9950e7f424e32877cb2f12692ea3d0fd4902dccc9e4e6bef9da9cb169d4ee950"
+      "sha256": "3b7e2eab9538b408a8d43fcef6bea559ffa46981bd5ca85048507161ab628a51"
     },
     {
       "path": "commands/WRAPUP.md",
@@ -335,7 +339,7 @@
     },
     {
       "path": "rules/CONFORMANCE-WALK.md",
-      "sha256": "4507742a610f4eeb4a10bd7457e5779f4c5019b628a6b27c757ce5f5805fbaac"
+      "sha256": "54432273aad9f0204f5c4c43b285f7c40b3d4a9e301286e8b7244f2b7f14346f"
     },
     {
       "path": "rules/CONNECTION-POOL.md",
@@ -527,7 +531,7 @@
     },
     {
       "path": "rules/SELF-REFERENTIAL-CODIFY.md",
-      "sha256": "670522f3318deaaa4be6e74f403c79cf34eed044772c9beaeb4badb6edfa842d"
+      "sha256": "e09c81a2e4812cd52ddf84377315671fee17a8e7b306eb1971f6debcd0a9a7c2"
     },
     {
       "path": "rules/SPEC-ACCURACY.md",
@@ -551,7 +555,7 @@
     },
     {
       "path": "rules/SYNC-COMPLETENESS.md",
-      "sha256": "c96eaa84b3cfb4ba69ee5e4c11750a588ab37ba30cdde91d3165da76ece01ddc"
+      "sha256": "2716086b278ee2717d4c3d88c5061160912ce9dc8c02f3cb8a4dde7345805690"
     },
     {
       "path": "rules/TENANT-ISOLATION.md",
@@ -607,7 +611,7 @@
     },
     {
       "path": "rules/WORKTREE-ISOLATION.md",
-      "sha256": "4a58a8f8f000f0d9ab4ad292e8504647b97abbab919ec767e6c9c8e53cd597c1"
+      "sha256": "1395d87dac2624220e9fd18ac53f77bb4455dc5d0316f763e25d5c2ed8f81b5d"
     },
     {
       "path": "rules/ZERO-TOLERANCE.md",
@@ -623,7 +627,7 @@
     },
     {
       "path": "skills/CONFORMANCE-WALK.md",
-      "sha256": "958942a10b972df49506580c15e920becaaaab0f1569ff4895d203996ed1a21f"
+      "sha256": "28d04c64477c8d817195496262c20c3d4c21a3861ed7b48fc7697d3a30b2993b"
     },
     {
       "path": "skills/FRAMEWORK-FIRST.md",

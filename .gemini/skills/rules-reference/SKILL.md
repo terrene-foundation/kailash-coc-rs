@@ -26,7 +26,7 @@ A path-scoped rule you have not read is a rule you are not honoring.
 | COC Artifact Eval Coverage — Every Artifact Ships Structural Fixtures AND A Probe Set | `.claude/**` | `.claude/rules/coc-artifact-eval-coverage.md` |
 | COC Sync Landing — BUILD-Side Discipline | `.claude/**` | `.claude/rules/coc-sync-landing.md` |
 | Command-Skill Parity — A Command And Its Paired Skill Move Together, Never Drift Or Orphan | `.claude/commands/**`, `.claude/skills/**` | `.claude/rules/command-skill-parity.md` |
-| Conformance Walk — Freeze The Expectation, Judge The Live/Static State, Report Coverage Honestly | `**/tools/conformance/**`, `**/e2e/**`, `**/eval-harness/**`, `**/04-validate/**`, `**/*conformance*`, `**/suites/**` | `.claude/rules/conformance-walk.md` |
+| Conformance Walk — Freeze The Expectation, Judge Source / Delivered / Live State, Report Coverage Honestly | `**/tools/conformance/**`, `**/e2e/**`, `**/eval-harness/**`, `**/04-validate/**`, `**/*conformance*`, `**/suites/**` | `.claude/rules/conformance-walk.md` |
 | Connection Pool Safety Rules | `**/db/**`, `**/pool*`, `**/database*`, `**/infrastructure/**` | `.claude/rules/connection-pool.md` |
 | Cross-CLI Artifact Hygiene | `workspaces/**/*.md`, `briefs/**/*.md` | `.claude/rules/cross-cli-artifact-hygiene.md` |
 | Cross-CLI Parity Meta-Rule | `**/.claude/rules/**`, `**/.claude/variants/**` | `.claude/rules/cross-cli-parity.md` |

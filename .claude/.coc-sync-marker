@@ -1,65 +1,21 @@
 # COC Sync Marker — kailash-coc-rs (rs lane, multi-CLI)
-timestamp: 2026-07-19T14:25:00Z
+timestamp: 2026-07-22T04:45:00Z
 source: loom/.claude
-loom_sha: 4bd993ac
-loom_sha_full: 4bd993ac689931cf57f1a65e3d78807cdab19d9e
-loom_sha_note: >-
-  4bd993ac is loom origin/main HEAD (PR #1243 merge). The staging worktree read from a
-  tree-identical loom checkout (6df8c94b); git tree SHA 1a5920ed matches origin/main exactly.
+loom_sha: 08cb86fb48eb7cb21051de27fc144aa1e3561a55
 variant: rs
 clis: [claude, codex, gemini]
 visibility: public
-distribution_mode: CONTENT+FULL-RULE8-REEMIT+PIN-REFRESH   # content axis + full multi-CLI derived-tree re-emit + SDK pins -> PyPI/BUILD ground truth; PATCH semver bump
-headline: >-
-  Gate-2 /sync-to-use rs (multi-CLI lane) from loom@11c9b94a->4bd993ac. FINAL target of the
-  Wave-2 fleet fan-out (9th of 9). rs was DEFERRED last session at 6.56pct codex/gemini baseline
-  headroom BLOCK; loom PR #1240/#1243 (abridger v6.3 metadata strips) recovered rs baseline
-  headroom to 10.8pct, unblocking this cut. Content axis + FULL Rule-8 multi-CLI derived-tree
-  re-emit + SDK pins -> PyPI/BUILD ground truth. Engine --verify CONSISTENT. Semver 2.23.21->2.23.22.
+distribution_mode: CONTENT+FULL-RULE8-REEMIT+PIN-REFRESH   # content axis + full multi-CLI derived-tree re-emit + SDK-pin metadata refresh; PATCH semver bump
 stats:
-  engine_manifest: { added: 14, modified: 18, deleted: 0, changed_count: 32 }   # .claude content axis
-  copied: 1469            # 60 content-equal after BUILD-internal strip, 1409 byte-equal
-  variant_only: "173/173 byte-equal"
-  overlays: "142/142 byte-equal"
-  purged: 0
-  skipped: { loom_local: 0, exclude: 720, use_exclude: 34, no_tier_match: 109 }
-verify_stage: CONSISTENT   # engine sync-tier-aware.mjs --verify (pre-enrichment); 1784 in-plan files matched, no obsoleted path present
-rule8_reemit:
-  status: DONE
-  baselines: "emit.mjs --all --lang rs exit 0 — AGENTS.md + GEMINI.md both 54806B WARN; codex/gemini headroom 6634B = 10.8pct (>10pct Risk-0004 floor; 15pct-proximity ADVISORY only). Validators 12-18 PASS."
-  cli_trees: "emit-cli-artifacts.mjs --target rs exit 0 — .codex/{prompts=63 (41 cmd + 22 agent-prompts), skills=40 (39 + 1 rules-reference)} + .gemini/{commands=41, skills=40, agents=22}. 0 orphan deletions."
-  coc_unified: "emit-coc.mjs --target rs exit 0 — .coc/ 194 artifacts / 196 files (rules=82 agents=26 skills=42 commands=44), coc.version 1.0.0."
-  idempotency: "2nd emit byte-identical to worktree derived trees across AGENTS.md, GEMINI.md, .codex/{prompts,skills}, .gemini/{commands,skills,agents}, .coc/ — ZERO drift."
-  scaffold: "config bases (.codex/{config.toml,hooks.json}, .gemini/settings.json) refreshed from loom templates; bin/coc dispatcher (install -m 0755) + 28 per-phase symlinks regenerated from wrappers/schemas; .codex-mcp-guard/ (9 files) copied from loom; symlink .claude/codex-mcp-guard -> ../.codex-mcp-guard resolves (server.js reachable)."
-sdk_pins:   # PyPI JSON-API ground truth (each is the current published latest, hence PyPI-resolvable); kailash-rs vs BUILD Cargo.toml
-  kailash: "2.54.0 -> 2.55.0 (PyPI-latest)"
-  kailash-dataflow: "2.18.0 HELD (already PyPI-latest)"
-  kailash-nexus: "2.12.0 -> 2.12.1 (PyPI-latest)"
-  kailash-kaizen: "2.35.0 -> 2.37.1 (PyPI-latest)"
-  kailash-pact: "0.15.0 HELD (already PyPI-latest)"
-  kailash-mcp: "0.4.0 HELD (already PyPI-latest)"
-  kailash-ml: "2.2.2 HELD (already PyPI-latest)"
-  kailash-align: "0.7.4 HELD (already PyPI-latest)"
-  kaizen-agents: "0.10.0 -> 0.11.2 (PyPI-latest)"
-  kailash-rs: "4.38.0 HELD — not on PyPI/crates.io (private crate); confirmed vs BUILD kailash-rs Cargo.toml [workspace.package].version=4.38.0"
-pin_surface:
-  pyproject_toml: "N/A — no pyproject.toml at this multi-CLI artifact template"
-  cargo_toml: "N/A — no Cargo crate at this template"
-  uv_lock: "N/A — no uv.lock; SDK pins are VERSION.upstream.sdk_packages metadata only"
-  version_sdk_packages: "authoritative map — refreshed to PyPI/BUILD ground truth"
-install_verify: "N/A — no pyproject/uv/Cargo install surface; SDK pins are VERSION metadata only"
-hook_integrity: { unique_command_scripts: 29, resolved: 29, missing: 0, scripts_hooks_refs: 0, operator_pii_tokens: 0 }
-hook_registration_reverse_check: "PASS — every loom-registered hook present in target settings.json (no propagation gap, Step 6c)"
-operator_pii_note: "settings.json + .gemini/settings.json + .codex/{config.toml,hooks.json}: 0 operator-PII tokens (Step 6a scan clean)."
-sdk_refs_allowlist: "idempotent — 12 src/kailash refs in .claude/, all 28 already allowlisted; 0 new entries appended (Step 7.5)"
-description_label: "(Rust) — correct"
-preserved: [CLAUDE.md, README.md, "requirements-user.txt", "Gemfile.user", "Dockerfile.user", "compose.override.yml (live)", "visibility:public"]
-dev_container:
-  status: NOT-DISTRIBUTED-THIS-CUT
-  authoritative_state: "rs IS under multi_cli_overlays.multi-cli.dev_container_ownership.loom_distributed (D6-ACTIVE, registry_substitution:false, local-build) per current manifest AND at loom 11c9b94a."
-  correction: "The prior sync marker (PR #53, loom 11c9b94a) claimed 'rs is preserve-only ... ABSENT from loom_distributed' — that justification is FACTUALLY WRONG (rs was already loom_distributed at 11c9b94a)."
-  drift: "emit-dev-container --dry-run for rs resolves 7 files (Dockerfile, .dockerignore, docker-compose.yml, .devcontainer/devcontainer.json, bin/dev, compose.override.yml.example, .env.example); ALL 7 DIFFER from the worktree's current (base) versions — real staleness."
-  deferral_rationale: "Distributing dev-container ONLY on this 9th/final fleet target would diverge from the prior 8 Wave-2 targets and carries high blast radius (replaces live docker-compose.yml + Dockerfile). Deferred to a fleet-level decision + follow-up rather than a one-off unilateral scope expansion on the last target. FLAGGED for orchestrator."
-gate2_receipt: { loom_sha: 4bd993ac689931cf57f1a65e3d78807cdab19d9e, base_sha: fb4ff85837db5121a83a4ff50c80bf3dc9fb6dd7, target: rs, lane: use, no_merge: true }
-authorization: "cross-repo-authz receipt .claude/cross-repo-authz/2026-07-19-terrene-foundation-kailash-coc-rs-sync-to-use-ga.md (mode write, in-window; approved sync-to-use to all 6 use templates)."
-wave: gate2-use-rs-wave2-9of9-2026-07-19
+  engine_changed: 25   # 5 added, 20 modified, 0 deleted
+  version_stamp: "loom-tracking -> 2.45.0 @ 08cb86fb (own 2.23.22 -> 2.23.23)"
+  baselines_emitted: { cc: 0, codex: 1, gemini: 1 }   # AGENTS.md + GEMINI.md 54806B WARN, headroom 10.8% (>10% floor)
+  cli_artifacts:
+    codex: { prompts: 42, agent_prompts: 22, skills: 40 }
+    gemini: { commands: 42, skills: 40, agents: 22 }
+  coc_artifacts: 195   # 197 files
+  codex_dispatcher: "bin/coc + 28 per-phase symlinks"
+sdk_pins: "metadata-only (no pyproject/Cargo/uv surface); 7 bumped to PyPI-latest (kailash 2.60.1 etc.), kailash-rs 4.38.0->4.40.0 (BUILD Cargo ground truth), 2 held (ml/align)"
+hook_integrity: { referenced: 28, missing: 0, reverse_check: PASS }
+dev_container: "DEFERRED — rs D6-active (loom_distributed, registry_substitution:false) but NOT distributed this cut (fleet-level decision, high blast radius); FLAGGED for orchestrator"
+preserved: [CLAUDE.md, settings.json, Gemfile.user, Dockerfile.user, requirements-user.txt, "visibility:public"]
