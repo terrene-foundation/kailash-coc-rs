@@ -49,3 +49,26 @@ changes:
       same change.
     diff_lines: "+22 -0"
 status: pending_review
+
+# ---------------------------------------------------------------------------
+# INGEST DISPOSITION — recorded by /sync-from-downstream at kailash-coc-rs
+# ---------------------------------------------------------------------------
+ingest_disposition:
+  ingested_at: 2026-07-26
+  ingested_by_template: kailash-coc-rs
+  arrival_lane: template-inbox-pr
+  arrival_lane_matches_body_via: true # proposal-intake-trust.md MUST-3
+  fence_ii_scrub: pass # scan-synced-disclosure --root . exit 0 / 0 findings
+  body_scrub: pass # upstream-issue-hygiene.md MUST-2 denylist — clean
+  injection_review: pass # reviewed as data; zero reviewer-directed imperatives
+  wrong_lane_check: pass # both paths .claude/rules/** — none disallowed
+  freshness_dedup: not-already-solved # content-level vs template @ 2.23.23
+  status: RELAYED
+  relayed_to: .claude/.proposals/latest.yaml
+  relayed_entries: 2 # schema-migration.md, security.md
+  relayed_provenance: "origin: downstream, via: kailash-coc-rs"
+  next_hop: loom Gate-1 via /sync-from-use
+  notes: >-
+    Both entries accepted unmodified. loom_sha "22fff0a" is a merge commit of
+    THIS template (PR #54), not a loom SHA — schema deviation recorded in the
+    relay; content-level dedup was used instead of the stamp for freshness.
