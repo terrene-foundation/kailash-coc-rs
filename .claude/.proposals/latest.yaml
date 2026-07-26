@@ -919,52 +919,60 @@ changes:
     action: modify
     suggested_tier: coc
     reason: >-
-      GAP D (DECISION REQUIRED, not a defect — the maintainer's own home path
-      ships in a public template BY DESIGN). The scanner carries an
-      "own-coordinates" allowlist so it does not flag its own maintainer's dev
-      paths. Consequence, measured on this template: `/Users/<maintainer>/`
-      appears 17 times and `/home/<maintainer>/` 3 times across tracked files —
-      in the scanner source comments (scan-synced-disclosure.mjs:405, 864,
-      1003), its fixtures (own-org-allowed/, nonown-still-flagged/,
-      f77-settings-own-coords-still-flagged/, r2-org-forms/), the fixture
-      README, and violation-patterns/detectRepoScopeDriftBash/README.md. Cited
-      by location; the concrete paths are already at those lines.
+      GAP D — RESOLVED IN-SESSION 2026-07-26. Co-owner RATIFIED: the #263
+      Option-1 ruling STANDS and is hereby extended to the instantiation
+      surface. This entry now asks loom for a DOCUMENTATION change only (record
+      the extended scope); NO scrub, NO code change, NO allowlist change.
 
-      This is deliberate and internally consistent — the fixtures exist
-      precisely to PROVE the own-coordinate allowlist works, so they must
-      contain the coordinate. It is nonetheless an operator-home path, plus the
-      maintainer's local directory layout, shipping in a PUBLIC template that
-      clients clone — the exact class upstream-issue-hygiene.md MUST-2 blocks
-      everywhere else. It is also self-referentially awkward: the tool that
-      enforces no-operator-paths is the largest single source of them.
+      CORRECTION TO THIS ENTRY'S OWN FIRST DRAFT (recorded, not silently
+      edited). The first draft asserted the maintainer's own-coordinate
+      allowlist was "neither scrubbed nor ratified and each audit re-discovers
+      it." THAT WAS FALSE, and it was authored without checking whether the
+      question had already been answered. Ground truth,
+      `.claude/bin/scan-synced-disclosure.mjs:404-412`, verbatim:
+        "ALLOWLIST-NOTE: loom maintainer's own dev-home-path prefixes
+         (`/Users/<maintainer>/` and `/home/<maintainer>/`) are self-coordinates
+         under the Option-1 ruling 2026-05-17 (#263) — they appear in teaching /
+         doc / posture-report examples as the maintainer's own checkout root,
+         not a client or third-party operator identifier. This is the specific
+         own-dev-path username only, NOT a blanket `/Users/*` allow: a
+         *different* operator's home path (`/Users/<other>/`) carries a
+         different username, fails this anchored prefix, and is still flagged
+         by the operator-home-path shape."
+      So the disposition was ratified eight weeks before this audit, the
+      rationale was recorded at the enforcement site, and the implementation is
+      deliberately NARROW (anchored to one username; every other operator's
+      home path still flags). The audit re-raised a settled question.
 
-      DECISION FOR THE CO-OWNER (recommendation, with the honest trade-off):
-      RECOMMEND genericizing to a synthetic maintainer coordinate
-      (`/Users/canon-maintainer/`) across fixtures and comments, keeping the
-      allowlist MECHANISM unchanged and pointing it at the synthetic value.
-        Pro: removes a real operator-home path from a public surface; the
-             fixtures still prove exactly what they prove today; costs one
-             mechanical pass.
-        Con (real): the own-coordinate allowlist exists so the scanner does not
-             flag the maintainer's ACTUAL working paths, and pointing it at a
-             synthetic value means the real path is no longer exempt — a
-             genuine local finding would start flagging on the maintainer's own
-             machine. Closing that needs the real coordinate to live in a
-             gitignored operator-local config (the same shape as
-             `ci-runners.operator.local.md` / `loom-links.local.json`), which
-             is the extra work this option carries.
-        ALTERNATIVE (lower cost): keep as-is and record a ratified decision
-             that the maintainer coordinate is accepted-public, so future
-             audits stop surfacing it. Honest con: it stays in every client
-             clone forever, and it weakens the rule's credibility everywhere
-             else it is enforced.
-      Either disposition is defensible; the one thing that should NOT persist
-      is the current state, where it is neither scrubbed nor ratified and each
-      audit re-discovers it.
-    diff_lines: "+8 -0"
+      THE ONE GENUINELY NEW ANGLE (why the entry survives at all rather than
+      being withdrawn): #263 was reasoning about the SYNC surface — what
+      /sync-to-use distributes. GAP A (entry 15) establishes that the
+      INSTANTIATION surface (what a client clone copies) was never in frame for
+      that ruling. So the live question was never "should this be allowed?" but
+      "does a ruling made for one surface extend to a surface nobody was
+      considering?" Co-owner answer 2026-07-26: YES, it extends.
+
+      RATIFIED RATIONALE: the #263 reasoning holds unchanged on the wider
+      surface — these are self-coordinates in teaching / doc / posture-report
+      examples, the allowlist is narrowly anchored to one username rather than
+      a blanket `/Users/*`, a different operator's path still flags, and the
+      maintainer's username is already public via the org slug and this
+      template's own README. Genericizing to a synthetic coordinate was
+      considered and REJECTED: it would break the maintainer's own local
+      exemption (a genuine finding on their machine would stop being exempt)
+      unless the real coordinate moved to a gitignored operator-local config —
+      real cost, negligible gain, on a username that is already public.
+
+      ASK FOR LOOM (documentation only): extend the ALLOWLIST-NOTE at
+      scan-synced-disclosure.mjs:404-412 and the fixture README's
+      own-coordinate section (lines 28, 38, 58) to state that the Option-1
+      ruling covers the INSTANTIATION surface as well as the sync surface, and
+      cite this ratification date. That closes the question durably so the next
+      audit resolves it by reading the note instead of re-escalating it.
+    diff_lines: "+6 -2"
     review_recommendations:
-      - "Filed against the fixture README because that is where the own-coordinate policy is DOCUMENTED (lines 28, 38, 58); the actual change surface spans the scanner source + 4 fixture dirs + 1 sibling README, and should be one pass."
-      - "This is a JUDGMENT-BUCKET item per product-completion-first.md MUST-4 — surfaced for co-owner direction rather than silently self-decided, because the trade-off (public-surface hygiene vs the maintainer's own scanner ergonomics) is a policy call, not a correctness one."
-      - "If the gitignored-operator-local route is chosen, `ci-runners.operator.local.example.md` is the shipped precedent for the schema/template pattern — same problem, already solved once in this corpus."
+      - "This entry is now DOCUMENTATION-ONLY and is the cheapest of the four. It is also the one that should be read FIRST by whoever classifies entry 15, because it is the concrete example of the failure mode entry 15 fixes: a ruling scoped to the sync surface, silently assumed to cover the instantiation surface, with no note saying which."
+      - "Process note worth carrying: the first draft made an unverified claim about a policy's ratification status in a durable artifact heading to Gate-1 — the exact verify-claims-before-write.md MUST-1 class. The check that would have caught it was one grep of the enforcement site for a prior ruling. Recorded here rather than quietly fixed so the correction is auditable (verify-claims-before-write.md § Origin takes the same disposition)."
+      - "The narrowness of the existing implementation is worth preserving explicitly in the extended note: it is an anchored single-username allowlist, NOT a blanket /Users/* allow. A future well-meaning generalization of that regex would silently exempt every operator's home path in every repo shipping the scanner."
 
 status: pending_review
