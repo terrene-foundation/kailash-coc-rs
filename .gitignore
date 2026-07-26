@@ -80,6 +80,16 @@ compose.override.yml
 # .claude/.proposals/latest.yaml. Remove once the managed block covers it.
 .session-notes.migrated
 **/.session-notes.migrated
+# .claude/cross-repo-authz/ holds /cross-repo-authorize receipts, which carry
+# the authorizing operator's display_id (`requester:`) by design. The ceremony
+# (repo-scope-discipline.md § Affordance step 5) says to COMMIT them for
+# durable team audit — correct in a normal repo, WRONG here: this is a PUBLIC
+# GitHub template (isTemplate:true) that clients clone, so committing a receipt
+# ships operator identity into every client fork. Same class as the roster
+# contamination vector. Kept HERE (repo-owned region, above the loom-managed
+# markers) so it is durable across /sync-to-use. Tier-wide fix proposed to loom
+# in .claude/.proposals/latest.yaml; remove this once that lands.
+.claude/cross-repo-authz/
 
 # Per-project learning data (generated at runtime)
 .claude/learning/

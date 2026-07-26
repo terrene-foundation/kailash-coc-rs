@@ -975,4 +975,73 @@ changes:
       - "Process note worth carrying: the first draft made an unverified claim about a policy's ratification status in a durable artifact heading to Gate-1 — the exact verify-claims-before-write.md MUST-1 class. The check that would have caught it was one grep of the enforcement site for a prior ruling. Recorded here rather than quietly fixed so the correction is auditable (verify-claims-before-write.md § Origin takes the same disposition)."
       - "The narrowness of the existing implementation is worth preserving explicitly in the extended note: it is an anchored single-username allowlist, NOT a blanket /Users/* allow. A future well-meaning generalization of that regex would silently exempt every operator's home path in every repo shipping the scanner."
 
+  - file: .claude/rules/repo-scope-discipline.md
+    action: modify
+    suggested_tier: coc
+    reason: >-
+      GAP E — THE CROSS-REPO-AUTHORIZE CEREMONY TELLS A PUBLIC TEMPLATE TO
+      COMMIT OPERATOR IDENTITY. Surfaced by RUNNING the ceremony 2026-07-26
+      (not by reading it): a co-owner-authorized cross-repo action required
+      `/cross-repo-authorize`, and executing the documented steps produced a
+      contamination the audit that preceded it exists to prevent.
+
+      MECHANISM. `repo-scope-discipline.md` § Affordance step 5 (and the
+      `/cross-repo-authorize` command body) instruct: "Commit the receipt for
+      durable team audit. The receipt is the ONLY distinguisher between an
+      authorized and an unauthorized cross-repo action (absent = critical L1,
+      trust-posture.md MUST-4); an uncommitted receipt is not a forensic
+      witness." `.claude/bin/cross-repo-authorize.mjs` then emits
+      `.claude/cross-repo-authz/<date>-<slug>.md` carrying `requester:
+      <display_id>` in frontmatter AND a "**Requester (display_id):**" body
+      line — operator identity, BY DESIGN, because attribution is the receipt's
+      purpose.
+
+      THE CONFLICT. `.claude/cross-repo-authz/` has NO gitignore coverage —
+      verified live: `git check-ignore` returned no match before the interim
+      fix below. In a normal repo the commit step is correct and the identity
+      is the point. In a USE TEMPLATE that is a PUBLIC GitHub template
+      (`gh repo view` → isTemplate:true, visibility:PUBLIC), following the
+      documented step ships the authorizing operator's display_id into every
+      client clone. The ceremony that gates cross-repo actions becomes an
+      operator-identity disclosure vector, and it fires precisely when an
+      operator is being MOST careful (running the ceremony rather than
+      self-authorizing).
+
+      SAME CLASS AS THE ROSTER VECTOR. This is the enrollment GAP-A shape one
+      artifact over: a COC mechanism whose committed-state assumption is right
+      for a working repo and wrong for a publicly-cloned template. GAP A was
+      closed by gitignoring `operators.roster.json` in the managed block;
+      `cross-repo-authz/` was never given the same treatment — plausibly
+      because the affordance landed later (2026-07-14, journal/0488) than the
+      state-locality sweep that fixed the roster.
+
+      FIX (loom decides the mechanism; both halves needed):
+        (a) add `.claude/cross-repo-authz/` to the managed
+            coc:gitignore_additions block, tier-wide — receipts are
+            operator-local forensic state, the same locality class as
+            `.claude/operator-id` and `.claude/learning/**`; AND
+        (b) amend the § Affordance step-5 language + the
+            `commands/cross-repo-authorize.md` body so "commit the receipt" is
+            REPO-CLASS-AWARE: commit in a BUILD/working repo, keep local (and
+            say why) in a `coc-use-template` / publicly-cloned repo. Without
+            (b) the next operator reads step 5 and re-commits it; the gitignore
+            alone silently contradicts a documented MUST-shaped instruction,
+            which is its own defect.
+
+      RESIDUAL TO DECIDE (surfaced, not self-decided): if receipts are never
+      committed in a template, the forensic-witness property step 5 argues for
+      is weakened THERE — an uncommitted receipt cannot prove authorization to
+      a later auditor. Options loom should weigh: accept local-only receipts in
+      templates (cross-repo actions from a template are rare and co-owner-
+      gated); OR commit a SCRUBBED receipt variant carrying the authorization
+      + bounded action + date but NOT the display_id (attribution moves to the
+      gitignored coordination log). The second preserves both properties and is
+      the recommendation, but it is a schema change to the emitter and belongs
+      to loom, not to a template-side patch.
+    diff_lines: "+14 -4"
+    review_recommendations:
+      - "Found by EXECUTING the documented ceremony, not by reading it — the artifacts are internally consistent and the defect only appears when the repo class is a public template. Worth noting as a detection-method lesson: the same-class sweep that fixed the roster vector would not have caught this by inspection, because the receipt directory did not exist until an operator ran the ceremony."
+      - "INTERIM LOCAL FIX APPLIED at this template: `.claude/cross-repo-authz/` added to .gitignore in the REPO-OWNED region (above the managed markers, so durable across /sync-to-use), with a comment instructing removal once the managed block covers it. Verified: `git check-ignore -q` now matches. The four receipts written this session are therefore local-only and were NOT committed — condition 4 (receipt written BEFORE the action) was still satisfied."
+      - "Pairs with the `.session-notes.migrated` entry and the roster half of the enrollment GAP-A entry: three instances now of 'a COC-produced file the ignore policy does not cover, in a public template.' Strongly suggests the tier-wide fix is a POSITIVE-ALLOWLIST sweep — enumerate every path a COC hook/bin/command can WRITE, and assert each is either gitignored or intentionally committed — rather than a fourth point fix. That sweep is the durable close of this class."
+
 status: pending_review
