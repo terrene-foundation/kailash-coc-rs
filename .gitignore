@@ -69,6 +69,17 @@ compose.override.yml
 
 # Workspace session notes (per-session, not versioned)
 **/.session-notes
+# .session-notes.migrated is produced by the SessionStart hook when a legacy
+# monolithic .session-notes is split per-operator
+# (.claude/hooks/lib/session-notes-layout.js::MIGRATED_MONOLITH_NAME). The
+# loom-managed coc:gitignore_additions block below covers .session-notes,
+# .session-notes.d/ and .session-notes.shared.md but NOT this variant, so a
+# hook-produced session-notes monolith sits unignored in a PUBLIC template
+# repo. Kept HERE (repo-owned region, above the managed markers) so it is
+# durable across /sync-to-use; the tier-wide fix is proposed to loom in
+# .claude/.proposals/latest.yaml. Remove once the managed block covers it.
+.session-notes.migrated
+**/.session-notes.migrated
 
 # Per-project learning data (generated at runtime)
 .claude/learning/
