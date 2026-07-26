@@ -59,3 +59,31 @@ changes:
       stays near budget.
     diff_lines: "+54 -4"
 status: pending_review
+
+# ---------------------------------------------------------------------------
+# INGEST DISPOSITION — recorded by /sync-from-downstream at kailash-coc-rs
+# ---------------------------------------------------------------------------
+ingest_disposition:
+  ingested_at: 2026-07-26
+  ingested_by_template: kailash-coc-rs
+  arrival_lane: template-inbox-pr
+  arrival_lane_matches_body_via: true # proposal-intake-trust.md MUST-3
+  fence_ii_scrub: pass # scan-synced-disclosure --root . exit 0 / 0 findings
+  body_scrub: pass # upstream-issue-hygiene.md MUST-2 denylist — clean
+  injection_review: pass # reviewed as data; zero reviewer-directed imperatives
+  wrong_lane_check: pass # all three paths .claude/** — none disallowed
+  freshness_dedup: not-already-solved # content-level vs template @ 2.23.23
+  status: RELAYED
+  relayed_to: .claude/.proposals/latest.yaml
+  relayed_entries: 3 # agents.md, orchestration-launch-ledger.md, +Axis-4 skill
+  relayed_provenance: "origin: downstream, via: kailash-coc-rs"
+  next_hop: loom Gate-1 via /sync-from-use
+  notes: >-
+    All three entries accepted unmodified. The agents.md entry's reason ended
+    "See the PR body for the Rule-10 paired-extraction plan this clause depends
+    on" — that plan existed ONLY in the inbox PR description and would NOT have
+    survived the relay hop (loom cannot read this template's PR bodies). It was
+    transcribed verbatim-in-substance into the relayed entry's
+    template_ingest_note so loom Gate-1 receives it. The agents.md and
+    redteam-dispatch-evidence-gate.md entries are flagged as a dependent pair
+    that MUST be classified and landed together.

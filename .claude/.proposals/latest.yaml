@@ -252,4 +252,320 @@ changes:
       - "Cross-tier: GAPs A-D apply to EVERY kailash-coc-* USE template (claude-py, claude-rs, claude-rb, py, rs), not just rs — loom should fix tier-wide in one Gate-1 pass."
       - "ECOSYSTEM-SCOPE ESCALATION (co-owner-flagged): GAP A is the USE-template-tier SLICE of an ecosystem-wide contamination class. The deploy-to-client workflow clones the ENTIRE ecosystem (loom + kailash-rs + kailash-py + ALL use templates); any committed operator-/trust-identifying state in ANY repo class transfers into the client fork, breaking the bidirectional ecosystem-fork disclosure isolation (artifact-flow.md § Ecosystem Forks vs Downstream Consumers). Surface to audit AT LOOM across ALL repo classes (not inferrable from a single template session): (1) operators.roster.json tracked-vs-ignored per repo class; (2) committed journal/NNNN-<display_id>-*.md frontmatter identity; (3) team-memory promoted_by identity; (4) per-repo .gitignore coverage of coordination-log/posture/operator-id/.initialized; (5) the ABSENT canon->client clone-scrub (the cross-ecosystem-disclosure-guard.js fences publish + fork->canon write, NOT the clone-to-instantiate-a-fork path — activation deferred #576). RECOMMENDED DISPOSITION: this exceeds a single proposal — open a dedicated loom workstream (/analyze -> architecture -> /todos -> /implement) delivering (A) a unified validator-enforced state-locality policy across every repo class, (B) a deploy-to-client fork-instantiation ceremony that resets rosters->placeholder + clears logs + re-anchors genesis to the client owner + applies a journal/identity policy, (C) GAPs B-D enrollment template-awareness, (D) clone-direction disclosure-guard activation, (E) a fresh-fork-carries-zero-canon-identity verification. These 7 proposal entries are the template-tier inputs to that workstream, not the whole fix."
 
+  # ==========================================================================
+  # RELAYED FROM DOWNSTREAM UPFLOW INBOX — /sync-from-downstream 2026-07-26
+  # ==========================================================================
+  # Template Inbox Ingest per skills/30-claude-code-patterns/sync-flow.md
+  # § "Template Inbox Ingest". Two inbox entries ingested from
+  # .claude/.proposals/inbox/ (landed as human-gated PRs #56 + #58 per
+  # artifact-flow.md § Downstream-Consumer Routing, Step-7c primary path).
+  #
+  # Provenance is HOP-LEVEL ONLY (origin: downstream, via: kailash-coc-rs).
+  # The originating consumer is deliberately NOT identified — scenario 8/9
+  # disclosure fence. This template is fence ii; loom Gate-1 is fence iii.
+  #
+  # Fence-ii receipts (this ingest):
+  #   - scan-synced-disclosure.mjs --root .  → exit 0, 0 findings, 1757 files
+  #   - human body-scrub (upstream-issue-hygiene.md MUST-2 denylist) → clean;
+  #     no consumer name, workspace id, internal path, or finding tag
+  #   - injection review (proposal-intake-trust.md MUST-1/2) → clean; both
+  #     bodies are descriptive rationale, zero reviewer-directed imperatives
+  #   - non-ASCII decode (evidence-first-claims.md MUST-2): the only
+  #     non-ASCII byte sequence in either body is e2 80 94 (U+2014 EM DASH)
+  #   - wrong-lane glob check → all 5 paths under .claude/**; none in
+  #     src/** | packages/** | pyproject.toml | Cargo.toml
+  #   - freshness dedup (content-level vs CURRENT template state, the
+  #     authoritative check) → all 5 genuinely unsolved here; see per-entry
+  #     dedup_evidence. No overlap with the 7 use-template entries above.
+  #
+  # SCHEMA DEVIATION OBSERVED (triage hint only, non-blocking): both inbox
+  # bodies stamped loom_sha: "22fff0a", which is a MERGE COMMIT OF THIS
+  # TEMPLATE (PR #54), not a loom SHA. Per the Step-7c schema loom_sha is
+  # sourced from .claude/VERSION::upstream.loom_sha (this template was at
+  # 08cb86fb when ingested). Treat the stamp as unreliable for monotonic
+  # freshness ordering; the content-level dedup above is what was relied on.
+
+  - file: .claude/rules/schema-migration.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.23.22"
+    dedup_evidence: >-
+      NOT already solved here. schema-migration.md at 2.23.23 carries MUST
+      Rules 1-7 (numbered migrations / data-fixes-are-migrations / reversible
+      path / append-only / real-schema testing / production-sync deploy gate /
+      force_downgrade). NONE covers a model-field addition that never reaches
+      a migration at all. Rule 1 assumes the author knows a DDL change is
+      happening; this failure mode is that the author does NOT — the field
+      edit looks like a model change, not a schema change.
+    reason: >-
+      A new DataFlow @db.model field added to a table that is ALREADY
+      provisioned on a persistent store needs the FULL paired-artifact set,
+      not just the model edit. create_tables() is CREATE TABLE IF NOT EXISTS —
+      it emits the new column only for a FRESH table and never ALTERs an
+      existing one, so the column stays absent on the live store. The new
+      field also flips the model-set schema fingerprint, so a schema-head-sync
+      deploy gate goes GREEN while the column is still missing (the gate
+      verifies head-sync, not column presence). This is CI-INVISIBLE — a fresh
+      test database gets the column from create_tables(), so every test passes
+      green; the gap manifests only on the persistent production store that
+      predates the field. The paired-artifact set is THREE, discovered across
+      successive CI rounds: (a) a packaged ALTER TABLE ... ADD COLUMN IF NOT
+      EXISTS migration registered in the packaged store-DDL manifest; (b) a
+      field-classification regen so the new field carries its
+      data-classification (a classification-divergence gate blocks otherwise);
+      (c) a manifest-count spec/citation-test bump (the new manifest entry
+      changes the pinned count). The migration ALONE is insufficient — the
+      classification + manifest-count gates block independently. Fresh-DB CI
+      is authoritative over a local suite that never runs the
+      classification/manifest-count gates.
+    diff_lines: "+18 -2"
+    template_ingest_note: >-
+      TIER JUDGMENT FOR LOOM: the evidence is DataFlow-Python-shaped
+      (@db.model, create_tables()) but arrived via the rs template. The
+      underlying invariant — an additive model-field edit on a provisioned
+      store is a DDL change requiring migration + classification + manifest
+      artifacts — is language-neutral and applies to the sqlx/DataFlow Rust
+      path equally. Suggested coc (global) with the py-flavoured examples
+      genericized at Gate-1; loom decides global-vs-variant on merit.
+
+  - file: .claude/rules/security.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.23.22"
+    dedup_evidence: >-
+      NOT already solved here. security.md at 2.23.23 has 18 sections; a grep
+      for approver|decider|server-derived|self-approval|distinct.principal|
+      body-supplied|authenticated session returns ZERO hits. The existing
+      § "Enforcement-Surface Parity" is the PATTERN CLASS this clause
+      instances (and which the proposal correctly cites), but the
+      approver-identity contract itself is absent.
+    reason: >-
+      The approver/decider/actor identity in any approval, decision,
+      authorization, or self-approval-distinctness check MUST be derived
+      server-side from the authenticated session, never from a request-body
+      field. BOTH sides of a distinct-principal comparison must be
+      server-derived — binding only the requester while trusting a
+      body-supplied approver defeats the control (the attacker sets the
+      approver to any distinct id and passes the distinctness gate,
+      self-approving and falsifying the audit trail). A self-approval identity
+      must ADDITIONALLY be captured IMMUTABLY at create-time, never re-resolved
+      at decision-time from mutable role occupancy — occupancy can change so
+      the requester and approver resolve to different ids for the same human.
+      This is an Enforcement-Surface-Parity instance: when one approval
+      endpoint is fixed, sweep ALL sibling decision endpoints for the same
+      body-trust pattern in the same change.
+    diff_lines: "+22 -0"
+    template_ingest_note: >-
+      Loom note: security.md is priority:0 / scope:baseline, so
+      rule-authoring.md Rule 10's proximity-band gate applies at Gate-1.
+      This template measured 10.8% baseline headroom at 2.23.23 (inside the
+      15% band), so this clause needs paired extraction OR a named-rationale
+      budget exception when it lands. The clause is a natural sub-clause of
+      the existing § Enforcement-Surface Parity rather than a new top-level
+      section, which is the cheaper placement.
+
+  - file: .claude/rules/agents.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.23.22"
+    dedup_evidence: >-
+      NOT already solved here. agents.md:65-67 carries § "MUST: Redteam
+      Reviewer Dispatch — Errored/Empty Is Zero Evidence, Never A Clean
+      Round", whose EVIDENCE GATE enumerates "an errored/empty/timed-out
+      return". It does NOT name the IDLE-WITHOUT-DELIVERY case: an agent that
+      ran to completion, produced substantive findings, emitted them as plain
+      text, and went idle having delivered nothing. That return is neither
+      errored nor empty nor timed-out — it is UNREAD, and it currently reads
+      as a clean lane. The proposal's gap claim is accurate as written.
+    reason: >-
+      Adds one MUST clause: an agent that goes idle WITHOUT delivering a
+      report is UNREAD, never EMPTY. The orchestrator MUST re-prompt it and
+      MUST NOT record that lane as clean, converged, or 0-findings; and every
+      agent brief MUST state explicitly that plain-text output is invisible to
+      the orchestrator and the report must go through the CLI's message/report
+      primitive. Extends the existing errored/empty evidence-gate clause,
+      which names errored and empty returns but NOT the idle case. Evidence:
+      in one session 4 of 4 agents completed substantive work, went idle
+      without delivering, and all 4 delivered in full when re-prompted; those
+      reports held two live fail-opens on the mainline, a 23-instance defect
+      corpus, and a regression reopening a data leak. A second, independent
+      session reproduced it at 6 of 6 lanes WITH the explicit delivery
+      contract already in every brief -- so the briefing half is necessary and
+      NOT sufficient, and the orchestrator's re-prompt duty is the
+      load-bearing half. Ships canonical 8-field Trust-Posture Wiring.
+    diff_lines: "+17 -0"
+    template_ingest_note: >-
+      LOAD-BEARING CONSTRAINT CARRIED FORWARD BY THE TEMPLATE — the inbox
+      entry's own reason ended "See the PR body for the Rule-10
+      paired-extraction plan this clause depends on." That plan lived ONLY in
+      the consumer's inbox PR description, which does NOT travel with the
+      relayed manifest and which loom cannot read without a cross-repo fetch
+      (repo-scope-discipline.md). Transcribed here so it survives the hop:
+
+      agents.md is priority:0 / scope:baseline, so rule-authoring.md Rule 10
+      applies. Consumer-measured on its shipped emission: AGENTS.md/GEMINI.md
+      = 54,806 B against sync-manifest.yaml block_cap_bytes 61,440 and
+      headroom_floor_pct 10 → headroom 10.80%, i.e. INSIDE the 15% proximity
+      band with ~490 B of margin. The clause body is ~1,408 B (its ~2,846 B
+      Trust-Posture Wiring block is free — the abridger strips Wiring from
+      emission entirely). So taking the clause unpaired is ~2.9x over margin
+      and pushes the lane BELOW its own block floor.
+
+      Consumer-proposed paired extraction (path (a), net -885 B):
+        Step 1 — do NOT add a new "### MUST:" heading. Fold the clause in as
+          sub-clause (3) of the EXISTING errored/empty evidence-gate MUST,
+          retitled "...Errored, Empty, Or Idle Is Zero Evidence", and push the
+          narrative + BLOCKED corpus into redteam-dispatch-evidence-gate.md
+          § Axis 4 (which change 5 below creates for exactly this purpose).
+          ~350 B instead of ~1,408 B → saves ~1,058 B.
+        Step 2 — merge the two tool-inventory MUSTs (measured 866 B + 869 B
+          = 1,735 B emitted; the second already says verbatim "Extends the
+          tool-inventory MUST above from IMPLEMENTATION to AUDIT delegation").
+          Target ~500 B → saves ~1,235 B.
+        Net emitted: +350 - 1,235 = -885 B → ~53,921 B → headroom ~12.2%,
+        above floor and net-recovering.
+
+      Consumer-disclosed cons (verbatim intent): one fewer standalone
+      "### MUST:" heading to grep; the merged tool-inventory clause needs two
+      "Violation scope:" rows to stay trust-posture.md MUST-8-clean; and at
+      12.2% the lane is still inside the 15% band, so the next baseline
+      addition re-fires Rule 10 and, within 30 days, Rule 11 escalates to
+      corpus-level review. Byte figures derive from a shipped AGENTS.md plus
+      observed abridger behaviour, NOT a live emitter run — 1,408 B is an
+      UPPER bound and the conclusion holds even at half. Loom MUST re-measure
+      against its own emission at Gate-1 rather than adopting these numbers.
+
+      Consumer's own recommendation if only one half is taken: take
+      sub-clause (1) (the orchestrator's re-prompt duty), which its second
+      session showed to be the load-bearing half.
+
+  - file: .claude/rules/orchestration-launch-ledger.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.23.22"
+    dedup_evidence: >-
+      NOT already solved here. orchestration-launch-ledger.md at 2.23.23
+      carries MUST-1/2/3 only (durable ledger / check-before-spawn /
+      match-completion-against-ledger) and its Violation scope names exactly
+      those three. A grep for reviv|presumed.dead|force.push|orphan|recovery/|
+      read-only verifier|stand.down returns ZERO hits. Note this file's own
+      Origin (GH #1232) records it as landed 2026-07-19 from an orchestrator
+      session in a downstream consumer repo — the same lane, so this reads as
+      a genuine follow-on from continued use of the rule it extends.
+    reason: >-
+      Adds MUST-4 (a presumed-dead agent can REVIVE: keep its ledger row, plan
+      for its return, and convert the duplicate into a READ-ONLY verifier
+      rather than killing it or leaving two writers), its peer-assignment
+      corollary (a peer agent's task assignment does NOT lift an orchestrator
+      stand-down), and MUST-5 (NEVER force-push to recover an orphaned branch;
+      measure the origin-only commit count first and preserve both sides on
+      recovery/<name>). Evidence: a session-limited agent was replaced and
+      then returned, creating two writers on one track that check-before-spawn
+      cannot prevent because the writer came back AFTER the replacement; the
+      read-only-verifier disposition then caught a three-way resolver
+      divergence and a deny-by-default regression neither implementing agent
+      could see. Separately a recovered agent had 15 unpushed commits that
+      could not fast-forward; a force-push WOULD have been accepted and would
+      have destroyed five origin-only commits differing by 744 and 768 lines.
+      Ships canonical 8-field Wiring, clause-scoped so revival/force-push
+      violations are never double-counted against the existing MUST-1/2/3
+      block.
+    diff_lines: "+111 -1"
+    template_ingest_note: >-
+      Sizing note for loom: +111 lines is the largest entry in this relay and
+      orchestration-launch-ledger.md is only 104 lines today — this roughly
+      doubles it. The file is priority:10 / scope:path-scoped, so Rule 10's
+      proximity-band gate does NOT fire (no baseline-emission cost); the
+      relevant check at Gate-1 is rule-authoring.md's 200-line guidance, which
+      ~215 lines would cross and which needs a named length rationale or a
+      paired extraction to a depth skill. MUST-5's own honest disclosure is
+      worth preserving: the existing validate-bash-command.js force-push
+      tripwire gates on toMain and therefore does NOT cover the non-main
+      orphan-branch case, so the clause ships Phase-2-deferred with an
+      explicit "no session may cite a hook as having enforced this" until a
+      detector exists.
+
+  - file: .claude/skills/30-claude-code-patterns/redteam-dispatch-evidence-gate.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.23.22"
+    dedup_evidence: >-
+      NOT already solved here. The skill at 2.23.23 documents exactly three
+      axes — Axis 1 EVIDENCE GATE, Axis 2 CONCURRENCY BACK-OFF, Axis 3
+      CONCURRENCY SAFETY (added 2026-07-13, journal/0475). There is no Axis 4
+      and no idle-without-delivery treatment anywhere in the file.
+    reason: >-
+      Adds Axis 4 -- the depth host for the idle-without-delivery failure mode
+      above (DO/DO-NOT, BLOCKED corpus, evidence). Paired extraction: this is
+      where the agents.md clause's narrative belongs so the baseline rule body
+      stays near budget.
+    diff_lines: "+54 -4"
+    template_ingest_note: >-
+      DEPENDENCY: this entry is the extraction TARGET for the agents.md
+      entry's Rule-10 path-(a) plan above. The two MUST be classified and
+      landed together — taking the agents.md clause without this Axis-4 host
+      leaves the baseline lane below its block floor, and taking this host
+      without the agents.md clause leaves an orphan depth section with no
+      rule-body MUST pointing at it (cc-artifacts.md § "No Dangling
+      Cross-References After Extraction"). Note this file is CC-only per
+      sync-manifest.yaml::cli_emit_exclusions (30-claude-code-patterns/**),
+      so the Axis-4 narrative does not reach Codex/Gemini consumers; the
+      load-bearing MUST stays in agents.md, which does.
+
+  # ==========================================================================
+  # TEMPLATE-ORIGIN FINDING — surfaced during the 2026-07-26 inbox ingest
+  # ==========================================================================
+  # Not from the downstream inbox; found by this template while auditing its
+  # own working tree for contamination before committing the relay. Rides the
+  # normal Step-7b use-template lane (inherits the manifest's top-level
+  # origin: use-template — deliberately carries NO `origin: downstream`/`via:`).
+
+  - file: .gitignore
+    action: modify
+    suggested_tier: coc
+    reason: >-
+      SHIPPED-HOOK / SHIPPED-GITIGNORE MISMATCH — a COC-produced file is not
+      covered by the COC-managed ignore block, on the template-contamination
+      surface. Ground truth: .claude/hooks/lib/session-notes-layout.js:65
+      declares `const MIGRATED_MONOLITH_NAME = ".session-notes.migrated";` and
+      the SessionStart hook renames a legacy monolithic .session-notes to that
+      name on first per-operator-split migration
+      (.claude/hooks/session-start.js:276 announces it). The loom-managed
+      block in .gitignore (lines 104-143, "managed by loom /sync; do not edit
+      between markers") covers `.session-notes` (134), `.session-notes.d/`
+      (135) and `.session-notes.shared.md` (136) — but NOT
+      `.session-notes.migrated`. Verified live in this template:
+      `git check-ignore -v .session-notes.migrated` → NOT ignored, and the
+      file shows in `git status --porcelain` as `??` after the hook produced
+      it. The file's CONTENT is a full prior-session notes monolith (workspace
+      names, decision history, co-owner references) — precisely the
+      operator-local material the state-locality policy keeps out of a
+      committed surface. This template is a PUBLIC GitHub template repo
+      (gh repo view → isTemplate:true, visibility:PUBLIC), so an operator
+      running `git add -A` lands a session-notes monolith in a repo clients
+      instantiate from. FIX: add `.session-notes.migrated` (and, defensively,
+      `.session-notes.*` with re-includes for any intentionally-tracked
+      sibling) to the managed coc:gitignore_additions block, and audit the
+      same-class siblings — any other hook-produced local artifact whose name
+      is a VARIANT of an ignored name rather than an exact match. NOTE the
+      local edit is deliberately NOT made here: the block is loom-managed, so
+      a template-side edit is Class-A non-durable per artifact-flow.md
+      § Distribution-Durability Invariants and would be rebuilt away by the
+      next /sync-to-use. The proposal is the durable surface.
+    diff_lines: "+1 -0"
+    review_recommendations:
+      - "Tier-wide: every kailash-coc-* template AND every downstream consumer that ships session-notes-layout.js has this exact gap — the producer and the ignore block are both synced artifacts. Fix once at loom, cascades to all."
+      - "Same-class sweep worth running at Gate-1: grep the hooks/bin surface for any other literal filename constant that is a VARIANT of an ignored path (suffix/prefix/extension change) rather than an exact match. Exact-match ignore entries silently miss produced variants; this is the second instance of that shape after the .heartbeat-cache* / .session-end-cache* globs (which DID use a trailing glob and are correctly covered)."
+      - "Low-cost, high-leverage: one line in the managed block closes it. Severity is a latent trap rather than an active leak — template instantiation copies TRACKED content, so the file only lands via an operator `git add -A` (which coc-sync-landing.md Rule 2 already blocks for COC-sync PRs specifically, but not for ordinary commits)."
+
 status: pending_review
