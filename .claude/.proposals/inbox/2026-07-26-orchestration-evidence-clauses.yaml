@@ -1,0 +1,61 @@
+# Step-7c downstream upflow offer. Hop-level provenance only: the originating
+# consumer is deliberately not identified (artifact-flow.md scenario 8/9 fence).
+origin: downstream
+codify_date: 2026-07-26
+codify_session: "codify(orchestration): idle-agent evidence gate, agent-revival ledger discipline, orphan-branch recovery"
+template_slug: kailash-coc-rs
+template_version: "2.23.22"
+loom_sha: "22fff0a"
+changes:
+  - file: .claude/rules/agents.md
+    action: modified
+    base_version: "2.23.22"
+    reason: >-
+      Adds one MUST clause: an agent that goes idle WITHOUT delivering a report
+      is UNREAD, never EMPTY. The orchestrator MUST re-prompt it and MUST NOT
+      record that lane as clean, converged, or 0-findings; and every agent brief
+      MUST state explicitly that plain-text output is invisible to the
+      orchestrator and the report must go through the CLI's message/report
+      primitive. Extends the existing errored/empty evidence-gate clause, which
+      names errored and empty returns but NOT the idle case. Evidence: in one
+      session 4 of 4 agents completed substantive work, went idle without
+      delivering, and all 4 delivered in full when re-prompted; those reports
+      held two live fail-opens on the mainline, a 23-instance defect corpus, and
+      a regression reopening a data leak. A second, independent session
+      reproduced it at 6 of 6 lanes WITH the explicit delivery contract already
+      in every brief -- so the briefing half is necessary and NOT sufficient,
+      and the orchestrator's re-prompt duty is the load-bearing half. Ships
+      canonical 8-field Trust-Posture Wiring. See the PR body for the
+      Rule-10 paired-extraction plan this clause depends on.
+    diff_lines: "+17 -0"
+  - file: .claude/rules/orchestration-launch-ledger.md
+    action: modified
+    base_version: "2.23.22"
+    reason: >-
+      Adds MUST-4 (a presumed-dead agent can REVIVE: keep its ledger row, plan
+      for its return, and convert the duplicate into a READ-ONLY verifier rather
+      than killing it or leaving two writers), its peer-assignment corollary (a
+      peer agent's task assignment does NOT lift an orchestrator stand-down),
+      and MUST-5 (NEVER force-push to recover an orphaned branch; measure the
+      origin-only commit count first and preserve both sides on recovery/<name>).
+      Evidence: a session-limited agent was replaced and then returned, creating
+      two writers on one track that check-before-spawn cannot prevent because
+      the writer came back AFTER the replacement; the read-only-verifier
+      disposition then caught a three-way resolver divergence and a
+      deny-by-default regression neither implementing agent could see. Separately
+      a recovered agent had 15 unpushed commits that could not fast-forward; a
+      force-push WOULD have been accepted and would have destroyed five
+      origin-only commits differing by 744 and 768 lines. Ships canonical
+      8-field Wiring, clause-scoped so revival/force-push violations are never
+      double-counted against the existing MUST-1/2/3 block.
+    diff_lines: "+111 -1"
+  - file: .claude/skills/30-claude-code-patterns/redteam-dispatch-evidence-gate.md
+    action: modified
+    base_version: "2.23.22"
+    reason: >-
+      Adds Axis 4 -- the depth host for the idle-without-delivery failure mode
+      above (DO/DO-NOT, BLOCKED corpus, evidence). Paired extraction: this is
+      where the agents.md clause's narrative belongs so the baseline rule body
+      stays near budget.
+    diff_lines: "+54 -4"
+status: pending_review
