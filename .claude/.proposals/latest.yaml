@@ -31,6 +31,26 @@ changes:
   - file: .claude/rules/issue-triage-routing.md
     action: create
     suggested_tier: coc
+    reconciliation:
+      status: ALREADY-SOLVED — no Gate-1 action required
+      reconciled_at: 2026-07-26
+      evidence: >-
+        The proposed rule EXISTS in this template as of the 2026-07-22 sync
+        (.claude/rules/issue-triage-routing.md, 48 lines) with exactly the
+        proposed shape: frontmatter priority:0 / scope:baseline /
+        cli_delivery:baseline (the "always-loaded, path-scoping cannot match a
+        gh call" argument this entry made), a single MUST routing by
+        .claude/VERSION::type across all four repo classes, and depth deferred
+        to artifact-flow.md rather than inlined. It landed at loom via Gate-1
+        (recorded in self-referential-codify.md's allowlist as "2026-07-19
+        Gate-1 ingest of the kailash-coc-rs USE-template proposal") and
+        returned here on the next /sync-to-use. This entry is the ORIGINATING
+        proposal for that rule — the loop is closed.
+      disposition: >-
+        Retained, not deleted, per artifact-flow.md § "Append, Never Overwrite
+        Unprocessed Proposals" (the audit trail of what was extracted and when
+        is the point). Gate-1 should SKIP it as already-distributed rather than
+        re-classify. Verified by file existence + frontmatter, not by memory.
     reason: |
       ROOT-CAUSE GAP 1 (trigger unreachability) + GAP 3 (index invisibility).
 
@@ -92,6 +112,26 @@ changes:
   - file: .claude/commands/codify.md
     action: modify
     suggested_tier: coc
+    reconciliation:
+      status: ALREADY-SOLVED — no Gate-1 action required
+      reconciled_at: 2026-07-26
+      evidence: >-
+        The proposed FIX landed near-verbatim. commands/codify.md:51 now reads
+        "**USE-template repos only** (`.claude/VERSION::type ==
+        \"coc-use-template\"`): the enumerator's append-only + git-committed
+        sources do NOT include GitHub issues, so ALSO enumerate open issues
+        that are COC-artifact Route-A filings (`gh issue list --state open`) —
+        each is a Step-7b proposal-origination input ... Consolidate
+        duplicate/related filings; disclosure-scrub each per
+        `rules/upstream-issue-hygiene.md` MUST-2 (hop-level provenance only, no
+        consumer-identifying tokens carried into the proposal)." That is this
+        entry's proposed Step-1b text, including the disclosure-scrub clause.
+        codify.md:119-124 additionally carries the four-row repo-class
+        precedence (build / use-template / downstream / loom) routing to Steps
+        7a/7b/7c, which is the same fix's structural half.
+      disposition: >-
+        Retained for the audit trail; Gate-1 should SKIP as already-distributed.
+        Verified by reading the shipped command, not from memory.
     reason: |
       ROOT-CAUSE GAP 2 (codify never consumes GH issues).
 
@@ -150,6 +190,44 @@ changes:
   - file: .gitignore
     action: modify
     suggested_tier: coc
+    reconciliation:
+      status: PARTIALLY-SOLVED — gitignore half landed; policy half still open
+      reconciled_at: 2026-07-26
+      evidence: >-
+        The load-bearing gitignore mechanism this entry asked for HAS landed.
+        Verified live: `git check-ignore -v .claude/operators.roster.json` →
+        matches `.gitignore:133`, INSIDE the loom-managed
+        coc:gitignore_additions block, so the roster is no longer committable
+        from a template clone. The siblings this entry cites are ignored too
+        (`.claude/learning/coordination-log.jsonl`,
+        `.claude/learning/posture.json`, `.claude/operator-id` — all matched).
+        The entry's central EVIDENCE claim ("BUT .claude/operators.roster.json
+        is NOT gitignored — `git check-ignore` returns no match") is therefore
+        NO LONGER TRUE as of the 2026-07-22 sync and MUST NOT be re-read as
+        current state at Gate-1.
+      still_open: >-
+        The DISCLOSURE-mechanism half only. This entry's FIX offered loom a
+        choice of mechanisms (gitignore vs a committed placeholder roster);
+        gitignore was chosen and shipped. The surrounding GAP-A policy
+        questions are NOT closed by that: sibling entries 5
+        (.claude/operators.roster.README.md) and 6
+        (guides/co-setup/11-genesis-ceremony.md) remain ABSENT from this
+        template — verified by file-existence check this session — and the
+        broader ecosystem-scope escalation in this entry's
+        review_recommendations is untouched. Note entry 6 targets
+        `guides/co-setup/**`, which is `use_excluded`, so its absence HERE is
+        expected and proves nothing about loom; only entries 5 and 7 are
+        genuinely verifiable from this template as still-open.
+      disposition: >-
+        Gate-1 should treat the gitignore mechanism as DONE and re-scope this
+        entry to its policy half, rather than re-classifying the whole thing.
+        Same-class sibling: the OTHER `.gitignore` entry in this manifest (the
+        `.session-notes.migrated` one, titled "SHIPPED-HOOK / SHIPPED-GITIGNORE
+        MISMATCH") is the SECOND instance of this exact failure shape — a
+        COC-relevant file the ignore policy does not cover, in a public
+        template. Referenced by title rather than index because entry ordinals
+        shift as the manifest is appended to. Worth one sweep, not two point
+        fixes.
     reason: |
       ENROLLMENT GAP A (roster contamination vector) — surfaced when /whoami
       --enroll-genesis was invoked at this USE template.
@@ -186,6 +264,46 @@ changes:
   - file: .claude/operators.roster.README.md
     action: create
     suggested_tier: coc
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-07-26, diagnosis sharpened
+      reconciled_at: 2026-07-26
+      evidence: >-
+        Still absent (`ls .claude/operators.roster.README.md` → no such file),
+        and the dangling-reference surface is WIDER than this entry recorded.
+        THREE shipped artifacts reference it, not two:
+        `.claude/commands/whoami.md:152` ("See
+        `.claude/operators.roster.README.md` for placeholder semantics"),
+        `.claude/hooks/lib/fold-genesis-anchor.js:101`, and
+        `.claude/hooks/lib/roster-schema-validate.js:395`. Two of the three are
+        HOOKS — i.e. the dangling pointer is in the enforcement substrate, not
+        only in operator-facing prose.
+      root_cause: >-
+        This is a knowledge-cascade-routing.md MUST-2 instance, and naming it
+        as such is the actionable part. `operators.roster.README.md` is absent
+        from `.claude/sync-manifest.yaml` ENTIRELY — verified by grep: it is
+        not in a tier, not `loom_only`, not `use_exclude`, not
+        `use_obsoleted`. Its distribution fate was never declared, so it
+        silently falls out of the subscription-based /sync model. Contrast its
+        CO-LOCATED sibling `operators.roster.schema.json`, which IS registered
+        (sync-manifest.yaml:1309) and did cascade — the two live in the same
+        directory and are cited by the same hooks, but only one was declared.
+        This is precisely the "on disk at loom but unregistered ⇒ never
+        cascades" failure knowledge-cascade-routing.md MUST-2 describes.
+      why_the_backstop_missed_it: >-
+        `emit.mjs::validateTierCompleteness` (Validator 15) is the structural
+        backstop for unregistered artifacts, but it covers rules, agents, skill
+        DIRECTORIES and commands. A bare `.claude/*.md` data file is none of
+        those types, so V15 cannot fire on it — this artifact sits in exactly
+        the gap MUST-2 flags as needing a CONSCIOUS declaration because the
+        backstop will not catch the omission. Worth considering whether V15's
+        type coverage should extend to `.claude/*.md` data files, which would
+        close the class rather than this one instance.
+      disposition: >-
+        Gate-1 action is likely one line in sync-manifest.yaml (declare the
+        tier) rather than authoring a new document — check whether the file
+        already exists at loom before writing one. If it does exist there, this
+        is a pure registration fix and the "create" action above is
+        mis-labelled; it should be a manifest declaration.
     reason: |
       ENROLLMENT GAP B (placeholder semantics not cascaded).
 
@@ -541,10 +659,15 @@ changes:
       the SessionStart hook renames a legacy monolithic .session-notes to that
       name on first per-operator-split migration
       (.claude/hooks/session-start.js:276 announces it). The loom-managed
-      block in .gitignore (lines 104-143, "managed by loom /sync; do not edit
-      between markers") covers `.session-notes` (134), `.session-notes.d/`
-      (135) and `.session-notes.shared.md` (136) — but NOT
-      `.session-notes.migrated`. Verified live in this template:
+      block in .gitignore — delimited by the `>>> coc:gitignore_additions —
+      managed by loom /sync; do not edit between markers >>>` and
+      `<<< coc:gitignore_additions <<<` markers — covers `.session-notes`,
+      `.session-notes.d/` and `.session-notes.shared.md` but NOT
+      `.session-notes.migrated`. Cited by MARKER, not absolute line number,
+      deliberately: loom's own .gitignore numbering differs from this
+      template's, and this template's numbering already shifted by +11 when the
+      interim local fix (see review_recommendations) was applied. Reproduce by
+      marker. Verified live in this template:
       `git check-ignore -v .session-notes.migrated` → NOT ignored, and the
       file shows in `git status --porcelain` as `??` after the hook produced
       it. The file's CONTENT is a full prior-session notes monolith (workspace
@@ -557,15 +680,89 @@ changes:
       `.session-notes.*` with re-includes for any intentionally-tracked
       sibling) to the managed coc:gitignore_additions block, and audit the
       same-class siblings — any other hook-produced local artifact whose name
-      is a VARIANT of an ignored name rather than an exact match. NOTE the
-      local edit is deliberately NOT made here: the block is loom-managed, so
-      a template-side edit is Class-A non-durable per artifact-flow.md
-      § Distribution-Durability Invariants and would be rebuilt away by the
-      next /sync-to-use. The proposal is the durable surface.
+      is a VARIANT of an ignored name rather than an exact match.
+
+      WHAT THIS TEMPLATE DID vs WHAT LOOM MUST DO — the MANAGED-BLOCK edit is
+      deliberately NOT made here: an edit between the markers is Class-A
+      non-durable per artifact-flow.md § Distribution-Durability Invariants and
+      would be rebuilt away by the next /sync-to-use, so the proposal is the
+      durable surface for the tier-wide fix. What WAS applied locally is a
+      distinct, durable interim entry in the REPO-OWNED region ABOVE the
+      markers (that region is preserved across /sync-to-use — it already
+      carries this template's own project-specific ignores), closing the live
+      exposure on this repo now without pretending to fix it tier-wide. The
+      interim entry carries an inline comment instructing removal once the
+      managed block covers the pattern, so the loom fix does not leave a
+      permanent duplicate behind.
     diff_lines: "+1 -0"
     review_recommendations:
       - "Tier-wide: every kailash-coc-* template AND every downstream consumer that ships session-notes-layout.js has this exact gap — the producer and the ignore block are both synced artifacts. Fix once at loom, cascades to all."
       - "Same-class sweep worth running at Gate-1: grep the hooks/bin surface for any other literal filename constant that is a VARIANT of an ignored path (suffix/prefix/extension change) rather than an exact match. Exact-match ignore entries silently miss produced variants; this is the second instance of that shape after the .heartbeat-cache* / .session-end-cache* globs (which DID use a trailing glob and are correctly covered)."
       - "Low-cost, high-leverage: one line in the managed block closes it. Severity is a latent trap rather than an active leak — template instantiation copies TRACKED content, so the file only lands via an operator `git add -A` (which coc-sync-landing.md Rule 2 already blocks for COC-sync PRs specifically, but not for ordinary commits)."
+      - "LOCAL INTERIM FIX APPLIED at this template: `.session-notes.migrated` + `**/.session-notes.migrated` added to .gitignore in the REPO-OWNED region (lines 81-82, above the coc:gitignore_additions markers at 115-154), so it is durable across /sync-to-use. Verified: `git check-ignore -v .session-notes.migrated` → matches. That interim entry carries a comment telling the operator to remove it once the managed block covers it — so the tier-wide fix does not leave a permanent duplicate behind."
+
+  - file: .claude/skills/30-claude-code-patterns/sync-flow.md
+    action: modify
+    suggested_tier: coc
+    reason: >-
+      STEP-7c SCHEMA GAP — a load-bearing cross-cutting constraint has nowhere
+      to live and is SILENTLY DROPPED at the relay hop. Surfaced live during
+      this template's first real /sync-from-downstream ingest (2026-07-26).
+
+      WHAT HAPPENED: an inbox entry proposing a clause for a priority:0 /
+      scope:baseline rule ended its `reason:` with "See the PR body for the
+      Rule-10 paired-extraction plan this clause depends on." The plan — a
+      measured headroom calculation plus a two-step paired extraction, the
+      thing that makes the clause SAFE to land — existed ONLY in the inbox
+      PR's description. A PR body does NOT travel with a relayed manifest, and
+      loom cannot read a template's PR bodies without a cross-repo fetch that
+      repo-scope-discipline.md blocks. Had the relay been mechanical, loom
+      Gate-1 would have received a clause with a dangling "see the PR body"
+      pointer to a body it structurally cannot open, and landing it unpaired
+      would have pushed the baseline lane below its own block floor. The
+      constraint was hand-transcribed into the relayed entry's
+      template_ingest_note this time; that is not a mechanism.
+
+      ROOT CAUSE — this is a SCHEMA defect, not an authoring slip. The Step-7c
+      schema (§ "Downstream Upflow Proposal Schema") is a flat `changes:` list
+      of per-file entries with `file / action / base_version / reason /
+      diff_lines`. There is NO field for (a) a constraint that spans MULTIPLE
+      changes, or (b) a dependency BETWEEN changes. The proposer had nowhere
+      correct to put a plan that governs one entry and is implemented by
+      another, so the PR body was the only available surface — a rational
+      choice given the schema.
+
+      FIX (loom decides the exact shape):
+        (a) a proposal-level `landing_constraints:` list — free-text
+            constraints the ingesting/classifying party MUST honor, carried
+            through every hop by construction; AND/OR
+        (b) a per-entry `depends_on: [<file>, ...]` + `landing_note:` pair, so
+            "entry X must land with entry Y" is machine-visible rather than
+            prose a reviewer may miss.
+      Whichever shape is chosen, the § Template Inbox Ingest Process step 6
+      (Relay) MUST state that these fields are carried forward VERBATIM into
+      the relayed Step-7b entry — the relay is the exact point the PR body
+      stopped travelling.
+
+      ALSO in this file, same schema, second defect: the `loom_sha` field's
+      identity-field-pinning MUST is UNVALIDATED. Both inbox bodies in this
+      ingest stamped `loom_sha: "22fff0a"`, which is a MERGE COMMIT OF THIS
+      TEMPLATE (PR #54), not a loom SHA — the schema sources it from
+      `.claude/VERSION::upstream.loom_sha` (this template was at 08cb86fb).
+      Because loom_sha is documented as "the monotonic freshness axis", a
+      mis-stamped value silently mis-orders triage. Nothing at emission or at
+      ingest checks it. FIX: have Step 7c emit loom_sha ONLY from
+      upstream.loom_sha (never a local git SHA) and omit the field entirely
+      when absent rather than substituting; and have the inbox-ingest step
+      treat a loom_sha that resolves to a commit in the TEMPLATE's own history
+      as a deviation to report, not a freshness signal. Content-level dedup
+      (Process step 4) already carries the authoritative load, so this is a
+      triage-quality fix, not a correctness one.
+    diff_lines: "+24 -4"
+    review_recommendations:
+      - "Both defects are in the SAME synced skill and the same schema section — classify together. The skill is the schema AUTHORITY for both Step 7b and Step 7c (it is self-contained precisely because downstream consumers do not receive guides/co-setup/**), so a fix here reaches every consumer that can originate an upflow."
+      - "The dependency-field half (b) has an immediate live consumer: entries 10 and 12 of THIS manifest are exactly such a pair (a baseline clause + its required depth host). They are currently flagged only in prose inside template_ingest_note. If the field existed they would carry `depends_on:` machine-visibly."
+      - "Emission-site note: commands/codify.md Step 7c is where a consumer WRITES these fields, so the command likely needs a paired edit. Flagged rather than proposed separately — loom should decide whether the command change rides this entry or its own, per command-skill-parity.md MUST-2 (a command and its paired skill move together)."
+      - "Severity framing per product-completion-first.md: this is INVEST-NOW, not incremental. It does not block the current relay (the constraint was transcribed by hand), but every future Step-7c upflow silently drops cross-cutting constraints until it is fixed, and the failure is INVISIBLE at the receiving end — loom sees a coherent-looking entry with a pointer it cannot follow."
 
 status: pending_review
