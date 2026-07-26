@@ -765,4 +765,206 @@ changes:
       - "Emission-site note: commands/codify.md Step 7c is where a consumer WRITES these fields, so the command likely needs a paired edit. Flagged rather than proposed separately — loom should decide whether the command change rides this entry or its own, per command-skill-parity.md MUST-2 (a command and its paired skill move together)."
       - "Severity framing per product-completion-first.md: this is INVEST-NOW, not incremental. It does not block the current relay (the constraint was transcribed by hand), but every future Step-7c upflow silently drops cross-cutting constraints until it is fixed, and the failure is INVISIBLE at the receiving end — loom sees a coherent-looking entry with a pointer it cannot follow."
 
+  # ==========================================================================
+  # TEMPLATE-INSTANTIATION DISCLOSURE AUDIT — 2026-07-26
+  # ==========================================================================
+  # Four entries from a co-owner-directed audit asking whether this PUBLIC
+  # template (gh repo view → isTemplate:true, visibility:PUBLIC) leaks anything
+  # into the clones clients instantiate from it. Entries are ordered by
+  # dependency: the scanner gap (A) is why the others went undetected.
+  #
+  # DISCLOSURE DISCIPLINE FOR THIS BLOCK (knowledge-cascade-routing.md MUST-3):
+  # the finding concerns a specific non-public product name. These entries cite
+  # it by FILE:LINE and never restate the token, so filing the gap adds ZERO new
+  # occurrences of it to this tracked surface. loom resolves each citation by
+  # reading the named line.
+  #
+  # AUDIT RESULT SUMMARY (evidence in each entry):
+  #   CLEAN — no secrets/keys/tokens across 3,055 tracked files; no operator
+  #   PII for the auditing operator; session-notes do not ship (gitignored, and
+  #   the 27 tracked .session-notes files are synthetic fixtures); git history
+  #   clean across 186 commits (roster / coordination-log / posture /
+  #   operator-id / .session-notes were NEVER committed); the downstream
+  #   consumer whose proposals were relayed this session is NOT identified
+  #   anywhere (hop-level fence held).
+  #   NOT CLEAN — the four entries below.
+
+  - file: .claude/bin/scan-synced-disclosure.mjs
+    action: modify
+    suggested_tier: coc
+    reason: >-
+      GAP A (ROOT CAUSE — why B/C/D went undetected). The disclosure scanner is
+      scoped to the SYNC surface, but a template is consumed by INSTANTIATION,
+      and those are different file sets. `isNeverSynced()` (line 132ff) returns
+      true for `.proposals`, `test-harness`, `projects`, `learning`,
+      `worktrees`, plus base-name matches on `sync-manifest.yaml`, `VERSION`
+      and `CLAUDE.md`; line 318 skips every match. That is CORRECT for the
+      question "what does /sync-to-use distribute?" and WRONG for "what does a
+      client get when they clone or Use-this-template?"
+
+      MEASURED on this template: of those 8 exclusions, 4 are GITIGNORED and
+      therefore correctly skipped (learning/, test-harness/, projects/,
+      worktrees/ — all 0 tracked files). The other 4 are TRACKED and ship in
+      every clone while being invisible to the scanner:
+        .claude/.proposals/       6 files,  78 KB
+        .claude/sync-manifest.yaml 1 file, 310 KB
+        .claude/VERSION            1 file,  49 KB
+        CLAUDE.md                  1 file,  12 KB
+      A `node scan-synced-disclosure.mjs --root .` on this repo reports
+      "clean — 0 findings, 1757 files scanned" while never opening any of them.
+      The receipt is honest about the surface it covers and is routinely read
+      as covering more.
+
+      FIX: add an `--instantiation` (or `--tracked`) mode whose file set is
+      `git ls-files` rather than the synced-tier walk, and which applies
+      `isNeverSynced` ONLY to paths that are also gitignored. Keep the existing
+      default mode unchanged — the two questions are both legitimate and the
+      Gate-2 sync fence still wants the sync-surface answer. Emit the surface
+      name in the result line ("clean on the INSTANTIATION surface — N tracked
+      files") so a future reader cannot mistake one receipt for the other.
+    diff_lines: "+45 -6"
+    review_recommendations:
+      - "This is the highest-leverage entry of the four: it is the reason a public template could carry the GAP-B/C findings for an unknown period with a green scanner. Fixing B and C without A leaves the next instance equally undetectable."
+      - "Applies to EVERY repo class that ships scan-synced-disclosure.mjs, not just USE templates — a BUILD repo and loom itself have the same tracked-vs-synced divergence. Fix once at loom, cascades."
+      - "Cheap validation that the new mode works: it MUST immediately flag the GAP-C sites below and the GAP-D own-coordinate paths. If it reports clean on this repo, the mode is mis-wired."
+
+  - file: .claude/audit-fixtures/scan-synced-disclosure/clean-foundation-placeholder/.claude/rules/clean.md
+    action: modify
+    suggested_tier: coc
+    reason: >-
+      GAP B (MIS-RATIFIED POSITIVE ALLOWLIST — a factual error that disables
+      detection). This fixture's header declares "Foundation-public +
+      ratified-placeholder fixture (MUST pass clean)" and "None of the
+      following may flag — they are the positive allowlist." Line 9 then
+      asserts a specific product name is a "Public PACT product".
+
+      THAT ASSERTION IS FALSE, corrected by the co-owner in-session
+      2026-07-26: the named product is NOT public. The public product is the
+      PACT REFERENCE PLATFORM. Because the fixture is a positive allowlist
+      pinning must-pass-clean behaviour, this single wrong line makes the
+      scanner STRUCTURALLY BLIND to that token — it can never be flagged
+      anywhere on any scanned surface, in any repo that ships this fixture.
+      This is not a missed detection; it is a ratified exemption granted on a
+      false premise, which is why no scan has ever surfaced GAP C below.
+
+      FIX: (1) remove the false public-product assertion from the positive
+      allowlist at line 9; (2) if a PACT product name belongs on the allowlist
+      at all, it is the PACT reference platform — add THAT, and only that;
+      (3) add the token to the tenant/non-public denylist so it is actively
+      flagged rather than merely un-allowlisted (note
+      `.claude/disclosure-tenant-denylist.json` is ABSENT from this template —
+      verified — so the denylist is a loom-side gate and this half must land
+      there); (4) re-run the fixture suite, which SHOULD now fail until GAP C
+      is fixed — that failure is the correct signal, not a regression.
+
+      ALSO RATIFY, so future audits stop re-litigating it: the OTHER name that
+      co-occurs with it throughout the corpus (165 tracked occurrences,
+      e.g. `.claude/rules/build-cache-hygiene.md:93`) was confirmed by the
+      co-owner as an INTERNAL PRODUCT and is fine to appear. It currently has
+      no explicit allowlist entry, so every disclosure audit re-raises it as a
+      candidate. Give it a documented positive-allowlist entry with the
+      "internal product, ratified <date>" rationale so the next auditor
+      resolves it in one grep instead of escalating it.
+    diff_lines: "+6 -2"
+    review_recommendations:
+      - "Order matters: land GAP B's allowlist correction BEFORE GAP C's content scrub, so the fixture suite's failure proves the scrub was needed and its return to green proves the scrub was complete. Landing C first hides the evidence that B was broken."
+      - "Worth a same-class sweep at loom: this is a POSITIVE allowlist granting exemptions. Every other entry on it should be re-verified against ground truth the same way this one was — one false 'public' claim silently disabled detection for an entire token, and there is no reason to assume it is the only one."
+      - "The denylist half cannot be verified from a USE template (the denylist file is not distributed here). loom must confirm the token's denylist status directly."
+
+  - file: .claude/rules/build-cache-hygiene.md
+    action: modify
+    suggested_tier: coc
+    reason: >-
+      GAP C (the non-public name in SHIPPED, CASCADING artifacts). With GAP B's
+      false exemption removed, the token is present at SIX sites across three
+      shipped artifacts in this PUBLIC template. Cited by file:line so this
+      proposal adds no new occurrence:
+
+        .claude/rules/build-cache-hygiene.md:93   ("downstream consumers like …")
+        .claude/rules/build-cache-hygiene.md:129  ("… /…/etc. means those repos")
+        .claude/rules/build-cache-hygiene.md:178  ("across all Rust applications")
+        .claude/hooks/build-cache-gc.js:27        (same enumeration, in a hook)
+        .claude/guides/rule-extracts/repo-scope-discipline.md:200
+        .claude/guides/rule-extracts/repo-scope-discipline.md:209
+
+      TWO of these are worse than a bare name. `repo-scope-discipline.md:200`
+      describes that repo's `.codex-mcp-guard/` "fail-open→fail-closed
+      prior-art" — i.e. it discloses that a named non-public system previously
+      shipped a FAIL-OPEN security guard. That is a security-posture history
+      disclosure, not just an identifier, and it is the single most sensitive
+      string surfaced by this audit. `:209` exposes the resolver logical-key
+      namespace (`governance.<name>`), which maps the internal repo topology.
+
+      SEVERITY NOTE: `build-cache-hygiene.md` is a RULE and `build-cache-gc.js`
+      is a HOOK — both are distributed artifacts, so these strings do not only
+      sit in this template, they CASCADE to every consumer that pulls it. The
+      guide extract is likewise synced.
+
+      FIX: genericize all six to the placeholder vocabulary the ratified
+      fixture already defines (`consumer`, `downstream`, `app-a`/`app-b`,
+      `cli-app`) — the enumerations are illustrative in every case and lose no
+      instructional value as "downstream consumer repos". For
+      repo-scope-discipline.md:200 the prior-art reference should be stated
+      WITHOUT naming the system, or dropped: the fail-open→fail-closed lesson
+      is the transferable content, the identity of the repo that learned it is
+      not. Keep the specifics in loom's local receipt per
+      knowledge-cascade-routing.md MUST-3.
+    diff_lines: "+6 -6"
+    review_recommendations:
+      - "Scope is three files, six lines, all prose/comment — no logic change, no behavioural risk. This is a mechanical scrub once GAP B stops exempting the token."
+      - "The sibling files (.claude/hooks/build-cache-gc.js:27 and .claude/guides/rule-extracts/repo-scope-discipline.md:200,209) are named here rather than filed as separate entries because they are ONE scrub pass on ONE token; splitting them across entries invites a partial fix, which is the multi-site failure mode security.md § Multi-Site Kwarg Plumbing already blocks for kwargs. Land all six together."
+      - "repo-scope-discipline.md:200 should be treated as the priority line — a disclosed fail-open security history is materially different from a disclosed name, and it is the one item here a security-reviewer should look at directly."
+
+  - file: .claude/audit-fixtures/scan-synced-disclosure/README.md
+    action: modify
+    suggested_tier: coc
+    reason: >-
+      GAP D (DECISION REQUIRED, not a defect — the maintainer's own home path
+      ships in a public template BY DESIGN). The scanner carries an
+      "own-coordinates" allowlist so it does not flag its own maintainer's dev
+      paths. Consequence, measured on this template: `/Users/<maintainer>/`
+      appears 17 times and `/home/<maintainer>/` 3 times across tracked files —
+      in the scanner source comments (scan-synced-disclosure.mjs:405, 864,
+      1003), its fixtures (own-org-allowed/, nonown-still-flagged/,
+      f77-settings-own-coords-still-flagged/, r2-org-forms/), the fixture
+      README, and violation-patterns/detectRepoScopeDriftBash/README.md. Cited
+      by location; the concrete paths are already at those lines.
+
+      This is deliberate and internally consistent — the fixtures exist
+      precisely to PROVE the own-coordinate allowlist works, so they must
+      contain the coordinate. It is nonetheless an operator-home path, plus the
+      maintainer's local directory layout, shipping in a PUBLIC template that
+      clients clone — the exact class upstream-issue-hygiene.md MUST-2 blocks
+      everywhere else. It is also self-referentially awkward: the tool that
+      enforces no-operator-paths is the largest single source of them.
+
+      DECISION FOR THE CO-OWNER (recommendation, with the honest trade-off):
+      RECOMMEND genericizing to a synthetic maintainer coordinate
+      (`/Users/canon-maintainer/`) across fixtures and comments, keeping the
+      allowlist MECHANISM unchanged and pointing it at the synthetic value.
+        Pro: removes a real operator-home path from a public surface; the
+             fixtures still prove exactly what they prove today; costs one
+             mechanical pass.
+        Con (real): the own-coordinate allowlist exists so the scanner does not
+             flag the maintainer's ACTUAL working paths, and pointing it at a
+             synthetic value means the real path is no longer exempt — a
+             genuine local finding would start flagging on the maintainer's own
+             machine. Closing that needs the real coordinate to live in a
+             gitignored operator-local config (the same shape as
+             `ci-runners.operator.local.md` / `loom-links.local.json`), which
+             is the extra work this option carries.
+        ALTERNATIVE (lower cost): keep as-is and record a ratified decision
+             that the maintainer coordinate is accepted-public, so future
+             audits stop surfacing it. Honest con: it stays in every client
+             clone forever, and it weakens the rule's credibility everywhere
+             else it is enforced.
+      Either disposition is defensible; the one thing that should NOT persist
+      is the current state, where it is neither scrubbed nor ratified and each
+      audit re-discovers it.
+    diff_lines: "+8 -0"
+    review_recommendations:
+      - "Filed against the fixture README because that is where the own-coordinate policy is DOCUMENTED (lines 28, 38, 58); the actual change surface spans the scanner source + 4 fixture dirs + 1 sibling README, and should be one pass."
+      - "This is a JUDGMENT-BUCKET item per product-completion-first.md MUST-4 — surfaced for co-owner direction rather than silently self-decided, because the trade-off (public-surface hygiene vs the maintainer's own scanner ergonomics) is a policy call, not a correctness one."
+      - "If the gitignored-operator-local route is chosen, `ci-runners.operator.local.example.md` is the shipped precedent for the schema/template pattern — same problem, already solved once in this corpus."
+
 status: pending_review
