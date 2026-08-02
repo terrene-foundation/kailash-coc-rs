@@ -1,0 +1,103 @@
+# Step-7c downstream upflow offer. Hop-level provenance only: the originating
+# consumer is deliberately not identified (artifact-flow.md scenario 8/9 fence).
+origin: downstream
+codify_date: 2026-08-02
+codify_session: "codify(sync): obsoleted-purge ships dangling references — no post-purge reference sweep, and the xref validator is not a release gate"
+template_slug: kailash-coc-rs
+template_version: "2.24.0"
+loom_sha: "43167a54"
+# ROOT CAUSE shared by every entry below: the distribution engine removes or
+# fences an artifact WITHOUT sweeping the references to it, and the check that
+# would catch this (validate-xref-integrity) is not a release gate. Verified by
+# running that validator against an UNMODIFIED checkout of this template at
+# 2.24.0: exit 1, 355 dangling refs, 759 files scanned — before any consumer
+# edit. Entries 1-6 are symptoms; entry 7 is the structural fix.
+changes:
+  - file: .claude/.coc-obsoleted
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      The obsoleted manifest lists 5 paths the SAME release still ships:
+      hooks/lib/o1-citation-check.js, hooks/coc-drift-warn.js,
+      hooks/coc-telemetry-autocommit.js, bin/emit-dev-container.mjs,
+      bin/repin-targets.local.example.json. A consumer that applies the manifest
+      faithfully — as /sync-from-template step 2.6 mandates, calling it "the ONLY
+      mechanism by which downstream consumers purge stale orphan directories" —
+      deletes files the same sync just delivered. Observed live during a
+      downstream 2.23.22 -> 2.24.0 sync: the purge removed two hook libs and two
+      bin tools written moments earlier by the same run, and they had to be
+      restored by hand. Suggested fix: emit the manifest as
+      (planned-purge MINUS shipped-set) and assert the empty intersection at
+      emission, so the two sets can never overlap.
+    diff_lines: "+0 -0"
+  - file: .claude/commands/sync-from-template.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      Section 2 (Locate template), resolution step 4, instructs consumers to
+      resolve the template via bin/lib/loom-links.mjs — but that module is on the
+      obsoleted manifest and does not ship, so the documented resolution path
+      names a file the same release deletes. Self-referential: the command that
+      tells a consumer how to sync is broken by the sync it describes. This is the
+      DOC-surface sibling of the already-filed runtime-import instance on the same
+      module; fixing the static import does not fix this citation.
+    diff_lines: "+0 -0"
+  - file: .claude/rules/repo-scope-discipline.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      Cites `rules/cross-repo.md` MUST-1 as the authoritative NAME->location
+      resolver contract, but rules/cross-repo.md is not shipped AND carries no
+      obsoleted-manifest entry — it is a missing distribution, not a purge
+      artifact. Highest blast radius of this batch: repo-scope-discipline.md is a
+      priority-0 BASELINE rule loaded every session at every consumer, so every
+      consumer loads a rule whose cited authority is absent. Four shipped commands
+      (worktree.md, sweep.md, enroll.md, migrate.md) cite the same absent file.
+      Suggested fix: ship rules/cross-repo.md on the consumer lane, or repoint the
+      citations at the shipped surface that carries the contract.
+    diff_lines: "+0 -0"
+  - file: .claude/rules/git.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      The header depth-pointer (line 8) and the Origin footer both direct readers
+      to guides/rule-extracts/git.md for the extended bash examples, the full
+      BLOCKED rationalization lists, the repository protection table and the
+      post-mortems — while that extract is on the obsoleted manifest and does not
+      ship. The rule's documented depth contract resolves to nothing at every
+      consumer, and the neutral body was trimmed on the assumption the extract
+      exists.
+    diff_lines: "+0 -0"
+  - file: .claude/commands/doctor.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      Line 65 cites bin/loom-doctor.test.mjs, which is on the obsoleted manifest
+      and does not ship. Same purge-without-reference-sweep class.
+    diff_lines: "+0 -0"
+  - file: .claude/commands/ecosystem-init.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      Cites `.claude/bin/ecosystem.json` at four sites (lines 34, 52, 69, 87) and
+      bin/lib/loom-links.mjs at line 115; neither ships. If these are illustrative
+      paths rather than live targets, the backtick form makes them
+      indistinguishable from real targets to the xref validator — the same
+      "pin intent" advice the validator itself emits for slash-less directory
+      tokens applies here.
+    diff_lines: "+0 -0"
+  - file: .claude/rules/sync-completeness.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      THE STRUCTURAL FIX for every entry above: make validate-xref-integrity a
+      RELEASE GATE over the emitted tree, so a purge or fence that orphans a
+      reference cannot ship. The validator already exists and already detects all
+      six findings above — it is simply not run at emission, which is why the
+      template ships exit 1 with 355 dangling refs. Without the gate this class
+      recurs at every cut and each consumer rediscovers it independently at sync
+      time, paying the diagnosis cost N times over. Conceptually this is
+      orphan-detection.md Rule 4c (a removal must sweep its dependents in the same
+      change) applied at the DISTRIBUTION boundary rather than the source tree.
+    diff_lines: "+0 -0"
+status: pending_review
