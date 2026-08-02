@@ -1,0 +1,158 @@
+# Step-7c downstream upflow offer.
+# NO source_repo — hop-level-only provenance: the downstream consumer is deliberately
+# NOT identified in the schema (the scenario-8/9 disclosure fence). At relay the
+# template stamps `via: <template-slug>`, never the consumer.
+origin: downstream
+codify_date: 2026-08-03
+codify_session: "codify(template-integrity): artifact-integrity gaps + one governance proposal, surfaced by a routine 2.24.0 template pull"
+template_slug: kailash-coc-rs
+template_version: "2.24.0"
+loom_sha: "43167a54"
+
+# Four DEFECT REPORTS (1-4) and one GOVERNANCE PROPOSAL (5). The fifth is labelled
+# in its own body so Gate-1 does not triage a trade-off decision as a bug.
+changes:
+  - file: .claude/.coc-obsoleted
+    action: modified
+    base_version: "2.24.0"
+    reason: >
+      The obsoleted-paths manifest CONTRADICTS the tree the same template ships, so the
+      documented purge is structurally un-completable at every consumer. At template
+      f82b7828 the manifest lists 108 paths; three are STILL TRACKED in the template's own
+      git index (verified: `git ls-files` at that commit returns
+      `.claude/hooks/lib/o1-citation-check.js`, `.claude/bin/emit-dev-container.mjs`,
+      `.claude/bin/repin-targets.local.example.json`). Two are additionally imported by LIVE
+      template code — `.claude/bin/validate-emit.mjs` references o1-citation-check, and
+      `.claude/bin/loom-links.local.example.json` references repin-targets — so a consumer
+      honoring the manifest purges files its own shipped tooling then fails to resolve. The
+      sync contract's step 2.6 (purge) and step 5 (template-wins overlay) fight on these
+      three paths and the overlay wins every run: the same three were reported purged by the
+      prior cycle's sync and are present again at the next pull, so the purge/restore loop
+      repeats indefinitely and each cycle's receipt records a purge that did not persist.
+      Proposed disposition: reconcile the two surfaces in ONE direction — drop the three
+      entries from `.coc-obsoleted` (if the files are live, which their inbound references
+      suggest), or untrack them from the template AND re-point the two importers. Either
+      closes the loop; shipping both states does not. Consumer-side disposition was to keep
+      the shipped tree and live references (purge attempted, then reverted), so no local
+      breakage — but the contradiction re-surfaces at every consumer on every pull.
+    diff_lines: "-3 (or untrack 3 + re-point 2 importers)"
+
+  - file: .claude/bin/reconcile-settings-hooks.mjs
+    action: created
+    base_version: "2.24.0"
+    reason: >
+      A rule shipped in 2.24.0 names a structural detector that CANNOT RUN at any consumer,
+      because the module that detector depends on is not in the distributed set. The new
+      `rules/hook-event-selection.md` designates
+      `.claude/bin/validate-emit.mjs::checkHookEventDeclaration` (check id
+      `hook-event-declaration`) as its live blocking arm, and that check imports
+      `enumerateRegistrations` + `normalizeMatcher` from `./reconcile-settings-hooks.mjs` —
+      deliberately reusing the shared recognizer rather than standing up a second one, per
+      that rule's own Wiring and `security.md` § Enforcement-Surface Parity. But
+      `reconcile-settings-hooks.mjs` is absent from the template tree (verified: absent at
+      template f82b7828 AND absent after a full consumer sync of the managed surface), while
+      `validate-emit.mjs` IS distributed. Net effect: the rule's Wiring advertises a
+      mechanical arm that silently cannot fire downstream, leaving only its gate-review arm —
+      the exact "over-claimed enforcement" failure the rule itself blocks ("an over-claimed
+      hook is worse than a named gap"). The rule ALSO documents that its lazy seam
+      "discriminates on WHICH specifier is missing so a nested-dependency failure re-throws
+      instead of degrading to SKIP"; here the MISSING specifier is the top-level one, so the
+      consumer path presumably degrades to SKIP rather than throwing — UNVERIFIED from a
+      consumer (the validator is loom-side), stated as inference, not measurement. Proposed
+      disposition: add `reconcile-settings-hooks.mjs` to the distributed set alongside
+      `validate-emit.mjs`, or amend the rule's Detection mechanism to declare the structural
+      arm loom-only and the consumer arm gate-review only. Shipping the rule with an
+      unrunnable detector claim is the failure mode.
+    diff_lines: "+1 file distributed (or ~+3 Wiring correction)"
+
+  - file: .claude/bin/sync-from-canon-fetch.mjs
+    action: modified
+    base_version: "2.24.0"
+    reason: >
+      A distributed script statically imports a module the same template's obsoleted manifest
+      purges, so the script cannot load at a consumer that honors the purge. Line 67 is
+      `import { resolveRemote } from "./lib/loom-links.mjs";` — a STATIC import, not a guarded
+      lazy require (unlike the fail-closed consumer skips elsewhere in `validate-emit.mjs`) —
+      while `.claude/bin/lib/loom-links.mjs` is listed in `.coc-obsoleted`. A consumer that
+      completed the purge would get MODULE_NOT_FOUND on any invocation. PRE-EXISTING, not
+      introduced by 2.24.0: verified against the consumer's own default branch before this
+      pull, where the same static import is present at the same line. Blast radius is
+      currently low at a downstream consumer — `sync-from-canon` is a canon-incorporation path
+      a `coc-project` consumer does not invoke — which is likely why it has gone unnoticed; it
+      would bite a fork/canon lane that does. Related to but distinct from the
+      `.coc-obsoleted` entry above: that entry is about three paths the manifest and tree
+      disagree on; this is a FOURTH purged path a live distributed importer hard-depends on.
+      Proposed disposition: drop `lib/loom-links.mjs` from the obsoleted manifest if it is
+      still live, or re-point this importer at the surviving resolver if it is genuinely
+      retired.
+    diff_lines: "~1 (import re-point) or -1 manifest entry"
+
+  - file: .claude/hooks/lib/codify-lease.js
+    action: modified
+    base_version: "2.24.0"
+    reason: >
+      `/codify` trips its OWN integrity guard on its OWN mandated step, because the lease
+      scope the command tells the caller to acquire does not cover the write the command
+      later requires. Ground truth, all three verified at template 2.24.0:
+      (a) `codify-lease.js:75-78` defines MANDATORY_SCOPE as EXACTLY two entries —
+      `.claude/learning/learning-codified.json` and `.claude/.proposals/latest.yaml`;
+      (b) `commands/codify.md:29` (Step 0) tells the caller only that "the helper unions
+      [those two] into the scope automatically", never instructing that a journal path be
+      added; (c) `commands/codify.md:149-151` ("Journal (MUST — phase-complete gate)") then
+      REQUIRES a journal entry before `/codify` may be reported complete. A caller following
+      the command literally acquires a lease covering two files and is immediately
+      halt-and-reported by `integrity-guard.js` for the journal write — "no covering
+      codify-lease record found in the folded coordination log" — on a step the same command
+      mandates. Observed exactly this way, twice in one cycle. The workaround (release, widen
+      `scopeFiles` with the journal dir, re-acquire) additionally hits `scope-dirty` if the
+      journal file was already written, forcing a remove/re-acquire/re-write dance to make the
+      write genuinely covered rather than retroactively blessed. Proposed disposition (either
+      closes it): add the repo's journal directory to MANDATORY_SCOPE so the union covers what
+      the command mandates, OR amend Step 0 to instruct callers to include their journal path
+      in `scopeFiles`. The first is preferable — it fixes every consumer without each caller
+      re-deriving the gap, and MANDATORY_SCOPE already exists precisely to close the "caller
+      forgot to declare a mandatory file" hole `knowledge-convergence.md` MUST-3 names. The
+      journal directory is repo-layout-dependent (workspace-scoped in some consumers,
+      repo-root `journal/` in others), so a MANDATORY_SCOPE fix should RESOLVE it rather than
+      hardcode one layout.
+    diff_lines: "~+3 (MANDATORY_SCOPE entry + resolver) or ~+2 (commands/codify.md Step 0)"
+
+  - file: .claude/rules/coc-sync-landing.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >
+      GOVERNANCE PROPOSAL, not a defect report — flagged as such so Gate-1 does not triage a
+      trade-off decision as a bug. The contract MANDATES that an agent self-merge its own work
+      to its own default branch, and the only human gate on that path is too narrow to catch
+      the common case. Ground truth verified at template 2.24.0: `coc-sync-landing.md` MUST-3
+      reads "After CI green or path-filter auto-skip, run `gh pr merge <N> --admin --merge
+      --delete-branch`. `REVIEW_REQUIRED` parking BLOCKED"; `commands/codify.md:35` and
+      `knowledge-convergence.md` Rule 3 BOTH chain their end-of-session step to it ("opens a
+      PR + admin-merge per `coc-sync-landing.md` MUST-3"). So a consumer following the
+      contract literally admin-merges every codify PR to its own default branch WITHOUT an
+      operator in the loop. The one human gate that exists is `commands/codify.md:35`'s "For
+      MUST-clause rule changes the orchestrator additionally requires a signed
+      `[ack: <rule-id>]` from the user before merge" — scoped to MUST-clause rule changes
+      ONLY, so it does NOT fire for a receipts-only codify (proposal manifest + journals),
+      which is the most common codify shape. Observed this cycle: a receipts-only codify PR
+      (zero rule, hook, bin, or code files) was admin-merged on the contract's authority when
+      the operator had asked only that the codify be performed; the operator subsequently
+      directed that codify open a PR and stop, the operator merging. Contract-compliance was
+      not operator-authorization. HONEST COUNTER-CASE, which any fix must preserve — MUST-3's
+      own stated Why: "without it the PR drifts open across sessions and the failure mode
+      resumes." An unmerged codify PR strands the lease branch, and the rule exists because
+      `REVIEW_REQUIRED` parking genuinely did strand deliveries. So "never merge" is NOT
+      obviously right for every consumer; the defect is that the contract offers NO
+      operator-gated option at all and hardcodes one side of a real trade-off. Proposed
+      disposition (either, or a config knob): (a) make the merge step operator-gated by
+      DEFAULT, with self-merge an explicit opt-in a consumer declares once — preserving
+      MUST-3's anti-drift intent by requiring the PR be REPORTED ready rather than left
+      silent; or (b) WIDEN the `[ack:]` gate from "MUST-clause rule changes" to any diff
+      touching `.claude/rules/**`, `.claude/hooks/**`, or `.claude/bin/**`, leaving
+      receipts-only codifies to self-merge. (a) matches the observed operator intent; (b) is
+      the smaller change and keeps the anti-drift default for the common shape. Note (b)
+      would NOT have caught the observed case, since that diff was receipts-only — recorded
+      so the trade-off is visible rather than implied.
+    diff_lines: "~+4 (MUST-3 gating clause) + ~+2 (commands/codify.md Step 0 ack scope)"
+
+status: pending_review
