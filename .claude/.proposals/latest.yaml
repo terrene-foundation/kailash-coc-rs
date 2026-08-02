@@ -1060,10 +1060,10 @@ changes:
       THE HEADLINE CONTRACT AND THE OPERATIVE RULE CONTRADICT EACH OTHER, AND
       THE RULE IS THE ONE THAT RUNS.
 
-      § "Merge Semantics" states: "This is a **merge**, not an overwrite."
-      Fourteen lines later the operative Rule states: "If a file exists in BOTH
-      the template and this repo, the template version wins (it's the upstream
-      source)." Template-version-wins IS an overwrite. There is no per-file
+      § "Merge Semantics" (line 27) states: "This is a **merge**, not an
+      overwrite." Eight lines later (line 35) the operative Rule states: "If a
+      file exists in BOTH the template and this repo, the template version wins
+      (it's the upstream source)." Template-version-wins IS an overwrite. There is no per-file
       merge, no three-way merge, and no conflict surface anywhere in the
       command. Preservation is by PATH CATEGORY only:
         agents/project/** · skills/project/** · learning/** · .proposals/** ·
@@ -1078,10 +1078,14 @@ changes:
       sanctioned local home for agents and skills, and NONE for rules or
       commands. Two consequences follow:
         (1) A consumer that edits a shared rule loses the edit silently. The
-            originating filing measured one consumer: 15 of 18 rules differing
-            from the template carried local commits — one rule with 11 local
-            edits, three with 7, two with 5. A sync discards all of them with
-            no conflict, no warning, and no record.
+            originating filing measured one consumer: 15 of 18 differing rules
+            carried local commits, several with double-digit edit counts. A
+            sync discards all of them with no conflict, no warning, and no
+            record. (Per-rule edit histogram deliberately omitted — the total
+            carries the blast-radius argument, and a per-artifact breakdown is
+            a narrower selector over a stated population of 30+ consumers than
+            the argument needs. Recoverable from the originating filing, which
+            does not travel.)
         (2) A consumer that authors a NEW local rule is preserved only by
             accident, via the "exists ONLY in this repo" clause. The moment the
             template ships a file of the same name, the local rule is silently
@@ -1110,12 +1114,61 @@ changes:
             The current text promises the first and performs the second, which
             is worse than either alone because consumers plan around the
             promise.
-        (b) Give consumers a sanctioned local namespace for EVERY artifact
-            type they are told to codify into — `rules/project/**` and
-            `commands/project/**` alongside the existing agents/ and skills/
-            pair — and add them to the preserved list.
-        (c) Add `.claude/team-memory/**` to the preserved list (per-repo signed
-            state, same class as learning/**).
+        (b) Give consumers a durable home for the artifact types they are told
+            to codify into — but do NOT mint a bare `rules/project/**`. A
+            sync-immune rule namespace with no ADD-ONLY guard is a permanent
+            override surface: a consumer rule that shadows or softens a shipped
+            governance rule would survive every future /sync-from-template and
+            nothing upstream could correct it. A GUARDED namespace already has
+            machinery — `.claude/rules/local/**`, loaded by
+            `.claude/bin/lib/local-rules.mjs`, whose header states the
+            invariant verbatim ("A local rule ADDS to the corpus. It MUST NOT
+            OVERRIDE, shadow, or soften a canon rule") and enforces it with
+            four guards: case-folded canon-id collision (`add-only-violation`),
+            subtree containment with a `..` guard (`path-escape`), an
+            `O_NOFOLLOW` leaf read so a planted symlink cannot redirect out of
+            the verified subtree, and a no-orphan declaration check
+            (`undeclared-local-rule`). It is wired at emit.mjs:73 + :683 and
+            fenced at sync-manifest.yaml:3395.
+            PREFERRED: point consumers at `rules/local/**` and fix the real
+            gap, which is that sync-from-template.md never mentions it — a
+            documentation fix, not a new namespace. IF Gate-1 nonetheless wants
+            a distinct `project/` namespace, it MUST route through the SAME
+            loader and carry the SAME four guards — never a second, weaker
+            copy.
+            `commands/project/**` MUST NOT land on this proposal's strength
+            alone: there is no guard analogue for commands anywhere in the
+            tree, and a command body is an instruction set the agent EXECUTES
+            rather than a rule it weighs. Whether a local command can shadow a
+            shipped one at invocation is a CC-namespacing question this
+            proposal does not answer; the collision guard must exist before the
+            namespace does.
+            NOTE FOR GATE-1 (verified at this template, and it cuts both ways):
+            `.claude/rules/local/` does NOT exist on disk here — the LOADER and
+            the manifest fence ship, but the subtree (which sync-manifest.yaml
+            :3395 says canon carries as `_README.md` + `.example.yaml`) did
+            not land. So the guarded namespace is real machinery but is
+            currently invisible to a consumer looking for somewhere to put a
+            local rule, which plausibly explains why this proposal reached for
+            a new one. Whether that non-materialization is itself a
+            distribution gap is a Gate-1 question. Its scoping is also worth
+            checking: the fence frames `rules/local/**` for "a fork/deployment"
+            rather than a `coc-project` consumer, though the loader itself is
+            repo-generic (repoRoot-based) and works unchanged.
+        (c) Preserve `.claude/team-memory/` BY DECLARATION, NOT by a
+            `team-memory/**` glob. A wholesale glob would FREEZE shipped
+            artifacts: sync-manifest.yaml:1310 declares `team-memory/README.md`
+            and :1613 declares `team-memory/canonical-build-targets.md`, and
+            BOTH exist on disk at this template. Preserving the whole subtree
+            makes two tier-managed governance artifacts permanently
+            un-updatable at every consumer — the artifact-flow.md Class-A
+            distribution-durability invariant inverted, and the exact opposite
+            of this entry's own central argument. Correct discriminator: a
+            manifest-DECLARED team-memory file updates from the template; an
+            UNDECLARED one (a locally-promoted signed fact) is preserved. This
+            is the same declared-vs-local split `local-rules.mjs` already uses,
+            and it folds into review_recommendation 3's positive-allowlist
+            proposal rather than competing with it.
     review_recommendations:
       - "The (a) fork is a genuine design decision for Gate-1, not a wording fix: a real three-way merge is materially more machinery than a doc correction. If loom chooses the honest-replace framing instead, (b) becomes load-bearing rather than optional — without a local namespace, honest-replace means consumers simply cannot codify rules or commands at all, which contradicts the /codify contract shipped to them."
       - "Pairs directly with the Validator-15 entry below: both are instances of 'a loom-side assumption applied unchanged at a repo that distributes to nobody.' Worth Gate-1 considering whether a single consumer-role-awareness pass across the sync-family commands closes both plus the class, rather than two point fixes."
@@ -1138,9 +1191,12 @@ changes:
         sync-manifest.yaml: add to a tier (cc/coc-core/kailash/onboarding),
         OR use_obsoleted:, OR use_exclude:
 
-      The originating filing measured one consumer: 90 findings (35 rules, 29
-      agents, 18 skill directories, 8 commands). Validators 14, 16 and 18 PASS;
-      only 15 fails, and it fails the entire run with EXIT=1.
+      The originating filing measured one consumer: 90 findings spanning all
+      four artifact types (rules, agents, skill directories, commands).
+      Validators 14, 16 and 18 PASS; only 15 fails, and it fails the entire run
+      with EXIT=1. (Per-type counts deliberately omitted — a 4-tuple artifact
+      inventory is a narrower selector over 30+ consumers than the argument
+      requires; the total carries it.)
 
       VERIFIED AT THIS TEMPLATE, NOT INFERRED. `grep -n
       "coc-project\|coc-use-template\|readVersionType\|VERSION"
@@ -1149,11 +1205,29 @@ changes:
       of .claude/VERSION::type. `validateTierCompleteness` (line 1365) reads
       the manifest and the rules directory and compares them unconditionally.
 
-      EVERY BRANCH OF ITS OWN SUGGESTED REMEDIATION IS WRONG HERE. All three
-      options ask the consumer to edit `sync-manifest.yaml`. But: the consumer
+      EVERY BRANCH OF ITS OWN SUGGESTED REMEDIATION IS WRONG HERE. The four
+      failure branches offer two different option sets — rules
+      (emit.mjs:1409-1414) offers tier / use_obsoleted: / use_exclude:, while
+      agents, skill-dirs and commands (1441-1446, 1454-1459, 1476-1481) offer
+      tier / loom_only: / exclude:-obsoleted: — but EVERY option across ALL FOUR
+      branches asks the consumer to edit `sync-manifest.yaml`. But: the consumer
       distributes nothing, so no tier membership is meaningful; and
       sync-manifest.yaml is itself a SYNCED artifact, so a consumer's edit is
       overwritten on the next sync (the sibling merge-vs-replace entry above).
+
+      THE SYNCED-ARTIFACT PREMISE, CITED (it looks refuted on a first grep and
+      is not). `sync-manifest.yaml` appears under a top-level `exclude:` block
+      at sync-manifest.yaml:3400, so a reviewer checking the premise with a
+      single grep will conclude it is NOT synced and that this entry's core
+      argument collapses. It does not: sync-manifest.yaml:407-419 defines
+      `manifest_distribute: true` as an explicit "Carve-out from the global
+      `exclude: sync-manifest.yaml` rule" that ships the loom manifest to
+      multi-CLI USE templates, which then reaches consumers via
+      sync-from-template's own template-version-wins rule. Independent
+      corroboration: `emit.mjs::safeReadFileSync` (line 55) opens with a bare
+      `fs.openSync` and NO ENOENT guard, so a MISSING manifest throws rather
+      than degrading to findings — a consumer that reported 90 findings
+      demonstrably HAS the file.
       The gate therefore cannot be satisfied by any action available to the
       consumer — it can only be silenced by abandoning emit.mjs.
 
@@ -1164,15 +1238,50 @@ changes:
       one ONLY because it is synced in. On the cited rule's own reading, the
       validator should not be evaluating consumer-local artifacts at all.
 
-      FIX: gate Validator 15 on repo class — read .claude/VERSION::type and
-      run tier-completeness ONLY where the repo actually distributes
-      (`coc-source` / `coc-use-template`). At `coc-project`, SKIP with an
-      explicit recorded sentinel rather than passing silently, so the skip is
-      greppable and a future reader can tell the gate was scoped out rather
-      than quietly weakened.
+      FIX — GATE ON REPO CLASS, FAIL-CLOSED. Read `.claude/VERSION::type` and
+      **RUN tier-completeness BY DEFAULT; SKIP only on an exact, successfully
+      parsed `type === "coc-project"`.** Absent VERSION, unreadable VERSION,
+      unparseable JSON, truncated read, a typo (`coc-use_template`), or any
+      future/unrecognized type MUST **RUN** the validator and fail loud.
+
+      THE POLARITY IS LOAD-BEARING — DO NOT INVERT IT. The intuitive phrasing
+      ("run only where the repo distributes — `coc-source` / `coc-use-template`")
+      is an allowlist of types that RUN, which makes SKIP the DEFAULT for every
+      other input including a missing or corrupt VERSION. That silently
+      disables V15 at loom and at USE templates, where skipping it IS the
+      `knowledge-cascade-routing.md` MUST-2 orphan failure V15 exists to block
+      (an artifact on disk with no declared distribution fate, silently never
+      cascading). A hand-edited `type: coc-project` is the lesser bypass; the
+      greater one requires no edit at all. This also inverts a defense the
+      surrounding code already establishes — emit.mjs:1319-1343 deliberately
+      strips over-broad catch-all patterns from the declared set to keep
+      "completeness non-vacuous against a future footgun"; a skip-by-default
+      gate IS that footgun one layer up.
+
+      BELT-AND-BRACES: the skip branch MUST additionally assert the repo holds
+      no live distribution surface (no `sync_targets`, no
+      `manifest_distribute: true` in `sync-manifest.yaml`), so a repo cannot
+      self-declare `coc-project` while actually distributing.
+
+      SENTINEL MUST BE ASSERTED, NOT MERELY EMITTED. The skip records an
+      explicit sentinel rather than passing silently, AND `validate-emit` MUST
+      assert that exactly one of `PASS | FAIL | SKIPPED(coc-project)` is
+      present for V15 — otherwise a path that neither runs nor announces its
+      skip is undetectable. The sentinel cannot be spoofed (the validator emits
+      it; it is not read from input) but it CAN be silently absent, which is
+      the failure mode the assertion closes.
+
+      TRADE-OFF THIS GIVES UP (state it, do not bury it): V15 is currently the
+      consumer's ONLY structural signal that an artifact sits on disk in no
+      declared set — i.e. a locally-injected rule/agent/command. It is unusable
+      in practice (it fires 90 times), so scoping it out is right; but this is
+      NOT a pure scoping fix. The consumer loses its only undeclared-artifact
+      detector at the same moment the sibling entry proposes to make undeclared
+      local artifacts a sanctioned, sync-immune category. The replacement
+      detection belongs to that entry's namespace guards, not here.
     review_recommendations:
       - "The skip must be an explicit sentinel, not a silent pass — otherwise this fix trades a false-positive class for an invisible-coverage class, which sweep-completeness.md MUST-2 treats as the worse of the two."
-      - "Worth Gate-1 checking whether validators 14/16/18 are correct at a consumer by design or by accident. If by accident, a single repo-class-awareness pass over all four is the durable fix and this entry becomes one instance of it."
+      - "Worth Gate-1 checking whether validators 14/16/17/18 are correct at a consumer by design or by accident. If by accident, a single repo-class-awareness pass over all of them is the durable fix and this entry becomes one instance of it. Note validator 17 (emit.mjs:2068) runs AFTER v15, and v15's process.exit(1) at emit.mjs:2053 means v17 NEVER EXECUTES at a failing consumer — its status there is unknown by construction, not passing, so it must be in scope for that pass rather than assumed green."
       - "Verified claim discipline: the zero-match grep is quoted because the assertion 'emit.mjs has no repo-type gate' is exactly the kind of claim that would otherwise be carried forward unverified (verify-claims-before-write.md MUST-1). Gate-1 should re-run it against loom's own copy — this template's emit.mjs is a synced artifact and may lag loom's."
 
   - file: .claude/commands/sweep.md
@@ -1215,11 +1324,39 @@ changes:
             because both arrive as the same ERROR sentinel. The diagnostic
             value of the ERROR branch is destroyed precisely where it matters.
 
-      FIX: distinguish "module absent" from "resolver failed". Probe for the
-      module before importing (or catch ERR_MODULE_NOT_FOUND specifically) and
-      emit the not-orchestration-root N/A sentinel in that case, reserving the
-      ERROR sentinel for a module that EXISTS and then fails. This restores the
-      byte-identical-across-consumers property the command already claims.
+      FIX — KEY THE N/A ON THE RESOLVER CONFIG, NOT ON A MODULE ERROR CODE.
+      The sentinel is about whether this repo IS an orchestration root, and the
+      command's own prose already names the right signal: the 30+ consumers
+      "carry no resolver config" (sweep.md:138-144). So: **config ABSENT → N/A
+      (not-orchestration-root). Config PRESENT but the module is missing or its
+      import fails → ERROR.** Pair that with an `fs.existsSync` probe on the
+      module path rather than an error-code sniff.
+
+      DO NOT key this on `ERR_MODULE_NOT_FOUND`. Two independent defects
+      survive any fix that does:
+        (1) TRANSITIVE MASKING — a loom-links.mjs that EXISTS but whose own
+            import is missing throws the SAME code, so a code-match reports a
+            genuinely broken orchestration-root install as a clean N/A. That is
+            precisely the fault the ERROR branch exists for.
+        (2) INDUCIBLE CLEAN — delete or rename the module at loom and Sweep 9
+            reports not-orchestration-root; the entire cross-ecosystem roll-up
+            silently vanishes from the management report with NO finding.
+      Keying on the config is immune to both, because the config is a positive
+      signal independent of the module. Con (stated): it couples the gate to a
+      second path — worth it, because that path is what the sentinel is
+      actually about.
+
+      SAME PASS — THE ERROR BRANCH CURRENTLY VIOLATES THE COMMAND'S OWN
+      CONTRACT. sweep.md:138 states the gate "prints logical KEYS only (NEVER a
+      resolved absolute path — the loom-links caller contract)", but the
+      `.catch()` at :141 emits `e.message` unfiltered, which KEYS-only does not
+      cover. Node embeds the resolved specifier in an ERR_MODULE_NOT_FOUND
+      message, and /sweep output demonstrably gets committed (this cycle's
+      report sits at the repo root of a `visibility: public` template), so the
+      branch can commit an operator-absolute path. This cycle's capture was
+      hand-genericized to `<repo>/`; nothing in the code did that. FIX: emit a
+      TYPED reason (`reason=resolver-failed code=<e.code>`) or scrub the message
+      against the repo root before emission — do not print raw `e.message`.
     diff_lines: "~+6 -2 (gate block only)"
     review_recommendations:
       - "This is a defect in a DISTRIBUTED command surfaced by executing it, in the same detection-method class as the cross-repo-authz receipt entry above: the artifacts are internally consistent on inspection and the fault appears only when the command actually runs somewhere other than loom. Worth Gate-1 noting that /sweep's own Sweep-9 is currently the only sweep that cannot be trusted to report cleanly at a consumer."
