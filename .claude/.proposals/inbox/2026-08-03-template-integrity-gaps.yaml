@@ -156,3 +156,64 @@ changes:
     diff_lines: "~+4 (MUST-3 gating clause) + ~+2 (commands/codify.md Step 0 ack scope)"
 
 status: pending_review
+
+# ---------------------------------------------------------------------------
+# INGEST DISPOSITION — recorded by /sync-from-downstream at kailash-coc-rs
+# ---------------------------------------------------------------------------
+ingest_disposition:
+  ingested_at: 2026-08-03
+  ingested_by_template: kailash-coc-rs
+  arrival_lane: template-inbox-pr # PR #81, merged at c13a0bb
+  arrival_lane_matches_body_via: true # proposal-intake-trust.md MUST-3
+  fence_ii_scrub: pass # scan-synced-disclosure --root . -> exit 0, 0 findings
+  body_scrub: pass # upstream-issue-hygiene.md MUST-2 — hop-level only, no consumer identity
+  injection_review: pass # reviewed as data; zero reviewer-directed imperatives
+  wrong_lane_check: pass # all 5 paths .claude/** COC-artifact — none is SDK code
+  freshness_dedup: partial # 4 of 5 relayed; entry 3 already-solved (see below)
+  status: RELAYED
+  relayed_to: .claude/.proposals/latest.yaml
+  relayed_entries: 4 # manifest 44 -> 48
+  relayed_provenance: "origin: downstream, via: kailash-coc-rs"
+  next_hop: loom Gate-1 via /sync-from-use
+  claim_verification: >-
+    All FIVE claims re-verified mechanically at this template before relay; all
+    five HELD. (1) .coc-obsoleted: the three named paths are each listed=1 in the
+    manifest AND tracked=YES in the git index; validate-emit.mjs imports
+    o1-citation-check and loom-links.local.example.json references repin-targets,
+    confirming the live inbound importers. (2) reconcile-settings-hooks.mjs is
+    absent on disk AND untracked while validate-emit.mjs references it at 3 sites.
+    (3) the sync-from-canon-fetch static import — see already_solved below.
+    (4) MANDATORY_SCOPE is exactly the two named entries with no journal path,
+    and commands/codify.md carries the journal MUST gate. (5) coc-sync-landing.md
+    line 32 mandates `gh pr merge --admin --merge --delete-branch` with
+    REVIEW_REQUIRED parking BLOCKED, and commands/codify.md:35 +
+    knowledge-convergence.md:75 both chain their end-of-session step to it.
+  already_solved:
+    entry: 3 # .claude/bin/sync-from-canon-fetch.mjs static loom_only import
+    disposition: NOT-RELAYED
+    evidence: >-
+      Fixed at THIS template THIS SESSION, commit 8ece215 (manifest entry 40),
+      before this offer was ingested. The offer was authored against 2.24.0 where
+      the static import was live, so the claim was CORRECT at authoring time.
+      Verified now: `grep -n 'import { resolveRemote }' sync-from-canon-fetch.mjs`
+      returns no match; the import is a guarded dynamic import with a null-stub
+      degrade. Recorded explicitly rather than dropped silently so Gate-1 reads
+      the offer as 5/5 accurate, not 4/5.
+  notes: >-
+    Entry 1 (.coc-obsoleted) ENRICHES the already-relayed entry 23 rather than
+    duplicating it — it adds that the paths are TRACKED (not merely present), that
+    two have live inbound importers, and the purge/restore LOOP (step 2.6 purge vs
+    step 5 template-wins overlay; the overlay wins, so every cycle's receipt
+    records a purge that did not persist). Flagged to land WITH entry 23.
+    Entry 4 (codify-lease) is INVISIBLE at this template because coordination is
+    disabled here, so integrity-guard passes through before the covering-lease
+    check evaluates. Recorded in the relay so Gate-1 does not read
+    non-reproduction as refutation; it bites every coordination-ON consumer.
+    Entry 5 is labelled a GOVERNANCE PROPOSAL by its author, correctly — it is a
+    trade-off decision, not a defect, and the author supplied the honest
+    counter-case (MUST-3 exists because REVIEW_REQUIRED parking stranded
+    deliveries). It is the ADJACENT AXIS to this cycle's entries 33-39: those
+    fence downstream->upstream completion, this fences agent->own-main completion,
+    which MUST-4 explicitly permits. Recommended to loom as a set. This template's
+    own ingest reproduced the own-main axis independently — it admin-merged an
+    inbox PR autonomously under exactly the MUST-3 authority entry 5 names.
