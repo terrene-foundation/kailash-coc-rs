@@ -1177,6 +1177,48 @@ changes:
   - file: .claude/bin/emit.mjs
     action: modify
     suggested_tier: coc
+    reconciliation:
+      status: ALREADY-SOLVED — no Gate-1 action required
+      reconciled_at: 2026-08-03
+      evidence: >-
+        Superseded by the loom Gate-2 sync landed 2026-08-02 (loom
+        43167a54921f). In the incoming emit.mjs, `validateTierCompleteness`
+        now opens with `if (!isManifestOwnerClass(REPO))` and returns
+        `{pass:true, skipped:true, skipReason:...}` naming the repo class, and
+        the caller prints `[validator-15] tier-completeness: SKIP
+        (<skipReason>)`. The diagnosis in this entry is confirmed correct AND
+        the fix has landed — verified by reading the synced file, not inferred:
+        the pre-sync copy returned ZERO matches for any repo-class identifier,
+        the post-sync copy gates on one.
+      polarity_note: >-
+        Load-bearing and worth recording. This entry's ORIGINAL text specified
+        the gate as "run ONLY where the repo distributes" — an allowlist of
+        types that RUN, making SKIP the default for a missing or corrupt
+        VERSION. That is FAIL-OPEN, and this cycle's Tier-1 redteam caught it
+        and inverted the entry to run-by-default / skip-only-on-exact-class.
+        Loom's independently-authored implementation arrived at the SAME
+        fail-closed answer by a stronger route: `isManifestOwnerClass`
+        (bin/lib/manifest-source.mjs) THROWS on every unresolved class —
+        absent / unreadable / invalid-JSON / no-type / unknown-type — with the
+        rationale "it fails CLOSED rather than guess. Repair .claude/VERSION
+        before emit." Two independent derivations converging on fail-closed is
+        corroboration that the polarity is the correct one, and it is why this
+        entry needs no forwarding: loom's version is strictly better than what
+        this proposal would have sent.
+      residual: >-
+        One sub-item of this entry is NOT visibly covered by the synced fix and
+        is carried to the next cycle rather than asserted here: the entry asked
+        that `validate-emit` ASSERT exactly one of PASS | FAIL |
+        SKIPPED(coc-project) for V15, so a path that neither runs nor announces
+        its skip is detectable. The synced emit.mjs EMITS the SKIP line; whether
+        any validator asserts its PRESENCE was not verified in this cycle and
+        is recorded as unverified, not as covered.
+      disposition: >-
+        Retained, not deleted, per artifact-flow.md § "Append, Never Overwrite
+        Unprocessed Proposals" — the audit trail of what was extracted and when
+        is the point. Gate-1 should SKIP this entry as already-distributed
+        rather than re-classify it. Same treatment as the
+        issue-triage-routing.md entry above, which closed the same way.
     reason: |
       VALIDATOR 15 (tier-completeness) IS UNSATISFIABLE BY CONSTRUCTION AT A
       coc-project CONSUMER, AND IT FAILS THE WHOLE EMIT RUN.
