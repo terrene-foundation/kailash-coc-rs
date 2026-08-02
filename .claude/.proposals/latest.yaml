@@ -1750,4 +1750,333 @@ changes:
       exactly where its provenance is supposed to land. This cycle's provenance
       fell back to PR bodies and commit messages.
 
+  # ===================================================================
+  # 2026-08-03 /codify — UPFLOW OPEN-NEVER-COMPLETE cluster (entries 33-39)
+  # origin: use-template. Co-owner-directed: a downstream /codify cascade MERGED
+  # its upflow PR into its upstream template's main. Entries 33-39 are ONE fix at
+  # four layers and are a DEPENDENT SET — classify and land TOGETHER. The rule
+  # without the adapters is unenforced prose; the adapters without the prose leave
+  # the surface that misled the agent still advertising the merge. Reference impl
+  # landed locally at 8ece215 (Class-A non-durable here — the proposal is durable).
+  # ===================================================================
+  - file: .claude/rules/upstream-issue-hygiene.md
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved. `grep -rn "never merge\|MUST NOT merge\|not merge"`
+      across `.claude/rules/`, `.claude/commands/`, `sync-flow.md` and the inbox
+      README at 2.24.0 returns exactly ONE hit — `commands/sweep.md:57` "never
+      merge red [CI]" — unrelated. NO clause in the corpus prohibits a downstream
+      from merging into its upstream.
+    reason: >-
+      ADDS MUST-4 "OPEN, NEVER COMPLETE" — A DOWNSTREAM UPFLOW OPENS A PR AND
+      STOPS. THE CAUSE WAS AN ABSENCE, NOT A BAD INSTRUCTION: MUST-1 gates
+      `gh issue create` / `gh pr create` — SUBMISSION — and is SILENT on
+      COMPLETION, so the one act needing a fence was the one act no clause named.
+      Submission and completion are different acts with different owners: the
+      consumer proposes, the upstream maintainer disposes.
+      WHY IT MATTERS BEYOND TIDINESS: the upstream's ingest is the ONLY place the
+      offer is scrubbed against the upstream's denylist, reviewed as untrusted
+      data, deduped against work already relayed, and lane-checked. A self-merged
+      offer skips ALL FOUR while still producing an `ingest_disposition` receipt
+      that reads as though they ran — an unreviewed change wearing a reviewed
+      change's provenance, cascading to every sibling consumer that pulls. Worse
+      than an unmerged PR, not merely untidy.
+      The clause carries an explicit NO-EXCEPTION / no-human-gate-unlocks-it
+      statement because every plausible rationalization here sounds responsible
+      ("I opened it so I own it" / "the human already approved the filing" / "the
+      maintainer is slow" / "CI is green so review is a formality" / "I have admin
+      so I am a maintainer" / "--auto isn't merging"). It states the invariant both
+      halves reduce to: YOU MAY ONLY COMPLETE A PR ON THE REPO YOU ARE. Ships
+      canonical 8-field Wiring, clause-scoped.
+    diff_lines: "+62 -0"
+    template_ingest_note: >-
+      SEVERITY ROUTING IS DELIBERATE — worth Gate-1 attention. Regression-within-
+      grace routes to the PRE-EXISTING `critical` trigger (cross-repo write
+      outside scope → L1), NOT the generic 1-step `regression_within_grace`. A
+      downstream merging into an upstream's main IS a cross-repo write, and
+      `repo-scope-discipline.md` already classes that critical; routing it softer
+      would make this clause WEAKER than the rule it composes with. No new key is
+      minted — the existing trigger describes the act exactly.
+  - file: .claude/hooks/lib/vcs-github-adapter.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved. At 2.24.0 `completeUpflowPR` has NO repo-identity guard
+      and NO callers anywhere (`grep -rn completeUpflowPR .claude/` returns only
+      the two adapter definitions and one sync-flow.md prose line).
+    reason: >-
+      THE STRUCTURAL HALF OF MUST-4 — A FAIL-CLOSED `selfRepoRef` FENCE. At 2.24.0
+      this primitive was DEFINED, EXPORTED, AND CALLER-LESS: a documented merge
+      capability (`PUT repos/{o}/{r}/pulls/{n}/merge`) sitting on the upflow lane
+      with nothing gating it and nothing using it. Prose alone is not load-bearing
+      against that.
+      THE FENCE: `selfRepoRef` becomes REQUIRED and is compared case-insensitively
+      against `repoRef`; a mismatch refuses BEFORE the transport fires. It reduces
+      to "you may only complete a PR on the repo you are", permitting the
+      legitimate maintainer use (`/sync-from-downstream` merging its OWN inbox PR)
+      while making the downstream case structurally impossible — a consumer's own
+      repo identity can never equal its upstream's.
+      FAILS CLOSED BY CONSTRUCTION: an ABSENT or malformed `selfRepoRef` REFUSES
+      rather than defaulting to `repoRef`, so a caller that never considered the
+      invariant cannot merge by omission. The docstring requires `selfRepoRef` be
+      derived from `.claude/VERSION::repo` verified against `git remote`, never a
+      literal.
+      HONEST BOUND, stated not papered over: this fences the ADAPTER path. An agent
+      typing `gh pr merge --repo <upstream>` at the CLI bypasses it entirely; that
+      residual is named in the Wiring's Detection field, with a
+      `validate-bash-command.js` tripwire as the Phase-2 target.
+    diff_lines: "+45 -2"
+  - file: .claude/hooks/lib/vcs-azure-adapter.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: "NOT already solved — same as the GitHub sibling: no repo-identity guard at 2.24.0."
+    reason: >-
+      PROVIDER-PARITY TWIN OF ENTRY 34 — the identical own-repo-only fence on the
+      ADO adapter, adapted to its `{org, project, repo}` repoRef shape. Landed in
+      the SAME change per `security.md` § Enforcement-Surface Parity: a new
+      fail-closed dimension MUST land at EVERY independent surface in the same PR
+      or the un-fenced provider simply becomes the bypass — self-inflicted here,
+      since both adapters are reachable from one `getRepoProvider` dispatch.
+    diff_lines: "+34 -0"
+  - file: .claude/audit-fixtures/upflow-open-never-complete/run.mjs
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: "NEW directory — no fixture coverage for `completeUpflowPR` exists at 2.24.0."
+    reason: >-
+      FIXTURES THAT PROVE THE FENCE BITES (`cc-artifacts.md` Rule 9). Seven inline
+      cases across BOTH providers: refuse-downstream-merging-upstream,
+      refuse-absent-selfRepoRef (fail-closed), allow-maintainer-merging-own-repo
+      (the fence must NOT break the legitimate ingest path), and
+      case-insensitive-own-repo-still-allowed (a dropped `toLowerCase()` would
+      spuriously refuse a correct maintainer merge).
+      THE TRANSPORT SPY IS THE LOAD-BEARING DESIGN CHOICE: each case asserts the
+      transport NEVER FIRED, not merely that `ok === false`. "Did the network call
+      happen?" is the discriminating question — a fence returning `ok:false` AFTER
+      merging would pass a naive assertion.
+      Every case records the MUTATION that reds it per `instrument-discipline.md`
+      MUST-2(b). VERIFIED, not assumed: neutering the `sameRepo` check turns the
+      suite RED (1/7, the refuse-downstream case); restoring returns exit 0.
+    diff_lines: "+178 -0 (new file)"
+  - file: .claude/skills/30-claude-code-patterns/sync-flow.md
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved. The Step-7c § at 2.24.0 has no stop-point statement and
+      its provider-dispatch bullet actively advertises the merge primitive.
+    reason: >-
+      FIXES THE PROSE SURFACE THAT ACTUALLY MISLED THE AGENT. At 2.24.0 line 233
+      listed all THREE methods in ONE sentence — `createUpflowPR`,
+      `createUpflowIssue`, and "maintainer-side completion → `completeUpflowPR`" —
+      closing with "the agent-followed CLI equivalents are `gh pr create` /
+      `gh issue create` / `gh pr merge`". A downstream agent reading its OWN upflow
+      procedure sees `gh pr merge` presented as an agent-followed equivalent,
+      qualified only by "maintainer-side" — which a consumer that JUST OPENED THE
+      PR can plausibly read as itself.
+      THE FIX: the consumer lane is restated as EXACTLY TWO methods with "There is
+      NO third consumer-lane method: the upflow OPENS and STOPS";
+      `completeUpflowPR` is explicitly relocated OFF the lane; the ADO bullet's
+      "the SAME three methods" is corrected to two; and a new § "The Step-7c
+      stop-point (MUST)" states the PR URL IS the deliverable and names the BLOCKED
+      reasoning "the cascade hasn't happened until it's merged" — the cascade is
+      the upstream's ingest → Gate-1 → `/sync-to-use`, not the merge.
+    diff_lines: "+9 -3"
+  - file: .claude/commands/codify.md
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved. Step 7c(5) at 2.24.0 ends at "no auto-submission, no
+      standing approval" with no stop-point.
+    reason: >-
+      THE COMMAND SURFACE'S OWN STOP-POINT — the highest-reachability surface for
+      this failure. Step 7c(5) gains "OPEN ONLY — Step 7c STOPS at an open PR", the
+      MUST-4 citation, the reason (MUST-1 authorizes SUBMISSION never COMPLETION),
+      and a pointer to the structural fence. A downstream agent running `/codify`
+      reads Step 7c(5) directly, whereas `sync-flow.md` is the depth file it may or
+      may not open. `commands/codify.md` is on the `self-referential-codify.md`
+      allowlist, so this edit is itself self-referential and gated accordingly.
+    diff_lines: "+1 -1"
+  - file: .claude/.proposals/inbox/README.md
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved. The § Contract at 2.24.0 states the human gate and the
+      never-edit-another-proposer rule, but nothing about merging.
+    reason: >-
+      THE SURFACE DOWNSTREAM AUTHORS ACTUALLY READ — the ACCOUNTABILITY +
+      TRANSPARENCY half of the directive. Adds an "OPEN the PR — never merge it"
+      bullet in the consumer's own terms: your Step 7c is COMPLETE when the PR is
+      open; the PR URL is the handoff; your human gate authorizes SUBMITTING the
+      offer, never COMPLETING it; and the four things the upstream's ingest does
+      that a self-merge skips. The rule and adapters make the wrong act impossible;
+      this file is where a downstream author learns WHY the boundary exists before
+      hitting it.
+    diff_lines: "+9 -0"
+  # ===================================================================
+  # 2026-08-03 /codify — issue resolutions + one backlog-surfaced finding
+  # ===================================================================
+  - file: .claude/bin/sync-from-canon-fetch.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    source_issue: "kailash-coc-rs#75"
+    dedup_evidence: >-
+      Entry 31 FILED this defect; this entry carries its FIX. Entry 22
+      (`commands/sweep.md`) is the sibling instance on a different artifact.
+    reason: >-
+      FIXES THE STATIC `loom_only` IMPORT (the fix for filed entry 31). The
+      top-level `import { resolveRemote } from "./lib/loom-links.mjs"` killed the
+      module at LOAD with ERR_MODULE_NOT_FOUND at every consumer and template —
+      including the `canon-root` no-op path that never needed the resolver at all.
+      Replaced with the guarded dynamic-import shape already proven in-tree at
+      `bin/loom-doctor.mjs:57` (top-level `await import` in try/catch → null stub),
+      preserving the synchronous `resolveCanonTip` signature.
+      THE DEGRADE IS NOT SILENT ERROR HIDING (`zero-tolerance.md` Rule 3): absence
+      collapses into the PRE-EXISTING typed `unresolved-canon-remote` error, which
+      now additionally names the actionable fix that does NOT require the resolver
+      ("declare upstream_canon.url explicitly"). VERIFIED: the module imports
+      cleanly, and a sweep confirms NO remaining distributed artifact statically
+      imports a fenced module — closing the class, not the instance.
+    diff_lines: "+22 -2"
+  - file: .claude/hooks/lib/journal-reserve.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    source_issue: "kailash-coc-rs#76"
+    dedup_evidence: "Entry 32 FILED this defect; this entry carries its FIX."
+    reason: >-
+      FIXES THE COORDINATION-GATE ASYMMETRY (the fix for filed entry 32).
+      `reserveJournalSlot` gains `requireSigningIdentity` (DEFAULT TRUE — the
+      signed path is byte-unchanged), and `reserveJournalSlotSigned` now reads
+      `isCoordinationEnabled(repoDir)` and passes it through, returning
+      `record_emit: {emitted:false, reason:"coordination-disabled"}` — the SAME
+      shape `codify-lease.js` already returns, so both primitives finally report
+      identically on the same repo.
+      THE SCOPING ARGUMENT: when coordination is OFF only `display_id` is
+      load-bearing, because it is the ONLY identity field the reserved FILENAME
+      embeds; `verified_id` and `person_id` exist to stamp the SIGNED coordination
+      record such a repo never emits. The relaxation is exactly as wide as the
+      thing that stops existing — not a blanket bypass.
+      VERIFIED all three ACs: reservation now succeeds on this coordination-off
+      repo, `record_emit` matches the lease's shape, and the signed path STILL
+      rejects an incomplete identity.
+    diff_lines: "+31 -9"
+  - file: .codex-mcp-guard/test-server.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    source_issue: "kailash-coc-rs#74"
+    dedup_evidence: >-
+      NOT already filed. Entry 30 filed #74 as a CONFIRMED fail-open; that
+      classification is RETRACTED here. No prior entry concerns the precondition.
+    reason: >-
+      ⚠ RETRACTS AND CORRECTS ENTRY 30. `signing-mutation-guard.js` IS NOT
+      FAIL-OPEN. The guard is CORRECT and needs no change; THE DEFECT IS A STALE
+      TEST PRECONDITION.
+      WHAT ACTUALLY HAPPENS: the guard gates its entire substrate — both the §4.2
+      sibling-porcelain check AND the degraded-mode block — behind
+      `isCoordinationEnabled()` (the MO-OPT W1-c opt-in gate), passing through
+      BEFORE either predicate is evaluated when coordination is OFF. That
+      passthrough is DELIBERATE and documented in the hook: coordination is opt-in
+      / OFF by default, and on a solo or un-enrolled repo an absent signing key
+      means "un-enrolled", NOT "degraded" — blocking every tracked-path Edit
+      because no GPG key is configured would be the real disruption. The harness
+      drove both degraded lanes with `cwd: process.cwd()` (coordination-OFF),
+      asserting a block on a lane the guard does not gate.
+      THE DISCRIMINATING TEST: driving the guard against a temp repo with the
+      tier-2 override `{enabled:true}` produces exit 2 + `permissionDecision:
+      "deny"` + `[BLOCK]` — EXACTLY what `03-block-degraded-mode-mutation/
+      expected.txt` specifies. The `npm test` exit 1 was REAL; the fail-open
+      DIAGNOSIS was not.
+      FIX: a `makeCoordinationEnabledRepo()` helper builds a coordination-ON temp
+      repo (tracking `README.md`, the path `V4A_PATCH` targets) and both degraded
+      lanes drive against it; `npm test` now exits 0 with both lanes DENYING.
+      Tier-2 force-ON is deliberate — `coordination-mode.js` ASYMMETRIC PRECEDENCE
+      always honors `enabled:true` but REFUSES `enabled:false` on an enrolled repo,
+      so the precondition cannot be repurposed to weaken a real repo.
+      PROCESS NOTE FOR GATE-1: the originating filing explicitly caveated "filed as
+      a finding to verify, not an established regression — my direct invocation may
+      not reproduce the harness's exact preconditions." That caveat was CORRECT and
+      was overridden by the ingesting session, which reproduced the exit-1 and
+      inferred fail-open from it. Reproducing a SYMPTOM is not confirming a
+      DIAGNOSIS (`evidence-first-claims.md` MUST-4).
+    diff_lines: "+45 -6"
+  - file: .claude/audit-fixtures/signing-mutation-guard/README.md
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    source_issue: "kailash-coc-rs#74"
+    dedup_evidence: >-
+      NOT already solved. The README at 2.24.0 tabulates the six fixtures and their
+      dispositions but states NO coordination precondition.
+    reason: >-
+      DOCUMENTS THE PRECONDITION SO THE MISDIAGNOSIS CANNOT RECUR; closes #74's
+      AC-1 (canonical fixture invocation established). The README now LEADS with
+      "PRECONDITION — coordination MUST be ON (read this before triaging a
+      'fail-open')", stating that every `block` disposition presumes an enrolled
+      repo, that a coordination-OFF passthrough is CORRECT and not a regression,
+      and that #74 was filed from exactly this shape. It carries a copy-pasteable
+      canonical invocation reproducing the documented exit-2 block by hand.
+      WHY THIS IS THE DURABLE HALF: the harness fix (entry 42) makes the suite
+      green, but ANY future reader driving these fixtures BY HAND — which is what
+      the filer did — hits the same passthrough and can re-derive the same wrong
+      conclusion. A fixture directory whose expected dispositions are unreachable
+      without an undocumented precondition is a trap.
+    diff_lines: "+41 -0"
+  - file: .codex-mcp-guard/server.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already filed anywhere. Surfaced by THIS cycle's anchored
+      `codify-backlog.mjs` run — invisible to session memory, which is the point of
+      the anchored enumerator.
+    reason: >-
+      THE GUARD TEST SUITE POLLUTES THE REAL TRUST-SUBSTRATE LEDGER. Running
+      `npm test` in `.codex-mcp-guard/` writes SYNTHETIC fail-closed records into
+      the live `.claude/learning/violations.jsonl` — records naming fixture paths
+      like `__nonexistent_b1_hook__.js`, `__nonexistent_820_hook__.js`, and tmpdir
+      `load-crash.js` files.
+      MEASURED, not inferred: `wc -l` before a run = 67, after = 77 — A DELTA OF 10
+      SYNTHETIC RECORDS PER RUN. Across this session's runs they accumulated to 55
+      of the 87 items (63%) in this cycle's codify backlog.
+      THREE CONSEQUENCES: (a) the `/codify` backlog is swamped by test noise,
+      degrading the anchored enumerator that exists precisely to be trustworthy;
+      (b) the records carry NO `rule_id` and NO `severity`, so they are
+      STRUCTURALLY UNADDRESSABLE — Step 6b cannot set `addressed_by` on a record
+      with no rule to address, so they never drain and will inflate every future
+      backlog; (c) `violations.jsonl` is the input to `trust-posture.md` MUST-4
+      cumulative-window math, so a ledger any test run can append to is a
+      posture-integrity surface, not merely noise.
+      SUGGESTED FIX: route the guard's violation sink through an env-overridable
+      path (the shape `LOOM_ECOSYSTEM_CONFIG` already uses) and point the harness
+      at a tmpdir, so the suite exercises the real code path against a throwaway
+      ledger. Loom decides the mechanism; the invariant is that a test run MUST NOT
+      append to the live trust-substrate ledger.
+    diff_lines: "unknown until loom picks the sink mechanism"
+    template_ingest_note: >-
+      Filed against `server.js` as the likely sink owner, but the precise write
+      site was NOT pinned this cycle — stated so Gate-1 re-derives it rather than
+      trusting the path. The MEASUREMENT (67 → 77 per run) is the load-bearing
+      evidence and reproduces in one command.
+
 status: pending_review
