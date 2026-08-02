@@ -1044,4 +1044,186 @@ changes:
       - "INTERIM LOCAL FIX APPLIED at this template: `.claude/cross-repo-authz/` added to .gitignore in the REPO-OWNED region (above the managed markers, so durable across /sync-to-use), with a comment instructing removal once the managed block covers it. Verified: `git check-ignore -q` now matches. The four receipts written this session are therefore local-only and were NOT committed — condition 4 (receipt written BEFORE the action) was still satisfied."
       - "Pairs with the `.session-notes.migrated` entry and the roster half of the enrollment GAP-A entry: three instances now of 'a COC-produced file the ignore policy does not cover, in a public template.' Strongly suggests the tier-wide fix is a POSITIVE-ALLOWLIST sweep — enumerate every path a COC hook/bin/command can WRITE, and assert each is either gitignored or intentionally committed — rather than a fourth point fix. That sweep is the durable close of this class."
 
+  # ─────────────────────────────────────────────────────────────────────────
+  # 2026-08-02 codify cycle — Route-A consumer filings + one sweep-surfaced
+  # defect. Provenance is hop-level only (origin: downstream, via: this
+  # template) per upstream-issue-hygiene.md MUST-2; no consumer project name,
+  # operator identifier, or internal consumer path is carried below. Counts
+  # quoted from the filings are retained because they are load-bearing evidence
+  # of blast radius and carry no identity.
+  # ─────────────────────────────────────────────────────────────────────────
+
+  - file: .claude/commands/sync-from-template.md
+    action: modify
+    suggested_tier: coc
+    reason: |
+      THE HEADLINE CONTRACT AND THE OPERATIVE RULE CONTRADICT EACH OTHER, AND
+      THE RULE IS THE ONE THAT RUNS.
+
+      § "Merge Semantics" states: "This is a **merge**, not an overwrite."
+      Fourteen lines later the operative Rule states: "If a file exists in BOTH
+      the template and this repo, the template version wins (it's the upstream
+      source)." Template-version-wins IS an overwrite. There is no per-file
+      merge, no three-way merge, and no conflict surface anywhere in the
+      command. Preservation is by PATH CATEGORY only:
+        agents/project/** · skills/project/** · learning/** · .proposals/** ·
+        settings.local.json · workspaces/** · root CLAUDE.md
+
+      WHY THIS DESTROYS CONSUMER WORK. The same command instructs downstream
+      consumers to codify locally ("/codify writes to .claude/agents/project/
+      and .claude/skills/project/ and stays LOCAL"). But there is no
+      `rules/project/` and no `commands/project/` — verified mechanically at
+      this template: `grep -cE 'rules/project|commands/project'
+      .claude/commands/sync-from-template.md` returns 0. So a consumer has a
+      sanctioned local home for agents and skills, and NONE for rules or
+      commands. Two consequences follow:
+        (1) A consumer that edits a shared rule loses the edit silently. The
+            originating filing measured one consumer: 15 of 18 rules differing
+            from the template carried local commits — one rule with 11 local
+            edits, three with 7, two with 5. A sync discards all of them with
+            no conflict, no warning, and no record.
+        (2) A consumer that authors a NEW local rule is preserved only by
+            accident, via the "exists ONLY in this repo" clause. The moment the
+            template ships a file of the same name, the local rule is silently
+            overwritten.
+
+      This is not incidental drift. Those local edits are the consumer's own
+      codified institutional knowledge — produced by the /codify cycle this
+      very framework prescribes. The framework tells consumers to codify, then
+      provides no durable home for two of the four artifact types it asks them
+      to codify into.
+
+      SECOND INSTANCE OF THE SAME GAP. `.claude/team-memory/**` is absent from
+      the preserved list (verified: `grep -n "team-memory"
+      .claude/commands/sync-from-template.md` returns no match), so a sync
+      overwrites it. Per knowledge-convergence.md these are per-repo SIGNED
+      facts carrying promoted_by / signed / body_anchor frontmatter — per-repo
+      state in the same class as learning/**, which IS preserved. Signed
+      per-repo state being replaced by another repo's copy is a correctness
+      problem, not only a data-loss one.
+
+      FIX (loom Gate-1 decides the mechanism; the contract must end up
+      self-consistent either way):
+        (a) EITHER make the headline true — a real merge with a conflict
+            surface for locally-modified shared artifacts; OR state plainly
+            that shared artifacts are REPLACED and drop the "merge" framing.
+            The current text promises the first and performs the second, which
+            is worse than either alone because consumers plan around the
+            promise.
+        (b) Give consumers a sanctioned local namespace for EVERY artifact
+            type they are told to codify into — `rules/project/**` and
+            `commands/project/**` alongside the existing agents/ and skills/
+            pair — and add them to the preserved list.
+        (c) Add `.claude/team-memory/**` to the preserved list (per-repo signed
+            state, same class as learning/**).
+    review_recommendations:
+      - "The (a) fork is a genuine design decision for Gate-1, not a wording fix: a real three-way merge is materially more machinery than a doc correction. If loom chooses the honest-replace framing instead, (b) becomes load-bearing rather than optional — without a local namespace, honest-replace means consumers simply cannot codify rules or commands at all, which contradicts the /codify contract shipped to them."
+      - "Pairs directly with the Validator-15 entry below: both are instances of 'a loom-side assumption applied unchanged at a repo that distributes to nobody.' Worth Gate-1 considering whether a single consumer-role-awareness pass across the sync-family commands closes both plus the class, rather than two point fixes."
+      - "Recommend the preserved-path list be re-derived as a POSITIVE ALLOWLIST over artifact types (per cc-artifacts.md Rule 10) rather than extended entry-by-entry — team-memory/** is the second path found missing from it, which is the signal that enumeration is drifting behind the artifact surface."
+
+  - file: .claude/bin/emit.mjs
+    action: modify
+    suggested_tier: coc
+    reason: |
+      VALIDATOR 15 (tier-completeness) IS UNSATISFIABLE BY CONSTRUCTION AT A
+      coc-project CONSUMER, AND IT FAILS THE WHOLE EMIT RUN.
+
+      `sync-manifest.yaml` is loom's DISTRIBUTION manifest. It is synced INTO a
+      consumer as an artifact. `validateTierCompleteness` then applies loom's
+      distribution-completeness gate to a repo whose .claude/VERSION::type is
+      `coc-project` — a repo that distributes to nobody. Every artifact the
+      consumer authored locally is reported unmanaged:
+
+        <rule>.md: unmanaged — declare its distribution fate in
+        sync-manifest.yaml: add to a tier (cc/coc-core/kailash/onboarding),
+        OR use_obsoleted:, OR use_exclude:
+
+      The originating filing measured one consumer: 90 findings (35 rules, 29
+      agents, 18 skill directories, 8 commands). Validators 14, 16 and 18 PASS;
+      only 15 fails, and it fails the entire run with EXIT=1.
+
+      VERIFIED AT THIS TEMPLATE, NOT INFERRED. `grep -n
+      "coc-project\|coc-use-template\|readVersionType\|VERSION"
+      .claude/bin/emit.mjs` returns ZERO matches — emit.mjs contains no
+      repo-class gate of any kind, so Validator 15 runs identically regardless
+      of .claude/VERSION::type. `validateTierCompleteness` (line 1365) reads
+      the manifest and the rules directory and compares them unconditionally.
+
+      EVERY BRANCH OF ITS OWN SUGGESTED REMEDIATION IS WRONG HERE. All three
+      options ask the consumer to edit `sync-manifest.yaml`. But: the consumer
+      distributes nothing, so no tier membership is meaningful; and
+      sync-manifest.yaml is itself a SYNCED artifact, so a consumer's edit is
+      overwritten on the next sync (the sibling merge-vs-replace entry above).
+      The gate therefore cannot be satisfied by any action available to the
+      consumer — it can only be silenced by abandoning emit.mjs.
+
+      THIS CONTRADICTS THE RULE THE VALIDATOR ITSELF CITES. Validator 15 cites
+      knowledge-cascade-routing.md MUST-2, whose own scope clause reads: "the
+      manifest gate is LOOM-side, NOT the originator's ... The ABSENCE of a
+      local sync-manifest.yaml in an originator is EXPECTED". The consumer has
+      one ONLY because it is synced in. On the cited rule's own reading, the
+      validator should not be evaluating consumer-local artifacts at all.
+
+      FIX: gate Validator 15 on repo class — read .claude/VERSION::type and
+      run tier-completeness ONLY where the repo actually distributes
+      (`coc-source` / `coc-use-template`). At `coc-project`, SKIP with an
+      explicit recorded sentinel rather than passing silently, so the skip is
+      greppable and a future reader can tell the gate was scoped out rather
+      than quietly weakened.
+    review_recommendations:
+      - "The skip must be an explicit sentinel, not a silent pass — otherwise this fix trades a false-positive class for an invisible-coverage class, which sweep-completeness.md MUST-2 treats as the worse of the two."
+      - "Worth Gate-1 checking whether validators 14/16/18 are correct at a consumer by design or by accident. If by accident, a single repo-class-awareness pass over all four is the durable fix and this entry becomes one instance of it."
+      - "Verified claim discipline: the zero-match grep is quoted because the assertion 'emit.mjs has no repo-type gate' is exactly the kind of claim that would otherwise be carried forward unverified (verify-claims-before-write.md MUST-1). Gate-1 should re-run it against loom's own copy — this template's emit.mjs is a synced artifact and may lag loom's."
+
+  - file: .claude/commands/sweep.md
+    action: modify
+    suggested_tier: coc
+    reason: |
+      SWEEP 9's PRE-CONDITION GATE THROWS AT EVERY CONSUMER INSTEAD OF EMITTING
+      ITS N/A SENTINEL — SURFACED BY RUNNING /sweep, NOT BY READING IT.
+
+      Sweep 9's gate is designed to self-detect the orchestration root and emit
+      a clean sentinel everywhere else. The command's own prose states the
+      intent: the N/A sentinel keeps "the distributed command byte-identical on
+      the 30+ downstream consumers (which carry no resolver config)", and
+      separately that an ERROR sentinel "is itself a finding — surface it".
+
+      Those two statements are in conflict at every consumer, because the gate
+      opens with an unconditional dynamic import of
+      `.claude/bin/lib/loom-links.mjs` and that module is FENCED loom_only.
+      Verified: `sync-manifest.yaml:2870` reads
+        `- .claude/bin/lib/loom-links.mjs # why: F1030a — fenced loom_only;
+           purge the stale BUILD-lane copy.`
+      so the module is not merely absent from distributed lanes — it is
+      actively purged from them. Confirmed on disk here: `.claude/bin/lib/`
+      contains 9 tracked files and loom-links.mjs is not among them.
+
+      OBSERVED OUTPUT at this template (verbatim, path genericized):
+        <!-- sweep-ecosystem:v1:ERROR reason=Cannot find module
+             '<repo>/.claude/bin/lib/loom-links.mjs' -->
+
+      The `.catch()` that exists to report a genuine resolver failure instead
+      catches a module-not-found that is the EXPECTED state everywhere the
+      command is distributed. Two consequences:
+        (1) Every consumer and template running /sweep emits a spurious
+            finding, which the command's own contract instructs the reader to
+            surface — manufacturing recurring noise in a management decision
+            report whose value depends on its findings being real.
+        (2) A REAL resolver error (a corrupt loom-links, a genuine
+            configuration fault at the orchestration root) becomes
+            indistinguishable from the expected not-orchestration-root case,
+            because both arrive as the same ERROR sentinel. The diagnostic
+            value of the ERROR branch is destroyed precisely where it matters.
+
+      FIX: distinguish "module absent" from "resolver failed". Probe for the
+      module before importing (or catch ERR_MODULE_NOT_FOUND specifically) and
+      emit the not-orchestration-root N/A sentinel in that case, reserving the
+      ERROR sentinel for a module that EXISTS and then fails. This restores the
+      byte-identical-across-consumers property the command already claims.
+    diff_lines: "~+6 -2 (gate block only)"
+    review_recommendations:
+      - "This is a defect in a DISTRIBUTED command surfaced by executing it, in the same detection-method class as the cross-repo-authz receipt entry above: the artifacts are internally consistent on inspection and the fault appears only when the command actually runs somewhere other than loom. Worth Gate-1 noting that /sweep's own Sweep-9 is currently the only sweep that cannot be trusted to report cleanly at a consumer."
+      - "Check for siblings before fixing point-wise: any other distributed command or hook that imports a loom_only lib will fail the same way. A grep across distributed commands/hooks for imports of loom_only-fenced paths would establish whether this is one instance or a class."
+      - "The fix must not simply broaden the catch to always emit N/A — that would silence a genuine orchestration-root resolver fault, trading this false-positive for a false-negative at the one repo where Sweep 9 actually does work."
+
 status: pending_review
