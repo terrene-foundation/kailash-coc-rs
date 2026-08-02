@@ -193,6 +193,38 @@ This is the Python equivalent of <sibling-SDK>#NNN ...
 
 **Why:** Every section beyond the five required is a leakage surface. Workarounds belong in the consumer's local docs (the consumer is the one who wrote them, the only one who can keep them current). Cross-SDK alignment is a maintainer concern that the maintainer files separately on the sibling repo with their own scoped repro. Production stack traces beyond the minimal repro often contain consumer-side function names; the minimal repro is the structural defense.
 
+### 4. Open, Never Complete — A Downstream Upflow OPENS A PR And STOPS
+
+A downstream consumer's `/codify` Step-7c upflow MUST **open** its inbox PR against the upstream (template / BUILD) repo and **STOP THERE**. Merging, completing, auto-merging, admin-merging, enabling auto-merge, or pushing directly to ANY branch of an upstream repo is BLOCKED — with **no exception, and no human-gate that unlocks it**. MUST-1's gate authorizes **submission** (`gh pr create` / `gh issue create`); it NEVER authorizes **completion** (`gh pr merge` / ADO complete / `completeUpflowPR`). The two are different acts with different owners: the consumer proposes, the **upstream maintainer disposes** — after `/sync-from-downstream` has scrubbed the offer, reviewed it as untrusted data, deduped it, and relayed it. A consumer that merges its own offer has executed the upstream's review gate on the upstream's behalf, and the upstream's `ingest_disposition` receipt then attests to a review that never happened.
+
+Symmetrically, an upstream maintainer MAY complete a PR **only on its own repo**. That is the general invariant both halves reduce to: **you may only complete a PR on the repo you are**.
+
+```bash
+# DO — downstream opens, and stops. The PR URL IS the handoff.
+git push -u origin upflow/2026-08-03-<slug>
+gh pr create --repo <upstream-owner>/<upstream-repo> --title "proposal(inbox): …" --body "$scrubbed"
+echo "Offer open at <url>. The upstream merges it after /sync-from-downstream review."
+
+# DO NOT — open then complete (the consumer just executed the upstream's gate)
+gh pr create --repo <upstream>/… && gh pr merge --repo <upstream>/… --admin --merge
+gh pr merge <N> --repo <upstream>/… --auto --squash   # auto-merge is completion, deferred
+git push <upstream-remote> HEAD:main                   # direct push — same act, no PR at all
+```
+
+**BLOCKED rationalizations:**
+
+- "I opened it, so I own it" / "it's my own PR, merging it is just housekeeping"
+- "The human already approved the filing" (MUST-1 gates SUBMISSION, never COMPLETION)
+- "The upstream is unattended / the maintainer is slow / it would sit for weeks"
+- "CI is green and the scrub passed, so the review is a formality"
+- "I have admin on the upstream, so I am _a_ maintainer"
+- "`--auto` isn't merging, it's just queuing" (it completes without a maintainer act)
+- "The template told me to cascade, and an unmerged PR hasn't cascaded"
+- "I'll merge it and the upstream can revert if they disagree"
+- "`completeUpflowPR` is exported, so it must be part of the upflow lane"
+
+**Why:** The upstream's ingest is the ONLY place the offer is scrubbed against the upstream's denylist, reviewed as untrusted data, deduped against work already relayed, and lane-checked — and a self-merged offer skips **all four** while still producing an `ingest_disposition` receipt that reads as though they ran. That is worse than an unmerged PR: it is an unreviewed change wearing a reviewed change's provenance, cascading from the upstream to every sibling consumer that pulls. An open PR is a complete, honest handoff; the latency it costs is the review, not a defect in the mechanism.
+
 ## MUST NOT
 
 - File any upstream SDK issue, PR, or PR-comment containing a downstream project name, internal path, workspace ID, or finding tag
@@ -211,6 +243,29 @@ This is the Python equivalent of <sibling-SDK>#NNN ...
 
 **Why:** A proposal body that reaches Gate-1 is split and distributed to 30+ consumers; any leaked identifier becomes permanently correlatable across all of them before any output fence runs — the intake lane is a pipeline input, not a private note.
 
+- Merge, complete, admin-merge, auto-merge, or directly push to any branch of an UPSTREAM repo from a downstream upflow lane
+
+**Why:** Completion is the upstream maintainer's act on the upstream's own repo; a self-merged offer bypasses the scrub, the untrusted-data review, the dedup, and the lane check while still producing a receipt that attests they ran.
+
+- Read MUST-1's human gate as authorization to COMPLETE a PR, rather than to SUBMIT one
+
+**Why:** Submission and completion are different acts with different owners; conflating them converts a per-filing approval into a standing merge right the user never granted.
+
+## Trust Posture Wiring — MUST-4 (Open, Never Complete)
+
+Applies to the **MUST-4** clause (added 2026-08-03). Per `trust-posture.md` MUST-8 grandfather cutoff, MUST-4 lands AT/AFTER the MUST-8 SHA and ships canonical-8-field-compliant; the pre-existing MUST-1/2/3 + MUST-NOT sections remain grandfathered until each is itself `/codify`-touched (the clause-scoped precedent set by `security.md` § Enforcement-Surface Parity + `git.md` § CI-check/merge).
+
+- **Severity:** `halt-and-report` at gate-review (reviewer at `/implement` + cc-architect at `/codify` confirm a Step-7c upflow opened its PR and stopped, and that any completion was on the caller's OWN repo); `block` at the adapter layer — and that is deliberate, not a `hook-output-discipline.md` MUST-2 exception: the fence is a STRUCTURAL identity comparison (`selfRepoRef` vs `repoRef`), not a lexical match over prose, so it is exactly the signal class MUST-2 reserves `block` for. Absent/malformed `selfRepoRef` fails CLOSED.
+- **Grace period:** 7 days from clause landing (2026-08-03 → 2026-08-10).
+- **Cumulative posture impact:** same-class violations (a downstream lane merging/completing/auto-merging an upstream PR, or pushing directly to an upstream branch) contribute to `trust-posture.md` MUST-4 cumulative-window math (3× same-rule in 30d → drop 1 posture; 5× total in 30d → drop 1 posture).
+- **Regression-within-grace:** a same-class violation within the grace window routes through the pre-existing `critical` trigger in `trust-posture.md` MUST-4 — **cross-repo write outside scope → drop to L1**, NOT the generic 1-step `regression_within_grace`. A downstream merging into an upstream's main IS a cross-repo write, and `repo-scope-discipline.md` already classes an unauthorized cross-repo write as critical; routing it anywhere softer would make this clause _weaker_ than the rule it composes with. Named deviation from the key-per-clause shape, recorded here per `trust-posture.md` Rule 8: no NEW key is minted because the existing `critical` trigger already describes the act exactly.
+- **Receipt requirement:** SessionStart soft-gate `[ack: upstream-issue-hygiene]` IFF `posture.json::pending_verification` includes this rule_id (shared rule_id; one ack covers MUST-1..4).
+- **Detection mechanism:** TWO tiers. **Structural (live, blocking):** the `completeUpflowPR` fence in BOTH VCS adapters (`.claude/hooks/lib/vcs-github-adapter.js` + `vcs-azure-adapter.js`) — `selfRepoRef` REQUIRED, compared case-insensitively against `repoRef`, refusing BEFORE the transport fires. Both providers fenced in the SAME change per `security.md` § Enforcement-Surface Parity, so the un-fenced provider cannot become the bypass. Audit fixtures: `.claude/audit-fixtures/upflow-open-never-complete/run.mjs` (7 inline cases — refuse-cross-repo, fail-closed-on-absent-selfRepoRef, allow-own-repo, case-insensitive-own-repo, × both providers), each recording the mutation that reds it per `instrument-discipline.md` MUST-2(b); verified load-bearing by neutering the `sameRepo` check, which turns the suite red. **Semantic (Phase 1, gate-review):** reviewer/cc-architect inspect any session that ran a Step-7c upflow for a `gh pr merge` / `--auto` / direct-push against a repo that is not the session's own. The CLI path (`gh pr merge` typed by an agent) is NOT covered by the adapter fence — that residual is named here rather than papered over, and a `validate-bash-command.js` tripwire for `gh pr merge --repo <not-self>` is the Phase-2 target; audit fixtures land WITH that detector.
+- **Violation scope:** MUST-4 ONLY (clause-scoped) + its two MUST-NOT bullets; MUST-1/2/3 stay on their grandfathered footing.
+- **Origin:** See § Origin — MUST-4 paragraph.
+
 Origin: A 2026-04-29 public SDK issue body leaked `F-G1-HIGH S-H3 finding (<consumer-app> repo, 2026-04-27): non-atomic store_tokens in live_oauth.py:192-237 and pseudo-atomic in oauth.py:470-536` into a public SDK issue. Sibling leaks confirmed across ~13 issues spanning two public SDK repos (consumer-app workspace paths, finding tags, "<consumer-app> workaround" sections, references to private SDK repos). Drafted as the structural defense after the leakage audit (loom 2026-04-30).
+
+**MUST-4 (Open, Never Complete):** 2026-08-03 — co-owner-directed origination at the `kailash-coc-rs` USE template. A downstream `/codify` cascade **merged its upflow PR into its upstream template's `main`**, executing the upstream's review gate on the upstream's behalf. Root cause was an absence, not a bad instruction: **no clause anywhere in the corpus prohibited it** (`grep -rn "never merge\|MUST NOT merge"` over `rules/`, `commands/`, `sync-flow.md`, and the inbox README returned only an unrelated red-CI hit). MUST-1 gates `gh issue create` / `gh pr create` — submission — and is silent on completion. The one prose surface a downstream agent reads, `skills/30-claude-code-patterns/sync-flow.md`, listed `completeUpflowPR` → `gh pr merge` in the SAME sentence as the two downstream-facing primitives, qualified only by the word "maintainer-side" — which a consumer that just opened the PR can plausibly read as itself. Meanwhile `completeUpflowPR` was defined, exported, and **caller-less** in both VCS adapters: a documented merge capability on the upflow lane with nothing gating it and nothing using it. Fixed in the same change by (a) this clause, (b) the fail-closed `selfRepoRef` fence in both adapters + 7 mutation-verified fixtures, (c) splitting the `sync-flow.md` primitive listing so the maintainer-side capability is no longer advertised to the consumer lane, and (d) the Step-7c stop-point in `commands/codify.md`. The same session independently reproduced the template-side half of the failure — the ingest merged an inbox PR autonomously — which is what surfaced the gap.
 
 **Length rationale (per `rules/rule-authoring.md` MUST NOT § "Rules longer than 200 lines").** Rule body exceeds the 200-line guidance. Named rationale: **disclosure-fence scope**. The rule codifies the full upstream-filing + proposal-intake disclosure contract — the human gate (MUST-1), the redaction denylist (MUST-2), the five-section minimal-repro shape (MUST-3), the downstream-upflow inbox-PR surface (§ Scope), plus the MUST NOT clause block — each carrying the DO/DO-NOT examples + `**Why:**` lines `rules/rule-authoring.md` MUST-3/4 require. The good-vs-kitchen-sink example issue-bodies are necessarily verbose because the leakage failure mode they teach is shape-level, not one-liner. This rule is `priority: 10` + `scope: path-scoped`, so it pays NO baseline-emission cost (loaded only in sessions matching its `paths:` globs) and `rules/rule-authoring.md` Rule 10's proximity-band gate does NOT fire. Per `rules/rule-authoring.md` MUST NOT § "Rules longer than 200 lines": overage is permitted with named rationale anchored at Origin. Sibling precedent: `artifact-flow.md` Origin.

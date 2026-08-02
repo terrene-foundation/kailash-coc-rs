@@ -616,6 +616,41 @@ function completeUpflowPR(transport, prRef) {
   const repoRef = prRef && prRef.repoRef;
   const rv = validateRepoRef(repoRef);
   if (!rv.valid) return _fail("completeUpflowPR: repoRef invalid", rv.reason);
+
+  // --- Open-Never-Complete fence (upstream-issue-hygiene.md MUST-4) ---------
+  // Provider-parity twin of the GitHub adapter's fence (security.md
+  // § Enforcement-Surface Parity: a new fail-closed dimension lands at EVERY
+  // surface in the SAME change, or the un-fenced provider becomes the bypass).
+  // Fails CLOSED: absent/malformed selfRepoRef refuses.
+  const selfRepoRef = prRef.selfRepoRef;
+  const sv = validateRepoRef(selfRepoRef);
+  if (!sv.valid) {
+    return _fail(
+      "completeUpflowPR: selfRepoRef required",
+      `completing a PR requires proving the target is YOUR OWN repo — pass selfRepoRef ` +
+        `derived from .claude/VERSION::repo verified against the origin remote. ` +
+        `upstream-issue-hygiene.md MUST-4 (Open, Never Complete): a downstream upflow ` +
+        `opens a PR and STOPS; merging is the upstream maintainer's act. (${sv.reason})`,
+    );
+  }
+  const _lc = (v) => String(v).toLowerCase();
+  const sameRepo =
+    _lc(selfRepoRef.org) === _lc(repoRef.org) &&
+    _lc(selfRepoRef.project) === _lc(repoRef.project) &&
+    _lc(selfRepoRef.repo) === _lc(repoRef.repo);
+  if (!sameRepo) {
+    return _fail(
+      "completeUpflowPR: cross-repo completion refused",
+      `refusing to complete ${repoRef.org}/${repoRef.project}/${repoRef.repo}` +
+        `!${prRef && prRef.prId} from ${selfRepoRef.org}/${selfRepoRef.project}/` +
+        `${selfRepoRef.repo}. A PR may only be completed on the caller's OWN repo. ` +
+        `upstream-issue-hygiene.md MUST-4 (Open, Never Complete) — the downstream ` +
+        `upflow lane opens a PR against its upstream and stops there.`,
+      { self: selfRepoRef, target: repoRef },
+    );
+  }
+  // -------------------------------------------------------------------------
+
   const prId = prRef.prId;
   if (
     (typeof prId !== "string" && typeof prId !== "number") ||

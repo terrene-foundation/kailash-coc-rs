@@ -128,17 +128,31 @@ function reserveJournalSlot(dir, opts) {
   }
   const o = opts || {};
   const identity = o.identity;
-  if (
+  // `requireSigningIdentity` defaults TRUE — the signed path is unchanged.
+  // Coordination-OFF repos pass FALSE: only `display_id` is load-bearing there,
+  // because it is the ONLY identity field the reserved FILENAME embeds. The
+  // roster-derived `person_id` and the key-derived `verified_id` exist to stamp
+  // the SIGNED coordination record, which a coordination-off repo never emits
+  // (`multi-operator-coordination.md`: opt-in, OFF by default — "a solo /
+  // un-enrolled repo pays nothing"). Requiring them unconditionally made the
+  // /codify journal gate UNSATISFIABLE on such a repo. See issue #76.
+  const requireSigningIdentity = o.requireSigningIdentity !== false;
+  const missingDisplay =
+    !identity ||
+    typeof identity.display_id !== "string" ||
+    !identity.display_id;
+  const missingSigningFields =
     !identity ||
     typeof identity.verified_id !== "string" ||
     !identity.verified_id ||
     typeof identity.person_id !== "string" ||
-    !identity.person_id ||
-    typeof identity.display_id !== "string" ||
-    !identity.display_id
-  ) {
+    !identity.person_id;
+  if (missingDisplay || (requireSigningIdentity && missingSigningFields)) {
     throw new Error(
-      "reserveJournalSlot: opts.identity must carry non-empty verified_id, person_id, display_id",
+      requireSigningIdentity
+        ? "reserveJournalSlot: opts.identity must carry non-empty verified_id, person_id, display_id"
+        : "reserveJournalSlot: opts.identity must carry a non-empty display_id " +
+            "(coordination disabled — verified_id/person_id not required)",
     );
   }
   if (typeof o.type !== "string" || !VALID_TYPES.has(o.type.toUpperCase())) {
@@ -328,6 +342,16 @@ function reserveJournalSlotSigned(repoDir, opts) {
     };
   }
 
+  // Coordination is OPT-IN, OFF BY DEFAULT (`multi-operator-coordination.md`).
+  // The sibling primitive `codify-lease.js` already gates record emission on
+  // this exact predicate; this one did not, so two coordination primitives
+  // invoked by the SAME /codify run disagreed about whether coordination was
+  // required — the lease degraded cleanly while the journal gate hard-failed on
+  // a null person_id, making /codify's mandatory journal receipt unsatisfiable
+  // on every coordination-off repo. See issue #76.
+  const { isCoordinationEnabled } = require("./coordination-mode.js");
+  const coordinationOn = isCoordinationEnabled(repoDir);
+
   const absDir = path.join(repoDir, dirRel);
   let reservation;
   try {
@@ -335,6 +359,7 @@ function reserveJournalSlotSigned(repoDir, opts) {
       identity,
       type: o.type,
       topic: o.topic,
+      requireSigningIdentity: coordinationOn,
     });
   } catch (err) {
     return {
@@ -356,6 +381,19 @@ function reserveJournalSlotSigned(repoDir, opts) {
       slot_num: slotNum,
       filename: `${slot}-${displaySlug}-${reservation.type}-${reservation.slug}.md`,
     });
+  }
+
+  // Coordination OFF → the reservation is a LOCAL high-water slot; there is no
+  // signed coordination record to emit and no sibling clone to inform. Mirrors
+  // `codify-lease.js`'s `record_emit.reason: "coordination-disabled"` shape, so
+  // both primitives now report the same way on the same repo.
+  if (!coordinationOn) {
+    return {
+      ok: true,
+      reservation,
+      record: null,
+      record_emit: { emitted: false, reason: "coordination-disabled" },
+    };
   }
 
   const { emitSignedRecord } = require("./coc-emit.js");

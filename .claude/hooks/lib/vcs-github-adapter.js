@@ -534,13 +534,60 @@ function createUpflowIssue(transport, issueSpec) {
 
 /**
  * Complete (merge) the upflow PR once the template maintainer approves.
- * descriptor: { repoRef:{owner,name}, prId, mergeMethod? }.
+ * descriptor: { repoRef:{owner,name}, selfRepoRef:{owner,name}, prId, mergeMethod? }.
  * prId is PATH-interpolated → integer-only guard; mergeMethod is enum-guarded.
+ *
+ * MAINTAINER-SIDE ONLY — NEVER on the downstream upflow lane.
+ * `upstream-issue-hygiene.md` MUST-4 ("Open, Never Complete"): a downstream
+ * consumer's Step-7c upflow OPENS a PR against its upstream and STOPS. Merging
+ * is the upstream maintainer's act, on the upstream's own repo, after the
+ * `/sync-from-downstream` scrub + review-as-untrusted-data.
+ *
+ * The fence below is the STRUCTURAL half of that rule: this primitive refuses
+ * to complete a PR on any repo other than the caller's OWN. `selfRepoRef` is
+ * REQUIRED and MUST be derived from `.claude/VERSION::repo` verified against
+ * `git remote get-url origin` (the `classifyTemplateDeclaration` identity) —
+ * NEVER from a literal, and never from the same descriptor field the caller is
+ * trying to merge into. A downstream that reaches this function at all fails
+ * closed, because its own repo identity can never equal its upstream's.
  */
 function completeUpflowPR(transport, prRef) {
   const repoRef = prRef && prRef.repoRef;
   const rv = validateRepoRef(repoRef);
   if (!rv.valid) return _fail("completeUpflowPR: repoRef invalid", rv.reason);
+
+  // --- Open-Never-Complete fence (upstream-issue-hygiene.md MUST-4) ---------
+  // Fails CLOSED: absent/malformed selfRepoRef refuses, so a caller that never
+  // considered the invariant cannot merge by omission.
+  const selfRepoRef = prRef.selfRepoRef;
+  const sv = validateRepoRef(selfRepoRef);
+  if (!sv.valid) {
+    return _fail(
+      "completeUpflowPR: selfRepoRef required",
+      `completing a PR requires proving the target is YOUR OWN repo — pass selfRepoRef ` +
+        `derived from .claude/VERSION::repo verified against git remote. ` +
+        `upstream-issue-hygiene.md MUST-4 (Open, Never Complete): a downstream upflow ` +
+        `opens a PR and STOPS; merging is the upstream maintainer's act. (${sv.reason})`,
+    );
+  }
+  const sameRepo =
+    String(selfRepoRef.owner).toLowerCase() ===
+      String(repoRef.owner).toLowerCase() &&
+    String(selfRepoRef.name).toLowerCase() ===
+      String(repoRef.name).toLowerCase();
+  if (!sameRepo) {
+    return _fail(
+      "completeUpflowPR: cross-repo completion refused",
+      `refusing to merge ${repoRef.owner}/${repoRef.name}#${prRef && prRef.prId} from ` +
+        `${selfRepoRef.owner}/${selfRepoRef.name}. A PR may only be completed on the ` +
+        `caller's OWN repo. upstream-issue-hygiene.md MUST-4 (Open, Never Complete) — ` +
+        `the downstream upflow lane opens a PR against its upstream and stops there; ` +
+        `the upstream merges it after /sync-from-downstream review.`,
+      { self: selfRepoRef, target: repoRef },
+    );
+  }
+  // -------------------------------------------------------------------------
+
   const prId = prRef.prId;
   if (
     (typeof prId !== "string" && typeof prId !== "number") ||
