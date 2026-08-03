@@ -275,7 +275,31 @@ function _splitRemoteUrl(url) {
   // verbatim, so it does not match a caller's host set and the derivation
   // REFUSES. That is the fail-closed direction and is intended — do not "fix"
   // it by stripping the dot without re-checking every host-set comparison.
-  const host = authority.split(":")[0].trim().toLowerCase();
+  // IPv6 literals are BRACKETED, and the port split below is colon-delimited —
+  // so a naive `split(":")[0]` returns `"["` for `https://[::1]/o/r`, which is
+  // not a host at all. Take the bracketed span whole, then any `:port` after
+  // the closing bracket. Found by a differential check against the real
+  // resolvers (`ssh -G` for scp forms, WHATWG `URL` for scheme forms), which
+  // reported derived `[` vs oracle `[::1]`.
+  //
+  // The OUTCOME was already safe — `[` matches no entry in GITHUB_HOSTS and is
+  // not an ADO host, so the fence refused — and neither provider serves an IPv6
+  // literal, so this refuses either way. It is corrected because a
+  // known-INCORRECT parse is what each of this PR's three host defects began as:
+  // safe-by-accident becomes a bypass the moment a caller compares hosts
+  // differently. Parity with the resolver is the property; the refusal is a
+  // consequence, not the guarantee.
+  let host;
+  if (authority.startsWith("[")) {
+    const close = authority.indexOf("]");
+    if (close === -1) return null; // unterminated literal — refuse
+    host = authority
+      .slice(0, close + 1)
+      .trim()
+      .toLowerCase();
+  } else {
+    host = authority.split(":")[0].trim().toLowerCase();
+  }
   if (!host) return null;
 
   const segments = String(rest)
