@@ -108,6 +108,33 @@ function normalizeComponent(v) {
   // the repo components reach PATH positions and were unguarded.
   if (s === "." || s === ".." || s.includes("/") || s.includes("\\"))
     return null;
+  // POSITIVE ALLOWLIST, replacing what was a four-member denylist (`.`, `..`,
+  // `/`, `\`). Everything else in the `\x00-\x7f` range the ASCII guard admits
+  // used to survive to an interpolated request path — `?` and `#` (which
+  // TERMINATE a path: `.../repositories/repo?x=1/pullrequests/5` addresses
+  // `repo` with the rest as query string), percent-encoded separators (`%2e%2e`
+  // reconstitutes `..` under RFC 3986 §6.2.2.2 normalization at any server or
+  // proxy that decodes), and raw control bytes (`\x00`, `\r`, `\n`).
+  //
+  // Measured, so the change is not theoretical: an origin of
+  // `https://dev.azure.com/org/proj/_git/repo?x=1` derived `ado.repo` as
+  // `"repo?x=1"` before this line existed.
+  //
+  // REACHABILITY WAS ALREADY CLOSED, and this is defense-in-depth, stated so no
+  // reader mistakes it for a live-bug fix: both adapters call `validateRepoRef`
+  // as their FIRST statement, and the fence requires the derived component to
+  // COMPARE EQUAL to a `repoRef` component that has passed GITHUB_REPO_RE /
+  // ADO_REPO_RE — neither of which admits any of these bytes. So the dangerous
+  // derived value could never match a caller value and always refused. That
+  // safety depended on a SECOND module's regex staying strict; the allowlist
+  // here makes it a property of this function.
+  //
+  // The set is the INTERSECTION of what both providers' own validators accept
+  // (`[A-Za-z0-9._-]`, quoted with line numbers above), so no legitimate owner,
+  // name, org, project, or repo is affected. A denylist would have to enumerate
+  // every future dangerous byte; this closes the class (`cc-artifacts.md`
+  // Rule 10 — positive allowlists where the vocabulary is enumerable).
+  if (!/^[A-Za-z0-9._-]+$/.test(s)) return null;
   return s && s !== "_git" ? s : null;
 }
 
@@ -188,8 +215,31 @@ function _splitRemoteUrl(url) {
   // Anchoring sends that input to the scp-style branch, where the authority is
   // `evil.com` and the provider host check then refuses. Scheme charset is
   // RFC-3986 (`ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )`).
+  // The `#`/`?` authority cut belongs to the SCHEME branch ONLY, because it
+  // models CURL's parsing — and curl is what git uses for https. Applying it to
+  // the scp-style branch models nothing: OpenSSH does not treat `#`/`?` as
+  // authority terminators at all. An earlier revision applied the cut to BOTH
+  // branches and justified it in prose that had the operand order backwards; it
+  // claimed cutting an scp authority "yields `evil.com` where ssh would connect
+  // to `github.com` — a DISAGREEMENT that resolves as a refusal". The opposite
+  // happened, because the cut runs BEFORE the userinfo split, so the `#` payload
+  // lands in the DISCARDED userinfo and the RETAINED host is the decoy:
+  //
+  //   git@github.com#@evil.com:org/repo      (well-formed scp-style; git accepts it)
+  //     cut at `#`      -> "git@github.com"
+  //     lastIndexOf("@")-> host "github.com"   <- fence reads GITHUB
+  //     ssh -G          -> host evil.com       <- ssh CONNECTS to EVIL  (measured)
+  //
+  // That is strictly worse than the unanchored-scheme defect fixed alongside it:
+  // that one produced a URL `git ls-remote` REFUSES, so nothing was reachable,
+  // whereas this remote is well-formed and FETCHES. Scoping the cut to the
+  // scheme branch makes each branch model its OWN resolver: the scp branch now
+  // splits at the last `@` exactly as OpenSSH does, so the authority above
+  // resolves to `evil.com` and the provider host check refuses.
+  let isSchemeForm = false;
   const schemeMatch = s.match(/^[A-Za-z][A-Za-z0-9+.-]*:\/\//);
   if (schemeMatch) {
+    isSchemeForm = true;
     const afterScheme = s.slice(schemeMatch[0].length);
     const firstSlash = afterScheme.indexOf("/");
     authority =
@@ -203,20 +253,21 @@ function _splitRemoteUrl(url) {
     return null; // bare filesystem path — no host, not a hosting identity
   }
 
-  // Terminate the authority at the first `#` or `?`, BEFORE the userinfo split
-  // below. curl — which git uses for https — ends the authority at either
-  // character, so `https://evil.com#@github.com/o/r` resolves EVIL.COM. Without
-  // this cut the `lastIndexOf("@")` below would take `github.com` as the host,
-  // and a caller's host check would pass on a URL git resolves elsewhere. The
-  // cut is deliberately applied to the scp-style branch too: OpenSSH splits
-  // user@host at the LAST `@` and does not treat `#`/`?` as terminators, so
-  // cutting there yields `evil.com` where ssh would connect to `github.com` —
-  // a DISAGREEMENT that resolves as a refusal (unrecognized host), never as an
-  // authorization. Neither provider's real authorities contain these
-  // characters, so no legitimate remote is affected.
-  const authCut = authority.search(/[#?]/);
-  if (authCut !== -1) authority = authority.slice(0, authCut);
+  // SCHEME FORM ONLY: terminate the authority at the first `#` or `?`, BEFORE
+  // the userinfo split below. curl ends the authority at either character, so
+  // `https://evil.com#@github.com/o/r` resolves EVIL.COM; without this cut the
+  // `lastIndexOf("@")` below would take `github.com` as the host and a caller's
+  // host check would pass on a URL git resolves elsewhere. Neither provider's
+  // real authorities contain these characters, so no legitimate remote is
+  // affected.
+  if (isSchemeForm) {
+    const authCut = authority.search(/[#?]/);
+    if (authCut !== -1) authority = authority.slice(0, authCut);
+  }
 
+  // Both forms split userinfo at the LAST `@` — RFC 3986 for the scheme form,
+  // OpenSSH's own rule for the scp form (verified: `ssh -G git@github.com#@evil.com`
+  // prints `host evil.com`, `user git@github.com#`).
   const at = authority.lastIndexOf("@");
   if (at !== -1) authority = authority.slice(at + 1);
   // No trailing-dot normalization is applied, and that is deliberate: DNS

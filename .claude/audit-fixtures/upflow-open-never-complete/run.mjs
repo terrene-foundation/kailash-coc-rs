@@ -412,6 +412,84 @@ const cases = [
     // in-process bound is therefore ~zero; this is pinned as a CHECK-vs-USE
     // divergence (the fence believing it is a repo git cannot reach), which is
     // the same class as the `#`/`?` cut, not as a new privilege escalation.
+    // PATH-POSITION BYTE ALLOWLIST. `normalizeComponent` used a four-member
+    // DENYLIST (`.`, `..`, `/`, `\`), so every other byte the ASCII guard
+    // admits survived into an interpolated request path — `?`/`#` (which
+    // TERMINATE a path), percent-encoded separators (`%2e%2e` reconstitutes
+    // `..` under RFC 3986 §6.2.2.2 at any decoding proxy), and control bytes.
+    // Measured pre-fix: this exact remote derived `ado.repo` = `"repo?x=1"`.
+    //
+    // Pinned as DEFENSE-IN-DEPTH, not a live-bug regression guard — and the
+    // distinction is recorded so a later reader does not overstate it. Both
+    // adapters call `validateRepoRef` FIRST, and the fence needs the derived
+    // component to compare EQUAL to a `repoRef` that passed GITHUB_REPO_RE /
+    // ADO_REPO_RE, neither of which admits `?`. So this never reached the
+    // transport; what changed is that the safety no longer depends on a
+    // SECOND module's regex staying strict.
+    name: "ado/path-terminator-byte-in-remote-refuses",
+    mutation:
+      "upflow-self-repo.js::normalizeComponent — revert the `/^[A-Za-z0-9._-]+$/` allowlist to the four-member `.`/`..`/`/`/`\\` denylist",
+    repo: {
+      dirName: "kailash-coc-rs",
+      remote: "https://dev.azure.com/contoso/proj/_git/repo?x=1",
+    },
+    adapter: ADO,
+    // repoRef is deliberately VALID and `?`-free. An earlier draft of this case
+    // put `repo?x=1` in the repoRef too, and it refused — but at
+    // `validateRepoRef`, the CALLER-side gate, which would refuse with or
+    // without the allowlist under test. That is a fixture asserting the wrong
+    // invariant: green, and proving nothing about this predicate. Keeping the
+    // repoRef valid puts the `?` ONLY on the derivation side, which is the side
+    // the allowlist governs.
+    prRef: {
+      repoRef: { org: "contoso", project: "proj", repo: "repo" },
+      prId: 77,
+    },
+    expect: { ok: false, fired: false },
+    // THE REASON IS WHAT DISCRIMINATES, and it is why this case is not vacuous.
+    // Both branches refuse, so `ok:false` alone would pass either way:
+    //   WITH the allowlist  -> the component is rejected during parsing, so no
+    //                          owner/name pair forms -> DERIVATION refusal.
+    //   WITHOUT it          -> `ado.repo` becomes "repo?x=1", a pair forms, and
+    //                          it refuses one step later at the identity
+    //                          COMPARISON against repoRef.repo "repo".
+    // Pinning the derivation reason is the only assertion that tells them apart.
+    expectReason: "does not parse to an owner/name pair",
+  },
+  {
+    // FOURTH authority-spoof route, and the most serious of the four: the
+    // `#`/`?` authority cut was applied to the scp-style branch, where it
+    // models NOTHING. curl terminates an authority at `#`/`?` (so the cut is
+    // right for the scheme branch); OpenSSH does not, and splits user@host at
+    // the LAST `@`. Because the cut ran BEFORE the userinfo split, the `#`
+    // payload landed in the DISCARDED userinfo and the RETAINED host was the
+    // decoy — the exact inverse of what the code's own comment claimed.
+    //
+    // BOTH halves measured, because the ssh-splitting rule is the load-bearing
+    // step and knowledge is not evidence:
+    //   ssh -G 'git@github.com#@evil.com'  ->  host evil.com, user git@github.com#
+    //   deriveSelfRepoRef (pre-fix)        ->  ok:true, host "github.com"
+    //
+    // Unlike the unanchored-scheme sibling above, `git remote add` accepts this
+    // AND it is a well-formed scp URL git hands straight to ssh — so it is a
+    // LIVE, FETCHING remote resolving to evil.com while the fence reads
+    // github.com. The "git refuses the URL anyway" mitigation that bounded the
+    // sibling's severity does NOT apply here.
+    name: "gh/scp-userinfo-fragment-spoof-refuses",
+    mutation:
+      "upflow-self-repo.js::_splitRemoteUrl — apply the `#`/`?` authCut to the scp-style branch again (drop the `isSchemeForm` guard)",
+    repo: {
+      dirName: "kailash-coc-rs",
+      remote: "git@github.com#@evil.com:terrene-foundation/kailash-coc-rs.git",
+    },
+    adapter: GH,
+    prRef: { repoRef: GH_SELF, prId: 77 },
+    expect: { ok: false, fired: false },
+    // Pins the HOST branch: the derivation must resolve `evil.com` — where ssh
+    // would actually connect — not the `github.com` decoy before the `#`.
+    expectReason: "non-GitHub self-identity refused",
+  },
+  {
     name: "gh/unanchored-scheme-authority-spoof-refuses",
     mutation:
       "upflow-self-repo.js::_splitRemoteUrl — unanchor the scheme test back to `s.includes(\"://\")` + `s.indexOf(\"://\")`",

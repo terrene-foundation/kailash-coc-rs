@@ -240,15 +240,23 @@ That is the wrong-branch-pass hole in its measured form, on the ADO lane — the
 provider where two branches share the label `completeUpflowPR: self-identity
 underivable` and differ only in reason, so the label alone cannot discriminate.
 FIVE ADO refusal cases carried no `expectReason`; every refusal case now does.
-The COUNT is deliberately not stated here — an earlier draft said "all 18",
-which was accurate when written and was already stale at 21 by the time a
-later reviewer measured it, and is 22 now. The PROPERTY (every refusal case
-carries `expectReason`) is the invariant worth asserting; the count is a
-moving number that only ever decays into a false claim. Re-derive it rather
-than trusting any sentence — the same instruction this file gives at
-§ "Re-derive the count rather than trusting this sentence":
-`grep -c 'expectReason:' run.mjs` against `grep -c 'expect: { ok: false' run.mjs`
-— the two MUST be equal.
+
+**The invariant asserted here is the PROPERTY, never a count.** The property is:
+every refusal case carries an `expectReason`. Verify it as an EQUALITY, which
+stays true at any suite size:
+
+```
+grep -c 'expectReason:' run.mjs   ==   grep -c 'expect: { ok: false' run.mjs
+```
+
+A bare count in this position has now decayed three times: an earlier draft
+asserted "all 18", which was accurate when written, measured 21 by a later
+reviewer, 22 one commit after that, and 24 by the time the sibling scp and
+path-byte cases landed. A first attempt at this correction opened "the COUNT is
+deliberately not stated here" and then stated three counts in its own next
+clause — falsified by its own continuation, which is the same claim-shape
+defect the eleventh-pass section below records. Hence the equality: it has no
+number in it to go stale.
 
 **Stated as an inference, not a measurement** (`instrument-discipline.md`
 MUST-2(b)): rows 22-24 show the cases red WITH `expectReason` present. A paired
