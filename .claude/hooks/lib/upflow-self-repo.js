@@ -127,9 +127,16 @@ function normalizeComponent(v) {
  *     `-C <path>` pins WHICH repository git resolves — an ambient `GIT_DIR`
  *     pointing at a clone of the upstream would otherwise make this derivation
  *     return the UPSTREAM's slug, which is a fence bypass, not a nuisance.
- *   - `resolveGitBinary()` returns an ABSOLUTE path, removing the PATH lookup a
- *     bare `"git"` performs. A PATH-planted `git` defeats the fence regardless
- *     of the env.
+ *   - `resolveGitBinary()` returns an ABSOLUTE path, so the spawn itself performs
+ *     no PATH lookup. Stated precisely, because an earlier draft of this comment
+ *     claimed it "removes the PATH lookup" outright and that is stronger than the
+ *     code: `git-subprocess-env.js::resolveGitBinary` tries a FIXED CANDIDATE LIST
+ *     first and falls back to `_resolveViaPath(process.env.PATH)` (`:156`) when no
+ *     candidate resolves — which is the normal case on nix / asdf / conda / Scoop
+ *     hosts. So PATH still selects the binary on those hosts; what is removed is
+ *     the lookup at spawn time, not PATH's role in resolution. A PATH-planted
+ *     `git` defeats the fence regardless of the env, which the next paragraph's
+ *     in-process bound already covers.
  *
  * An unresolvable git returns null → the caller's typed refusal. That is the
  * TIGHTEST ranking the shared module's caller contract requires: git that
@@ -170,8 +177,20 @@ function _splitRemoteUrl(url) {
 
   let authority;
   let rest;
-  if (s.includes("://")) {
-    const afterScheme = s.slice(s.indexOf("://") + 3);
+  // The scheme MUST be ANCHORED at the start. An unanchored `indexOf("://")`
+  // finds the first `://` ANYWHERE, including one sitting in the PATH of an
+  // scp-style remote, and then reads the authority out of the middle of the
+  // string: `evil.com:x/https://github.com/o/r` yielded authority `github.com`
+  // (measured: `indexOf("://")` = 16) and cleared a caller's host check on a
+  // remote whose real host is `evil.com`. That is the SAME check-vs-use
+  // divergence the fragment/query cut below exists to prevent, reached by a
+  // different route, so it is closed the same way — structurally, at the parse.
+  // Anchoring sends that input to the scp-style branch, where the authority is
+  // `evil.com` and the provider host check then refuses. Scheme charset is
+  // RFC-3986 (`ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )`).
+  const schemeMatch = s.match(/^[A-Za-z][A-Za-z0-9+.-]*:\/\//);
+  if (schemeMatch) {
+    const afterScheme = s.slice(schemeMatch[0].length);
     const firstSlash = afterScheme.indexOf("/");
     authority =
       firstSlash === -1 ? afterScheme : afterScheme.slice(0, firstSlash);

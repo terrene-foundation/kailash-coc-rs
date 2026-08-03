@@ -395,6 +395,40 @@ const cases = [
     expectReason: "non-GitHub self-identity refused",
   },
   {
+    // THIRD authority-spoof route, and the one NEITHER sibling above covered:
+    // the SCHEME itself was unanchored. `_splitRemoteUrl` used
+    // `indexOf("://")`, which finds the first `://` ANYWHERE — including one
+    // sitting in the PATH of an scp-style remote — and then read the authority
+    // out of the middle of the string. Measured on the pre-fix code:
+    // `"evil.com:x/https://github.com/o/r".indexOf("://")` = 16, so `afterScheme`
+    // began at `github.com` and the derivation returned the DECOY host, clearing
+    // a caller's `GITHUB_HOSTS` check on a remote whose real host is `evil.com`.
+    //
+    // Reachability, stated honestly rather than inflated: `git remote add`
+    // ACCEPTS this string and `git remote get-url` returns it verbatim (both
+    // measured), so the derivation genuinely receives it — but `git ls-remote`
+    // refuses it (`fatal: protocol 'evil.com:x/https' is not supported`), so it
+    // is not a fetchable remote. The delta over the module header's disclosed
+    // in-process bound is therefore ~zero; this is pinned as a CHECK-vs-USE
+    // divergence (the fence believing it is a repo git cannot reach), which is
+    // the same class as the `#`/`?` cut, not as a new privilege escalation.
+    name: "gh/unanchored-scheme-authority-spoof-refuses",
+    mutation:
+      "upflow-self-repo.js::_splitRemoteUrl — unanchor the scheme test back to `s.includes(\"://\")` + `s.indexOf(\"://\")`",
+    repo: {
+      dirName: "kailash-coc-rs",
+      remote:
+        "evil.com:x/https://github.com/terrene-foundation/kailash-coc-rs.git",
+    },
+    adapter: GH,
+    prRef: { repoRef: GH_SELF, prId: 77 },
+    expect: { ok: false, fired: false },
+    // Pins the HOST branch: anchoring routes this to the scp-style parse, whose
+    // authority is `evil.com` — so the refusal must be the host one, NOT a
+    // generic parse failure. A reason-less assertion would pass on either.
+    expectReason: "non-GitHub self-identity refused",
+  },
+  {
     // THE REGRESSION GUARD FOR THE ORIGINATING CRIT. The caller-authored
     // identity operand was removed three times — `selfRepoRef`, then
     // `_deriveSelfFn`, then `cwd` — and NOTHING detected its return. Measured:
