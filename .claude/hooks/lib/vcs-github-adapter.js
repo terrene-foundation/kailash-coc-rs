@@ -392,6 +392,20 @@ function invalidateCache(transport, scope) {
 const PR_NUMBER_RE = /^[0-9]+$/; // PR number — path-interpolated, integer only
 const MERGE_METHOD_RE = /^(merge|squash|rebase)$/; // gh merge_method enum
 
+// The hosts this adapter's transport actually talks to. `gh api` targets
+// github.com unless configured otherwise, so a derived identity from any OTHER
+// host is not an identity ON the repo this adapter would merge.
+//
+// DELIBERATELY github.com-ONLY. This repo carries no GitHub Enterprise host
+// configuration to read: the one GHES token in the tree is
+// `genesis-ceremony.js`'s `host === "ghes-shared-appliance"`, which is a
+// deployment-KIND enum in the genesis-migration routing matrix, not a hostname,
+// and `ecosystem-config.mjs`'s `registry.host` is a CONTAINER-registry host.
+// Inventing a host convention here would be a guess, so the set is closed and
+// the refusal below SAYS the limit rather than silently allowing everything
+// else. A GHES deployment adds its appliance host here, with its own transport.
+const GITHUB_HOSTS = new Set(["github.com", "www.github.com"]);
+
 /**
  * Open the human-gated upflow PR (the consumer has already pushed `head` and
  * staged the inbox proposal YAML on it). descriptor:
@@ -534,7 +548,7 @@ function createUpflowIssue(transport, issueSpec) {
 
 /**
  * Complete (merge) the upflow PR once the template maintainer approves.
- * descriptor: { repoRef:{owner,name}, prId, mergeMethod?, cwd? }.
+ * descriptor: { repoRef:{owner,name}, prId, mergeMethod? }.
  * prId is PATH-interpolated → integer-only guard; mergeMethod is enum-guarded.
  *
  * MAINTAINER-SIDE ONLY — NEVER on the downstream upflow lane.
@@ -548,14 +562,43 @@ function createUpflowIssue(transport, issueSpec) {
  * Tier-1 redteam correctly found that both operands then came off the same
  * caller-authored object — `{repoRef: X, selfRepoRef: X}` cleared it trivially,
  * so the fence stopped an ACCIDENT but not an agent that had decided to merge.
- * `upflow-self-repo.js::deriveSelfRepoRef` now reads `.claude/VERSION::repo` and
- * the live git remote and requires them to AGREE, so the operand the comparison
- * turns on is a fact about the world the caller cannot author
- * (`instrument-discipline.md` MUST-1). Disagreement, or an underivable identity,
- * REFUSES — a repo that cannot prove who it is cannot authorize a completion.
+ * `upflow-self-repo.js::deriveSelfRepoRef` derives the identity from the LIVE
+ * GIT REMOTE of this working tree, which is the SOLE authoritative source: it
+ * runs `git remote get-url origin` and parses it, and refuses if that yields no
+ * owner/name pair. There is no directory-name fallback. `.claude/VERSION::repo`
+ * is read only as a CROSS-CHECK — it can REFUSE the derivation by disagreeing
+ * with the remote, but it can never SUPPLY the identity, so a forged VERSION
+ * file can only deny a completion, never authorize one.
  *
- * `opts._deriveSelfFn` is a TEST-ONLY injection seam; production passes nothing,
- * so no caller can substitute an identity.
+ * WHAT THAT IS AND IS NOT EVIDENCE OF. The fence refuses any completion whose
+ * target does not match the identity derived from the working tree the process
+ * runs in. It CLOSES the accident class — which IS the originating incident —
+ * and raises the cost of a deliberate act. It is NOT a boundary against a caller
+ * that can choose its own working directory: `process.cwd()` is selected by
+ * whoever launches the process, so a scratch tree with `origin` pointed at the
+ * upstream derives that upstream and clears the fence. It cannot be such a
+ * boundary — a caller running arbitrary code in-process can replace
+ * `upflow-self-repo.js` outright. Removing the descriptor seams was still
+ * correct: they were forgeable by writing one object literal.
+ *
+ * THE HOST IS PART OF THE IDENTITY. `deriveSelfRepoRef` returns an owner/name
+ * pair for a remote on ANY host, so the pair alone does not say WHERE the repo
+ * lives; the fence below therefore checks `self.host` against `GITHUB_HOSTS` and
+ * refuses a non-GitHub identity, plus an ADO one, before the owner/name compare.
+ * Without the host check an internal mirror of an upstream template — an
+ * ordinary thing to have — derived to the upstream's path and cleared a merge
+ * that would have gone to github.com, a different repo than the remote names.
+ *
+ * NO DESCRIPTOR FIELD FEEDS THE DERIVATION. `deriveSelfRepoRef` takes exactly
+ * one parameter and this call site hardcodes `process.cwd()`, so the descriptor
+ * carries no `selfRepoRef`, no deriver, and no `cwd`. Two earlier rounds each
+ * MOVED the caller-authored operand (`selfRepoRef` → `_deriveSelfFn` → `cwd`)
+ * rather than removing it, and each move left the answer one field away.
+ *
+ * That is a claim about the DESCRIPTOR, and only about the descriptor. It does
+ * NOT mean the identity is out of a caller's reach: the working directory still
+ * selects it, exactly as the bound above states. Nothing in this paragraph
+ * narrows that bound.
  */
 function completeUpflowPR(transport, prRef) {
   const repoRef = prRef && prRef.repoRef;
@@ -566,14 +609,51 @@ function completeUpflowPR(transport, prRef) {
   // Fails CLOSED on every branch: underivable identity, disagreeing identity,
   // and non-self target all refuse BEFORE the transport fires.
   const selfRepo = require("./upflow-self-repo.js");
-  const derive = (prRef && prRef._deriveSelfFn) || selfRepo.deriveSelfRepoRef;
-  const d = derive((prRef && prRef.cwd) || process.cwd());
+  const d = selfRepo.deriveSelfRepoRef(process.cwd());
   if (!d || !d.ok) {
     return _fail(
       "completeUpflowPR: self-identity underivable",
       `cannot derive this repo's own identity, so a completion cannot be authorized. ` +
         `upstream-issue-hygiene.md MUST-4 (Open, Never Complete): merging is the ` +
         `upstream maintainer's act on the upstream's OWN repo. (${d && d.reason})`,
+    );
+  }
+  // The derived identity must be an identity on a host THIS adapter serves.
+  // `deriveSelfRepoRef` returns an owner/name pair for ANY host — the pair alone
+  // carries no host, so without this check a tree whose origin is an internal
+  // mirror (`https://<internal-host>/<org>/<repo>`) derives as `<org>/<repo>`,
+  // matches a github.com target with the same path, and authorizes a merge on a
+  // DIFFERENT repo than the remote names. Fails closed on any unrecognized host.
+  if (!GITHUB_HOSTS.has(d.self.host)) {
+    return _fail(
+      "completeUpflowPR: non-GitHub self-identity refused",
+      `refusing to merge ${repoRef.owner}/${repoRef.name}#${prRef && prRef.prId} — ` +
+        `this working tree's origin remote is on host ${d.self.host}, which this ` +
+        `adapter does not serve (recognized: ${[...GITHUB_HOSTS].join(", ")}; a ` +
+        `GitHub Enterprise appliance host is NOT configured in this repo, so it is ` +
+        `NOT accepted). An owner/name pair derived from another host does not ` +
+        `identify the github.com repo this merge would target. ` +
+        `upstream-issue-hygiene.md MUST-4 (Open, Never Complete).`,
+      { self: d.self, target: repoRef },
+    );
+  }
+  // Mirror image of the ADO adapter's `if (!selfAdo)` refusal, landing in the
+  // SAME change (`security.md` § Enforcement-Surface Parity): each adapter must
+  // refuse an identity belonging to the OTHER provider, or the un-fenced one is
+  // the bypass. Against the CURRENT ADO host set this is unreachable — every
+  // host `_parseAdo` recognizes (dev.azure.com, ssh.dev.azure.com,
+  // *.visualstudio.com) already fails GITHUB_HOSTS above. It is kept as the
+  // explicit statement of the invariant, so the parity holds if either host set
+  // ever changes.
+  if (d.self.ado !== null) {
+    return _fail(
+      "completeUpflowPR: Azure DevOps self-identity refused",
+      `refusing to merge ${repoRef.owner}/${repoRef.name}#${prRef && prRef.prId} — ` +
+        `this working tree's origin remote is an Azure DevOps remote ` +
+        `(${d.self.ado.org}/${d.self.ado.project}/${d.self.ado.repo}), so it cannot ` +
+        `establish a GitHub identity. upstream-issue-hygiene.md MUST-4 ` +
+        `(Open, Never Complete).`,
+      { self: d.self, target: repoRef },
     );
   }
   if (!selfRepo.isSelfRepo(repoRef, d.self)) {
@@ -608,10 +688,32 @@ function completeUpflowPR(transport, prRef) {
       `mergeMethod must be one of merge|squash|rebase; got ${JSON.stringify(mergeMethod)}`,
     );
   }
+  // THE PATH IS BUILT FROM THE DERIVED IDENTITY, NOT FROM `repoRef`.
+  // `isSelfRepo` compares NORMALIZED components (lowercased, trailing `.git`
+  // stripped, `_git` dropped) but the raw `repoRef` was what this path used to
+  // interpolate, so check and use were different strings and the invariant held
+  // only up to normalization equivalence — not the "you may only complete a PR
+  // on the repo you ARE" it states. Sourcing the path from `d.self` makes them
+  // the same bytes by construction. This is `security.md` § Path Containment's
+  // principle one surface over: resolve to the canonical form, then USE the
+  // canonical form. `prId` still comes from `prRef` — it names the PR, not the
+  // repo, and the fence makes no claim about it.
+  //
+  // On GitHub this specific divergence is likely unreachable today
+  // (`GITHUB_LOGIN_RE` forbids dots in owner, and GitHub rejects repo names
+  // ending `.git` at creation), so the fix is structural rather than a
+  // reachable-bug fix here. It is applied anyway: reachability rests on a live
+  // provider's behavior, which is not verifiable from this repo, and the ADO
+  // twin IS reachable through its dot-permitting repo pattern.
+  //
+  // Behavior note, stated rather than glossed: `d.self.*` is case-FOLDED by
+  // `normalizeComponent`, so a mixed-case repo is now addressed in lowercase.
+  // Every other difference from `repoRef` was already accepted as equal by the
+  // check immediately above.
   let r;
   try {
     r = transport(
-      `repos/${repoRef.owner}/${repoRef.name}/pulls/${String(prId)}/merge`,
+      `repos/${d.self.owner}/${d.self.name}/pulls/${String(prId)}/merge`,
       { method: "PUT", fields: { merge_method: mergeMethod } },
     );
   } catch (err) {

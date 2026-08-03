@@ -622,23 +622,39 @@ function completeUpflowPR(transport, prRef) {
   // § Enforcement-Surface Parity: a new fail-closed dimension lands at EVERY
   // surface in the SAME change, or the un-fenced provider becomes the bypass).
   // DERIVES the self-identity; does NOT accept one. There is deliberately no
-  // `selfRepoRef` descriptor field — a Tier-1 redteam found that shape compared
-  // two caller-authored operands, so it stopped an accident but not intent.
+  // `selfRepoRef` descriptor field, no deriver-injection seam, and no `cwd`
+  // field — `deriveSelfRepoRef` takes one parameter and this call site
+  // hardcodes `process.cwd()`. A Tier-1 redteam found the original shape
+  // compared two caller-authored operands, and two later rounds each MOVED that
+  // operand rather than removing it.
   //
-  // HONEST BOUND, stated rather than over-claimed (the over-claim is the exact
-  // defect this round is fixing): the shared deriver yields a 2-segment
-  // `owner/name` slug from the remote, which on an ADO remote
-  // (`<org>/<project>/_git/<repo>`) resolves to `<project>/<repo>` after `_git`
-  // is dropped. So this fence is PROJECT+REPO-anchored; `org` is NOT covered by
-  // the derivation and is compared only when the caller supplies a self org via
-  // the test seam. Project+repo anchoring is the same name-anchored reasoning
-  // `version-utils.js::classifyTemplateDeclaration` documents — the repo name is
-  // the component that survives relocation. A cross-ORG completion between two
-  // repos sharing an identical project AND repo name is the residual; it is
-  // named here and in the rule's Detection field rather than papered over.
+  // WHAT THAT IS AND IS NOT EVIDENCE OF (the same bound the GitHub twin
+  // carries; stated here too because this file is read on its own). The fence
+  // refuses any completion whose target does not match the identity derived
+  // from the working tree the process runs in. It CLOSES the accident class —
+  // an agent following stale prose that completes against its upstream is
+  // refused before the transport fires, and that accident IS the originating
+  // incident. It RAISES THE COST of a deliberate act: the caller must stand up
+  // a tree whose origin remote names the upstream rather than fill in a field.
+  // It is NOT a boundary against a caller that can choose its own working
+  // directory — `process.cwd()` is selected by whoever launches the process —
+  // and it cannot be one, since a caller able to run arbitrary code in-process
+  // can replace `upflow-self-repo.js` outright. Removing the descriptor seams
+  // was still worth doing: they were forgeable by writing one object literal.
+  //
+  // ALL THREE ADO COMPONENTS COME FROM THE DERIVATION. `deriveSelfRepoRef`
+  // parses the ADO remote itself (`dev.azure.com/<org>/<project>/_git/<repo>`
+  // and the visualstudio.com / ssh v3 forms) and returns `self.ado =
+  // {org, project, repo}`, so `org` is compared like the other two instead of
+  // being taken off `repoRef` — the earlier shape read org from the caller and
+  // therefore self-compared, a leg that could never fail. `version-utils.js::
+  // normalizeRemoteIdentity` keeps only the last two path segments and drops
+  // `_git`, which structurally loses `<org>`; that is why the ADO parse lives in
+  // the deriver rather than reusing it. A non-ADO origin remote yields
+  // `self.ado === null` and REFUSES: a repo whose remote is not an ADO remote
+  // cannot prove an ADO identity.
   const selfRepo = require("./upflow-self-repo.js");
-  const derive = (prRef && prRef._deriveSelfFn) || selfRepo.deriveSelfRepoRef;
-  const d = derive((prRef && prRef.cwd) || process.cwd());
+  const d = selfRepo.deriveSelfRepoRef(process.cwd());
   if (!d || !d.ok) {
     return _fail(
       "completeUpflowPR: self-identity underivable",
@@ -647,12 +663,17 @@ function completeUpflowPR(transport, prRef) {
         `upstream maintainer's act on the upstream's OWN repo. (${d && d.reason})`,
     );
   }
-  // Map the derived 2-segment slug onto the ADO shape: owner→project, name→repo.
-  const selfAdo = {
-    org: d.self.org || selfRepo.normalizeComponent(repoRef.org),
-    project: d.self.org ? d.self.project : d.self.owner,
-    repo: d.self.org ? d.self.repo : d.self.name,
-  };
+  const selfAdo = d.self.ado;
+  if (!selfAdo) {
+    return _fail(
+      "completeUpflowPR: self-identity underivable",
+      `this working tree's origin remote is not an Azure DevOps remote, so its ` +
+        `org/project/repo cannot be derived and an ADO completion cannot be ` +
+        `authorized. upstream-issue-hygiene.md MUST-4 (Open, Never Complete): ` +
+        `merging is the upstream maintainer's act on the upstream's OWN repo. ` +
+        `(derived as ${d.self.owner}/${d.self.name} from a non-ADO remote)`,
+    );
+  }
   if (!selfRepo.isSelfRepoAdo(repoRef, selfAdo)) {
     return _fail(
       "completeUpflowPR: cross-repo completion refused",
@@ -676,7 +697,28 @@ function completeUpflowPR(transport, prRef) {
       `prId must match /^[0-9]+$/ (PR id); got ${JSON.stringify(prId)}`,
     );
   }
-  const { org, project, repo } = repoRef;
+  // THE PATH IS BUILT FROM THE DERIVED IDENTITY, NOT FROM `repoRef`.
+  // `isSelfRepoAdo` compares NORMALIZED components (lowercased, trailing `.git`
+  // stripped, `_git` dropped) but the raw `repoRef` was what this path used to
+  // interpolate, so check and use were different strings and the invariant held
+  // only up to normalization equivalence — not the "you may only complete a PR
+  // on the repo you ARE" it states. That gap is REACHABLE on this provider:
+  // `ado-login.js:61-62` ADO_PROJECT_RE / ADO_REPO_RE are
+  // /^[A-Za-z0-9._-]{1,64}$/ — dots permitted — so `repoRef.repo = "coc-rs.git"`
+  // normalizes to `coc-rs`, compares EQUAL to a self derived as `coc-rs`, and
+  // the completion then went out against a path naming `coc-rs.git`. `org` is
+  // not a lever (ADO_ORG_RE at ado-login.js:52 admits neither dots nor
+  // underscores), but project and repo both are. Sourcing all three from
+  // `selfAdo` makes check and use the same bytes by construction —
+  // `security.md` § Path Containment's principle one surface over: resolve to
+  // the canonical form, then USE the canonical form. `prId` still comes from
+  // `prRef`; it names the PR, not the repo.
+  //
+  // Behavior note, stated rather than glossed: `selfAdo.*` is case-FOLDED by
+  // `normalizeComponent`, so a mixed-case org/project/repo is now addressed in
+  // lowercase. Every other difference from `repoRef` was already accepted as
+  // equal by the check immediately above.
+  const { org, project, repo } = selfAdo;
   let r;
   try {
     r = transport({

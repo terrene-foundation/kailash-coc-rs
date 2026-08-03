@@ -1759,6 +1759,33 @@ changes:
   # the surface that misled the agent still advertising the merge. Reference impl
   # landed locally at 8ece215 (Class-A non-durable here — the proposal is durable).
   # ===================================================================
+  - file: .claude/rules/self-referential-codify.md
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: "NOT already solved — `grep -c upstream-issue-hygiene .claude/rules/self-referential-codify.md` returns 0 at 2.24.0; the rule is absent from the Rule-2 allowlist."
+    reason: >-
+      THE GATE THAT PROTECTS MUST-4 DID NOT COVER THE RULE THAT DEFINES IT.
+      MUST-4 governs the Step-7c completion stop-point every downstream `/codify`
+      upflow passes through, which is the same codify-governing predicate that
+      admitted `issue-triage-routing.md` and `knowledge-cascade-routing.md` — but
+      `upstream-issue-hygiene.md` was not on the Rule-2 allowlist. The Tier-1
+      redteam this cycle fired only INCIDENTALLY, because the fence code happens
+      to touch `.claude/hooks/lib/**` and `.claude/audit-fixtures/**`; a
+      prose-only edit to MUST-4 alone would have tripped no entry at all.
+      NAMED BECAUSE THE VALIDATOR CANNOT CATCH THIS CLASS: `allowlist-paths-
+      coverage` (#443) checks `paths:` ⊇ allowlist, NOT whether an EDITED rule is
+      ON the allowlist — the same gap `sync-completeness.md`'s own entry records.
+      So the omission is invisible to `/sync` and had to be found by review.
+      THIS ENTRY EXISTS FOR DURABILITY, and its absence was itself a finding: the
+      allowlist edit is a local change to a SYNCED rule, which
+      `artifact-flow.md` § Distribution-Durability Invariants classes as
+      Class-A NON-DURABLE — rebuilt away by the next `/sync-to-use`. Without a
+      proposal entry loom never gains the allowlist row, and the entry's own text
+      ("Added in the same codify that lands MUST-4 per Rule 2's same-codify
+      obligation") would be FALSE at loom. The durable surface is the proposal.
+    diff_lines: "+2 -1 (vs merge-base 93551cb = 2.24.0)"
   - file: .claude/rules/upstream-issue-hygiene.md
     action: modify
     origin: use-template
@@ -1791,7 +1818,7 @@ changes:
       so I am a maintainer" / "--auto isn't merging"). It states the invariant both
       halves reduce to: YOU MAY ONLY COMPLETE A PR ON THE REPO YOU ARE. Ships
       canonical 8-field Wiring, clause-scoped.
-    diff_lines: "+62 -0"
+    diff_lines: "+62 -1 (vs merge-base 93551cb = 2.24.0)"
     template_ingest_note: >-
       SEVERITY ROUTING IS DELIBERATE — worth Gate-1 attention. Regression-within-
       grace routes to the PRE-EXISTING `critical` trigger (cross-repo write
@@ -1810,27 +1837,50 @@ changes:
       and NO callers anywhere (`grep -rn completeUpflowPR .claude/` returns only
       the two adapter definitions and one sync-flow.md prose line).
     reason: >-
-      THE STRUCTURAL HALF OF MUST-4 — A FAIL-CLOSED `selfRepoRef` FENCE. At 2.24.0
+      THE STRUCTURAL HALF OF MUST-4 — A FAIL-CLOSED OWN-REPO FENCE. At 2.24.0
       this primitive was DEFINED, EXPORTED, AND CALLER-LESS: a documented merge
       capability (`PUT repos/{o}/{r}/pulls/{n}/merge`) sitting on the upflow lane
       with nothing gating it and nothing using it. Prose alone is not load-bearing
       against that.
-      THE FENCE: `selfRepoRef` becomes REQUIRED and is compared case-insensitively
-      against `repoRef`; a mismatch refuses BEFORE the transport fires. It reduces
-      to "you may only complete a PR on the repo you are", permitting the
-      legitimate maintainer use (`/sync-from-downstream` merging its OWN inbox PR)
-      while making the downstream case structurally impossible — a consumer's own
-      repo identity can never equal its upstream's.
-      FAILS CLOSED BY CONSTRUCTION: an ABSENT or malformed `selfRepoRef` REFUSES
-      rather than defaulting to `repoRef`, so a caller that never considered the
-      invariant cannot merge by omission. The docstring requires `selfRepoRef` be
-      derived from `.claude/VERSION::repo` verified against `git remote`, never a
-      literal.
+      THE FENCE — THE IDENTITY IS DERIVED, NEVER ACCEPTED. `completeUpflowPR`
+      derives this repo's own identity from `process.cwd()` via the new
+      `hooks/lib/upflow-self-repo.js::deriveSelfRepoRef`, and refuses BEFORE the
+      transport fires when the derived identity is not the target. It reduces to
+      "you may only complete a PR on the repo you ARE", permitting the legitimate
+      maintainer use (`/sync-from-downstream` merging its OWN inbox PR) while
+      refusing the downstream case before the transport fires.
+      NO IDENTITY VALUE IS TAKEN OFF THE CALLER'S DESCRIPTOR — no `selfRepoRef`
+      field, no deriver-injection seam, no `cwd` field. (`deriveSelfRepoRef` does
+      take a `cwd` ARGUMENT, which both adapters hardcode to `process.cwd()`;
+      what was removed is the caller's ability to SUPPLY one. An earlier draft
+      here said "no `cwd` argument", which contradicted this same file 66 lines
+      later.) The caller-authored operand was
+      MOVED TWICE before it was removed (`selfRepoRef` -> `_deriveSelfFn` ->
+      `cwd`), and a Tier-1 redteam defeated each shape in turn; removing the
+      descriptor field eliminated a trivially-forgeable operand.
+      THE HONEST BOUND, because four rounds of this change over-claimed exactly
+      here: removing the PARAMETER did NOT make the operand unauthorable. The
+      identity derives from `process.cwd()`, which is selected by whoever
+      launches the process — a scratch tree with `origin` pointed at the upstream
+      derives that upstream and clears the fence. So this CLOSES the ACCIDENT
+      class (an agent following the stale prose is refused — and that accident IS
+      the originating incident) and RAISES THE COST of a deliberate act. It is
+      NOT a boundary against a caller that can choose its own working directory,
+      and it cannot be: a caller able to run arbitrary code in-process can
+      replace the module outright. Anything stronger would fail
+      `instrument-discipline.md` MUST-1, which an earlier draft of THIS BLOCK
+      cited as authority for the opposite claim.
+      WHAT IS AUTHORITATIVE: the live git remote, SOLELY. There is deliberately NO
+      directory-name fallback — that fallback was the exploit path (it yielded a
+      null slug, letting a forged declaration supply the identity).
+      `.claude/VERSION::repo` is a CROSS-CHECK ONLY: it can REFUSE on disagreement
+      but can NEVER SUPPLY the identity, so a forged VERSION file is powerless.
       HONEST BOUND, stated not papered over: this fences the ADAPTER path. An agent
       typing `gh pr merge --repo <upstream>` at the CLI bypasses it entirely; that
-      residual is named in the Wiring's Detection field, with a
+      residual, and the sibling cross-repo write primitives that carry no own-repo
+      check, are enumerated in the Wiring's Detection field, with a
       `validate-bash-command.js` tripwire as the Phase-2 target.
-    diff_lines: "+45 -2"
+    diff_lines: "+152 -1 (vs merge-base 93551cb = 2.24.0)"
   - file: .claude/hooks/lib/vcs-azure-adapter.js
     action: modify
     origin: use-template
@@ -1844,28 +1894,118 @@ changes:
       fail-closed dimension MUST land at EVERY independent surface in the same PR
       or the un-fenced provider simply becomes the bypass — self-inflicted here,
       since both adapters are reachable from one `getRepoProvider` dispatch.
-    diff_lines: "+34 -0"
+      ALL THREE ADO COMPONENTS COME FROM THE DERIVATION. The shared deriver parses
+      the ADO remote forms (`dev.azure.com/<org>/<project>/_git/<repo>`, the
+      `visualstudio.com` subdomain form, and the ssh `v3` form) and returns
+      `self.ado = {org, project, repo}`, so `org` is compared like the other two.
+      An earlier cut read `org` off `repoRef` when the derivation did not supply
+      one — a leg that compared a value against ITSELF and could therefore never
+      fail. A non-ADO origin remote now yields `self.ado === null` and REFUSES: a
+      repo whose remote is not an ADO remote cannot prove an ADO identity. This
+      CLOSES the cross-org residual rather than documenting it.
+    diff_lines: "+93 -1 (vs merge-base 93551cb = 2.24.0)"
+  - file: .claude/hooks/lib/upflow-self-repo.js
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: "NEW module — no self-identity derivation helper exists at 2.24.0; the 2.24.0 fence took a caller-supplied identity instead."
+    reason: >-
+      THE DERIVATION THE FENCE TURNS ON — an operand no DESCRIPTOR FIELD can
+      supply. It is still selected by the caller's working directory; the
+      covered-vs-uncovered bound is stated once in `upstream-issue-hygiene.md`
+      MUST-4 and deliberately NOT restated here (`specs-authority.md` Rule 9 —
+      the restated copies are what drifted across four rounds).
+      Extracted as ONE shared module rather than duplicated per adapter, per
+      `security.md` § Credential-Decode-Helpers: both VCS adapters route through
+      it, so the two providers cannot normalize differently — the drift shape
+      `security.md` § Enforcement-Surface Parity blocks.
+      `deriveSelfRepoRef(cwd)` takes exactly ONE parameter and has NO injection
+      seam. It reads the live `git remote get-url origin` as the SOLE
+      authoritative identity, deliberately WITHOUT a directory-name fallback (the
+      fallback was the exploit path). `.claude/VERSION::repo` is consulted only as
+      a refuse-only cross-check — present-and-disagreeing REFUSES, but it can
+      never SUPPLY the identity.
+      It also parses ADO remote forms to yield `{org, project, repo}`, which
+      `version-utils.js::normalizeRemoteIdentity` structurally cannot (it keeps
+      only the last two path segments and drops `_git`, losing `<org>`). That is
+      why the ADO parse lives here rather than reusing it, and it is what lets the
+      ADO fence compare `org` against a DERIVED value instead of against itself.
+      One shared `normalizeComponent` (lowercase, strip a trailing `.git`, drop
+      `_git`) is applied to BOTH sides of every comparison so the derivation
+      source and the comparator cannot drift.
+    diff_lines: "+433 -0 (new file, vs merge-base 93551cb = 2.24.0)"
+  - file: .claude/audit-fixtures/upflow-open-never-complete/README.md
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: "NEW file — the 2.24.0 fixture directory shipped a runner with no README and no recorded mutation-validity evidence."
+    reason: >-
+      THE MUTATION-VALIDITY RECORD `instrument-discipline.md` MUST-2(b) REQUIRES.
+      An un-run `mutation:` field is a CLAIM, not evidence: a mutation that does
+      not red leaves two live hypotheses (vacuous test OR inert mutation), so the
+      obligation is to EXECUTE each one and record what it reddened.
+      This README carries those tables — per-row mutation, the predicate it
+      removes, the verdict, and the exact cases reddened. (An earlier draft here
+      also claimed the README carried a "vacuity probe … reds every
+      refusal-asserting case". BOTH halves were wrong: the README has no such
+      section, and a GitHub-fence-block deletion CANNOT red the ADO refusal
+      cases, which run through the Azure adapter's own fence. The sibling
+      `run.mjs` entry states the probe correctly and is the one to read; this
+      entry does not restate it — `specs-authority.md` Rule 9, since two copies
+      of the same claim in one proposal are exactly what drifted here.)
+      It DISCLOSES, rather than smooths over, that one pass was measured in the
+      live tree and a second in a byte-copy sandbox (sibling agents were editing
+      the adapters concurrently), because the method changes what the result
+      means. It also records the mutations that did NOT produce a verdict —
+      non-applying (INERT) and reached-but-ineffective — rather than recording
+      them as proof of vacuity, which is the exact MUST-2(b) error the section
+      exists to prevent.
+    diff_lines: "+215 -0 (new file; line count — untracked at measurement time)"
   - file: .claude/audit-fixtures/upflow-open-never-complete/run.mjs
     action: create
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
-    dedup_evidence: "NEW directory — no fixture coverage for `completeUpflowPR` exists at 2.24.0."
+    dedup_evidence: "NOT already solved — the 2.24.0 cut drove the fence through an injection seam; no real-repo coverage existed."
     reason: >-
-      FIXTURES THAT PROVE THE FENCE BITES (`cc-artifacts.md` Rule 9). Seven inline
-      cases across BOTH providers: refuse-downstream-merging-upstream,
-      refuse-absent-selfRepoRef (fail-closed), allow-maintainer-merging-own-repo
-      (the fence must NOT break the legitimate ingest path), and
-      case-insensitive-own-repo-still-allowed (a dropped `toLowerCase()` would
-      spuriously refuse a correct maintainer merge).
+      FIXTURES THAT PROVE THE FENCE BITES (`cc-artifacts.md` Rule 9), REWRITTEN to
+      stop injecting an identity. The prior cut drove the fence through the
+      `_deriveSelfFn` seam, which meant the suite exercised an INJECTION POINT
+      rather than the fence — it would have stayed green against a build with no
+      fence at all on the real path.
+      HOW IT DRIVES THE FENCE NOW: each case builds a REAL throwaway git repo
+      (`mkdtemp` + `git init` + the origin remote that case needs, optionally a
+      `.claude/VERSION`) and spawns a CHILD `node` with `cwd` set to it. Since the
+      adapter hardcodes `process.cwd()`, the process boundary is the only place
+      `cwd` can be set — so the fixture reaches the fence exactly as a real
+      session does. Coverage spans both providers: cross-repo refusal, fail-closed
+      on an underivable identity, the permitted own-repo path, case / `.git`
+      normalization, a forged `VERSION`, a no-origin-remote repo deliberately
+      NAMED after its target (so a restored dirname fallback would be caught), and
+      the ADO remote forms including a cross-ORG same-project-and-repo case.
       THE TRANSPORT SPY IS THE LOAD-BEARING DESIGN CHOICE: each case asserts the
       transport NEVER FIRED, not merely that `ok === false`. "Did the network call
       happen?" is the discriminating question — a fence returning `ok:false` AFTER
-      merging would pass a naive assertion.
+      merging would pass a naive assertion. Each case additionally asserts
+      `error === null`, because deleting a fail-closed guard typically makes the
+      next line THROW, and a bare `ok === false` assertion accepts that crash as a
+      refusal.
       Every case records the MUTATION that reds it per `instrument-discipline.md`
-      MUST-2(b). VERIFIED, not assumed: neutering the `sameRepo` check turns the
-      suite RED (1/7, the refuse-downstream case); restoring returns exit 0.
-    diff_lines: "+178 -0 (new file)"
+      MUST-2(b), and those mutations were EXECUTED — see the companion README's
+      mutation-validity tables, which record per-row verdicts, the reddened cases,
+      and (honestly disclosed) which rows were measured in the live tree versus a
+      byte-copy sandbox. A vacuity probe deleting the entire GitHub fence block
+      reds the five GitHub refusal-asserting cases (measured 11/16 at the time);
+      it CANNOT red the ADO refusal cases, which run through the Azure adapter's
+      own fence — those are covered by separate ADO-adapter mutations. Note the
+      probe proves the fence BLOCK is load-bearing, NOT that each comparison leg
+      within it discriminates: a later exhaustive predicate sweep found three
+      legs (ADO `org`, GitHub `owner`, ADO `project`) plus the host check that no
+      case could distinguish, each needing its own case. "No case passes
+      vacuously" is a claim per-leg, not per-block.
+    diff_lines: "+585 -0 (new since 2.24.0, vs merge-base 93551cb)"
   - file: .claude/skills/30-claude-code-patterns/sync-flow.md
     action: modify
     origin: use-template
@@ -1890,7 +2030,7 @@ changes:
       stop-point (MUST)" states the PR URL IS the deliverable and names the BLOCKED
       reasoning "the cascade hasn't happened until it's merged" — the cascade is
       the upstream's ingest → Gate-1 → `/sync-to-use`, not the merge.
-    diff_lines: "+9 -3"
+    diff_lines: "+9 -7 (vs merge-base 93551cb = 2.24.0; the -7 includes a 4-line prettier re-flow of the Gate-2 reconcile table, which is formatting only and changes no claim)"
   - file: .claude/commands/codify.md
     action: modify
     origin: use-template
