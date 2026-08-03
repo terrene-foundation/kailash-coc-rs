@@ -735,7 +735,13 @@ const cases = [
     repo: {
       dirName: "coc-rs",
       remote: null,
-      version: { repo: "platform/coc-rs" },
+      // Value is incidental to the assertion — this case has NO remote and must
+      // refuse regardless; the declaration exists only to prove `VERSION` cannot
+      // RESCUE a missing remote. Written with the Foundation slug because the
+      // synced-disclosure scanner matches any other `owner/name`-shaped literal
+      // as a possible org slug, and a synthetic ADO project/repo pair is not
+      // worth an allowlist edit to that fence.
+      version: { repo: "terrene-foundation/coc-rs" },
     },
     adapter: ADO,
     prRef: { repoRef: ADO_SELF, prId: 42 },
