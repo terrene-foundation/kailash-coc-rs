@@ -349,8 +349,19 @@ function reserveJournalSlotSigned(repoDir, opts) {
   // required — the lease degraded cleanly while the journal gate hard-failed on
   // a null person_id, making /codify's mandatory journal receipt unsatisfiable
   // on every coordination-off repo. See issue #76.
+  // Resolve the MAIN checkout for the predicate, exactly as `codify-lease.js`,
+  // `integrity-guard.js`, `journal-write-guard.js` and `signing-mutation-guard.js`
+  // all do. The tier-2 local override (`.claude/learning/coordination-mode.json`)
+  // is GITIGNORED and therefore ABSENT inside a worktree, so reading it against a
+  // worktree cwd would split a tier-2-enrolled repo OFF here while
+  // `journal-write-guard.js` reads it ON from main — reserving no record, then
+  // halting the Write for "slot unreserved". That is issue #76's own failure class
+  // re-opened on the worktree path by the fix for #76; caught by the Tier-1 redteam.
   const { isCoordinationEnabled } = require("./coordination-mode.js");
-  const coordinationOn = isCoordinationEnabled(repoDir);
+  const { resolveMainCheckout } = require("./state-resolver.js");
+  const coordinationOn = isCoordinationEnabled(
+    resolveMainCheckout(repoDir) || repoDir,
+  );
 
   const absDir = path.join(repoDir, dirRel);
   let reservation;

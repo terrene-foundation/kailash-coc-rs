@@ -534,7 +534,7 @@ function createUpflowIssue(transport, issueSpec) {
 
 /**
  * Complete (merge) the upflow PR once the template maintainer approves.
- * descriptor: { repoRef:{owner,name}, selfRepoRef:{owner,name}, prId, mergeMethod? }.
+ * descriptor: { repoRef:{owner,name}, prId, mergeMethod?, cwd? }.
  * prId is PATH-interpolated → integer-only guard; mergeMethod is enum-guarded.
  *
  * MAINTAINER-SIDE ONLY — NEVER on the downstream upflow lane.
@@ -543,13 +543,19 @@ function createUpflowIssue(transport, issueSpec) {
  * is the upstream maintainer's act, on the upstream's own repo, after the
  * `/sync-from-downstream` scrub + review-as-untrusted-data.
  *
- * The fence below is the STRUCTURAL half of that rule: this primitive refuses
- * to complete a PR on any repo other than the caller's OWN. `selfRepoRef` is
- * REQUIRED and MUST be derived from `.claude/VERSION::repo` verified against
- * `git remote get-url origin` (the `classifyTemplateDeclaration` identity) —
- * NEVER from a literal, and never from the same descriptor field the caller is
- * trying to merge into. A downstream that reaches this function at all fails
- * closed, because its own repo identity can never equal its upstream's.
+ * THE FENCE DERIVES THE SELF-IDENTITY; IT DOES NOT ACCEPT ONE. There is
+ * deliberately NO `selfRepoRef` descriptor field. The first cut took one, and a
+ * Tier-1 redteam correctly found that both operands then came off the same
+ * caller-authored object — `{repoRef: X, selfRepoRef: X}` cleared it trivially,
+ * so the fence stopped an ACCIDENT but not an agent that had decided to merge.
+ * `upflow-self-repo.js::deriveSelfRepoRef` now reads `.claude/VERSION::repo` and
+ * the live git remote and requires them to AGREE, so the operand the comparison
+ * turns on is a fact about the world the caller cannot author
+ * (`instrument-discipline.md` MUST-1). Disagreement, or an underivable identity,
+ * REFUSES — a repo that cannot prove who it is cannot authorize a completion.
+ *
+ * `opts._deriveSelfFn` is a TEST-ONLY injection seam; production passes nothing,
+ * so no caller can substitute an identity.
  */
 function completeUpflowPR(transport, prRef) {
   const repoRef = prRef && prRef.repoRef;
@@ -557,33 +563,29 @@ function completeUpflowPR(transport, prRef) {
   if (!rv.valid) return _fail("completeUpflowPR: repoRef invalid", rv.reason);
 
   // --- Open-Never-Complete fence (upstream-issue-hygiene.md MUST-4) ---------
-  // Fails CLOSED: absent/malformed selfRepoRef refuses, so a caller that never
-  // considered the invariant cannot merge by omission.
-  const selfRepoRef = prRef.selfRepoRef;
-  const sv = validateRepoRef(selfRepoRef);
-  if (!sv.valid) {
+  // Fails CLOSED on every branch: underivable identity, disagreeing identity,
+  // and non-self target all refuse BEFORE the transport fires.
+  const selfRepo = require("./upflow-self-repo.js");
+  const derive = (prRef && prRef._deriveSelfFn) || selfRepo.deriveSelfRepoRef;
+  const d = derive((prRef && prRef.cwd) || process.cwd());
+  if (!d || !d.ok) {
     return _fail(
-      "completeUpflowPR: selfRepoRef required",
-      `completing a PR requires proving the target is YOUR OWN repo — pass selfRepoRef ` +
-        `derived from .claude/VERSION::repo verified against git remote. ` +
-        `upstream-issue-hygiene.md MUST-4 (Open, Never Complete): a downstream upflow ` +
-        `opens a PR and STOPS; merging is the upstream maintainer's act. (${sv.reason})`,
+      "completeUpflowPR: self-identity underivable",
+      `cannot derive this repo's own identity, so a completion cannot be authorized. ` +
+        `upstream-issue-hygiene.md MUST-4 (Open, Never Complete): merging is the ` +
+        `upstream maintainer's act on the upstream's OWN repo. (${d && d.reason})`,
     );
   }
-  const sameRepo =
-    String(selfRepoRef.owner).toLowerCase() ===
-      String(repoRef.owner).toLowerCase() &&
-    String(selfRepoRef.name).toLowerCase() ===
-      String(repoRef.name).toLowerCase();
-  if (!sameRepo) {
+  if (!selfRepo.isSelfRepo(repoRef, d.self)) {
     return _fail(
       "completeUpflowPR: cross-repo completion refused",
-      `refusing to merge ${repoRef.owner}/${repoRef.name}#${prRef && prRef.prId} from ` +
-        `${selfRepoRef.owner}/${selfRepoRef.name}. A PR may only be completed on the ` +
-        `caller's OWN repo. upstream-issue-hygiene.md MUST-4 (Open, Never Complete) — ` +
-        `the downstream upflow lane opens a PR against its upstream and stops there; ` +
-        `the upstream merges it after /sync-from-downstream review.`,
-      { self: selfRepoRef, target: repoRef },
+      `refusing to merge ${repoRef.owner}/${repoRef.name}#${prRef && prRef.prId} — ` +
+        `this repo derives as ${d.self.owner}/${d.self.name}. A PR may only be ` +
+        `completed on the repo you ARE. upstream-issue-hygiene.md MUST-4 ` +
+        `(Open, Never Complete) — the downstream upflow lane opens a PR against its ` +
+        `upstream and stops there; the upstream merges it after ` +
+        `/sync-from-downstream review.`,
+      { self: d.self, target: repoRef },
     );
   }
   // -------------------------------------------------------------------------

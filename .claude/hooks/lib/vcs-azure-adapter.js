@@ -621,32 +621,47 @@ function completeUpflowPR(transport, prRef) {
   // Provider-parity twin of the GitHub adapter's fence (security.md
   // § Enforcement-Surface Parity: a new fail-closed dimension lands at EVERY
   // surface in the SAME change, or the un-fenced provider becomes the bypass).
-  // Fails CLOSED: absent/malformed selfRepoRef refuses.
-  const selfRepoRef = prRef.selfRepoRef;
-  const sv = validateRepoRef(selfRepoRef);
-  if (!sv.valid) {
+  // DERIVES the self-identity; does NOT accept one. There is deliberately no
+  // `selfRepoRef` descriptor field — a Tier-1 redteam found that shape compared
+  // two caller-authored operands, so it stopped an accident but not intent.
+  //
+  // HONEST BOUND, stated rather than over-claimed (the over-claim is the exact
+  // defect this round is fixing): the shared deriver yields a 2-segment
+  // `owner/name` slug from the remote, which on an ADO remote
+  // (`<org>/<project>/_git/<repo>`) resolves to `<project>/<repo>` after `_git`
+  // is dropped. So this fence is PROJECT+REPO-anchored; `org` is NOT covered by
+  // the derivation and is compared only when the caller supplies a self org via
+  // the test seam. Project+repo anchoring is the same name-anchored reasoning
+  // `version-utils.js::classifyTemplateDeclaration` documents — the repo name is
+  // the component that survives relocation. A cross-ORG completion between two
+  // repos sharing an identical project AND repo name is the residual; it is
+  // named here and in the rule's Detection field rather than papered over.
+  const selfRepo = require("./upflow-self-repo.js");
+  const derive = (prRef && prRef._deriveSelfFn) || selfRepo.deriveSelfRepoRef;
+  const d = derive((prRef && prRef.cwd) || process.cwd());
+  if (!d || !d.ok) {
     return _fail(
-      "completeUpflowPR: selfRepoRef required",
-      `completing a PR requires proving the target is YOUR OWN repo — pass selfRepoRef ` +
-        `derived from .claude/VERSION::repo verified against the origin remote. ` +
-        `upstream-issue-hygiene.md MUST-4 (Open, Never Complete): a downstream upflow ` +
-        `opens a PR and STOPS; merging is the upstream maintainer's act. (${sv.reason})`,
+      "completeUpflowPR: self-identity underivable",
+      `cannot derive this repo's own identity, so a completion cannot be authorized. ` +
+        `upstream-issue-hygiene.md MUST-4 (Open, Never Complete): merging is the ` +
+        `upstream maintainer's act on the upstream's OWN repo. (${d && d.reason})`,
     );
   }
-  const _lc = (v) => String(v).toLowerCase();
-  const sameRepo =
-    _lc(selfRepoRef.org) === _lc(repoRef.org) &&
-    _lc(selfRepoRef.project) === _lc(repoRef.project) &&
-    _lc(selfRepoRef.repo) === _lc(repoRef.repo);
-  if (!sameRepo) {
+  // Map the derived 2-segment slug onto the ADO shape: owner→project, name→repo.
+  const selfAdo = {
+    org: d.self.org || selfRepo.normalizeComponent(repoRef.org),
+    project: d.self.org ? d.self.project : d.self.owner,
+    repo: d.self.org ? d.self.repo : d.self.name,
+  };
+  if (!selfRepo.isSelfRepoAdo(repoRef, selfAdo)) {
     return _fail(
       "completeUpflowPR: cross-repo completion refused",
       `refusing to complete ${repoRef.org}/${repoRef.project}/${repoRef.repo}` +
-        `!${prRef && prRef.prId} from ${selfRepoRef.org}/${selfRepoRef.project}/` +
-        `${selfRepoRef.repo}. A PR may only be completed on the caller's OWN repo. ` +
-        `upstream-issue-hygiene.md MUST-4 (Open, Never Complete) — the downstream ` +
-        `upflow lane opens a PR against its upstream and stops there.`,
-      { self: selfRepoRef, target: repoRef },
+        `!${prRef && prRef.prId} — this repo derives as ${selfAdo.org}/` +
+        `${selfAdo.project}/${selfAdo.repo}. A PR may only be completed on the repo ` +
+        `you ARE. upstream-issue-hygiene.md MUST-4 (Open, Never Complete) — the ` +
+        `downstream upflow lane opens a PR against its upstream and stops there.`,
+      { self: selfAdo, target: repoRef },
     );
   }
   // -------------------------------------------------------------------------
