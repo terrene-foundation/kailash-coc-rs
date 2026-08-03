@@ -239,7 +239,16 @@ reason its recorded mutation had nothing to do with.
 That is the wrong-branch-pass hole in its measured form, on the ADO lane — the
 provider where two branches share the label `completeUpflowPR: self-identity
 underivable` and differ only in reason, so the label alone cannot discriminate.
-FIVE ADO refusal cases carried no `expectReason`; all 18 refusal cases now do.
+FIVE ADO refusal cases carried no `expectReason`; every refusal case now does.
+The COUNT is deliberately not stated here — an earlier draft said "all 18",
+which was accurate when written and was already stale at 21 by the time a
+later reviewer measured it, and is 22 now. The PROPERTY (every refusal case
+carries `expectReason`) is the invariant worth asserting; the count is a
+moving number that only ever decays into a false claim. Re-derive it rather
+than trusting any sentence — the same instruction this file gives at
+§ "Re-derive the count rather than trusting this sentence":
+`grep -c 'expectReason:' run.mjs` against `grep -c 'expect: { ok: false' run.mjs`
+— the two MUST be equal.
 
 **Stated as an inference, not a measurement** (`instrument-discipline.md`
 MUST-2(b)): rows 22-24 show the cases red WITH `expectReason` present. A paired
@@ -391,11 +400,30 @@ The same run re-confirmed the `.git` strip is still instrumented (reds 6 cases)
 after the guard was inserted into that function — a regression check on the
 instrument itself, not just the code.
 
-### Eleventh pass — the last fail-OPEN guard without a case
+### Eleventh pass — a fail-OPEN guard without a case
 
 A 96-mutation sweep (0 INERT, every pattern occurrence-verified) found one
-remaining guard whose removal the suite could not see, and it was the only
-fail-OPEN one left.
+remaining guard whose removal the suite could not see.
+
+**This section's original claim was FALSIFIED, and the falsification is left
+in place rather than quietly edited away.** It read "the last fail-OPEN guard
+without a case … the only fail-OPEN one left". A TWELFTH pass then found
+another: `_splitRemoteUrl` tested `s.includes("://")` and cut at
+`s.indexOf("://")` — unanchored — so a `://` sitting in the PATH of an
+scp-style remote supplied the authority (`evil.com:x/https://github.com/o/r`
+→ `github.com`, measured `indexOf` = 16). No case drove a remote whose path
+contained `://`, so that predicate had NO instrument, exactly like row 30
+below. It is now `gh/unanchored-scheme-authority-spoof-refuses`.
+
+The lesson is about the CLAIM SHAPE, not the miss. "The only one left" is
+unfalsifiable from the record: the 96 mutations are not listed, so no result
+this document could show would contradict it — `instrument-discipline.md`
+MUST-1. Passes 9, 10, and 11 each opened with a "the last one" framing and
+each was followed by another pass; the standing caveat at
+§ "BROAD, not EXHAUSTIVE" (~250 lines up) says exactly this and was written
+before three of those passes. Scope every such sentence to the sweep that
+produced it — "this sweep found one more" — never to the space of defects
+that remain, which no sweep can measure.
 
 | #   | Mutation                                            | Applied-check | Before                    | After                                            |
 | --- | --------------------------------------------------- | ------------- | ------------------------- | ------------------------------------------------ |

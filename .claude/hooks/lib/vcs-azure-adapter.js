@@ -714,10 +714,26 @@ function completeUpflowPR(transport, prRef) {
   // the canonical form, then USE the canonical form. `prId` still comes from
   // `prRef`; it names the PR, not the repo.
   //
-  // Behavior note, stated rather than glossed: `selfAdo.*` is case-FOLDED by
-  // `normalizeComponent`, so a mixed-case org/project/repo is now addressed in
-  // lowercase. Every other difference from `repoRef` was already accepted as
-  // equal by the check immediately above.
+  // Behavior note, stated rather than glossed — TWO folds, not one. Both are
+  // applied by `normalizeComponent` to the DERIVED value, so both change the
+  // bytes this request is addressed to:
+  //   (1) CASE — `selfAdo.*` is case-FOLDED, so a mixed-case org/project/repo
+  //       is now addressed in lowercase.
+  //   (2) TRAILING `.git` — it is STRIPPED. For the ordinary remote this is
+  //       correct and is the point: `.../_git/coc-rs.git` names the repo
+  //       `coc-rs`, and git's own `.git` suffix convention is what is being
+  //       removed. But it is a LOSSY fold over the provider namespace, not a
+  //       canonicalization, and ADO_REPO_RE (`ado-login.js:61-62`,
+  //       /^[A-Za-z0-9._-]{1,64}$/) permits dots — so IF Azure DevOps allows a
+  //       repository literally NAMED `foo.git`, a remote for it would derive as
+  //       `foo` and this PATCH would address a DIFFERENT repository. Whether
+  //       ADO permits such a name is NOT established here and is deliberately
+  //       not asserted either way; it is recorded so the next reader knows the
+  //       question is open rather than cleared. The direction of the residual
+  //       is bounded: it can only mis-address WITHIN the same org/project, and
+  //       only for a name whose existence is unconfirmed.
+  // Every other difference from `repoRef` was already accepted as equal by the
+  // check immediately above.
   const { org, project, repo } = selfAdo;
   let r;
   try {
