@@ -412,6 +412,45 @@ const cases = [
     // in-process bound is therefore ~zero; this is pinned as a CHECK-vs-USE
     // divergence (the fence believing it is a repo git cannot reach), which is
     // the same class as the `#`/`?` cut, not as a new privilege escalation.
+    // FRAGMENT-INJECTED PATH SEGMENTS — the fourth and last member of the
+    // authority/path-spoof family, and the one the host-parity differential
+    // structurally CANNOT see, because the host it derives is entirely correct.
+    // The `#`/`?` cut applies to the AUTHORITY; the PATH was never cut, and
+    // `_parseRemoteUrl` took the LAST TWO segments:
+    //
+    //   https://github.com/evil/repo#/upstream/repo
+    //     segments -> ["evil", "repo#", "upstream", "repo"]
+    //     last two -> upstream/repo     <- derived identity, host github.com
+    //     the URL actually names evil/repo
+    //
+    // So the fence would have authorized a completion against `upstream/repo`
+    // from a tree whose remote names `evil/repo`. Measured, both `#` and `?`.
+    //
+    // Bounded the same way as its unanchored-scheme sibling, and for the same
+    // measured reason: `git ls-remote` REFUSES this remote
+    // (`fatal: .../info/refs not valid: is this a git repository?`), so it is
+    // not fetchable and grants nothing beyond the module header's disclosed
+    // in-process bound. A PARSE defect, ranked as one.
+    //
+    // This case is why the differential is NOT sufficient on its own: only an
+    // adapter-level drive proves the TRANSPORT never fired.
+    name: "gh/fragment-injected-path-segments-refuse",
+    mutation:
+      "upflow-self-repo.js::_parseRemoteUrl — relax `parts.length !== 2` back to `< 2` with the last-two-segments rule",
+    repo: {
+      dirName: "kailash-coc-rs",
+      remote:
+        "https://github.com/evil/repo#/terrene-foundation/kailash-coc-rs",
+    },
+    adapter: GH,
+    // repoRef names the repo the FRAGMENT smuggles in — the exact match the
+    // pre-fix derivation would have produced, so under the mutation this
+    // derives, compares EQUAL, and fires.
+    prRef: { repoRef: GH_SELF, prId: 77 },
+    expect: { ok: false, fired: false },
+    expectReason: "does not parse to an owner/name pair (host github.com)",
+  },
+  {
     // PATH-POSITION BYTE ALLOWLIST. `normalizeComponent` used a four-member
     // DENYLIST (`.`, `..`, `/`, `\`), so every other byte the ASCII guard
     // admits survived into an interpolated request path — `?`/`#` (which
@@ -501,10 +540,19 @@ const cases = [
     adapter: GH,
     prRef: { repoRef: GH_SELF, prId: 77 },
     expect: { ok: false, fired: false },
-    // Pins the HOST branch: anchoring routes this to the scp-style parse, whose
-    // authority is `evil.com` — so the refusal must be the host one, NOT a
-    // generic parse failure. A reason-less assertion would pass on either.
-    expectReason: "non-GitHub self-identity refused",
+    // THE REFUSAL BRANCH MOVED EARLIER, and the assertion follows it rather
+    // than the reverse. This case originally pinned the HOST check
+    // ("non-GitHub self-identity refused"). The later exact-segment-count fix in
+    // `_parseRemoteUrl` refuses this remote at PARSE time — the scp path here is
+    // `x/https://github.com/…`, five segments, not two — so the host check is no
+    // longer reached. Both are correct refusals; only the branch changed, and
+    // that is recorded rather than papered over by loosening the assertion.
+    //
+    // The new string proves MORE than the old one: it names `host evil.com`, so
+    // it pins BOTH the parse branch AND the fact that the authority resolved to
+    // the real host rather than the `github.com` decoy. A regression that
+    // unanchored the scheme would derive `github.com` and produce neither.
+    expectReason: "does not parse to an owner/name pair (host evil.com)",
   },
   {
     // THE REGRESSION GUARD FOR THE ORIGINATING CRIT. The caller-authored
@@ -783,9 +831,21 @@ const cases = [
     // repo and AUTHORIZES a completion against a repo the remote does not name.
     //
     // The sibling `ado/non-ado-remote-refuses` cannot cover this: it drives a
-    // 2-segment GitHub remote, which `segs.length < 3` refuses FIRST, so the
-    // host predicate is never the discriminator there. Three segments is what
-    // reaches it.
+    // 2-segment GitHub remote, which the org/project/repo count check refuses
+    // FIRST, so the host predicate is never the discriminator there. Three
+    // segments is what reaches it. (That check read `segs.length < 3` when this
+    // comment was written and is now `!== 3` — see the exact-count fix in
+    // `_parseAdo`; the reasoning is unchanged, the citation is updated so it
+    // does not describe a guard that no longer exists.)
+    //
+    // REFUSAL BRANCH MOVED, recorded rather than hidden: this case previously
+    // refused at the ADO adapter's `!selfAdo` branch ("is not an Azure DevOps
+    // remote"). The exact-count fix now refuses it one step EARLIER, in
+    // `_parseRemoteUrl`'s generic branch — a non-ADO host with three path
+    // segments is not two, so no owner/name pair forms at all. Still a correct
+    // refusal, and it still discriminates: under the stated mutation `_parseAdo`
+    // accepts the gitlab host, the three segments become a valid org/project/
+    // repo triple, and the derivation SUCCEEDS.
     name: "ado/three-segment-non-ado-remote-refuses",
     mutation:
       "upflow-self-repo.js::_parseAdo — delete the `if (!isAdoHost) return null;` host predicate",
@@ -796,7 +856,11 @@ const cases = [
     adapter: ADO,
     prRef: { repoRef: ADO_SELF, prId: 42 },
     expect: { ok: false, fired: false },
-    expectReason: "is not an Azure DevOps remote",
+    // Pins the host in the reason text, which is the load-bearing half: it
+    // proves the derivation resolved `gitlab.internal.example` and refused ON
+    // that, rather than refusing for some unrelated parse reason.
+    expectReason:
+      "does not parse to an owner/name pair (host gitlab.internal.example)",
   },
   {
     name: "ado/non-ado-remote-refuses",

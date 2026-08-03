@@ -101,14 +101,34 @@ const SCHEME = [
   ["https://[::1]/o/r", "derive"], // bracketed IPv6 taken whole
   ["https://github.com/o/r?x=1", "refuse"], // `?` in the path component
   ["https://github.com/o/r#frag", "refuse"], // `#` in the path component
+  // Fragment/query inject EXTRA path segments. The `#`/`?` cut applies to the
+  // AUTHORITY only, so before the exact-segment-count fix these derived the
+  // TRAILING pair — `upstream/repo` for a URL naming `evil/repo`. Measured.
+  ["https://github.com/evil/repo#/upstream/repo", "refuse"],
+  ["https://github.com/evil/repo?x=/upstream/repo", "refuse"],
+  // A pasted browser URL: four segments. Previously derived `tree/main`.
+  ["https://github.com/o/r/tree/main", "refuse"],
+  // ADO twin — the trailing pair became project/repo under the real org.
+  [
+    "https://dev.azure.com/realorg/realproj/_git/realrepo#/otherproj/otherrepo",
+    "refuse",
+  ],
 ];
 
 const SCP = [
   ["git@github.com:o/r.git", "derive"],
   ["git@github.com#@evil.com:o/r", "derive"], // ssh splits at LAST `@`
   ["git@github.com?@evil.com:o/r", "derive"],
-  ["git@evil.com:mirror/https://github.com/o/r", "derive"],
-  ["evil.com:x/https://github.com/o/r", "derive"],
+  // These two carried expectation "derive" until the exact-segment-count fix,
+  // and the change is recorded rather than silently retuned. Their scp PATHS
+  // (`mirror/https://github.com/o/r`, `x/https://github.com/o/r`) are five
+  // segments, so they no longer parse to an owner/name pair at all. Refusing is
+  // STRICTLY STRONGER than deriving the correct host, so the expectation moves
+  // in the safe direction — but it does mean these two rows no longer exercise
+  // host parity. The `#`/`?` scp rows above still do, which is what keeps the
+  // scp userinfo-split property instrumented here.
+  ["git@evil.com:mirror/https://github.com/o/r", "refuse"],
+  ["evil.com:x/https://github.com/o/r", "refuse"],
   ["git#foo@github.com:o/r", "derive"], // `#` in USERINFO is legitimate
   ["user@host@github.com:o/r", "derive"],
   ["git@ssh.dev.azure.com:v3/org/proj/repo", "derive"],

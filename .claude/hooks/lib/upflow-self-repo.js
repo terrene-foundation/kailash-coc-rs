@@ -338,14 +338,26 @@ function _parseAdo(host, segments) {
   let org = null;
   const isOrgSubdomain =
     host.endsWith(".visualstudio.com") && host !== "vs-ssh.visualstudio.com";
+  // EXACT counts, same reasoning as the GitHub branch above and the same
+  // measured defect: the path is never cut at `#`/`?`, so
+  // `.../realorg/realproj/_git/realrepo#/otherproj/otherrepo` filtered to
+  // ["realorg","realproj","realrepo#","otherproj","otherrepo"] and the trailing
+  // pair won — deriving {org: realorg, project: OTHERPROJ, repo: OTHERREPO},
+  // i.e. the real org with an attacker-chosen project/repo, which is what the
+  // completion PATCH is then addressed to.
+  //
+  // After the `v3` strip and `_git` filter the legitimate forms are exact:
+  //   dev.azure.com/<org>/<project>/_git/<repo>      -> 3 (org, project, repo)
+  //   ssh.dev.azure.com:v3/<org>/<project>/<repo>    -> 3
+  //   <org>.visualstudio.com/<project>/_git/<repo>   -> 2 (org comes from host)
   if (isOrgSubdomain) {
     org = host.slice(0, host.indexOf("."));
   } else {
-    if (segs.length < 3) return null; // need org + project + repo
+    if (segs.length !== 3) return null; // exactly org + project + repo
     org = segs[0];
     segs = segs.slice(1);
   }
-  if (segs.length < 2) return null;
+  if (segs.length !== 2) return null;
 
   const ado = {
     org: normalizeComponent(org),
@@ -381,10 +393,29 @@ function _parseRemoteUrl(url) {
   const ado = _parseAdo(host, segments);
   if (ado) return { host, owner: ado.project, name: ado.repo, ado };
 
+  // EXACTLY two segments, not "at least two, take the last two". Every GitHub
+  // remote that resolves has exactly two path segments — `https://github.com/o/r[.git]`,
+  // `git@github.com:o/r.git`, `ssh://git@github.com/o/r.git`. A "last two" rule
+  // silently accepts extra leading segments, and the fragment/query cut applied
+  // to the AUTHORITY does not touch the PATH, so anything after a `#`/`?` in the
+  // path became segments and the LAST TWO won:
+  //
+  //   https://github.com/evil/repo#/upstream/repo
+  //     segments -> ["evil", "repo#", "upstream", "repo"]
+  //     last two -> upstream/repo        <- derived identity
+  //     the URL actually names evil/repo
+  //
+  // Measured, both the `#` and `?` forms. `git ls-remote` REFUSES such a remote
+  // (`fatal: .../info/refs not valid`), so it is not fetchable and the capability
+  // delta over the module header's disclosed bound is ~zero — it is a PARSE
+  // defect, ranked accordingly, not a new privilege. Fixed structurally anyway:
+  // exactness closes the whole class in one comparison instead of adding a third
+  // cut, and it also refuses a pasted browser URL (`/o/r/tree/main`), which the
+  // "last two" rule silently derived as `tree/main`.
   const parts = segments.filter((p) => p.toLowerCase() !== "_git");
-  if (parts.length < 2) return null;
-  const owner = normalizeComponent(parts[parts.length - 2]);
-  const name = normalizeComponent(parts[parts.length - 1]);
+  if (parts.length !== 2) return null;
+  const owner = normalizeComponent(parts[0]);
+  const name = normalizeComponent(parts[1]);
   if (!owner || !name) return null;
   return { host, owner, name, ado: null };
 }
