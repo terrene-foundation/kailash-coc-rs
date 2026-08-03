@@ -256,6 +256,27 @@ function listCollaborators(transport, repoRef, opts) {
 // pushes the image to GHCR / runs the deploy — the adapter NEVER shells out to
 // docker); they share _dispatchWorkflow but stay distinct named interface
 // methods (ADO implements them via different services).
+//
+// SCOPE OF THE DEPLOY LANE — these primitives take an ARBITRARY `repoRef` BY
+// DESIGN, and that is stated here because it previously was not stated
+// anywhere. `_dispatchWorkflow` (and therefore `pushImage` /
+// `applyDeployTarget`) and `invalidateCache` validate `repoRef` for SHAPE only
+// and then interpolate it into the endpoint. There is NO self-repo derivation
+// and NO host check on this lane.
+//
+// That is a LARGER capability than the one `completeUpflowPR` fences: a
+// `workflow_dispatch` against any repo the token can write to runs CI in that
+// repo, where the fenced primitive only merges one already-open PR. So the
+// absence of a fence here is not "less dangerous", it is a DIFFERENT LANE.
+//
+// `upstream-issue-hygiene.md` MUST-4 does NOT cover it — MUST-4 is scoped to
+// "Open, Never Complete" on the upflow PR lane, and deploy-target selection is
+// the consumer's decision. WHICH rule (if any) governs that selection is an
+// OPEN QUESTION, named here as open rather than implied answered; do not read
+// this paragraph as an argument that no fence is needed, only as an accurate
+// statement of what exists today. Recorded per the house style the ADO cache
+// stub already follows in `vcs-azure-adapter.js`, which names its residual and
+// cites the rule it rests on.
 
 const WORKFLOW_ID_RE = /^[A-Za-z0-9._-]+$/; // workflow filename or numeric id; no path sep
 const GIT_REF_RE = /^[A-Za-z0-9._/-]+$/; // branch / tag / sha; bounded charset

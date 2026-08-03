@@ -653,6 +653,35 @@ function completeUpflowPR(transport, prRef) {
   // the deriver rather than reusing it. A non-ADO origin remote yields
   // `self.ado === null` and REFUSES: a repo whose remote is not an ADO remote
   // cannot prove an ADO identity.
+  //
+  // KNOWN RESIDUAL, DOCUMENTED RATHER THAN DISCOVERED LATER BY A LOCKED-OUT
+  // MAINTAINER. `completeUpflowPR` is UNAVAILABLE for any ADO project or
+  // repository whose URL form is not literally `[A-Za-z0-9._-]+`, and ADO
+  // permits SPACES in project and repository display names — `Contoso Web` is
+  // an ordinary name, not a contrived one. Its clone URL is
+  // `https://dev.azure.com/<org>/Contoso%20Web/_git/<repo>`, and
+  // `normalizeComponent` rejects the `%` (measured: it returns null), so
+  // `_parseAdo` returns null and this refuses at "self-identity underivable".
+  // The maintainer cannot complete their OWN PR.
+  //
+  // It is FAIL-CLOSED, which is the correct direction, and it is NOT introduced
+  // by the character allowlist: before that existed the derived value would
+  // have been `contoso%20web`, which `isSelfRepoAdo` would then have compared
+  // against a `repoRef.project` that must pass `ADO_PROJECT_RE` (no `%`) — so
+  // it refused one line later regardless. The lockout is structural to deriving
+  // identity from the URL, not a consequence of the allowlist.
+  //
+  // THE DOCUMENTED GUID ESCAPE HATCH DOES NOT RESCUE THIS, and the note at
+  // `ado-login.js` (which tells a caller to reference a spaced project by its
+  // GUID) is correct for the REST endpoints and does NOT transfer here: the
+  // caller side would carry the GUID while the DERIVED side carries the NAME
+  // read off the remote, so the comparison is guaranteed to fail. That is
+  // recorded at the validator too.
+  //
+  // Percent-DECODING the segments would admit `Contoso Web` only if the
+  // allowlist were widened to accept a space, which reopens the interpolation
+  // surface the allowlist closed. That is a design change owing its own
+  // analysis, deliberately NOT made here.
   const selfRepo = require("./upflow-self-repo.js");
   const d = selfRepo.deriveSelfRepoRef(process.cwd());
   if (!d || !d.ok) {

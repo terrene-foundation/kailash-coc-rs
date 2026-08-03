@@ -75,8 +75,16 @@ function normalizeComponent(v) {
   //   ado-login.js:52    ADO_ORG_RE        /^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/
   //   ado-login.js:61-62 ADO_PROJECT_RE / ADO_REPO_RE  /^[A-Za-z0-9._-]{1,64}$/
   // Note ADO_ORG_RE admits NEITHER dots NOR underscores and caps at 63 — it is
-  // materially tighter than the project/repo pattern, so an ADO org can never
-  // carry a `.git` suffix for the strip below to act on. All five are ASCII-only,
+  // materially tighter than the project/repo pattern, so no VALIDATOR-GATED org
+  // can carry a `.git` suffix for the strip below to act on. Stated with that
+  // qualifier because the unqualified form was false on the half that matters:
+  // the DERIVED org comes from an ungated URL path segment (`_parseAdo` reads
+  // `segs[0]`), so `https://dev.azure.com/foo.git/proj/_git/repo` DOES reach
+  // the strip and derives org `foo`. Inert in practice — ADO forbids dots in
+  // org names, so no such org exists, and the derived value is what the request
+  // is addressed to either way — but this file's standard is precise claims,
+  // and it has already had to correct two comments that asserted more than the
+  // code guaranteed. All five are ASCII-only,
   // which is the property this guard rests on. Reject non-ASCII BEFORE lowercasing to close the
   // locale-aware
   // case-fold surface — Turkish "İ".toLowerCase() resolves to "i" on
