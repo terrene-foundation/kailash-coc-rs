@@ -902,6 +902,58 @@ const cases = [
     expect: { ok: true, fired: true },
   },
   {
+    // REGRESSION GUARD FOR A FALSE REFUSAL THIS SUITE DID NOT CATCH.
+    // The legacy TFS/VSTS collection URL carries a COLLECTION segment ahead of
+    // the project: `<org>.visualstudio.com/DefaultCollection/<project>/_git/<repo>`.
+    // The first cut of the exact-segment-count fix required the org-subdomain
+    // form to be exactly 2 segments and REFUSED this — a remote that derived
+    // correctly before the fix. That is a maintainer lockout: the operator
+    // could no longer complete a PR on their own repo.
+    //
+    // It was caught by manually widening the legitimate-form sweep, NOT by this
+    // suite and NOT by review — every ADO case here drove a collection-less
+    // URL, and the recommendation the fix was written from enumerated four
+    // forms without this one. This case exists so the next tightening of
+    // `_parseAdo` reds instead of silently locking someone out.
+    //
+    // PERMISSIVE by design: `expect ok:true, fired:true`. A refusal-only suite
+    // cannot detect an over-tightening, because every over-tightening looks
+    // like a correct refusal.
+    name: "ado/allow-own-repo-legacy-collection-form",
+    mutation:
+      "upflow-self-repo.js::_parseAdo — require the org-subdomain form to be exactly 2 segments (drop the optional collection)",
+    repo: {
+      dirName: "coc-rs",
+      remote:
+        "https://contoso.visualstudio.com/DefaultCollection/platform/_git/coc-rs",
+    },
+    adapter: ADO,
+    prRef: { repoRef: ADO_SELF, prId: 42 },
+    expect: { ok: true, fired: true },
+  },
+  {
+    // The injection sibling of the case above, and the reason allowing THREE
+    // segments there does not reopen the fragment-path hole. A `#`/`?` always
+    // lands ON a segment, and the `normalizeComponent` allowlist nulls it:
+    //   `.../platform/_git/coc-rs#/x` -> ["platform","coc-rs#","x"]
+    //   normalizeComponent("coc-rs#") -> null  (measured)
+    // so three segments cannot be forged CLEAN, and four fail the count.
+    // THE COLLECTION ALLOWANCE AND THE CHARACTER ALLOWLIST ARE COUPLED — this
+    // case is what reds if the allowlist is ever relaxed.
+    name: "ado/collection-form-does-not-admit-fragment-injection",
+    mutation:
+      "upflow-self-repo.js::normalizeComponent — remove the `/^[A-Za-z0-9._-]+$/` allowlist",
+    repo: {
+      dirName: "coc-rs",
+      remote:
+        "https://contoso.visualstudio.com/platform/_git/coc-rs#/otherproj",
+    },
+    adapter: ADO,
+    prRef: { repoRef: ADO_SELF, prId: 42 },
+    expect: { ok: false, fired: false },
+    expectReason: "does not parse to an owner/name pair",
+  },
+  {
     // The ADO adapter's underivable branch. Its instrument is `error === null`:
     // deleting the guard does not flip `ok`, it makes `d.self.ado` throw — and a
     // crash reads as a refusal to any assertion that only checks `ok === false`.

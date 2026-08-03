@@ -358,8 +358,30 @@ function _parseAdo(host, segments) {
   //   dev.azure.com/<org>/<project>/_git/<repo>      -> 3 (org, project, repo)
   //   ssh.dev.azure.com:v3/<org>/<project>/<repo>    -> 3
   //   <org>.visualstudio.com/<project>/_git/<repo>   -> 2 (org comes from host)
+  //   <org>.visualstudio.com/<collection>/<project>/_git/<repo> -> 3 (legacy)
+  //
+  // The legacy collection form is the ONE place a trailing pair is still taken
+  // from three segments, and it is safe ONLY BECAUSE the character allowlist in
+  // `normalizeComponent` runs on every component. THE TWO ARE COUPLED — do not
+  // relax the allowlist without revisiting this. Measured: an injection that
+  // would need three CLEAN segments cannot produce them, because the `#`/`?`
+  // necessarily lands ON a segment (`.../proj/_git/repo#/x` filters to
+  // ["proj","repo#","x"], and `normalizeComponent("repo#")` is null), while a
+  // four-segment injection fails the count outright.
   if (isOrgSubdomain) {
     org = host.slice(0, host.indexOf("."));
+    // The org-subdomain form takes an OPTIONAL leading COLLECTION segment:
+    //   <org>.visualstudio.com/<project>/_git/<repo>                    -> 2
+    //   <org>.visualstudio.com/DefaultCollection/<project>/_git/<repo>  -> 3
+    // The second is the legacy TFS/VSTS collection URL and is a REAL form.
+    // Recorded because a first cut of this exactness fix required exactly 2 and
+    // REGRESSED it — that remote derived correctly before the fix and refused
+    // after, locking out any maintainer still on a collection URL. It was
+    // caught by widening the legitimate-form check, not by review; the
+    // enumeration this fix was written against listed four forms and this was
+    // not among them.
+    if (segs.length !== 2 && segs.length !== 3) return null;
+    if (segs.length === 3) segs = segs.slice(1); // drop the collection
   } else {
     if (segs.length !== 3) return null; // exactly org + project + repo
     org = segs[0];
