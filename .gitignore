@@ -125,14 +125,15 @@ compose.override.yml
 # >>> coc:gitignore_additions — managed by loom /sync; do not edit between markers >>>
 .claude/operator-id
 .coc-fetch-cache
-.claude/learning/codify-lease.json
+.claude/learning/codify-lease.json*
+.claude/learning/capability-*
 .claude/learning/coordination-mode.json
 .claude/learning/.ss-banner-*
 .claude/learning/observations.jsonl
 .claude/learning/violations.jsonl
 .claude/learning/coordination-log.jsonl*
 .claude/learning/provenance/
-.claude/learning/posture.json
+.claude/learning/posture.json*
 .claude/learning/.initialized
 .claude/learning/learning-codified.json
 .claude/learning/learning-digest.json
@@ -141,6 +142,7 @@ compose.override.yml
 .claude/learning/derives-from/
 **/.claude/learning/derives-from/
 .claude/learning/sessionend-release-lease-*
+.claude/learning/.tmp-sereleaselease-*
 .claude/learning/observations.archive/
 .claude/operators.roster.json
 .claude/logs/
@@ -154,6 +156,7 @@ compose.override.yml
 **/.claude/mesh/**/*.key
 **/.claude/mesh/**/*.pem
 **/.claude/mesh/**/*.secret
+.claude/cross-repo-authz/
 .session-notes
 .session-notes.d/
 .session-notes.shared.md
