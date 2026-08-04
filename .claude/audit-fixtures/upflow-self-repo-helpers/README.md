@@ -36,18 +36,33 @@ adversarial round measuring that its removal left the fence suite fully green.
 
 ## Mutation results — measured in `cp -R` sandboxes
 
-| Mutation                                                                         | Cases redded                                              |
-| -------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `displayPrId` → `String(value)` (drop the `[^0-9]` allowlist)                    | 1 — `displayPrId/strips-every-injection-class`            |
-| `displayPrId` → drop the `try/catch` around `String(value)`                      | 1 — `displayPrId/does-not-throw-on-hostile-toString`      |
-| `sanitizeForReason` → return input unchanged                                     | 1 — `sanitizeForReason/strips-structure-forging-classes`  |
-| `sanitizeForReason` → ASCII-only class (over-tighten)                            | 1 — `sanitizeForReason/preserves-readable-non-ascii`      |
-| `getProvider` → `PROVIDERS[id]` (plain index)                                    | 1 — `getProvider/inherited-keys-are-not-providers`        |
-| `sanitizeForReason` → narrow the class back (drop U+061C / U+200B-200F / U+FEFF) | 1 — `sanitizeForReason/strips-structure-forging-classes`  |
-| `getProvider` → interpolate `id` raw into the refusal reason                     | 1 — `getProvider/refusal-reason-is-sanitized-and-bounded` |
-| `displayPrId` → a class that also eats digits (over-tighten) | 1 — `displayPrId/preserves-a-legitimate-id` |
-| `getProvider` → over-tighten the membership test | 1 — `getProvider/real-providers-still-resolve` |
-| `_readOriginRemote` → delete `_lastGitStderr = null;` | 1 — `deriveSelfRepoRef/git-stderr-does-not-leak-across-calls` |
+| Mutation                                                                         | Cases redded                                                                               |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `displayPrId` → `String(value)` (drop the `[^0-9]` allowlist)                    | 1 — `displayPrId/strips-every-injection-class`                                             |
+| `displayPrId` → drop the `try/catch` around `String(value)`                      | 1 — `displayPrId/does-not-throw-on-hostile-toString`                                       |
+| `sanitizeForReason` → return input unchanged                                     | 1 — `sanitizeForReason/strips-structure-forging-classes`                                   |
+| `sanitizeForReason` → ASCII-only class (over-tighten)                            | 1 — `sanitizeForReason/preserves-readable-non-ascii`                                       |
+| `getProvider` → `PROVIDERS[id]` (plain index)                                    | 1 — `getProvider/inherited-keys-are-not-providers`                                         |
+| `sanitizeForReason` → narrow the class back (drop U+061C / U+200B-200F / U+FEFF) | 1 — `sanitizeForReason/strips-structure-forging-classes`                                   |
+| `getProvider` → interpolate `id` raw into the refusal reason                     | 1 — `getProvider/refusal-reason-is-sanitized-and-bounded`                                  |
+| `displayPrId` → a class that also eats digits (over-tighten)                     | 1 — `displayPrId/preserves-a-legitimate-id`                                                |
+| `getProvider` → over-tighten the membership test                                 | 1 — `getProvider/real-providers-still-resolve`                                             |
+| `_readOriginRemote` → delete `_lastGitStderr = null;`                            | 1 — `deriveSelfRepoRef/git-stderr-does-not-leak-across-calls`                              |
+| parse-failure `where` → bare `sanitizeForReason(split.host)` (the pre-fix state) | 1 — `deriveSelfRepoRef/parse-failure-host-reason-is-bounded` (measured: 50139-char reason) |
+| `REASON_OPERAND_MAX` 256 → 4 (over-tighten)                                      | 1 — `deriveSelfRepoRef/parse-failure-host-reason-stays-diagnostic`                         |
+
+The last two are a BIPOLAR pair over one bound and each reds ALONE: removing the
+bound reds only the size case, over-tightening it reds only the diagnostic case.
+That is what distinguishes a correct bound from both an absent one and a
+truncate-to-nothing one — a single-polarity pair could not.
+
+**`displayPrId`'s new `slice(0, 256)` pre-bound has NO reddening mutation, and is
+recorded as such rather than claimed instrumented.** It is a pure allocation
+bound: the output is already capped at 32 code points, so for every input the
+post-slice result is byte-identical to the pre-slice one. There is no observable
+behavior to assert on, which is why no case was written for it — not because one
+was skipped. Per `instrument-discipline.md` MUST-2(b) this is stated as an
+un-instrumented change, not folded into the measured rows above.
 
 Each suite is **bipolar**: alongside every strip/refuse case there is a
 preserve/allow case, because a refusal-only suite cannot detect over-tightening.
@@ -88,7 +103,7 @@ reset REDS. Two consequences beyond the table row — the reset is **not**
 defensive code for a latent path, it prevents a LIVE cross-call stderr leak on a
 driveable input; and the `instrument-discipline.md` MUST-2(b) resolution was
 unearned. Collapsing two hypotheses toward "inert" requires the reachability
-argument to be *tested*, not merely asserted.
+argument to be _tested_, not merely asserted.
 
 ## Source-literal discipline
 

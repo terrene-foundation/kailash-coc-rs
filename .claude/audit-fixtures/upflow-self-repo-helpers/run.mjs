@@ -87,7 +87,9 @@ t(
     // The over-tightening polarity. A sanitizer that mangles valid ids makes
     // every refusal message useless, and a strip-only suite cannot detect it.
     const out = selfRepo.displayPrId(4242);
-    return out === "4242" ? null : `expected "4242", got ${JSON.stringify(out)}`;
+    return out === "4242"
+      ? null
+      : `expected "4242", got ${JSON.stringify(out)}`;
   },
 );
 
@@ -124,7 +126,18 @@ t(
   "upflow-self-repo.js::sanitizeForReason — return the input unchanged, or drop the \\u2028/\\u202a-\\u202e/\\u2066-\\u2069 members from the class",
   () => {
     for (const payload of [
-      NL, ESC, NUL, NEL, CSI8, RLO, LSEP, ALM, LRM, RLM, ZWSP, BOM,
+      NL,
+      ESC,
+      NUL,
+      NEL,
+      CSI8,
+      RLO,
+      LSEP,
+      ALM,
+      LRM,
+      RLM,
+      ZWSP,
+      BOM,
     ]) {
       const out = selfRepo.sanitizeForReason(`host${payload}evil.example`);
       if (out.includes(payload)) {
@@ -208,7 +221,10 @@ t(
       });
       const second = selfRepo.deriveSelfRepoRef(repo2);
       if (second.ok) return "setup invariant broken: call 2 should refuse";
-      if (second.reason.includes("a-repo") || second.reason.includes("git said")) {
+      if (
+        second.reason.includes("a-repo") ||
+        second.reason.includes("git said")
+      ) {
         return `call 2's refusal leaked call 1's stderr: ${JSON.stringify(second.reason.slice(0, 200))}`;
       }
       return null;
@@ -224,7 +240,7 @@ t(
 
 t(
   "getProvider/inherited-keys-are-not-providers",
-  'vcs-provider.js::getProvider — revert to `const adapter = PROVIDERS[id];` (a plain index inherits from Object.prototype)',
+  "vcs-provider.js::getProvider — revert to `const adapter = PROVIDERS[id];` (a plain index inherits from Object.prototype)",
   () => {
     // `Object.freeze` on an object LITERAL leaves Object.prototype on the chain,
     // so PROVIDERS["constructor"] is the Object function — TRUTHY — and the
@@ -257,7 +273,8 @@ t(
     // require away from the same helper, was not.
     const r = getProvider(`evil${NL}FORGED: ok`);
     if (r.ok) return "a forged provider id resolved";
-    if (r.reason.includes(NL)) return `newline survived: ${JSON.stringify(r.reason)}`;
+    if (r.reason.includes(NL))
+      return `newline survived: ${JSON.stringify(r.reason)}`;
     const long = getProvider("z".repeat(500));
     return long.reason.length < 300
       ? null
@@ -279,6 +296,75 @@ t(
     return dflt.ok && dflt.providerId === "github"
       ? null
       : "the undefined -> github default regressed";
+  },
+);
+
+t(
+  "deriveSelfRepoRef/parse-failure-host-reason-is-bounded",
+  "upflow-self-repo.js::deriveSelfRepoRef — put the parse-failure `where` back on bare `sanitizeForReason(split.host)` (drop `reasonText`)",
+  () => {
+    // `_splitRemoteUrl` returns the authority up to the first `/` and NOTHING
+    // upstream caps it. `sanitizeForReason` replaces characters one-for-one and
+    // does NOT shorten, so a huge authority produced a refusal `reason` as large
+    // as the remote — logged, and embeddable in a PR body by /codify Step-7c.
+    //
+    // The remote below SPLITS (printable-ASCII authority) but does NOT PARSE
+    // (one path segment, so no owner/name pair), which is exactly the branch
+    // that interpolates the host.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "helpers-hostbound-"));
+    try {
+      const repo = path.join(root, "r");
+      fs.mkdirSync(repo);
+      execFileSync("git", ["init", "-q"], { cwd: repo, stdio: "ignore" });
+      const hugeHost = `${"h".repeat(50000)}.example.com`;
+      execFileSync(
+        "git",
+        ["remote", "add", "origin", `https://${hugeHost}/only-one-segment`],
+        { cwd: repo, stdio: "ignore" },
+      );
+      const r = selfRepo.deriveSelfRepoRef(repo);
+      if (r.ok) return "setup invariant broken: this remote must not parse";
+      if (!/does not parse to an owner\/name pair/.test(r.reason)) {
+        return `setup invariant broken: took a different refusal branch: ${r.reason.slice(0, 120)}`;
+      }
+      // The bound is 256 code points on the OPERAND; the surrounding prose is
+      // fixed-size. 1000 is comfortably above the bounded total and orders of
+      // magnitude below the 50k unbounded one, so this cannot pass by accident.
+      return r.reason.length < 1000
+        ? null
+        : `unbounded host produced a ${r.reason.length}-char refusal reason`;
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  },
+);
+
+t(
+  "deriveSelfRepoRef/parse-failure-host-reason-stays-diagnostic",
+  "upflow-self-repo.js::deriveSelfRepoRef — over-tighten the bound (e.g. slice the operand to a few chars) so the host stops being identifiable",
+  () => {
+    // The PERMISSIVE polarity. The case above alone cannot distinguish a correct
+    // bound from a truncate-to-nothing bug: both produce a short reason. The
+    // whole point of naming the host is that an operator recognizes it, so a
+    // normal-length host MUST survive intact.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "helpers-hostkeep-"));
+    try {
+      const repo = path.join(root, "r");
+      fs.mkdirSync(repo);
+      execFileSync("git", ["init", "-q"], { cwd: repo, stdio: "ignore" });
+      execFileSync(
+        "git",
+        ["remote", "add", "origin", "https://git.example.com/only-one-segment"],
+        { cwd: repo, stdio: "ignore" },
+      );
+      const r = selfRepo.deriveSelfRepoRef(repo);
+      if (r.ok) return "setup invariant broken: this remote must not parse";
+      return r.reason.includes("git.example.com")
+        ? null
+        : `a legitimate host stopped being identifiable: ${JSON.stringify(r.reason)}`;
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   },
 );
 

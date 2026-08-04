@@ -45,7 +45,12 @@
 
 const githubLogin = require("./github-login.js");
 const ghAllow = require("./gh-api-allowlist.js");
-const { sanitizeForReason } = require("./upflow-self-repo.js");
+const {
+  sanitizeForReason,
+  reasonText,
+  reasonOperand,
+  reasonFromError,
+} = require("./upflow-self-repo.js");
 
 const providerId = "github";
 
@@ -117,134 +122,17 @@ function _fail(error, reason, extra) {
 // that a shape guard has already validated (a no-op there today, and the
 // property survives a future relaxation of that guard).
 //
-// THE SANITIZATION CLASS IS THE ONE SHARED HELPER, not a copy. Character-class
-// removal is `upflow-self-repo.js::sanitizeForReason` — the same function
-// `vcs-provider.js` and both `completeUpflowPR` fences already use. What is
-// per-file here is the thin BOUND + SCRUB wrapper. It is not in
-// `upflow-self-repo.js` (its natural home, next to `sanitizeForReason`) only
-// because that module was owned by a concurrent lane in the change that landed
-// this; and it cannot live in `vcs-provider.js`, which `require`s BOTH adapters
-// at load time — an adapter requiring it back would be a cycle that leaves
-// `PROVIDERS.github` as an empty object. The residual drift risk is the BOUND
-// value, and it has an instrument: `audit-fixtures/upflow-refusal-operand-
-// sanitization/` drives the same operand through both adapters and REDS if the
-// two bounds diverge.
-//
-// WHY A LENGTH BOUND AT ALL. `sanitizeForReason` replaces characters one-for-one
-// and does not shorten. A remote returning a megabyte error body, or a transport
-// throwing a megabyte message, produced a megabyte refusal reason — logged, and
-// possibly embedded in a PR body.
-//
-// WHY A URL-USERINFO SCRUB (`security.md` § "No secrets in logs"). The deriver
-// in `upflow-self-repo.js` deliberately does NOT echo the raw remote URL,
-// because its userinfo may hold a PAT, and truncates git's stderr to 200 chars
-// for the same reason. The catch blocks in this file had neither guard, and a
-// transport built on a PAT-in-URL remote throws an `Error` embedding
-// `https://user:<PAT>@host/...`. The mask is the canonical `scheme://***@host`
-// form of `observability.md` § 6.2, so a `***@` grep finds every masked site,
-// and the HOST is deliberately preserved — the message must stay diagnostic.
-// SCOPE, stated rather than implied: this scrubs URL userinfo ONLY. A credential
-// a transport surfaces some other way (an `Authorization: Basic <b64>` header
-// echoed into an error string) is NOT covered by this regex.
-const REASON_OPERAND_MAX = 256; // code points, per operand
-
-// Scheme-anchored on purpose: `[^\s/@]*` cannot cross a `/`, so `https://h/a@b`
-// (an `@` in a PATH, not userinfo) does not match and is left alone.
-const _URL_USERINFO_RE = /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)[^\s/@]{0,4096}@/g;
-
-// UTF-16 units the scrub examines. Two reasons it is a WINDOW, not the whole
-// string. (1) COST: with an UNBOUNDED scheme run the replace was quadratic in
-// the operand length — measured, a 200 kB operand hung the fixture suite past
-// 120 s. The bounded quantifiers above remove the quadratic; this window caps
-// the linear term. (2) SUFFICIENCY: nothing past REASON_OPERAND_MAX code points
-// reaches the output anyway, and this window is ~16x that. RESIDUAL, recorded
-// rather than implied: a URL whose userinfo is ITSELF longer than the window
-// has no terminating @ inside it, so it does not match and its leading code
-// points would survive. Real PATs are under ~100 chars, so this is stated, not
-// relied upon.
-const _SCRUB_WINDOW = 8192;
-
-function _scrubAndBound(s) {
-  const win = s.length > _SCRUB_WINDOW ? s.slice(0, _SCRUB_WINDOW) : s;
-  const scrubbed = win.replace(_URL_USERINFO_RE, "$1***@");
-  // Cheap pre-bound in UTF-16 units BEFORE the code-point walk, so a megabyte
-  // operand does not allocate a megabyte array. A code point is at most 2 units,
-  // so slicing at 2*MAX+2 units can never leave fewer than MAX+1 code points —
-  // i.e. the truncation branch below is always the one taken when this fires,
-  // and a surrogate half stranded by this cut always sits at index >= MAX and is
-  // dropped by it.
-  const pre =
-    scrubbed.length > REASON_OPERAND_MAX * 2 + 2
-      ? scrubbed.slice(0, REASON_OPERAND_MAX * 2 + 2)
-      : scrubbed;
-  const points = Array.from(pre); // code points, so no lone surrogate at the cut
-  return points.length > REASON_OPERAND_MAX
-    ? `${sanitizeForReason(points.slice(0, REASON_OPERAND_MAX).join(""))}…`
-    : sanitizeForReason(pre);
-}
-
-/**
- * A BARE interpolation (`${x}` with no JSON quoting) — path fragments, hosts,
- * principals, a nested validator's `reason`.
- */
-function reasonText(value) {
-  let s;
-  try {
-    s = typeof value === "string" ? value : String(value);
-  } catch {
-    // `String(value)` invokes a caller/remote-authored `toString`, which may
-    // throw — and this runs INSIDE the refusal path, so a throw here converts a
-    // typed `{ok:false, reason}` into an uncaught exception. The sibling fence
-    // suite asserts `error === null` precisely because a crash reads as a
-    // refusal to any assertion that only checks `ok === false`.
-    return "<unstringifiable>";
-  }
-  return _scrubAndBound(s);
-}
-
-/**
- * The replacement for every former `JSON.stringify(x)` operand. Keeps the JSON
- * rendering — its diagnostic value IS the shape (`{"message":"Not Found"}`, not
- * `[object Object]`) and it keeps a numeric status bare — then sanitizes and
- * bounds it.
- */
-function reasonOperand(value) {
-  let s;
-  try {
-    s = JSON.stringify(value);
-  } catch {
-    // Circular structure, a BigInt, or a hostile `toJSON` that throws.
-    s = undefined;
-  }
-  if (typeof s !== "string") {
-    // `JSON.stringify` also returns undefined for undefined / function / symbol.
-    try {
-      s = String(value);
-    } catch {
-      return "<unstringifiable>";
-    }
-  }
-  return _scrubAndBound(s);
-}
-
-/**
- * The replacement for every former
- * `${err && err.message ? err.message : String(err)}` interpolation. The
- * transport is INJECTED, so this text is attacker-influencable in the same way
- * a remote body is, and it is the operand most likely to carry a credential.
- */
-function reasonFromError(err) {
-  let s;
-  try {
-    // A property GETTER can throw, as can `toString` on a non-Error throwable
-    // (a transport may throw a string, a null, or anything else).
-    const m = err && err.message;
-    s = m ? String(m) : String(err);
-  } catch {
-    return "<unstringifiable transport error>";
-  }
-  return _scrubAndBound(typeof s === "string" ? s : String(s));
-}
+// THE SANITIZATION CLASS AND ITS BOUND+SCRUB WRAPPER ARE ONE SHARED HELPER, not
+// a copy. Character-class removal is `upflow-self-repo.js::sanitizeForReason`;
+// the BOUND + URL-userinfo-SCRUB wrapper over it (`reasonText` / `reasonOperand`
+// / `reasonFromError`) lives beside it in that same module, which is the
+// sanitization SSOT. They were briefly duplicated once per adapter because that
+// module was owned by a concurrent lane when the sweep landed; consolidating
+// them removes the bound-drift risk that duplication created. The cross-adapter
+// parity case in `audit-fixtures/upflow-refusal-operand-sanitization/` now
+// guards the single definition. (They cannot live in `vcs-provider.js`, which
+// `require`s BOTH adapters at load time — an adapter requiring it back would be
+// a cycle that leaves `PROVIDERS.github` as an empty object.)
 
 /**
  * gh api repos/{owner}/{repo} → external owner login.
