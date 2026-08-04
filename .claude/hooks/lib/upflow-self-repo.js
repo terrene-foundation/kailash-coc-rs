@@ -183,6 +183,19 @@ function normalizeComponent(v) {
  * cannot answer is INDETERMINATE, never a clean derivation.
  */
 function _readOriginRemote(cwd) {
+  // CLEAR FIRST. `_lastGitStderr` is module-scope and was assigned ONLY in the
+  // catch below, never reset — so a later call that returned null through a
+  // branch which sets nothing (`!gitBin`, or empty stdout) left the PREVIOUS
+  // call's stderr standing, and `deriveSelfRepoRef` spliced it into a refusal as
+  // `git said: …`. That states, in the grammar of an observation, something git
+  // never said on THAT call, about a repo it was never asked about
+  // (`evidence-first-claims.md` MUST-4) — and it re-emits operator-environment
+  // text from an unrelated directory into a second refusal `reason` that
+  // `/codify` Step-7c may embed in a journal or PR body
+  // (`user-flow-validation.md` MUST-6). Production runs one-shot per node
+  // invocation so the multi-call precondition is not met there, but the
+  // differential oracle drives ~30 URLs in ONE process, which is shipped code.
+  _lastGitStderr = null;
   const gitBin = resolveGitBinary();
   if (!gitBin) return null;
   try {
@@ -320,6 +333,32 @@ function _splitRemoteUrl(url) {
   // prints `host evil.com`, `user git@github.com#`).
   const at = authority.lastIndexOf("@");
   if (at !== -1) authority = authority.slice(at + 1);
+
+  // ASCII GUARD ON THE HOST, symmetric with `normalizeComponent`'s. The host is
+  // an identity operand compared against closed sets (`GITHUB_HOSTS`,
+  // `isAdoHost`), exactly like the components — but it was the ONE such operand
+  // reaching `.toLowerCase()` with no ASCII precheck, so the locale/case-fold
+  // surface that guard exists to close was open here. Placed AFTER the userinfo
+  // split on purpose: userinfo is discarded and may legitimately be non-ASCII,
+  // so guarding the whole authority would refuse remotes that are fine.
+  //
+  // NOT A LIVE BYPASS TODAY, and this is not claimed as one. The only code
+  // points whose `.toLowerCase()` yields a pure-ASCII letter are U+212A KELVIN
+  // SIGN → "k" and U+212B ANGSTROM SIGN → "å" (itself non-ASCII); U+0130 yields
+  // "i"+U+0307, two code units, so it cannot forge "i". No member of the current
+  // host sets contains a "k", so nothing is forgeable at this commit.
+  //
+  // It is closed anyway because THIS FILE'S OWN STANDARD, stated at the IPv6
+  // comment below, is that "safe-by-accident becomes a bypass the moment a
+  // caller compares hosts differently" — and `vcs-github-adapter.js` explicitly
+  // schedules that change ("A GHES deployment adds its appliance host here").
+  // A GHES appliance host containing "k" (`github.k8s.corp`) is forgeable by
+  // `github.<U+212A>8s.corp`, which lowercases into the set while git and ssh
+  // resolve the distinct IDN host. The guard is what makes the property
+  // structural rather than a coincidence of the current set's spelling.
+  // eslint-disable-next-line no-control-regex
+  if (!/^[\x00-\x7f]*$/.test(authority)) return null;
+
   // No trailing-dot normalization is applied, and that is deliberate: DNS
   // treats `github.com.` as the same absolute name, but this returns it
   // verbatim, so it does not match a caller's host set and the derivation
@@ -513,16 +552,34 @@ function _parseAdo(host, segments) {
   } else {
     // NOT INDEPENDENTLY LOAD-BEARING, and measured to be so rather than
     // assumed. Relaxing this line alone to `< 3` reds NOTHING — the suite stays
-    // 35/35 — because everything it then admits is refused by the
+    // fully green — because everything it then admits is refused by the
     // `segs.length !== 2` gate below: that gate demands `n - 1 === 2`, i.e.
     // `n === 3`, which is what this line already enforces. So this is a
     // defensive restatement, not a tested guard, and a reader must not cite a
     // green suite under a mutation here as evidence the ADO count is
     // instrumented. Per `instrument-discipline.md` MUST-2(b) a non-reddening
     // mutation leaves two live hypotheses — vacuous test OR inert mutation —
-    // and this one is resolved as INERT by the arithmetic above. The honest
-    // mutation for ADO exactness is the PAIR (this line AND the gate below),
-    // which is how the originating exploit was actually closed.
+    // and this one is resolved as INERT by the arithmetic above.
+    //
+    // (An earlier revision of this comment cited "the suite stays 35/35". The
+    // suite was 35 cases when that was written and grew the next commit; the
+    // bare count decayed while the claim around it stayed true. Stated as a
+    // property now, so there is no number left to go stale — the same remedy
+    // the fixture README prescribes for itself.)
+    //
+    // THE PAIR (this line AND the gate below) IS THE HONEST MUTATION, and as of
+    // this commit it is INSTRUMENTED — by
+    // `ado/exact-segment-count-rejects-all-clean-extra-segments`, which drives
+    // an ADO remote whose extra segments are ALL CLEAN. That shape is required:
+    // every other ADO multi-segment case carries a DIRTY segment that the
+    // validate-before-drop check catches first, so none of them can reach these
+    // gates. A previous revision asserted the pair was "how the originating
+    // exploit was actually closed", which a reader would take as a claim that
+    // the pair was tested; an adversarial round measured it and found the pair
+    // redded NOTHING and was VACUOUS, not inert. The claim is recorded here
+    // rather than quietly replaced, because a false claim about an instrument
+    // in a security comment is the exact class this file has now logged three
+    // times.
     if (segs.length !== 3) return null; // exactly org + project + repo
     org = segs[0];
     segs = segs.slice(1);

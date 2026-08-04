@@ -578,10 +578,83 @@ const cases = [
       remote: "https://github.com/terrene-foundation/kailash-coc-claude-py.git",
     },
     decoyMode: "descriptor-seam",
+    decoySelfRepoRef: {
+      owner: "terrene-foundation",
+      name: "kailash-coc-claude-py",
+    },
     adapter: GH,
     prRef: { repoRef: GH_UPSTREAM, prId: 77 },
     expect: { ok: false, fired: false },
     expectReason: "cross-repo completion refused",
+  },
+  {
+    // THE ADO SIBLING OF THE CASE ABOVE, and it did not exist until an
+    // adversarial round went looking for it. CRIT-2 (the caller-authored
+    // identity seam) was fixed at BOTH adapters but instrumented at ONE:
+    // restoring `deriveSelfRepoRef((prRef && prRef.cwd) || process.cwd())` in
+    // the ADO adapter left the suite FULLY GREEN. Driven directly under that
+    // mutation, the ADO adapter returned
+    //   {"ok":true,"fired":true,
+    //    "ep":"contoso/platform/_apis/git/repositories/coc-template/
+    //          pullrequests/42?api-version=7.1"}
+    // i.e. it MERGED ON THE UPSTREAM while every fixture still passed. The
+    // GitHub case above is labelled the regression guard for the originating
+    // CRIT; this is the half of that guard that was missing.
+    //
+    // Same shape, ADO-shaped: cwd is the SELF repo, the decoy's origin IS the
+    // upstream, all three removed seams are injected pointing at the decoy, and
+    // the target is the upstream. The fence must ignore every seam and refuse
+    // because the real `process.cwd()` is self. Honoring any seam derives the
+    // upstream, `isSelfRepoAdo` matches, and the merge fires — refuse→authorize.
+    name: "ado/descriptor-identity-seams-are-ignored",
+    mutation:
+      "vcs-azure-adapter.js::completeUpflowPR — restore any caller-authored identity seam, e.g. `deriveSelfRepoRef((prRef && prRef.cwd) || process.cwd())`",
+    repo: { dirName: "coc-rs", remote: ADO_SELF_REMOTE },
+    decoyRepo: {
+      dirName: "coc-template",
+      remote: "https://dev.azure.com/contoso/platform/_git/coc-template",
+    },
+    decoyMode: "descriptor-seam",
+    decoySelfRepoRef: ADO_UPSTREAM,
+    adapter: ADO,
+    prRef: { repoRef: ADO_UPSTREAM, prId: 42 },
+    expect: { ok: false, fired: false },
+    expectReason: "refusing to complete",
+  },
+  {
+    // THE ONLY INSTRUMENT FOR THE ADO EXACT-SEGMENT-COUNT PAIR, and the shape
+    // is load-bearing: the extra segments are ALL CLEAN. Every other ADO
+    // multi-segment case carries a DIRTY segment (`#`, `?`, a percent-encoded
+    // separator) that `normalizeComponent` nulls at the validate-before-drop
+    // check, so none of them ever reaches the two count gates — which is why
+    // the pair mutation redded NOTHING before this case existed, and why the
+    // source comment claiming the pair was the tested mutation was false.
+    //
+    // Arithmetic, measured not argued. Segments after the `_git` filter:
+    //   [realorg, realproj, realrepo, extra, otherrepo]            (n=5)
+    // UNMUTATED: `segs.length !== 3` refuses at n=5 -> derivation null ->
+    //   the adapter refuses as underivable.
+    // PAIR-MUTATED (`!== 3`->`< 3` AND `!== 2`->`< 2`): n=5 passes the first
+    //   gate, org = segs[0] = "realorg", slice(1) leaves n=4, which passes the
+    //   second, and project/repo are taken as the LAST TWO -> "extra" /
+    //   "otherrepo". That is exactly the value the adversarial probe measured.
+    // The target below is that MUTATED derivation, so the mutation flips this
+    // case refuse->AUTHORIZE. Targeting the real self repo instead would refuse
+    // under BOTH, and the case could not discriminate.
+    name: "ado/exact-segment-count-rejects-all-clean-extra-segments",
+    mutation:
+      "upflow-self-repo.js::_parseAdo — the PAIR: relax `segs.length !== 3` to `< 3` AND `segs.length !== 2` to `< 2` (either alone is inert)",
+    repo: {
+      dirName: "coc-rs",
+      remote:
+        "https://dev.azure.com/realorg/realproj/_git/realrepo/extra/otherrepo",
+    },
+    adapter: ADO,
+    prRef: {
+      repoRef: { org: "realorg", project: "extra", repo: "otherrepo" },
+      prId: 42,
+    },
+    expect: { ok: false, fired: false },
   },
   {
     // THE `gitEnv()` ROUTING'S ONLY INSTRUMENT. `git-subprocess-env.js` exists
@@ -1108,10 +1181,16 @@ for (const c of cases) {
         // Inject the ONCE-REMOVED caller-authored identity seams onto the
         // descriptor, pointed at the decoy. The decoy path only exists at
         // runtime, so it cannot be written into the static case.
+        // `decoySelfRepoRef` carries the PROVIDER-SHAPED forged identity —
+        // `{owner,name}` on GitHub, `{org,project,repo}` on ADO. It must match
+        // the adapter under test: injecting a GitHub-shaped `selfRepoRef` into
+        // the ADO adapter would be ignored for being the wrong SHAPE rather
+        // than for being caller-authored, which is a weaker assertion than the
+        // one this case claims to make.
         prRef = {
           ...c.prRef,
           cwd: decoy.repo,
-          selfRepoRef: { owner: "terrene-foundation", name: "kailash-coc-claude-py" },
+          selfRepoRef: c.decoySelfRepoRef,
           _deriveSelfFn: "__must_be_ignored__",
         };
       }
