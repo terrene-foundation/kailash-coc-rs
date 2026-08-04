@@ -1,0 +1,101 @@
+# Step-7c downstream upflow offer.
+# NO source_repo — hop-level-only provenance: the downstream consumer is deliberately
+# NOT identified in the schema (the scenario-8/9 disclosure fence). At relay the
+# template stamps `via: <template-slug>`, never the consumer.
+origin: downstream
+codify_date: 2026-08-04
+codify_session: "codify(tooling): disclosure-scanner false positive on authz receipts + authorize-receipt filename collision"
+template_slug: kailash-coc-rs
+template_version: "2.23.22"
+loom_sha: "22fff0a"
+
+# TWO DEFECT REPORTS against shipped tooling. Both were hit in sequence during a single
+# Step-7c filing, and both block or degrade that path at any consumer. Neither is a
+# trade-off decision; both are behaviour that contradicts the tooling's own contract.
+changes:
+  - file: .claude/bin/scan-synced-disclosure.mjs
+    action: modified
+    base_version: "2.23.22"
+    reason: >
+      DEFECT 1 — the disclosure scanner walks `.claude/cross-repo-authz/`, a LOCAL AUDIT
+      surface that is not a distributed path, and therefore blocks on findings that can
+      never reach a downstream consumer.
+
+      Evidence, measured at a consumer: `isNeverSynced` (`scan-synced-disclosure.mjs:132`,
+      consulted at `:281`) excludes `learning/`, `.proposals/`, `test-harness/`, `projects/`
+      and `worktrees/` — every one a local-only surface — but does NOT exclude
+      `cross-repo-authz/`. `walk()` (`:293`) recurses all of `.claude/` with no path or
+      extension filter, so receipts are collected. `cross-repo-authz` appears ZERO times in
+      `sync-manifest.yaml`, i.e. it is absent from the distribution surface entirely, which
+      puts it in exactly the same category as the five directories already excluded.
+
+      Why this is not merely cosmetic: a cross-repo authorization receipt's PURPOSE is to
+      record what was authorized and why, and a receipt that documents a disclosure-shape
+      question will quote disclosure shapes. At this consumer a receipt quoting the
+      scanner's own documented FIXTURE PLACEHOLDERS (the standard fictional-company slugs
+      used throughout `scan-synced-disclosure.mjs`'s own comments as examples of forms to
+      DETECT) produces 3 findings of shape `nonfoundation-org-slug`, all on one line, and
+      `--check` exits 1. No real organization is disclosed. The gate is red on fictional
+      companies.
+
+      The consequence is structural, not local: `--check` is specified as a hard fence
+      before a Step-7c offer, so any consumer whose audit trail has ever documented a
+      disclosure form has a PERMANENTLY red fence on that path, and neither available repair
+      is legitimate from the consumer side. Rewording the receipt means retroactively editing
+      an audit record. Adding a scanner exclusion locally edits a synced artifact, which is
+      rebuilt away by the next sync — and would have to come back through this route anyway.
+      Observed disposition at the consumer was a documented, human-authorized override with
+      the offered artifact separately verified clean by direct inspection; that is a
+      reasonable one-off and a bad steady state.
+
+      Proposed disposition: add `if (pSegs[0] === "cross-repo-authz") return true;` to
+      `isNeverSynced`, alongside the five existing local-only exclusions. If receipts are
+      instead intended to be a distributed surface, then the opposite fix applies and the
+      scanner is right — but in that case the contract should say so, because a distributed
+      audit trail has disclosure consequences of its own that no consumer is currently
+      treating as in scope.
+
+      One observation offered as data rather than diagnosis: the scanner produces zero
+      findings against its OWN source, whose comments carry the same fixture slugs in the
+      same forms. The asymmetry is real and reproducible; its mechanism was not isolated,
+      and it is noted only because it may point at a second path in the same code.
+    diff_lines: "+1 (one isNeverSynced entry), or a contract clarification"
+
+  - file: .claude/bin/cross-repo-authorize.mjs
+    action: modified
+    base_version: "2.23.22"
+    reason: >
+      DEFECT 2 — the receipt filename is derived from a TRUNCATED action slug, so two
+      DISTINCT authorized actions against the same target on the same day collide, and the
+      tool then refuses the second one.
+
+      Evidence: a first action, "Step-7c upflow: open a PR adding
+      .claude/.proposals/inbox/<file-a>.yaml", produced the receipt
+      `<date>-<target-slug>-step-7c-upflow-open-a-pr-adding-claude-propos.md`. A second,
+      genuinely different action later the same day — a different proposal file, a different
+      subject, separately authorized by the operator — truncated to the SAME filename and was
+      refused with "receipt already exists ... refusing to overwrite an audit record".
+
+      The refusal itself is CORRECT and should not change: receipts are immutable evidence
+      and overwriting one to make room for another would destroy an audit record. The defect
+      is upstream of it, in the filename derivation: the slug is taken from a prefix of the
+      action string, and every Step-7c action begins with the same words, so the
+      discriminating part of the action (which file, which subject) is exactly what
+      truncation discards.
+
+      Consequence: the second authorization is unfileable until the operator rewords the
+      action string to differ in its opening words. That is a silent incentive to write
+      action descriptions for filename uniqueness rather than for accuracy, which corrodes
+      the audit trail the receipts exist to provide. It also fails closed in an unhelpful
+      direction — the operator has genuinely authorized the action, and the tool declines
+      for reasons unrelated to authorization.
+
+      Proposed disposition: disambiguate the derived filename rather than the action text —
+      a short hash of the full action string, or a monotonic `-2` / `-3` suffix on collision.
+      Either preserves the refusal-to-overwrite invariant while letting a second distinct
+      same-day action be recorded. Observed workaround at the consumer was to reword the
+      action to lead with its distinguishing content, which worked but is the behaviour worth
+      designing out.
+    diff_lines: "~10 (filename derivation + collision suffix)"
+
+status: pending_review
