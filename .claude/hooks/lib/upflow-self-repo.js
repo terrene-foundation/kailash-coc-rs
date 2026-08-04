@@ -137,7 +137,12 @@ function normalizeComponent(v) {
   // safety depended on a SECOND module's regex staying strict; the allowlist
   // here makes it a property of this function.
   //
-  // The set is the INTERSECTION of what both providers' own validators accept
+  // The set is the UNION of what the providers' validators accept across the
+  // component classes quoted above — `GITHUB_LOGIN_RE` and `ADO_ORG_RE` admit
+  // neither `.` nor `_`, so the intersection would be narrower and would reject
+  // legitimate repo names. UNION is what the safety argument below actually
+  // needs (no legitimate component is refused); an earlier draft said
+  // "INTERSECTION", which named the wrong set for a correct conclusion.
   // (`[A-Za-z0-9._-]`, quoted with line numbers above), so no legitimate owner,
   // name, org, project, or repo is affected. A denylist would have to enumerate
   // every future dangerous byte; this closes the class (`cc-artifacts.md`
@@ -199,10 +204,17 @@ function _readOriginRemote(cwd) {
  * Split a remote URL into `{host, segments}`. Handles `scheme://host/path` and
  * scp-style `git@host:path`.
  *
- * The returned `host` is the authority with FOUR things removed, in this order:
- * anything from the first `#` or `?` onward (the fragment/query cut below),
- * then userinfo (everything through the last `@`), then the port, then case.
- * The fragment/query cut MUST precede the userinfo split — see the comment on
+ * The returned `host` is the authority with things removed in this order:
+ * anything from the first `#` or `?` onward — ON THE SCHEME BRANCH ONLY, see
+ * below — then userinfo (everything through the last `@`), then the port, then
+ * case.
+ *
+ * THE CUT IS SCHEME-BRANCH-ONLY, and stating it unconditionally here was wrong
+ * for every scp remote. It models CURL, which git uses for http/https; OpenSSH
+ * has no such terminator and splits user@host at the last `@`. Applying it to
+ * the scp branch put the decoy in the RETAINED host and the real host in the
+ * discarded userinfo — the measured `git@github.com#@evil.com:o/r` defect.
+ * On the scheme branch the cut MUST precede the userinfo split — see the comment on
  * it. Returns null when no host is present (a bare local path is not a hosting
  * identity) or when the authority is empty after the cuts.
  */
@@ -320,11 +332,17 @@ function _splitRemoteUrl(url) {
 
 /**
  * Azure DevOps identity from a parsed remote, or null when the remote is not
- * ADO-shaped. Forms handled:
+ * ADO-shaped. Forms handled — FIVE, and this list is load-bearing: an earlier
+ * four-entry version of it omitted the collection form, a fix was written
+ * against the short list, and it REGRESSED that form into a maintainer lockout.
+ * Keep this in sync with the inline count block in the body.
  *   https://dev.azure.com/<org>/<project>/_git/<repo>
  *   https://<org>@dev.azure.com/<org>/<project>/_git/<repo>
  *   https://<org>.visualstudio.com/<project>/_git/<repo>
+ *   https://<org>.visualstudio.com/<collection>/<project>/_git/<repo>  (legacy)
  *   git@ssh.dev.azure.com:v3/<org>/<project>/<repo>
+ * `vs-ssh.visualstudio.com` takes the org-from-path branch, NOT the subdomain
+ * one (it is excluded explicitly), so it follows the ssh/v3 shape.
  *
  * This parses ADO SEPARATELY on purpose. `version-utils.js::
  * normalizeRemoteIdentity` keeps only the LAST TWO path segments and drops
@@ -342,6 +360,34 @@ function _parseAdo(host, segments) {
   let segs = segments.slice();
   if (segs[0] && segs[0].toLowerCase() === "v3") segs = segs.slice(1);
   segs = segs.filter((p) => p.toLowerCase() !== "_git");
+
+  // VALIDATE EVERY SEGMENT BEFORE ANY IS DROPPED. The collection slot below is
+  // discarded by `slice(1)`, and until this line it was the ONE position in the
+  // whole parser whose content never passed `normalizeComponent` — which made
+  // it a junk drawer that let a dirty path clear the count check:
+  //
+  //   https://realorg.visualstudio.com/realproj#/proj2/_git/repo2
+  //     filter -> ["realproj#", "proj2", "repo2"]   3, passes the count
+  //     slice  -> ["proj2", "repo2"]                the dirty one is GONE
+  //     derived-> {org: realorg, project: proj2, repo: repo2}   (measured)
+  //
+  // A COMMENT IN THIS FUNCTION PREVIOUSLY CLAIMED THIS COULD NOT HAPPEN — that
+  // an injection "would need three CLEAN segments and cannot forge them,
+  // because the `#`/`?` necessarily lands ON a segment". False, and refuted by
+  // measurement: it never needed three clean segments, only two plus a slot
+  // whose contents are thrown away. The claim held for RETAINED slots and was
+  // stated as if it held for all of them. Recorded rather than quietly
+  // replaced, because a security comment asserting a property the code lacks is
+  // the exact defect class this file keeps re-learning.
+  //
+  // Harm was ~zero — `#` truncates the path at curl and `?` collides with git's
+  // own `/info/refs?service=…`, so neither remote is fetchable, and the cwd
+  // bound in the module header dominates anyway. Fixed regardless: the IPv6
+  // note above refuses to rely on safe-by-accident, and this is the same shape.
+  //
+  // Validating first also closes the class rather than the instance — anchoring
+  // on `_git` position would NOT have, since the junk sits BEFORE the anchor.
+  if (segs.some((p) => normalizeComponent(p) === null)) return null;
 
   let org = null;
   const isOrgSubdomain =
@@ -361,13 +407,19 @@ function _parseAdo(host, segments) {
   //   <org>.visualstudio.com/<collection>/<project>/_git/<repo> -> 3 (legacy)
   //
   // The legacy collection form is the ONE place a trailing pair is still taken
-  // from three segments, and it is safe ONLY BECAUSE the character allowlist in
-  // `normalizeComponent` runs on every component. THE TWO ARE COUPLED — do not
-  // relax the allowlist without revisiting this. Measured: an injection that
-  // would need three CLEAN segments cannot produce them, because the `#`/`?`
-  // necessarily lands ON a segment (`.../proj/_git/repo#/x` filters to
-  // ["proj","repo#","x"], and `normalizeComponent("repo#")` is null), while a
-  // four-segment injection fails the count outright.
+  // from three segments, and it is safe ONLY BECAUSE every segment — INCLUDING
+  // the collection that is about to be discarded — is passed through
+  // `normalizeComponent` first, at the validate-before-drop line above. THE TWO
+  // ARE COUPLED: relax the allowlist, or move that check after the slice, and
+  // this reopens.
+  //
+  // An earlier version of this comment argued the safety differently and was
+  // WRONG. It said an injection "would need three CLEAN segments and cannot
+  // produce them, because the `#`/`?` necessarily lands ON a segment". That is
+  // true only of RETAINED segments; the discarded collection slot was an
+  // unvalidated junk drawer, and `.../realproj#/proj2/_git/repo2` cleared the
+  // count with two clean segments and derived proj2/repo2 (measured). The
+  // validate-before-drop line is what makes the property real.
   if (isOrgSubdomain) {
     org = host.slice(0, host.indexOf("."));
     // The org-subdomain form takes an OPTIONAL leading COLLECTION segment:
@@ -434,8 +486,11 @@ function _parseAdo(host, segments) {
 
 /**
  * Parse a remote URL into `{host, owner, name, ado}`. `owner`/`name` are the
- * last two path components (ADO: project/repo, matching the shape both adapters
- * compare on); `ado` is populated only for ADO remotes.
+ * path's EXACTLY TWO components (ADO: project/repo, matching the shape both
+ * adapters compare on); `ado` is populated only for ADO remotes. Said as
+ * "exactly two", not "the last two": the body requires the exact count, and the
+ * last-two phrasing describes the rule that fragment-injected segments
+ * defeated.
  *
  * `host` is RETURNED, not just used internally. It was previously destructured,
  * consulted only for ADO detection, and then discarded — which left `owner/name`
@@ -445,9 +500,10 @@ function _parseAdo(host, segments) {
  * fence whose merge would then go to github.com/<org>/<repo> — a DIFFERENT repo
  * than the remote names. Mirrors of upstream templates are ordinary, so that is
  * realistic confusion, not only an attack. The host is normalized by
- * `_splitRemoteUrl` — fragment/query cut, userinfo and port stripped,
- * lowercased, in that order (see that function); the PROVIDER-appropriate
- * host check belongs to each adapter, which knows its own host set.
+ * `_splitRemoteUrl` — fragment/query cut (SCHEME BRANCH ONLY), userinfo and
+ * port stripped, lowercased, in that order (see that function); the
+ * PROVIDER-appropriate host check belongs to each adapter, which knows its own
+ * host set.
  */
 function _parseRemoteUrl(url) {
   const split = _splitRemoteUrl(url);
@@ -528,9 +584,11 @@ function _declaredSlug(cwd) {
  * of.
  *
  * `self.host` is the origin remote's host, normalized by `_splitRemoteUrl`
- * (fragment/query cut, userinfo and port stripped, lowercased — in that order;
- * the cut precedes the userinfo split, which is what makes the host agree with
- * what curl resolves). It is carried so a caller can check the identity was derived
+ * (fragment/query cut on the SCHEME BRANCH ONLY, userinfo and port stripped,
+ * lowercased — in that order; on that branch the cut precedes the userinfo
+ * split, which is what makes the host agree with what curl resolves. The scp
+ * branch takes no cut and splits at the last `@`, which is what makes it agree
+ * with ssh). It is carried so a caller can check the identity was derived
  * from a host that provider serves — an owner/name pair alone says nothing about
  * WHERE the repo lives. The check itself belongs to the calling adapter, which
  * knows its own host set; this module does not rank hosts.

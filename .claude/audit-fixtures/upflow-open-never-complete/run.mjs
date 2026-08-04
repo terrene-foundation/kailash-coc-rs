@@ -940,6 +940,43 @@ const cases = [
     // so three segments cannot be forged CLEAN, and four fail the count.
     // THE COLLECTION ALLOWANCE AND THE CHARACTER ALLOWLIST ARE COUPLED — this
     // case is what reds if the allowlist is ever relaxed.
+    // THE DISCARDED-SLOT INJECTION, and the case that refuted a security claim
+    // this file's sibling comment previously asserted. The collection segment
+    // is dropped by `slice(1)`, and it was the ONE position in the parser whose
+    // content never passed `normalizeComponent` — an unvalidated junk drawer.
+    // So the injection never needed three CLEAN segments, only two plus that
+    // slot:
+    //
+    //   https://realorg.visualstudio.com/realproj#/proj2/_git/repo2
+    //     filter -> ["realproj#","proj2","repo2"]  3, passes the count
+    //     slice  -> ["proj2","repo2"]              the dirty one is discarded
+    //     derived-> {org: realorg, project: proj2, repo: repo2}   (MEASURED)
+    //
+    // The sibling case below drives a dirty RETAINED segment and passed
+    // throughout — which is exactly why the false claim survived: the suite
+    // instrumented the half that held and not the half that did not.
+    //
+    // Harm ~zero (neither form is fetchable: `#` truncates at curl, `?`
+    // collides with git's `/info/refs?service=…`), so this is a parse defect,
+    // not an escalation. Fixed anyway rather than left safe-by-accident.
+    name: "ado/discarded-collection-slot-rejects-dirty-segment",
+    mutation:
+      "upflow-self-repo.js::_parseAdo — move the `segs.some(normalizeComponent === null)` validate-before-drop check to AFTER the `slice(1)`, or delete it",
+    repo: {
+      dirName: "coc-rs",
+      remote: "https://contoso.visualstudio.com/platform#/proj2/_git/repo2",
+    },
+    adapter: ADO,
+    // repoRef names what the injection smuggles in, so under the mutation this
+    // derives, compares EQUAL, and fires.
+    prRef: {
+      repoRef: { org: "contoso", project: "proj2", repo: "repo2" },
+      prId: 42,
+    },
+    expect: { ok: false, fired: false },
+    expectReason: "does not parse to an owner/name pair",
+  },
+  {
     name: "ado/collection-form-does-not-admit-fragment-injection",
     mutation:
       "upflow-self-repo.js::normalizeComponent — remove the `/^[A-Za-z0-9._-]+$/` allowlist",
