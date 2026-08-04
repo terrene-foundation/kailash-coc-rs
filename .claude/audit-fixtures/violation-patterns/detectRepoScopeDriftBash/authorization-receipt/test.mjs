@@ -30,9 +30,8 @@ const HOOKS_LIB = path.resolve(
   "lib",
   "violation-patterns.js",
 );
-const { detectRepoScopeDriftBash, hasCrossRepoAuthorizationReceipt } = require(
-  HOOKS_LIB,
-);
+const { detectRepoScopeDriftBash, hasCrossRepoAuthorizationReceipt } =
+  require(HOOKS_LIB);
 
 const TARGET = "Org/target";
 const CMD = `gh issue create --repo ${TARGET} --title t --body b`;

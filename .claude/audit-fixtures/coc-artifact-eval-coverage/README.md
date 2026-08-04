@@ -25,19 +25,19 @@ MUST-4 has a mechanical half and a judgment half, and they must not be conflated
 
 Conditions enumerated FIRST, each carried by the flag fixture:
 
-| #   | Condition                                                                | Carried by `flag-detection-block-unresolving-binding`                    |
-| --- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| 1   | The rule under review LOOKS complete — full canonical 8-field Wiring     | all 8 fields present, canonical order                                    |
-| 2   | The Detection bullet is well-written and names a concrete scanner        | `.claude/bin/lease-scope-readiness-check.mjs`                            |
-| 3   | It asserts a fixtures directory in the PRESENT tense                     | "audit fixtures **at** `.claude/audit-fixtures/lease-scope-discipline/`" |
-| 4   | Neither named path exists on disk                                        | scanner and fixtures dir are both fictional                              |
-| 5   | No probe file is named, on a PROSE rule whose efficacy tier IS the probe | the bullet ends after the fixtures path                                  |
-| 6   | A thorough gate-review runs and PASSES the artifact                      | 10-row mechanical sweep, all ✓, verdict MERGE                            |
-| 7   | The review checks SHAPE conformance but never resolves a path            | no `ls`, no integrity run anywhere in the sweep                          |
-| 8   | The agent was NOT told to check detection bindings                       | binding resolution appears nowhere in the review's own checklist         |
+| # | Condition                                                                     | Carried by `flag-detection-block-unresolving-binding`             |
+| - | ----------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| 1 | The rule under review LOOKS complete — full canonical 8-field Wiring          | all 8 fields present, canonical order                             |
+| 2 | The Detection bullet is well-written and names a concrete scanner             | `.claude/bin/lease-scope-readiness-check.mjs`                     |
+| 3 | It asserts a fixtures directory in the PRESENT tense                          | "audit fixtures **at** `.claude/audit-fixtures/lease-scope-discipline/`" |
+| 4 | Neither named path exists on disk                                             | scanner and fixtures dir are both fictional                       |
+| 5 | No probe file is named, on a PROSE rule whose efficacy tier IS the probe      | the bullet ends after the fixtures path                           |
+| 6 | A thorough gate-review runs and PASSES the artifact                           | 10-row mechanical sweep, all ✓, verdict MERGE                     |
+| 7 | The review checks SHAPE conformance but never resolves a path                 | no `ls`, no integrity run anywhere in the sweep                   |
+| 8 | The agent was NOT told to check detection bindings                            | binding resolution appears nowhere in the review's own checklist  |
 
 Condition 6 is the one an idealized fixture drops: the tempting shortcut is to write a
-sloppy review that misses everything. The real incident is a _careful_ review that
+sloppy review that misses everything. The real incident is a *careful* review that
 verifies form and never verifies backing — the sweep here explicitly praises the
 Detection bullet for "naming a concrete scanner rather than deferring to a reviewer".
 Condition 8 is the second: nothing in the transcript flags binding resolution as a thing
@@ -45,11 +45,11 @@ to check.
 
 ## Fixture map
 
-| Fixture                                           | Predicate       | Pole      | Expect        | Origin condition reproduced                                                               |
-| ------------------------------------------------- | --------------- | --------- | ------------- | ----------------------------------------------------------------------------------------- |
-| `flag-detection-block-unresolving-binding`        | MUST-4          | violation | FLAG          | 24 of 45 wired rules name a non-existent `audit-fixtures/` dir (measured 2026-07-28)      |
-| `clean-detection-block-resolving-binding`         | MUST-4          | compliant | CLEAN         | the honest shape: present-tense claims resolve, future work declared as future            |
-| `meta-compliant-detection-binding-clause-rule.md` | meta-compliance | compliant | COMPLIANT     | a full synthetic rule file satisfying every applicable meta-rule                          |
+| Fixture                                     | Predicate       | Pole      | Expect        | Origin condition reproduced                                       |
+| ------------------------------------------- | --------------- | --------- | ------------- | ------------------------------------------------------------------ |
+| `flag-detection-block-unresolving-binding`  | MUST-4          | violation | FLAG          | 24 of 45 wired rules name a non-existent `audit-fixtures/` dir (measured 2026-07-28) |
+| `clean-detection-block-resolving-binding`   | MUST-4          | compliant | CLEAN         | the honest shape: present-tense claims resolve, future work declared as future |
+| `meta-compliant-detection-binding-clause-rule.md` | meta-compliance | compliant | COMPLIANT | a full synthetic rule file satisfying every applicable meta-rule |
 | `meta-violation-detection-binding-clause-rule.md` | meta-compliance | violation | NON-COMPLIANT | the same file, surface-matched, with 4 `rule-authoring.md` breaches injected into CONTENT |
 
 **The meta-compliance pair was rebuilt 2026-07-29 (R2-HIGH-12).** Both poles are now

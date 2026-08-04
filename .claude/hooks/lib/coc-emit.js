@@ -160,11 +160,7 @@ function _defaultAppend(repoDir, record) {
   // before signing, so an oversized record is refused rather than truncated-after-sign.
   const logPath = resolveLogPath(repoDir);
   const w = appendSinkLine({ repoDir, sinkPath: logPath, line });
-  if (!w.ok)
-    return {
-      ok: false,
-      error: `coordination-log append refused: ${w.error} — ${w.reason}`,
-    };
+  if (!w.ok) return { ok: false, error: `coordination-log append refused: ${w.error} — ${w.reason}` };
   return { ok: true };
 }
 

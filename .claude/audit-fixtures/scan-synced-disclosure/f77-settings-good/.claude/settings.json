@@ -8,6 +8,9 @@
       "Bash(git status:*)",
       "Bash(git diff:*)"
     ],
-    "deny": ["Edit($CLAUDE_PROJECT_DIR/.claude/learning/**)", "Write(/etc/**)"]
+    "deny": [
+      "Edit($CLAUDE_PROJECT_DIR/.claude/learning/**)",
+      "Write(/etc/**)"
+    ]
   }
 }

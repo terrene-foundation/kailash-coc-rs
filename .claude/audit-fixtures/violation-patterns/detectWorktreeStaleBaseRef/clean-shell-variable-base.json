@@ -1,4 +1,1 @@
-{
-  "args": "add ../wt \"$BRANCH\"",
-  "refs": { "$BRANCH": { "ahead": 0, "behind": 42 } }
-}
+{"args":"add ../wt \"$BRANCH\"","refs":{"$BRANCH":{"ahead":0,"behind":42}}}

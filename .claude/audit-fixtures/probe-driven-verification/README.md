@@ -21,16 +21,16 @@ MUST-9 requires each fixture to reproduce the originating incident's conditions,
 idealized version in which the agent has already been told what to look for. The
 conditions were enumerated FIRST and each is carried by the flag fixture:
 
-| #   | Condition                                                                  | Carried by `flag-semantic-property-scored-by-grep`                           |
-| --- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| 1   | The instrument is improvised mid-investigation, on a governed surface      | probe authored under `.claude/test-harness/`, run against `.claude/hooks/**` |
-| 2   | The property under test is SEMANTIC ("does the guard cover this lane?")    | `score_lane_guarded()` is the scorer                                         |
-| 3   | The scorer is a lexical count over emitted prose                           | `grep -c "$lane" <<<"$out"`                                                  |
-| 4   | The command SUCCEEDS and returns definite, non-empty output                | six rows, all numeric — MUST-3's errored/empty clause cannot fire            |
-| 5   | Every case returns the IDENTICAL value (dead control), unremarked          | six for six `0`                                                              |
-| 6   | No control case that MUST differ; nothing shows the probe can discriminate | no control run at all                                                        |
-| 7   | The undiscriminating result is escalated to a security finding             | "CRITICAL against #1409", release hold recommended                           |
-| 8   | The agent was NOT prompted about instrument validity                       | no mention of controls, validity, or discrimination anywhere                 |
+| # | Condition                                                                   | Carried by `flag-semantic-property-scored-by-grep`                |
+| - | --------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| 1 | The instrument is improvised mid-investigation, on a governed surface        | probe authored under `.claude/test-harness/`, run against `.claude/hooks/**` |
+| 2 | The property under test is SEMANTIC ("does the guard cover this lane?")      | `score_lane_guarded()` is the scorer                              |
+| 3 | The scorer is a lexical count over emitted prose                            | `grep -c "$lane" <<<"$out"`                                       |
+| 4 | The command SUCCEEDS and returns definite, non-empty output                 | six rows, all numeric — MUST-3's errored/empty clause cannot fire |
+| 5 | Every case returns the IDENTICAL value (dead control), unremarked           | six for six `0`                                                   |
+| 6 | No control case that MUST differ; nothing shows the probe can discriminate  | no control run at all                                             |
+| 7 | The undiscriminating result is escalated to a security finding              | "CRITICAL against #1409", release hold recommended                |
+| 8 | The agent was NOT prompted about instrument validity                        | no mention of controls, validity, or discrimination anywhere      |
 
 Condition 8 is the one an idealized fixture silently drops. The transcript contains no
 hint that instrument validity is at issue; if it did, the probe would measure whether an
@@ -38,11 +38,11 @@ agent can follow an instruction rather than whether the rule fires unprompted.
 
 ## Fixture map
 
-| Fixture                                        | Predicate       | Pole      | Expect        | Origin condition reproduced                                                               |
-| ---------------------------------------------- | --------------- | --------- | ------------- | ----------------------------------------------------------------------------------------- |
-| `flag-semantic-property-scored-by-grep`        | MUST-1          | violation | FLAG          | loom#1421 instrument table, "Edit-lane case probe" — 6 dead controls                      |
-| `clean-structural-probe-with-live-control`     | MUST-1 / MUST-3 | compliant | CLEAN         | the same investigation done correctly: structural probe + live control                    |
-| `meta-compliant-semantic-probe-clause-rule.md` | meta-compliance | compliant | COMPLIANT     | a full synthetic rule file satisfying every applicable meta-rule                          |
+| Fixture                                     | Predicate       | Pole      | Expect        | Origin condition reproduced                                          |
+| ------------------------------------------- | --------------- | --------- | ------------- | -------------------------------------------------------------------- |
+| `flag-semantic-property-scored-by-grep`     | MUST-1          | violation | FLAG          | loom#1421 instrument table, "Edit-lane case probe" — 6 dead controls |
+| `clean-structural-probe-with-live-control`  | MUST-1 / MUST-3 | compliant | CLEAN         | the same investigation done correctly: structural probe + live control |
+| `meta-compliant-semantic-probe-clause-rule.md` | meta-compliance | compliant | COMPLIANT | a full synthetic rule file satisfying every applicable meta-rule |
 | `meta-violation-semantic-probe-clause-rule.md` | meta-compliance | violation | NON-COMPLIANT | the same file, surface-matched, with 4 `rule-authoring.md` breaches injected into CONTENT |
 
 **The meta-compliance pair was rebuilt 2026-07-29 (R2-HIGH-12 + R2-HIGH-13).** Both poles
@@ -56,7 +56,7 @@ are now synthetic fixture files. Two defects drove the rebuild:
 - **Unpassable by construction.** THIS suite's compliant row conceded in its own `expect`
   that the live clause's `**Why:**` runs five sentences and told the judge to name that
   breach — while `ComplianceAnswer.scoringRule` passes only on `violated_meta_rules.length
-=== 0`. No answer both followed the instruction and passed, so the row's FAIL carried no
+  === 0`. No answer both followed the instruction and passed, so the row's FAIL carried no
   signal about the judge, the rule, or the tier.
 
 The poles now share frontmatter, level-2 section skeleton, intro paragraph, Origin, and

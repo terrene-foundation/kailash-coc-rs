@@ -1,4 +1,1 @@
-{
-  "args": "add ../wt feat/x",
-  "refs": { "feat/x": { "ahead": 4, "behind": 0 } }
-}
+{"args":"add ../wt feat/x","refs":{"feat/x":{"ahead":4,"behind":0}}}

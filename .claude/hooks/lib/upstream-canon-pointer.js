@@ -116,10 +116,7 @@ function _appendToPointer(repoDir, record) {
   const p = resolveUpstreamCanonPath(repoDir);
   const w = appendSinkLine({ repoDir, sinkPath: p, line });
   if (!w.ok)
-    return {
-      ok: false,
-      error: `upstream-canon append refused: ${w.error} — ${w.reason}`,
-    };
+    return { ok: false, error: `upstream-canon append refused: ${w.error} — ${w.reason}` };
   return { ok: true };
 }
 

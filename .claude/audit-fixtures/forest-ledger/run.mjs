@@ -32,25 +32,13 @@
  */
 
 import { execFileSync } from "node:child_process";
-import {
-  readFileSync,
-  readdirSync,
-  mkdtempSync,
-  writeFileSync,
-  rmSync,
-} from "node:fs";
+import { readFileSync, readdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const VALIDATOR = path.resolve(
-  HERE,
-  "..",
-  "..",
-  "bin",
-  "validate-forest-ledger.mjs",
-);
+const VALIDATOR = path.resolve(HERE, "..", "..", "bin", "validate-forest-ledger.mjs");
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
 
 // Hermetic git: neutralize operator/CI global+system git config so the
@@ -114,9 +102,7 @@ for (const f of fixtures) {
 
 // ---- Class B: IO contract — nonexistent path => exit 2 ----
 {
-  const { code } = invoke([
-    ".claude/audit-fixtures/forest-ledger/__nope__.session-notes",
-  ]);
+  const { code } = invoke([".claude/audit-fixtures/forest-ledger/__nope__.session-notes"]);
   if (code === 2) console.log("PASS  io-missing-path  (exit 2)");
   else fail("io-missing-path", `exit ${code} (expected 2)`);
 }
@@ -152,10 +138,7 @@ for (const f of fixtures) {
     const reset = () => git("checkout", "-q", "--", ".session-notes");
 
     // c1: prior F1,F2; current carries F1, F2 dropped + NOT closed => F2 L4.
-    commit(
-      led("| F1 | a | anchor | BLOCKED |\n| F2 | b | anchor | BLOCKED |"),
-      "p1",
-    );
+    commit(led("| F1 | a | anchor | BLOCKED |\n| F2 | b | anchor | BLOCKED |"), "p1");
     writeFileSync(NOTES, led("| F1 | a | anchor | BLOCKED |"));
     let r = invoke(["--git-prior", ".session-notes"], tmp);
     if (r.code === 1 && /L4\].*"F2" vanished/.test(r.out))
@@ -164,10 +147,7 @@ for (const f of fixtures) {
 
     // c2: prior F1,F2; current carries F1, closes F2 with receipt => PASS.
     reset();
-    commit(
-      led("| F1 | a | anchor | BLOCKED |\n| F2 | b | anchor | BLOCKED |"),
-      "p2",
-    );
+    commit(led("| F1 | a | anchor | BLOCKED |\n| F2 | b | anchor | BLOCKED |"), "p2");
     writeFileSync(NOTES, led("| F1 | a | anchor | BLOCKED |", "F2 → PR #270."));
     r = invoke(["--git-prior", ".session-notes"], tmp);
     if (r.code === 0) console.log("PASS  l4-carried-and-closed  (exit 0)");
@@ -193,16 +173,14 @@ for (const f of fixtures) {
     // F1 "item alpha"; current F1 with COMPLETELY DIFFERENT item text but
     // the SAME id. ID is stable => carried, NOT a false vanish => PASS.
     reset();
-    commit(
-      led("| F1 | item alpha original wording | anchor | BLOCKED |"),
-      "p4",
-    );
+    commit(led("| F1 | item alpha original wording | anchor | BLOCKED |"), "p4");
     writeFileSync(
       NOTES,
       led("| F1 | totally reworded text nothing alike | anchor | BLOCKED |"),
     );
     r = invoke(["--git-prior", ".session-notes"], tmp);
-    if (r.code === 0) console.log("PASS  l4-id-stable-across-reword  (exit 0)");
+    if (r.code === 0)
+      console.log("PASS  l4-id-stable-across-reword  (exit 0)");
     else fail("l4-id-stable-across-reword", `code ${r.code}\n${r.out}`);
 
     // c5: prior committed .session-notes has NO ledger section => prior
@@ -212,8 +190,7 @@ for (const f of fixtures) {
     commit("# Session Notes\n\nNo ledger here at all.\n", "p5");
     writeFileSync(NOTES, led("| F1 | a | anchor | BLOCKED |"));
     r = invoke(["--git-prior", ".session-notes"], tmp);
-    if (r.code === 0)
-      console.log("PASS  l4-prior-no-section-graceful  (exit 0)");
+    if (r.code === 0) console.log("PASS  l4-prior-no-section-graceful  (exit 0)");
     else fail("l4-prior-no-section-graceful", `code ${r.code}\n${r.out}`);
 
     // c6 (journal/0097 HIGH-1): the CANONICAL wrapup.md:77 close form
@@ -223,10 +200,7 @@ for (const f of fixtures) {
     // Before the fix this false-vanish-flagged the validator's OWN
     // documented contract form.
     reset();
-    commit(
-      led("| F1 | a | anchor | BLOCKED |\n| F2 | b | anchor | BLOCKED |"),
-      "p6",
-    );
+    commit(led("| F1 | a | anchor | BLOCKED |\n| F2 | b | anchor | BLOCKED |"), "p6");
     writeFileSync(
       NOTES,
       led("| F1 | a | anchor | BLOCKED |", "`F2` → receipt `PR #9`."),
@@ -241,17 +215,12 @@ for (const f of fixtures) {
     // MUST surface it (transparency finding), not trust it silently.
     reset();
     commit(
-      led(
-        "| F1 | one | anchor | BLOCKED |\n| F1 | two distinct | anchor | BLOCKED |",
-      ),
+      led("| F1 | one | anchor | BLOCKED |\n| F1 | two distinct | anchor | BLOCKED |"),
       "p7",
     );
     writeFileSync(NOTES, led("| F1 | one | anchor | BLOCKED |"));
     r = invoke(["--git-prior", ".session-notes"], tmp);
-    if (
-      r.code === 1 &&
-      /L4\].*prior committed ledger had duplicate ID "F1"/.test(r.out)
-    )
+    if (r.code === 1 && /L4\].*prior committed ledger had duplicate ID "F1"/.test(r.out))
       console.log("PASS  l4-prior-duplicate-id-surfaced  (exit 1)");
     else fail("l4-prior-duplicate-id-surfaced", `code ${r.code}\n${r.out}`);
   } finally {

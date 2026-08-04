@@ -1240,7 +1240,9 @@ const STATE_INTERP_WRITE_SOURCES = [
   String.raw`\b(?:__import__\s*\(\s*['"](?:os|shutil|subprocess|io|pathlib|tempfile)['"]|getattr\s*\(\s*(?:os|io|shutil|pathlib|builtins|__import__)\b)`,
   String.raw`\b(?:File|IO|FileUtils|Kernel|Object|Module)\.(?:send|public_send)\s*\(`,
 ];
-const STATE_INTERP_WRITE_RX = new RegExp(STATE_INTERP_WRITE_SOURCES.join("|"));
+const STATE_INTERP_WRITE_RX = new RegExp(
+  STATE_INTERP_WRITE_SOURCES.join("|"),
+);
 
 // STATE_INTERP_INPLACE_RX — the perl/ruby `-i` IN-PLACE EDIT flag (#1337).
 // This is the one write vector that lives in the interpreter's ARGV rather than
@@ -1278,10 +1280,7 @@ const CONCAT_FOLD_RX = /(['"])([^'"]{0,64})\1\s*\+\s*(['"])([^'"]{0,64})\3/g;
 function foldConcatenatedLiterals(text) {
   let out = text;
   for (let round = 0; round < 8; round++) {
-    const next = out.replace(
-      CONCAT_FOLD_RX,
-      (_m, q, a, _q2, b) => q + a + b + q,
-    );
+    const next = out.replace(CONCAT_FOLD_RX, (_m, q, a, _q2, b) => q + a + b + q);
     if (next === out) break;
     out = next;
   }
@@ -1430,9 +1429,7 @@ function detectStateFileMutation(command, pathRx) {
     // `&>`, and fd-prefixed `N>` forms — all real state-file writes.)
     // The redirect OPERATOR is matched on maskedLine (so it is unquoted); the
     // TARGET is read RAW at the capture position (a quoted target still fires).
-    for (const rm of maskedLine.matchAll(
-      /(?:\d+|&)?>>?\|?\s*([^\s|;&<>()]+)/g,
-    )) {
+    for (const rm of maskedLine.matchAll(/(?:\d+|&)?>>?\|?\s*([^\s|;&<>()]+)/g)) {
       const off = rm.index + rm[0].length - rm[1].length;
       const rawTarget = line.slice(off, off + rm[1].length);
       if (pathRx.test(rawTarget)) {
@@ -2075,14 +2072,7 @@ function _heredocOwner(cmd, openerIdx) {
   let last = 0;
   for (let k = openerIdx - 1; k >= 0; k--) {
     const c = cmd[k];
-    if (
-      c === ";" ||
-      c === "\n" ||
-      c === "&" ||
-      c === "|" ||
-      c === "(" ||
-      c === "`"
-    ) {
+    if (c === ";" || c === "\n" || c === "&" || c === "|" || c === "(" || c === "`") {
       last = k + 1;
       break;
     }
@@ -3907,9 +3897,7 @@ function readRefDivergenceFromOrigin(ref, cwd, opts = {}) {
         env: gitEnv(),
       },
     );
-    const m = String(out)
-      .trim()
-      .match(/^(\d+)\s+(\d+)$/);
+    const m = String(out).trim().match(/^(\d+)\s+(\d+)$/);
     if (!m) return null;
     return { ahead: Number(m[1]), behind: Number(m[2]) };
   } catch {

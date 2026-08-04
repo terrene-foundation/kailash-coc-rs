@@ -260,11 +260,7 @@ function captureProvenance(a) {
     // loom#1349 R1 F3 — routed through the shared hardened primitive. Provenance rows are
     // permanent governance records carrying an operatorRef, so a symlinked sink would land
     // them outside the gitignore fence at world-readable 0o644.
-    const w = appendSinkLine({
-      repoDir,
-      sinkPath: ledgerPath,
-      line: JSON.stringify(event),
-    });
+    const w = appendSinkLine({ repoDir, sinkPath: ledgerPath, line: JSON.stringify(event) });
     if (!w.ok) return { ok: false, error: `${w.error} — ${w.reason}` };
     return { ok: true, event, ledgerPath };
   } catch (e) {

@@ -1,5 +1,1 @@
-{
-  "args": "add -- ../wt main",
-  "expect_ref": "main",
-  "refs": { "main": { "ahead": 0, "behind": 7 } }
-}
+{"args":"add -- ../wt main","expect_ref":"main","refs":{"main":{"ahead":0,"behind":7}}}

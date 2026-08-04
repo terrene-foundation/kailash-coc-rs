@@ -15,12 +15,12 @@ classify-time (`rules/agent-reasoning.md`: dumb lib, LLM reasons).
 
 ## Predicates / scope-restrictions covered
 
-| Fixture                               | Scope-restriction exercised                                                                                                        | Expected disposition                          |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `01-same-domain-different-slug/`      | Same `domain` handle, DIFFERENT workspace slugs (all path predicates null) → the domain predicate is the ONLY SAME signal          | `matched:true, predicate:distillation-domain` |
-| `02-different-domain-not-same/`       | Claim `domain` set but `opts.candidateDomain` differs → dumb equality fails, no path overlap                                       | `matched:false`                               |
-| `03-absent-domain-inert/`             | Claim has NO `domain`; `opts.candidateDomain` set. Predicate MUST NOT fire off `candidateDomain` alone; path predicates unaffected | `matched:false`                               |
-| `04-additive-path-claim-still-fires/` | Purely-additive property: an existing PATH claim (no `domain`) still fires its path predicate unchanged                            | `matched:true, predicate:exact`               |
+| Fixture                              | Scope-restriction exercised                                                                                       | Expected disposition                     |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `01-same-domain-different-slug/`     | Same `domain` handle, DIFFERENT workspace slugs (all path predicates null) → the domain predicate is the ONLY SAME signal | `matched:true, predicate:distillation-domain` |
+| `02-different-domain-not-same/`      | Claim `domain` set but `opts.candidateDomain` differs → dumb equality fails, no path overlap                     | `matched:false`                          |
+| `03-absent-domain-inert/`            | Claim has NO `domain`; `opts.candidateDomain` set. Predicate MUST NOT fire off `candidateDomain` alone; path predicates unaffected | `matched:false`                          |
+| `04-additive-path-claim-still-fires/`| Purely-additive property: an existing PATH claim (no `domain`) still fires its path predicate unchanged           | `matched:true, predicate:exact`          |
 
 ## Why these and only these
 

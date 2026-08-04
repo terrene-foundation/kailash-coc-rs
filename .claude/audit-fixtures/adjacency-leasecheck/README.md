@@ -8,17 +8,17 @@ prose is exercised by the Tier-2 integration tests).
 
 ## Predicates covered
 
-| Fixture | Predicate exercised | Expected disposition |
+| Fixture                              | Predicate exercised                                                               | Expected disposition           |
 | ------------------------------------ | --------------------------------------------------------------------------------- | ------------------------------ | -------------------- |
-| `01-watched-edit-on-claimed-path/` | Edit on a path SAME-conflicting with an active sibling claim | halt-and-report |
-| `02-watched-edit-on-unrelated-path/` | Edit on a path INDEPENDENT of all active claims | silent (passthrough) |
-| `03-watched-write-on-workspace/` | Write on a path inside a workspace with an active workspace-scoped sibling claim | halt-and-report |
-| `04-watched-write-on-non-cwd-path/` | Write on an absolute path OUTSIDE the repo (`/tmp/...`) | silent (passthrough) |
-| `05-non-watched-tool-noop/` | Tool is Read (not Edit | Write) — hook MUST passthrough | silent (passthrough) |
-| `06-structural-null-malformed-log/` | Coordination log file is truncated mid-line (malformed JSONL) | silent + advisory |
-| `07-filesystem-exception-positive/` | §4.2 — sibling worktree porcelain match on exact target path | **halt-and-report** |
-| `08-filesystem-exception-negative/` | Same dir as a porcelain-flagged file, but NOT the exact path → ADJACENT not §4.2 | advisory |
-| `09-self-claim-no-self-conflict/` | Active claim is the operator's own → no halt | silent (passthrough) |
+| `01-watched-edit-on-claimed-path/`   | Edit on a path SAME-conflicting with an active sibling claim                      | halt-and-report                |
+| `02-watched-edit-on-unrelated-path/` | Edit on a path INDEPENDENT of all active claims                                   | silent (passthrough)           |
+| `03-watched-write-on-workspace/`     | Write on a path inside a workspace with an active workspace-scoped sibling claim  | halt-and-report                |
+| `04-watched-write-on-non-cwd-path/`  | Write on an absolute path OUTSIDE the repo (`/tmp/...`)                           | silent (passthrough)           |
+| `05-non-watched-tool-noop/`          | Tool is Read (not Edit                                                            | Write) — hook MUST passthrough | silent (passthrough) |
+| `06-structural-null-malformed-log/`  | Coordination log file is truncated mid-line (malformed JSONL)                     | silent + advisory              |
+| `07-filesystem-exception-positive/`  | §4.2 — sibling worktree porcelain match on exact target path                      | **halt-and-report**            |
+| `08-filesystem-exception-negative/`  | Same dir as a porcelain-flagged file, but NOT the exact path → ADJACENT not §4.2  | advisory                       |
+| `09-self-claim-no-self-conflict/`    | Active claim is the operator's own → no halt                                      | silent (passthrough)           |
 
 ## Why these and only these
 
@@ -36,7 +36,7 @@ Rule 9 + the architecture v11 §4.3 row):
    claims; fixture 09 covers the self-claim case (an own active claim
    MUST NOT halt the operator's own Edit/Write).
 4. **§4.2 filesystem exception**: the branch grounded in the `git status
---porcelain` structural primitive. Since loom#1323 it emits
+   --porcelain` structural primitive. Since loom#1323 it emits
    **halt-and-report**, not `block` — `hook-output-discipline.md` MUST-2
    would PERMIT block (the signal is structural, not lexical), but a
    sibling worktree has a physically separate working tree, so the write

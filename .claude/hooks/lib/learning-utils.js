@@ -64,8 +64,7 @@ function resolveLearningDir(cwd) {
  */
 function _stateRoots(cwd) {
   const roots = [];
-  if (process.env.KAILASH_LEARNING_DIR)
-    roots.push(process.env.KAILASH_LEARNING_DIR);
+  if (process.env.KAILASH_LEARNING_DIR) roots.push(process.env.KAILASH_LEARNING_DIR);
   try {
     const { resolveMainCheckout } = require(
       path.join(__dirname, "state-resolver.js"),

@@ -166,11 +166,7 @@ const CASES = [
       fs.utimesSync(path.join(repoDir, "workspaces/newest"), 2000, 2000); // newer → selected
     },
     input: { toolName: "Skill", skillName: "todos", args: "" },
-    expect: {
-      action: "block",
-      workspace: "newest",
-      emptyTrees: ["03-user-flows"],
-    },
+    expect: { action: "block", workspace: "newest", emptyTrees: ["03-user-flows"] },
   },
 ];
 

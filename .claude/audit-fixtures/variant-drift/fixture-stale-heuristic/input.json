@@ -1,8 +1,5 @@
 {
-  "variantFiles": [
-    "variants/py/rules/lagging.md",
-    "variants/py/rules/fresh.md"
-  ],
+  "variantFiles": ["variants/py/rules/lagging.md", "variants/py/rules/fresh.md"],
   "canonFiles": ["rules/lagging.md", "rules/fresh.md"],
   "variants": {},
   "variantOnly": {},

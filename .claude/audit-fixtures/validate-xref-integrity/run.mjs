@@ -46,8 +46,7 @@ function check(name, condition, details) {
 // fixture-01-backtick-extract
 // ------------------------------------------------------------------
 {
-  const text =
-    "see `rules/foo.md` and `.claude/rules/bar.md` plus `<id>` literal";
+  const text = "see `rules/foo.md` and `.claude/rules/bar.md` plus `<id>` literal";
   const findings = extractTokens(text, "test.md");
   const tokens = findings.map((f) => f.token).sort();
   check(
@@ -80,8 +79,7 @@ function check(name, condition, details) {
 // fixture-03-journal-backtick
 // ------------------------------------------------------------------
 {
-  const text =
-    "see `journal/0150-DECISION-foo.md` and `journal/.pending/0001-bar`";
+  const text = "see `journal/0150-DECISION-foo.md` and `journal/.pending/0001-bar`";
   const findings = extractTokens(text, "test.md");
   const kinds = findings.map((f) => f.kind).sort();
   const tokens = findings.map((f) => f.token).sort();
@@ -130,10 +128,7 @@ function check(name, condition, details) {
     mkdirSync(join(tmp, "source-dir"), { recursive: true });
     mkdirSync(join(tmp, "sibling"), { recursive: true });
     writeFileSync(join(tmp, "sibling", "target.md"), "# target\n");
-    writeFileSync(
-      join(tmp, "source-dir", "source.md"),
-      "[t](../sibling/target.md)\n",
-    );
+    writeFileSync(join(tmp, "source-dir", "source.md"), "[t](../sibling/target.md)\n");
 
     // Use resolveRefToken directly with kind="md-link" + source-relative path
     const result = resolveRefToken(
@@ -173,18 +168,18 @@ function check(name, condition, details) {
 {
   const tmp = join(tmpdir(), `xref-fix-07-${Date.now()}`);
   try {
-    mkdirSync(join(tmp, ".claude", "audit-fixtures", "alpha"), {
-      recursive: true,
-    });
+    mkdirSync(join(tmp, ".claude", "audit-fixtures", "alpha"), { recursive: true });
     mkdirSync(join(tmp, ".claude", "rules"), { recursive: true });
-    writeFileSync(
-      join(tmp, ".claude", "audit-fixtures", "alpha", "README.md"),
-      "# x",
-    );
+    writeFileSync(join(tmp, ".claude", "audit-fixtures", "alpha", "README.md"), "# x");
     writeFileSync(join(tmp, ".claude", "rules", "alpha.md"), "# y");
 
     // Dir token with trailing /
-    const r1 = resolveRefToken("audit-fixtures/alpha/", tmp, null, "backtick");
+    const r1 = resolveRefToken(
+      "audit-fixtures/alpha/",
+      tmp,
+      null,
+      "backtick",
+    );
     // File token without trailing /
     const r2 = resolveRefToken("rules/alpha.md", tmp, null, "backtick");
     // File token WITH trailing slash → should fail (file, not dir)
@@ -232,9 +227,7 @@ function check(name, condition, details) {
     const r = resolveRefToken("rules/x.md", tmp, null, "backtick");
     check(
       "fixture-09-bare-prefix-tries-claude-first",
-      r.ok === true &&
-        r.resolvedPath &&
-        r.resolvedPath.endsWith(".claude/rules/x.md"),
+      r.ok === true && r.resolvedPath && r.resolvedPath.endsWith(".claude/rules/x.md"),
       `got r=${JSON.stringify(r)}`,
     );
   } finally {
@@ -256,9 +249,7 @@ function check(name, condition, details) {
     const miss = resolveJournalToken("journal/9999", tmp);
     check(
       "fixture-10-journal-resolve-prefix",
-      hit.ok === true &&
-        miss.ok === false &&
-        miss.reason === "journal-entry-not-found",
+      hit.ok === true && miss.ok === false && miss.reason === "journal-entry-not-found",
       `hit=${JSON.stringify(hit)} miss=${JSON.stringify(miss)}`,
     );
   } finally {
@@ -273,8 +264,7 @@ function check(name, condition, details) {
 // regex char-class excludes `#`); the section anchor is NOT verified per
 // Phase-1 exclusion. Pinned to prevent regex drift in future edits.
 {
-  const text =
-    "see `journal/0150-foo.md` and `journal/0150-foo` and [x](rules/foo.md#section)";
+  const text = "see `journal/0150-foo.md` and `journal/0150-foo` and [x](rules/foo.md#section)";
   const findings = extractTokens(text, "test.md");
   const tokens = findings.map((f) => f.token).sort();
   check(
@@ -420,15 +410,8 @@ function check(name, condition, details) {
 {
   const tmp = join(tmpdir(), `xref-fix-18-${Date.now()}`);
   try {
-    mkdirSync(join(tmp, ".claude", "skills", "45-genesis-bootstrap"), {
-      recursive: true,
-    });
-    const result = resolveRefToken(
-      "skills/45-genesis-bootstrap",
-      tmp,
-      "a.md",
-      "backtick",
-    );
+    mkdirSync(join(tmp, ".claude", "skills", "45-genesis-bootstrap"), { recursive: true });
+    const result = resolveRefToken("skills/45-genesis-bootstrap", tmp, "a.md", "backtick");
     check(
       "fixture-18-slashless-token-naming-directory-resolves-labelled",
       result.ok === true && result.looseDirMatch === true,
@@ -525,15 +508,10 @@ function check(name, condition, details) {
     token: "bin/dev",
     source: ".claude/skills/10-deployment-git/docker-dev-env-patterns.md",
   };
-  const undeclared = {
-    kind: "backtick",
-    token: "bin/dev",
-    source: ".claude/rules/zero-tolerance.md",
-  };
+  const undeclared = { kind: "backtick", token: "bin/dev", source: ".claude/rules/zero-tolerance.md" };
   check(
     "fixture-21-absent-by-design-skipped-only-in-declared-source",
-    isSanctionedAbsentRef(declared) === true &&
-      isSanctionedAbsentRef(undeclared) === false,
+    isSanctionedAbsentRef(declared) === true && isSanctionedAbsentRef(undeclared) === false,
     `declared=${isSanctionedAbsentRef(declared)} undeclared=${isSanctionedAbsentRef(undeclared)}`,
   );
 }

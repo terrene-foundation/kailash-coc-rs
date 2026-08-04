@@ -255,7 +255,9 @@ function _scanUrnForSecrets(urn, errors) {
  */
 function _validateDistillationEnvelope(dist, errors) {
   if (!_isPlainObject(dist)) {
-    errors.push("payload.distillation MUST be a plain object { kp_ref, cost }");
+    errors.push(
+      "payload.distillation MUST be a plain object { kp_ref, cost }",
+    );
     return;
   }
   if (!_isNonEmptyString(dist.kp_ref)) {

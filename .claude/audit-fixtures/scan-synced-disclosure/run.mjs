@@ -444,10 +444,7 @@ const CASES = [
     name: "cross-repo-authz-arbitrary-org",
     dir: "cross-repo-authz-arbitrary-org",
     expectExit: 1,
-    expectShapes: [
-      "cross-repo-authz-receipt-payload",
-      "ecosystem-bare-org-slug",
-    ],
+    expectShapes: ["cross-repo-authz-receipt-payload", "ecosystem-bare-org-slug"],
     expectFindingCount: 5,
   },
   {

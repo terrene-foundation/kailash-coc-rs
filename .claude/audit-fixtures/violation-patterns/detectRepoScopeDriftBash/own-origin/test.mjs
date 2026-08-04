@@ -79,10 +79,7 @@ test("gh pr merge --repo <own-origin> (https origin form) → in-scope (null)", 
       { cwd: dir },
     );
     assert.equal(
-      detectRepoScopeDriftBash(
-        `gh pr merge 1 --repo ${ORIGIN_SLUG} --admin`,
-        dir,
-      ),
+      detectRepoScopeDriftBash(`gh pr merge 1 --repo ${ORIGIN_SLUG} --admin`, dir),
       null,
     );
   } finally {
@@ -97,10 +94,7 @@ test("gh --repo <different-slug> with origin set → still halts (no over-suppre
       "gh issue create --repo Other/repo --title t --body b",
       dir,
     );
-    assert.ok(
-      r && r.severity === "halt-and-report",
-      "cross-repo MUST still flag",
-    );
+    assert.ok(r && r.severity === "halt-and-report", "cross-repo MUST still flag");
     assert.equal(r.rule_id, "repo-scope-discipline/MUST-NOT-1");
   } finally {
     rm(parent);

@@ -140,15 +140,10 @@ function resolveGitBinary(opts) {
   if (opts && typeof opts.gitBin === "string" && opts.gitBin) {
     return isExecutableFile(opts.gitBin) ? opts.gitBin : null;
   }
-  const cands =
-    opts && Array.isArray(opts.gitCandidates)
-      ? opts.gitCandidates
-      : _candidates;
+  const cands = opts && Array.isArray(opts.gitCandidates) ? opts.gitCandidates : _candidates;
   const pathVal =
     opts && typeof opts.gitPath === "string" ? opts.gitPath : process.env.PATH;
-  const injected = Boolean(
-    opts && (opts.gitCandidates || typeof opts.gitPath === "string"),
-  );
+  const injected = Boolean(opts && (opts.gitCandidates || typeof opts.gitPath === "string"));
   if (!injected && _gitBinCache !== undefined) return _gitBinCache;
 
   let found = null;
@@ -166,8 +161,7 @@ function resolveGitBinary(opts) {
 /** Stage 2: first `git` on PATH that is an absolute, executable regular file. */
 function _resolveViaPath(pathVal) {
   if (typeof pathVal !== "string" || pathVal === "") return null;
-  const exeNames =
-    process.platform === "win32" ? ["git.exe", "git.cmd"] : ["git"];
+  const exeNames = process.platform === "win32" ? ["git.exe", "git.cmd"] : ["git"];
   for (const dir of pathVal.split(path.delimiter)) {
     // Only ABSOLUTE entries. A relative (or empty) PATH entry resolves against the
     // hook's cwd, which is attacker-influencable in a way an absolute entry is not.
@@ -211,8 +205,7 @@ function gitEnv() {
   };
   if (process.platform === "win32") {
     const amb = process.env.SystemRoot || process.env.SYSTEMROOT;
-    const sysRoot =
-      typeof amb === "string" && path.isAbsolute(amb) ? amb : "C:\\Windows";
+    const sysRoot = typeof amb === "string" && path.isAbsolute(amb) ? amb : "C:\\Windows";
     env.SystemRoot = sysRoot;
     env.PATH = `${sysRoot}\\System32;${sysRoot}`;
     for (const k of ["COMSPEC", "PATHEXT", "TEMP", "TMP"]) {

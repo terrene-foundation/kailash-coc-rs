@@ -8,11 +8,7 @@
   },
   "roster": {
     "persons": {
-      "p-alice": {
-        "role": "owner",
-        "host_role": "human",
-        "keys": [{ "fingerprint": "SHA256:alice" }]
-      }
+      "p-alice": { "role": "owner", "host_role": "human", "keys": [{ "fingerprint": "SHA256:alice" }] }
     }
   },
   "coord_log_seed": []

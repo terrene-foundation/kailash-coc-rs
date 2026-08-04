@@ -7,10 +7,7 @@
     "E3-VARIANT-ONLY-DANGLING": 1
   },
   "expected_paths": {
-    "E1-DECLARED-OVERLAY-MISSING": [
-      "variants/py/rules/never-written.md",
-      "variants/rs/rules/ghost.md"
-    ],
+    "E1-DECLARED-OVERLAY-MISSING": ["variants/py/rules/never-written.md", "variants/rs/rules/ghost.md"],
     "E2-OVERLAY-FOR-MISSING-CANON": ["variants/rs/rules/ghost.md"],
     "E3-VARIANT-ONLY-DANGLING": ["variants/rs/skills/nothing-here/**"]
   },

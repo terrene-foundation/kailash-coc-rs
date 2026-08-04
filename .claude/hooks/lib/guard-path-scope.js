@@ -893,9 +893,7 @@ function _escapeRx(literal) {
  */
 function _rowSource(row) {
   return (
-    (row.prefix || "") +
-    row.segments.map(_escapeRx).join(SEP) +
-    (row.suffix || "")
+    (row.prefix || "") + row.segments.map(_escapeRx).join(SEP) + (row.suffix || "")
   );
 }
 

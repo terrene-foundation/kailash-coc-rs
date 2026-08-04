@@ -512,10 +512,7 @@ function registerGraduationEdgeSet(opts) {
     }
     for (const side of ["from_capability", "to_capability"]) {
       const v = e[side];
-      const err = capabilityLease._test_validateToken(
-        v,
-        `inheritedEdges[${i}].${side}`,
-      );
+      const err = capabilityLease._test_validateToken(v, `inheritedEdges[${i}].${side}`);
       if (err) {
         return {
           ok: false,
@@ -712,7 +709,9 @@ function registerGraduationEdgeSet(opts) {
     const unionEdges = baseEdges.slice();
     for (let i = 0; i < inheritedEdges.length; i++) {
       const e = inheritedEdges[i];
-      if (wouldCloseCycle(unionEdges, e.from_capability, e.to_capability)) {
+      if (
+        wouldCloseCycle(unionEdges, e.from_capability, e.to_capability)
+      ) {
         // Cycle in the union — REJECT THE WHOLE SET. No edge committed (we have
         // not emitted anything yet). Release the leases (inv v).
         releaseHeld();
@@ -720,10 +719,7 @@ function registerGraduationEdgeSet(opts) {
           ok: false,
           reason: "cycle",
           error: `registerGraduationEdgeSet: inheritedEdges[${i}] ('${e.from_capability}' → '${e.to_capability}') closes a cycle in the UNION of existing + inherited edges; the WHOLE edge-set is REJECTED atomically (no partial commit) — a cycle is a CRITICAL ledger-integrity failure`,
-          cyclingEdge: {
-            from_capability: e.from_capability,
-            to_capability: e.to_capability,
-          },
+          cyclingEdge: { from_capability: e.from_capability, to_capability: e.to_capability },
           resnapshots,
           leaseReleased,
         };

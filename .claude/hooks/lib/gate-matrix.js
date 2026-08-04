@@ -251,10 +251,7 @@ function _collaboratorDistinctness(requester, approver) {
  * Returns { ok: boolean, reason: string }.
  */
 function _checkR9S02Fence(roster, foldedState) {
-  const fence = gateEligibleForSelfSignedCheckpointOrRotation(
-    roster,
-    foldedState,
-  );
+  const fence = gateEligibleForSelfSignedCheckpointOrRotation(roster, foldedState);
   if (fence.eligible) return { ok: true };
   return {
     ok: false,
@@ -268,10 +265,9 @@ function _checkR9S02Fence(roster, foldedState) {
  */
 function _isGenuineGenesisN1(roster, foldedState) {
   // derived-N MUST be 1.
-  const derivedN =
-    foldedState && typeof foldedState.derived_N === "number"
-      ? foldedState.derived_N
-      : null;
+  const derivedN = foldedState && typeof foldedState.derived_N === "number"
+    ? foldedState.derived_N
+    : null;
   if (derivedN !== 1) return false;
   // ANY attestation history means owner-add occurred → NOT genuine-genesis.
   return !isRevocationInducedSingleton(roster, foldedState);
@@ -326,12 +322,7 @@ function evaluateGate(ctx) {
         row,
       };
     }
-    return {
-      allowed: true,
-      reason: "single-operator workstream",
-      audit_marker: null,
-      row,
-    };
+    return { allowed: true, reason: "single-operator workstream", audit_marker: null, row };
   }
 
   // Row: owner-departure-roster-removal — degenerate self-sign permitted
@@ -486,12 +477,7 @@ function evaluateGate(ctx) {
   //    Self-approval is already rejected above; no additional check needed.
 
   // 5. All other gates with distinct approver pass.
-  return {
-    allowed: true,
-    reason: row.required_signers + " co-signature",
-    audit_marker: null,
-    row,
-  };
+  return { allowed: true, reason: row.required_signers + " co-signature", audit_marker: null, row };
 }
 
 // ---- exports ----------------------------------------------------------------

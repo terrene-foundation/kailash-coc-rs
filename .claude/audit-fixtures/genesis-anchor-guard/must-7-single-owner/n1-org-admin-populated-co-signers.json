@@ -10,7 +10,9 @@
     "new_repo_owner_kind": "org",
     "from_genesis_generation": 0,
     "to_genesis_generation": 1,
-    "co_signers": [{ "verified_id": "SHA256:SECOND-FP", "sig": "STUB-COSIG" }],
+    "co_signers": [
+      { "verified_id": "SHA256:SECOND-FP", "sig": "STUB-COSIG" }
+    ],
     "co_sign_anchor_kind": "gh_api_org_membership_capture",
     "gh_api_owner_capture": {
       "owner": { "login": "myorg" },

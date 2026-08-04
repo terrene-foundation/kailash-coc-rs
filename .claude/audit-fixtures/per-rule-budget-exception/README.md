@@ -19,56 +19,56 @@ Leaving it red was not an option either — a permanently-red gate is the ratche
 
 ## The three properties these fixtures pin
 
-| Property        | Meaning                                                                                                                     | Fixtures                 |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| **NARROW**      | The grant covers only its declared lane, CLIs **and rule**. No sibling lane and no sibling rule inherits it.                | 03–07, 15, 16, 19, 20    |
-| **TEMPORARY**   | Expiry is inclusive; the day after expiry the rule reverts to the flat ceiling and the gate re-reds.                        | 08–11, 33                |
-| **FAIL-CLOSED** | Every "cannot establish the grant applies" path denies it; a malformed or out-of-bounds declaration THROWS, never degrades. | 12–14, 22, 23, 30–46, 49 |
+| Property        | Meaning                                                                                                                     | Fixtures                      |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| **NARROW**      | The grant covers only its declared lane, CLIs **and rule**. No sibling lane and no sibling rule inherits it.                 | 03–07, 15, 16, 19, 20         |
+| **TEMPORARY**   | Expiry is inclusive; the day after expiry the rule reverts to the flat ceiling and the gate re-reds.                         | 08–11, 33                     |
+| **FAIL-CLOSED** | Every "cannot establish the grant applies" path denies it; a malformed or out-of-bounds declaration THROWS, never degrades.  | 12–14, 22, 23, 30–46, 49      |
 
 ## Predicates covered (one fixture set per scope-restriction predicate per `cc-artifacts.md` Rule 9)
 
 ### `resolvePerRuleBudgetException` — the scope-restriction predicate
 
-| Fixture                                             | Predicate exercised                                                      | Expected      |
-| --------------------------------------------------- | ------------------------------------------------------------------------ | ------------- |
-| `fixture-01-declared-lane-cli-rule-in-force`        | Lane + CLI + rule match, date before expiry → the one granted case       | the exception |
-| `fixture-02-second-declared-cli-also-covered`       | One entry naming both CLIs covers both (no per-CLI duplication)          | the exception |
-| `fixture-03-undeclared-lane-not-covered`            | `py` emits the same rule and keeps the flat ceiling — the whole point    | `null`        |
-| `fixture-04-rb-lane-not-covered`                    | Same, `rb`                                                               | `null`        |
-| `fixture-05-base-lane-not-covered`                  | `lang=null` normalizes to lane `base`, which holds no grant              | `null`        |
-| `fixture-06-undeclared-rule-on-declared-lane-…`     | RULE narrowness: a `security.md` grant never relaxes `agents.md` on `rs` | `null`        |
-| `fixture-07-undeclared-cli-not-covered`             | A CLI the entry does not name inherits nothing                           | `null`        |
-| `fixture-08-day-before-expiry-still-in-force`       | In force up to expiry                                                    | the exception |
-| `fixture-09-expiry-day-itself-still-in-force-…`     | Expiry is INCLUSIVE (matches `resolveHeadroomException`)                 | the exception |
-| `fixture-10-day-after-expiry-lapses-gate-turns-red` | **The core property**: a waiver never lapses into permission             | `null`        |
-| `fixture-11-far-future-lapses`                      | Same, far past expiry                                                    | `null`        |
-| `fixture-12-missing-clock-fails-closed`             | Cannot establish unexpired → does not apply                              | `null`        |
-| `fixture-13-malformed-clock-fails-closed`           | Same, unparseable clock                                                  | `null`        |
-| `fixture-14-calendar-invalid-clock-fails-closed`    | Same, shaped-but-invalid date (`2026-02-30`)                             | `null`        |
-| `fixture-15-empty-corpus-yields-no-grant`           | No declarations → flat ceiling everywhere                                | `null`        |
-| `fixture-16-non-array-corpus-yields-no-grant`       | Defensive: a non-array corpus denies rather than throws at resolve time  | `null`        |
+| Fixture                                              | Predicate exercised                                                       | Expected       |
+| ---------------------------------------------------- | ------------------------------------------------------------------------- | -------------- |
+| `fixture-01-declared-lane-cli-rule-in-force`         | Lane + CLI + rule match, date before expiry → the one granted case        | the exception  |
+| `fixture-02-second-declared-cli-also-covered`        | One entry naming both CLIs covers both (no per-CLI duplication)           | the exception  |
+| `fixture-03-undeclared-lane-not-covered`             | `py` emits the same rule and keeps the flat ceiling — the whole point      | `null`         |
+| `fixture-04-rb-lane-not-covered`                     | Same, `rb`                                                                | `null`         |
+| `fixture-05-base-lane-not-covered`                   | `lang=null` normalizes to lane `base`, which holds no grant                | `null`         |
+| `fixture-06-undeclared-rule-on-declared-lane-…`      | RULE narrowness: a `security.md` grant never relaxes `agents.md` on `rs`   | `null`         |
+| `fixture-07-undeclared-cli-not-covered`              | A CLI the entry does not name inherits nothing                            | `null`         |
+| `fixture-08-day-before-expiry-still-in-force`        | In force up to expiry                                                     | the exception  |
+| `fixture-09-expiry-day-itself-still-in-force-…`      | Expiry is INCLUSIVE (matches `resolveHeadroomException`)                   | the exception  |
+| `fixture-10-day-after-expiry-lapses-gate-turns-red`  | **The core property**: a waiver never lapses into permission               | `null`         |
+| `fixture-11-far-future-lapses`                       | Same, far past expiry                                                     | `null`         |
+| `fixture-12-missing-clock-fails-closed`              | Cannot establish unexpired → does not apply                               | `null`         |
+| `fixture-13-malformed-clock-fails-closed`            | Same, unparseable clock                                                   | `null`         |
+| `fixture-14-calendar-invalid-clock-fails-closed`     | Same, shaped-but-invalid date (`2026-02-30`)                              | `null`         |
+| `fixture-15-empty-corpus-yields-no-grant`            | No declarations → flat ceiling everywhere                                 | `null`         |
+| `fixture-16-non-array-corpus-yields-no-grant`        | Defensive: a non-array corpus denies rather than throws at resolve time    | `null`         |
 
 ### `effectivePerRuleBlockCeiling` — ceiling composition
 
-| Fixture                                            | Predicate exercised                                    | Expected |
-| -------------------------------------------------- | ------------------------------------------------------ | -------- |
-| `fixture-17-no-exception-keeps-flat-ceiling`       | No grant → the flat `budget × 1.3` ceiling stands      | `9360`   |
-| `fixture-18-grant-above-flat-ceiling-relaxes`      | The declared grant applies                             | `9600`   |
-| `fixture-19-grant-below-flat-ceiling-is-ignored-…` | `Math.max` guarantees a grant can never TIGHTEN a gate | `9360`   |
-| `fixture-20-grant-equal-to-flat-ceiling-is-a-noop` | Boundary case                                          | `9360`   |
+| Fixture                                                | Predicate exercised                                                          | Expected |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------- | -------- |
+| `fixture-17-no-exception-keeps-flat-ceiling`           | No grant → the flat `budget × 1.3` ceiling stands                            | `9360`   |
+| `fixture-18-grant-above-flat-ceiling-relaxes`          | The declared grant applies                                                   | `9600`   |
+| `fixture-19-grant-below-flat-ceiling-is-ignored-…`     | `Math.max` guarantees a grant can never TIGHTEN a gate                       | `9360`   |
+| `fixture-20-grant-equal-to-flat-ceiling-is-a-noop`     | Boundary case                                                                | `9360`   |
 
 ### `assertPerRuleBudgetExceptionsBounded` — budget-relative bounds
 
 Split from the parser because the parser is pure over manifest text and does not know the budget map. Called for **every** declared entry on **every** lane's emission, so a malformed waiver surfaces on the first emission of any lane rather than hiding until the lane it names runs.
 
-| Fixture                                         | Predicate exercised                                                          | Expected |
-| ----------------------------------------------- | ---------------------------------------------------------------------------- | -------- |
-| `fixture-21-live-shaped-grant-is-within-bounds` | The live declaration's shape is admissible                                   | no throw |
-| `fixture-22-unbudgeted-rule-throws`             | A typo'd rule name covers nothing while READING as coverage → reject         | throws   |
-| `fixture-23-grant-above-2x-budget-throws`       | Past 2× the budget itself is wrong; re-measure per spec v6 §A.2, don't waive | throws   |
-| `fixture-24-grant-exactly-at-2x-budget-…`       | Boundary is inclusive                                                        | no throw |
-| `fixture-25-empty-corpus-is-vacuously-bounded`  | No declarations → nothing to bound                                           | no throw |
-| `fixture-26-max-multiple-constant-is-…-2x`      | The exported constant matches what this README documents                     | `2`      |
+| Fixture                                          | Predicate exercised                                                                   | Expected  |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------- | --------- |
+| `fixture-21-live-shaped-grant-is-within-bounds`  | The live declaration's shape is admissible                                            | no throw  |
+| `fixture-22-unbudgeted-rule-throws`              | A typo'd rule name covers nothing while READING as coverage → reject                  | throws    |
+| `fixture-23-grant-above-2x-budget-throws`        | Past 2× the budget itself is wrong; re-measure per spec v6 §A.2, don't waive           | throws    |
+| `fixture-24-grant-exactly-at-2x-budget-…`        | Boundary is inclusive                                                                 | no throw  |
+| `fixture-25-empty-corpus-is-vacuously-bounded`   | No declarations → nothing to bound                                                    | no throw  |
+| `fixture-26-max-multiple-constant-is-…-2x`       | The exported constant matches what this README documents                              | `2`       |
 
 ### `parsePerRuleBudgetExceptions` — fail-closed declaration parsing
 

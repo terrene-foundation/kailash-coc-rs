@@ -39,13 +39,13 @@ the pair says the instrument discriminates.
 
 ## Case groups
 
-| Group                        | Cases | Property pinned                                                      |
-| ---------------------------- | ----- | -------------------------------------------------------------------- |
+| Group                        | Cases | Property pinned                                                    |
+| ---------------------------- | ----- | ------------------------------------------------------------------ |
 | A. require-form matrix       | 01–07 | what the graph walker can SEE (incl. the fixture-02 regression lock) |
-| B. settings.json roots       | 08–10 | Leg A input extraction + both fail-closed shapes                     |
-| C. transitive closure        | 11–15 | Leg B, incl. cycles, extensionless specifiers, root containment      |
-| D. claim-state matrix        | 16–23 | which states are fatal, and the deferral precedence order            |
-| E. symbol-liveness predicate | 24–30 | `countSymbolSites` — use vs definition vs export listing vs comment  |
+| B. settings.json roots       | 08–10 | Leg A input extraction + both fail-closed shapes                    |
+| C. transitive closure        | 11–15 | Leg B, incl. cycles, extensionless specifiers, root containment     |
+| D. claim-state matrix        | 16–23 | which states are fatal, and the deferral precedence order           |
+| E. symbol-liveness predicate | 24–30 | `countSymbolSites` — use vs definition vs export listing vs comment |
 | F. comment / string masking  | 31–38 | the GATE's edge vocabulary; the fail-open laundering repair          |
 | G. containment + frontmatter | 39–42 | real-path containment both directions; `paths:` globs are not claims |
 
@@ -58,10 +58,10 @@ hook therefore laundered a dead lib to `dispatched-transitive`.
 
 Compare the two failure directions this fixture set now locks:
 
-| direction   | example                                       | effect                             |
-| ----------- | --------------------------------------------- | ---------------------------------- |
-| fail-CLOSED | fixture-02, the missed multi-line `require`   | FALSE RED — accuses working code   |
-| fail-OPEN   | fixture-31/32/33, comment + string laundering | HIDES a finding — reports it clean |
+| direction  | example                                     | effect                              |
+| ---------- | ------------------------------------------- | ----------------------------------- |
+| fail-CLOSED | fixture-02, the missed multi-line `require`  | FALSE RED — accuses working code    |
+| fail-OPEN   | fixture-31/32/33, comment + string laundering | HIDES a finding — reports it clean  |
 
 A false red is loud and gets corrected. A hidden finding is silent and ships. The
 masking is ported from `sync-from-canon.mjs::maskComments` rather than

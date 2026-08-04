@@ -291,11 +291,7 @@ function _writeFileHardened(targetPath, content, opts = {}) {
     try {
       fs.unlinkSync(targetPath);
     } catch (e) {
-      return {
-        ok: false,
-        code: e.code,
-        reason: `unlink stale target: ${e.message}`,
-      };
+      return { ok: false, code: e.code, reason: `unlink stale target: ${e.message}` };
     }
   }
 
@@ -610,10 +606,7 @@ function migrateWitnessIfPresent(repoDir) {
   // classification sees the link itself and refuses without touching legacy.
   const newEntry = _classifyPathEntry(newPath);
   if (newEntry.kind === "error") {
-    return {
-      ok: false,
-      reason: `migrate: stat new location: ${newEntry.reason}`,
-    };
+    return { ok: false, reason: `migrate: stat new location: ${newEntry.reason}` };
   }
   if (newEntry.kind === "irregular") {
     return {
@@ -1082,9 +1075,7 @@ function writePosture(cwd, posture) {
   } else if (prior.code !== "ENOENT") {
     // Unreadable-but-present main (symlink, FIFO, permissions): refuse rather
     // than skip the write-ahead copy and overwrite it anyway.
-    throw new Error(
-      `writePosture: read main for write-ahead bak: ${prior.reason}`,
-    );
+    throw new Error(`writePosture: read main for write-ahead bak: ${prior.reason}`);
   }
 
   // 2. Write tmp; rename atomic. The tmp is created O_EXCL|O_NOFOLLOW and its
@@ -1185,10 +1176,7 @@ function appendViolation(cwd, partial) {
     // trusted downstream (`security.md` § Input Validation). Unbounded it is a lever for
     // inflating the record past the signed path's cap — see the F5 note in
     // `detect-violations.js::_logViolation`.
-    session_id: String(process.env.CLAUDE_SESSION_ID || "unknown").slice(
-      0,
-      128,
-    ),
+    session_id: String(process.env.CLAUDE_SESSION_ID || "unknown").slice(0, 128),
     repo: _stripRepoPath(cwd || process.cwd()),
   };
 

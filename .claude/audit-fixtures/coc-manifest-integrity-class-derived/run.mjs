@@ -52,10 +52,7 @@ function mkTree(manifest, files, klass) {
   trees.push(root);
   mkdirSync(join(root, ".claude", "test-harness"), { recursive: true });
   if (klass !== null) {
-    writeFileSync(
-      join(root, ".claude", "VERSION"),
-      JSON.stringify({ type: klass }),
-    );
+    writeFileSync(join(root, ".claude", "VERSION"), JSON.stringify({ type: klass }));
   }
   for (const [rel, content] of Object.entries(files)) {
     const abs = join(root, rel);
@@ -97,10 +94,8 @@ const pin = () => ({
   },
 });
 const decl = () => ({
-  reason:
-    "this repo adopts the eval engine and has authored no local structural scanners yet",
-  graduation:
-    "removed in the same change that registers the first local structural scanner entry",
+  reason: "this repo adopts the eval engine and has authored no local structural scanners yet",
+  graduation: "removed in the same change that registers the first local structural scanner entry",
   expires: "2099-01-01",
 });
 
@@ -120,11 +115,7 @@ const requiredEntry = () => ({
     fixturesDir: ".claude/audit-fixtures/detection-binding-check",
     expected: {
       clean: { exit: 0, grade: "VALID" },
-      bad: {
-        exit: 1,
-        grade: "INVALID",
-        critical_failures: ["detection-binding-violation"],
-      },
+      bad: { exit: 1, grade: "INVALID", critical_failures: ["detection-binding-violation"] },
     },
     probes: null,
   },
@@ -168,12 +159,7 @@ const cases = [
     why: "a manifest pin at the in-code class would be SILENTLY IGNORED — say so instead of dropping it",
     expect: "flag",
     match: "SILENTLY IGNORED",
-    build: () =>
-      mkTree(
-        { ...entry(), _required_structural_entries: pin() },
-        entryFiles(),
-        "coc-source",
-      ),
+    build: () => mkTree({ ...entry(), _required_structural_entries: pin() }, entryFiles(), "coc-source"),
   },
   // ── predicate: manifest-declared branch (every other class) ───────────────
   {
@@ -194,12 +180,7 @@ const cases = [
     name: "06-coc-build-declared-no-pins-clean",
     why: "an explicit, substantive, EXPIRING no-pins declaration is the legible way to be green",
     expect: "clean",
-    build: () =>
-      mkTree(
-        { ...entry(), _declared_no_pins: decl() },
-        entryFiles(),
-        "coc-build",
-      ),
+    build: () => mkTree({ ...entry(), _declared_no_pins: decl() }, entryFiles(), "coc-build"),
   },
   {
     name: "07-coc-build-expired-declaration-flagged",
@@ -207,23 +188,14 @@ const cases = [
     expect: "flag",
     match: "EXPIRED",
     build: () =>
-      mkTree(
-        { ...entry(), _declared_no_pins: { ...decl(), expires: "2020-01-01" } },
-        entryFiles(),
-        "coc-build",
-      ),
+      mkTree({ ...entry(), _declared_no_pins: { ...decl(), expires: "2020-01-01" } }, entryFiles(), "coc-build"),
   },
   // ── predicate: the pin itself is NON-VACUOUS on the BUILD side ────────────
   {
     name: "08-coc-build-pin-intact-clean",
     why: "anti-vacuity CONTROL — proves case 09 fails from the disarm, not because a BUILD tree cannot pass",
     expect: "clean",
-    build: () =>
-      mkTree(
-        { ...entry(), _required_structural_entries: pin() },
-        entryFiles(),
-        "coc-build",
-      ),
+    build: () => mkTree({ ...entry(), _required_structural_entries: pin() }, entryFiles(), "coc-build"),
   },
   {
     name: "09-coc-build-pinned-entry-deleted-flagged",
@@ -247,11 +219,7 @@ const cases = [
       m.demo.fixturesDir = ".claude/audit-fixtures/decoy";
       return mkTree(
         m,
-        {
-          ...entryFiles(),
-          ".claude/audit-fixtures/decoy/clean": null,
-          ".claude/audit-fixtures/decoy/bad": null,
-        },
+        { ...entryFiles(), ".claude/audit-fixtures/decoy/clean": null, ".claude/audit-fixtures/decoy/bad": null },
         "coc-build",
       );
     },
@@ -264,11 +232,7 @@ for (const c of cases) {
   const r = checkManifestIntegrity({ manifestPath: mp, repoRoot: root });
   try {
     if (c.expect === "clean") {
-      assert.equal(
-        r.ok,
-        true,
-        `expected CLEAN but got errors: ${JSON.stringify(r.errors)}`,
-      );
+      assert.equal(r.ok, true, `expected CLEAN but got errors: ${JSON.stringify(r.errors)}`);
       assert.equal(
         (r.warnings ?? []).length,
         0,
@@ -276,11 +240,7 @@ for (const c of cases) {
       );
     } else if (c.expect === "warn") {
       // Non-terminal but NEVER silent — the secure-default WARN path.
-      assert.equal(
-        r.ok,
-        true,
-        `expected a non-terminal WARN but the check hard-failed: ${JSON.stringify(r.errors)}`,
-      );
+      assert.equal(r.ok, true, `expected a non-terminal WARN but the check hard-failed: ${JSON.stringify(r.errors)}`);
       assert.ok(
         (r.warnings ?? []).some((w) => w.includes(c.match)),
         `expected a warning containing ${JSON.stringify(c.match)}, got: ${JSON.stringify(r.warnings)}`,
@@ -315,9 +275,7 @@ if (failed > 0) {
 // because the un-adopted state is the one disposition that is neither a hard
 // fail nor a clean pass, and dropping its cases would hide the loom#1393 core.
 if (flagCount === 0 || cleanCount === 0 || warnCount === 0) {
-  console.log(
-    "FAIL — the fixture set must carry ALL THREE polarities (Rule 9)",
-  );
+  console.log("FAIL — the fixture set must carry ALL THREE polarities (Rule 9)");
   process.exit(1);
 }
 console.log("PASS");

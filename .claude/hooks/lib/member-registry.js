@@ -148,10 +148,7 @@ function _appendToRegistry(repoDir, record) {
   const p = resolveMemberRegistryPath(repoDir);
   const w = appendSinkLine({ repoDir, sinkPath: p, line });
   if (!w.ok)
-    return {
-      ok: false,
-      error: `member-registry append refused: ${w.error} — ${w.reason}`,
-    };
+    return { ok: false, error: `member-registry append refused: ${w.error} — ${w.reason}` };
   return { ok: true };
 }
 

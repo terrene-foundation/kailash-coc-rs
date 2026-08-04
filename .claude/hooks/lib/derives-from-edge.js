@@ -104,11 +104,7 @@ const EDGE_KEYS = Object.freeze([
 ]);
 
 // DerivationSource keys in canonical order (`relation` optional). Closed shape.
-const DERIVATION_SOURCE_KEYS = Object.freeze([
-  "anchor",
-  "anchor_kind",
-  "relation",
-]);
+const DERIVATION_SOURCE_KEYS = Object.freeze(["anchor", "anchor_kind", "relation"]);
 
 // Credential-shaped key names forbidden anywhere in the record (emit contract § 2 "No secrets";
 // `security.md` "no secrets in logs"). A provenance edge is a DURABLE record.
@@ -274,15 +270,11 @@ function _scanForbidden(value, pathStr, errors, depth, seen) {
   // RangeError out of the VALIDATOR, which the ledger's catch would then mislabel as a contract
   // violation ("the agent's citation is wrong") when it is an internal limit.
   if (d > MAX_SCAN_DEPTH) {
-    errors.push(
-      `${pathStr}: exceeds max scan depth ${MAX_SCAN_DEPTH} (record too deeply nested)`,
-    );
+    errors.push(`${pathStr}: exceeds max scan depth ${MAX_SCAN_DEPTH} (record too deeply nested)`);
     return;
   }
   if (s.has(value)) {
-    errors.push(
-      `${pathStr}: cyclic reference forbidden (a durable record MUST be serializable)`,
-    );
+    errors.push(`${pathStr}: cyclic reference forbidden (a durable record MUST be serializable)`);
     return;
   }
   s.add(value);
@@ -293,9 +285,7 @@ function _scanForbidden(value, pathStr, errors, depth, seen) {
   }
   for (const k of Object.keys(value)) {
     if (PROTO_POLLUTION_KEYS.includes(k))
-      errors.push(
-        `${pathStr}.${JSON.stringify(k)}: prototype-pollution key forbidden`,
-      );
+      errors.push(`${pathStr}.${JSON.stringify(k)}: prototype-pollution key forbidden`);
     if (CREDENTIAL_KEY_RE.test(k))
       errors.push(
         `${pathStr}.${JSON.stringify(k)}: credential-shaped key forbidden — a provenance edge is a durable ` +
@@ -351,8 +341,7 @@ function classifyAnchor(anchor) {
   if (BARE_LINE_LOCATOR_RE.test(rawPath))
     return { ok: false, reason: REASON.BARE_LINE, detail: rawPath };
 
-  const cleanLocator =
-    kind === "section" ? locator.replace(/^§\s*/, "").trim() : locator.trim();
+  const cleanLocator = kind === "section" ? locator.replace(/^§\s*/, "").trim() : locator.trim();
   if (cleanLocator.length === 0)
     return { ok: false, reason: REASON.EMPTY_LOCATOR, detail: anchor };
   // A locator that is ONLY a line number is the bare-line shape wearing the grammar.
@@ -361,8 +350,7 @@ function classifyAnchor(anchor) {
 
   // Floor the locator on its NORMALIZED length. A 1-3 char locator resolves against almost any
   // file by substring accident, which makes "the anchor resolves" a vacuous claim.
-  const floor =
-    kind === "section" ? MIN_SECTION_LOCATOR_LEN : MIN_SYMBOL_LOCATOR_LEN;
+  const floor = kind === "section" ? MIN_SECTION_LOCATOR_LEN : MIN_SYMBOL_LOCATOR_LEN;
   if (_normalizeAnchorText(cleanLocator).length < floor)
     return {
       ok: false,
@@ -372,10 +360,8 @@ function classifyAnchor(anchor) {
 
   const relPath = rawPath.trim();
   if (relPath.length === 0) return { ok: false, reason: REASON.EMPTY_PATH };
-  if (relPath.includes("\\"))
-    return { ok: false, reason: REASON.BACKSLASH, detail: relPath };
-  if (relPath.startsWith("/"))
-    return { ok: false, reason: REASON.ABSOLUTE_PATH, detail: relPath };
+  if (relPath.includes("\\")) return { ok: false, reason: REASON.BACKSLASH, detail: relPath };
+  if (relPath.startsWith("/")) return { ok: false, reason: REASON.ABSOLUTE_PATH, detail: relPath };
   if (relPath.split("/").includes(".."))
     return { ok: false, reason: REASON.TRAVERSAL, detail: relPath };
 
@@ -440,11 +426,9 @@ function _findSectionHeading(text, section) {
     if (inFence) continue;
     if (!/^#{1,6}\s/.test(line)) continue;
     const heading = _normalizeAnchorText(line.replace(/^#{1,6}\s*/, ""));
-    if (heading === needle || heading.startsWith(needle))
-      matches.push(line.trim());
+    if (heading === needle || heading.startsWith(needle)) matches.push(line.trim());
   }
-  if (matches.length === 0)
-    return { ok: false, reason: REASON.SECTION_NOT_FOUND };
+  if (matches.length === 0) return { ok: false, reason: REASON.SECTION_NOT_FOUND };
   if (matches.length > 1)
     return {
       ok: false,
@@ -476,11 +460,7 @@ function resolveAnchor(a) {
   try {
     root = fs.realpathSync(a.repoDir || process.cwd());
   } catch (e) {
-    return {
-      ok: false,
-      reason: REASON.PATH_NOT_FOUND,
-      detail: `repoDir: ${e.message}`,
-    };
+    return { ok: false, reason: REASON.PATH_NOT_FOUND, detail: `repoDir: ${e.message}` };
   }
 
   let candidate;
@@ -518,14 +498,9 @@ function resolveAnchor(a) {
     }
     try {
       const st = fs.fstatSync(fd);
-      if (!st.isFile())
-        return { ok: false, reason: REASON.NOT_A_FILE, detail: shape.path };
+      if (!st.isFile()) return { ok: false, reason: REASON.NOT_A_FILE, detail: shape.path };
       if (st.size > MAX_ANCHOR_FILE_BYTES)
-        return {
-          ok: false,
-          reason: REASON.FILE_TOO_LARGE,
-          detail: `${st.size}B`,
-        };
+        return { ok: false, reason: REASON.FILE_TOO_LARGE, detail: `${st.size}B` };
       text = fs.readFileSync(fd, "utf8");
     } catch (e) {
       return { ok: false, reason: REASON.READ_FAILED, detail: e.message };
@@ -542,33 +517,12 @@ function resolveAnchor(a) {
 
   if (shape.kind === "section") {
     const hit = _findSectionHeading(text, shape.locator);
-    if (!hit.ok)
-      return {
-        ok: false,
-        reason: hit.reason,
-        detail: hit.detail || shape.locator,
-      };
-    return {
-      ok: true,
-      kind: shape.kind,
-      path: shape.path,
-      locator: shape.locator,
-      matched: hit.matched,
-    };
+    if (!hit.ok) return { ok: false, reason: hit.reason, detail: hit.detail || shape.locator };
+    return { ok: true, kind: shape.kind, path: shape.path, locator: shape.locator, matched: hit.matched };
   }
   if (!_containsSymbolToken(text, shape.locator))
-    return {
-      ok: false,
-      reason: REASON.SYMBOL_NOT_FOUND,
-      detail: shape.locator,
-    };
-  return {
-    ok: true,
-    kind: shape.kind,
-    path: shape.path,
-    locator: shape.locator,
-    matched: shape.locator,
-  };
+    return { ok: false, reason: REASON.SYMBOL_NOT_FOUND, detail: shape.locator };
+  return { ok: true, kind: shape.kind, path: shape.path, locator: shape.locator, matched: shape.locator };
 }
 
 /**
@@ -620,18 +574,14 @@ function validateDerivesFromEdge(edge) {
         `(proposed/pending-S1) (got ${JSON.stringify(edge.derives_from_schema_version)})`,
     );
   if (edge.record_type !== RECORD_TYPE)
-    errors.push(
-      `record_type MUST be "${RECORD_TYPE}" (got ${JSON.stringify(edge.record_type)})`,
-    );
+    errors.push(`record_type MUST be "${RECORD_TYPE}" (got ${JSON.stringify(edge.record_type)})`);
   if (!ARTIFACT_TYPES.includes(edge.artifact_type))
     errors.push(
       `artifact_type MUST be one of ${JSON.stringify(ARTIFACT_TYPES)} ` +
         `(got ${JSON.stringify(edge.artifact_type)})`,
     );
   if (!_isNonEmptyString(edge.artifact_id))
-    errors.push(
-      "artifact_id MUST be a non-empty string (the generated Entity identity)",
-    );
+    errors.push("artifact_id MUST be a non-empty string (the generated Entity identity)");
 
   // `derives_from: []` is the FIRST-CLASS ORPHAN SIGNAL the reverse-index sweep reads (emit
   // contract § 2; design § 1.6 AC 2). It MUST be present and MUST be an array — an EMPTY array
@@ -662,25 +612,19 @@ function validateDerivesFromEdge(edge) {
   }
 
   if (edge.activity !== ACTIVITY)
-    errors.push(
-      `activity MUST be "${ACTIVITY}" (got ${JSON.stringify(edge.activity)})`,
-    );
+    errors.push(`activity MUST be "${ACTIVITY}" (got ${JSON.stringify(edge.activity)})`);
   if (!_isNonEmptyString(edge.session_id))
     errors.push("session_id MUST be a non-empty string");
   if (!_isNonEmptyString(edge.timestamp) || !ISO_8601_RE.test(edge.timestamp))
     errors.push("timestamp MUST be an ISO-8601 string");
   if (edge.producer !== PRODUCER)
-    errors.push(
-      `producer MUST be "${PRODUCER}" (got ${JSON.stringify(edge.producer)})`,
-    );
+    errors.push(`producer MUST be "${PRODUCER}" (got ${JSON.stringify(edge.producer)})`);
 
   _scanForbidden(edge, "edge", errors);
 
   for (const k of Object.keys(edge))
     if (!EDGE_KEYS.includes(k))
-      errors.push(
-        `unexpected top-level key ${JSON.stringify(k)} (closed edge shape)`,
-      );
+      errors.push(`unexpected top-level key ${JSON.stringify(k)} (closed edge shape)`);
 
   return { ok: errors.length === 0, errors };
 }
@@ -695,20 +639,13 @@ function validateEdgeAnchorsResolve(a) {
   const errors = [];
   const edge = a && a.edge;
   if (!_isPlainObject(edge) || !Array.isArray(edge.derives_from))
-    return {
-      ok: false,
-      errors: ["edge MUST be a plain object carrying a derives_from array"],
-    };
+    return { ok: false, errors: ["edge MUST be a plain object carrying a derives_from array"] };
   // One read cache per resolution pass: N anchors into the same file (the common case — several
   // sections of one spec) cost one read, not N. Pass-scoped, never process-global, so a file edited
   // between two /codify emissions is re-read rather than served stale.
   const cache = new Map();
   edge.derives_from.forEach((src, i) => {
-    const r = resolveAnchor({
-      repoDir: a.repoDir,
-      anchor: src && src.anchor,
-      cache,
-    });
+    const r = resolveAnchor({ repoDir: a.repoDir, anchor: src && src.anchor, cache });
     if (!r.ok)
       errors.push(
         `derives_from[${i}].anchor does not resolve against the current tree: ${r.reason}` +
@@ -735,9 +672,7 @@ function validateEdgeAnchorsResolve(a) {
  */
 function buildDerivesFromEdge(a) {
   if (!_isPlainObject(a)) {
-    const e = new TypeError(
-      "buildDerivesFromEdge: args MUST be a plain object",
-    );
+    const e = new TypeError("buildDerivesFromEdge: args MUST be a plain object");
     e.contract_violation = true;
     throw e;
   }
@@ -788,9 +723,7 @@ function buildDerivesFromEdge(a) {
     // Tagged so the ledger can distinguish a CONTRACT violation (the caller's citation is wrong)
     // from an INTERNAL fault (a bug or limit here) — mislabelling the latter as the former sends
     // the reader to audit a citation that was fine.
-    const e = new Error(
-      `buildDerivesFromEdge: invalid edge:\n  - ${errors.join("\n  - ")}`,
-    );
+    const e = new Error(`buildDerivesFromEdge: invalid edge:\n  - ${errors.join("\n  - ")}`);
     e.contract_violation = true;
     throw e;
   }
@@ -810,8 +743,7 @@ function contractDescriptor() {
     derives_from_schema_version: DERIVES_FROM_SCHEMA_VERSION,
     pending_s1_ratification: PENDING_S1_RATIFICATION,
     producer: PRODUCER,
-    consumer:
-      "kailash-rs S-1 (#1951, local DataFlow accountability store) — NOT YET BUILT",
+    consumer: "kailash-rs S-1 (#1951, local DataFlow accountability store) — NOT YET BUILT",
     activity: ACTIVITY,
     core_fields: ["artifact_type", "artifact_id", "derives_from"],
     envelope_fields: [

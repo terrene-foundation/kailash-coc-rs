@@ -456,12 +456,7 @@ function checkForkIdentifyingContent(opts = {}) {
     // verdicts read `identifying`/`verified`), but `ran` is an exported field the
     // suite asserts, and its failure direction on a consumer is over-block:
     // `if (res.ran !== true) failClosed()` would refuse a genuinely clean scan.
-    return {
-      identifying: findings.length > 0,
-      findings,
-      verified: true,
-      ran: true,
-    };
+    return { identifying: findings.length > 0, findings, verified: true, ran: true };
   }
   // No injected findings AND no injected scanFn: fall back to the PRODUCTION
   // default scanFn (#576/AC-2). Honored under the SAME explicit-ran:true gate as
@@ -476,12 +471,7 @@ function checkForkIdentifyingContent(opts = {}) {
       // `ran: true` explicitly — same loom#1450 follow-on as the injected-scanFn
       // branch above; this is the PRODUCTION path, so it is the one a real
       // consumer sees.
-      return {
-        identifying: findings.length > 0,
-        findings,
-        verified: true,
-        ran: true,
-      };
+      return { identifying: findings.length > 0, findings, verified: true, ran: true };
     }
   }
   // No scannable surface in opts (or the default scanFn could not load):

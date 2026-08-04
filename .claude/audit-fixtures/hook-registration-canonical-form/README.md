@@ -11,7 +11,7 @@ Each fixture is a single hook `command` string, exactly as `settings.json` would
 The reconciler originally extracted the hook path with an UNANCHORED substring regex:
 
 ```js
-/((?:\.claude|scripts)\/hooks\/[A-Za-z0-9._-]+\.(?:js|mjs|cjs))/;
+/((?:\.claude|scripts)\/hooks\/[A-Za-z0-9._-]+\.(?:js|mjs|cjs))/
 ```
 
 That reopened the exact class `hooks/lib/settings-deny-guard-shape.js::invokesGuard` closed over five
@@ -48,19 +48,19 @@ verified by round-tripping the captured basename through the shared
 byte-for-byte, per `rules/security.md` § Enforcement-Surface Parity. Anything unrecognized ranks
 **tightest** (`non-canonical` → dangling), never "resolves".
 
-| Fixture                     | Expects         | Shape locked                                                     |
-| --------------------------- | --------------- | ---------------------------------------------------------------- |
-| `accept-canonical`          | `canonical`     | the one accepted form                                            |
-| `reject-f5-substring-echo`  | `non-canonical` | F5 — marker as data in a command that never executes it          |
-| `reject-f7-eval-flag`       | `non-canonical` | F7 — `-e` makes the path a string literal, not a script          |
-| `reject-f8-disabled-suffix` | `non-canonical` | F8 — `.js.disabled`; node runs a miss                            |
-| `reject-f9-parent-escape`   | `non-canonical` | F9 — `../evil/` prefix escapes the project tree                  |
-| `reject-f9-absolute-path`   | `non-canonical` | F9 — absolute `/tmp/evil/` path, no `$CLAUDE_PROJECT_DIR` at all |
-| `reject-f10-single-quoted`  | `non-canonical` | F10 — single quotes suppress expansion (ordinary drift)          |
-| `reject-f11-unquoted`       | `non-canonical` | F11 — unquoted expansion word-splits on a spaced project path    |
-| `reject-compound-and`       | `non-canonical` | F1371-3 — second path hidden from a non-global match             |
-| `reject-compound-or`        | `non-canonical` | F1371-3 — same, with the dead path first                         |
-| `skip-true-inline-shell`    | `none`          | mentions no hook script; cannot masquerade, so it is preserved   |
+| Fixture                        | Expects         | Shape locked                                                     |
+| ------------------------------ | --------------- | ---------------------------------------------------------------- |
+| `accept-canonical`             | `canonical`     | the one accepted form                                            |
+| `reject-f5-substring-echo`     | `non-canonical` | F5 — marker as data in a command that never executes it          |
+| `reject-f7-eval-flag`          | `non-canonical` | F7 — `-e` makes the path a string literal, not a script          |
+| `reject-f8-disabled-suffix`    | `non-canonical` | F8 — `.js.disabled`; node runs a miss                            |
+| `reject-f9-parent-escape`      | `non-canonical` | F9 — `../evil/` prefix escapes the project tree                  |
+| `reject-f9-absolute-path`      | `non-canonical` | F9 — absolute `/tmp/evil/` path, no `$CLAUDE_PROJECT_DIR` at all |
+| `reject-f10-single-quoted`     | `non-canonical` | F10 — single quotes suppress expansion (ordinary drift)          |
+| `reject-f11-unquoted`          | `non-canonical` | F11 — unquoted expansion word-splits on a spaced project path    |
+| `reject-compound-and`          | `non-canonical` | F1371-3 — second path hidden from a non-global match             |
+| `reject-compound-or`           | `non-canonical` | F1371-3 — same, with the dead path first                         |
+| `skip-true-inline-shell`       | `none`          | mentions no hook script; cannot masquerade, so it is preserved   |
 
 `none` is NOT an accept. It means the command claims no hook at all, so there is nothing to certify
 and nothing to repair — it is left strictly alone.

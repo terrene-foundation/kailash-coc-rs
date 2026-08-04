@@ -42,9 +42,7 @@ function check(name, condition, details) {
 
 function gitInit(repoDir) {
   execFileSync("git", ["init", "--quiet"], { cwd: repoDir });
-  execFileSync("git", ["config", "user.email", "test@example.com"], {
-    cwd: repoDir,
-  });
+  execFileSync("git", ["config", "user.email", "test@example.com"], { cwd: repoDir });
   execFileSync("git", ["config", "user.name", "test"], { cwd: repoDir });
   execFileSync("git", ["config", "commit.gpgsign", "false"], { cwd: repoDir });
 }
@@ -164,12 +162,8 @@ type: ignored_in_body
 // ------------------------------------------------------------------
 {
   // Each known anchor must match (case-insensitive).
-  const matches = RULE10_ANCHORS.every((a) =>
-    hasRule10Anchor(`Foo ${a.toUpperCase()} bar`),
-  );
-  const miss = !hasRule10Anchor(
-    "This entry talks about Rule 11 fires but not Rule 10",
-  );
+  const matches = RULE10_ANCHORS.every((a) => hasRule10Anchor(`Foo ${a.toUpperCase()} bar`));
+  const miss = !hasRule10Anchor("This entry talks about Rule 11 fires but not Rule 10");
   check(
     "fixture-06-has-rule10-anchor",
     matches && miss,
@@ -205,21 +199,12 @@ type: ignored_in_body
 // ------------------------------------------------------------------
 {
   // Basename match requires path-marker adjacency.
-  const hitBacktick = citesRule(
-    "see `test-rule.md` for...",
-    "rules/test-rule.md",
-  );
-  const hitSlash = citesRule(
-    "path/test-rule.md is the file",
-    "rules/test-rule.md",
-  );
+  const hitBacktick = citesRule("see `test-rule.md` for...", "rules/test-rule.md");
+  const hitSlash = citesRule("path/test-rule.md is the file", "rules/test-rule.md");
   // No path-marker adjacency: just bare basename in prose → also matches per
   // word-boundary regex; this is intentional (Phase-1 prefers false-positive
   // over false-negative on rule citations).
-  const proseHit = citesRule(
-    "test-rule.md is referenced in prose",
-    "rules/test-rule.md",
-  );
+  const proseHit = citesRule("test-rule.md is referenced in prose", "rules/test-rule.md");
   check(
     "fixture-09-cites-rule-basename",
     hitBacktick && hitSlash && proseHit,
@@ -234,10 +219,7 @@ type: ignored_in_body
   // Subprocess test: invoke the CLI; expect exit 2 + error message.
   const __filename = fileURLToPath(import.meta.url);
   const script = join(
-    __filename.replace(
-      /\/audit-fixtures\/.*$/,
-      "/bin/validate-extraction-history.mjs",
-    ),
+    __filename.replace(/\/audit-fixtures\/.*$/, "/bin/validate-extraction-history.mjs"),
   );
   let result;
   try {
@@ -352,8 +334,7 @@ This entry's Rule-10 disposition is path (b) named-rationale on rules/baseline-r
     );
     check(
       "fixture-12-scope-at-date-baseline",
-      result.mandated === true &&
-        result.reason === "rule-10-mandated-invocation",
+      result.mandated === true && result.reason === "rule-10-mandated-invocation",
       `got result=${JSON.stringify(result)}`,
     );
   } finally {
@@ -457,11 +438,7 @@ rule is path-scoped so Rule-10 did NOT actually fire (journal/0148 class).
     gitInit(tmp);
     writeFileSync(join(tmp, "README.md"), "# repo\n");
     gitCommit(tmp, "init", "2026-05-20T12:00:00Z");
-    const r = getScopeAtDate(
-      ".claude/rules/never-existed.md",
-      "2026-05-21",
-      tmp,
-    );
+    const r = getScopeAtDate(".claude/rules/never-existed.md", "2026-05-21", tmp);
     check(
       "fixture-16-empty-git-log",
       r.ok === false && r.reason === "rule-not-found-in-git-history",
@@ -480,10 +457,7 @@ rule is path-scoped so Rule-10 did NOT actually fire (journal/0148 class).
 {
   const __filename = fileURLToPath(import.meta.url);
   const script = join(
-    __filename.replace(
-      /\/audit-fixtures\/.*$/,
-      "/bin/validate-extraction-history.mjs",
-    ),
+    __filename.replace(/\/audit-fixtures\/.*$/, "/bin/validate-extraction-history.mjs"),
   );
   const tmp = join(tmpdir(), `f25-fix-17-${Date.now()}`);
   try {
@@ -552,7 +526,8 @@ date: 2026-05-20
     );
     check(
       "fixture-18-priority-non-zero-not-mandated",
-      result.mandated === false && /priority-at-date-not-0/.test(result.reason),
+      result.mandated === false &&
+        /priority-at-date-not-0/.test(result.reason),
       `got result=${JSON.stringify(result)}`,
     );
   } finally {

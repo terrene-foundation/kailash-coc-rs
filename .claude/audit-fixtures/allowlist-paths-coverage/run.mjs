@@ -61,12 +61,8 @@ function statusOf(c, artifact) {
 // fixture-01 — braceExpandAllowlist (the {a,b,c} expansion the rule uses)
 // ----------------------------------------------------------------------
 {
-  const a = braceExpandAllowlist(
-    ".claude/rules/{trust-posture,cc-artifacts}.md",
-  );
-  const b = braceExpandAllowlist(
-    ".claude/codex-mcp-guard/{server.js,extract-policies.mjs}",
-  );
+  const a = braceExpandAllowlist(".claude/rules/{trust-posture,cc-artifacts}.md");
+  const b = braceExpandAllowlist(".claude/codex-mcp-guard/{server.js,extract-policies.mjs}");
   const c = braceExpandAllowlist(".claude/commands/codify.md"); // no braces → identity
   check(
     "fixture-01-braceExpandAllowlist",
@@ -76,8 +72,7 @@ function statusOf(c, artifact) {
       b.length === 2 &&
       b[0] === ".claude/codex-mcp-guard/server.js" &&
       b[1] === ".claude/codex-mcp-guard/extract-policies.mjs" &&
-      c.length === 1 &&
-      c[0] === ".claude/commands/codify.md",
+      c.length === 1 && c[0] === ".claude/commands/codify.md",
     `a=${JSON.stringify(a)} b=${JSON.stringify(b)} c=${JSON.stringify(c)}`,
   );
 }
@@ -89,8 +84,7 @@ function statusOf(c, artifact) {
 // backtick references that are NOT allowlist entries; stripping them is the
 // load-bearing discriminator that keeps `.claude/**` / `cc-artifacts.md` out.
 {
-  const s =
-    "`a.md`, `b.md` (added per `prose-ref.md` and nested (deep `x.md`)), `c.md`";
+  const s = "`a.md`, `b.md` (added per `prose-ref.md` and nested (deep `x.md`)), `c.md`";
   const stripped = stripParentheticals(s);
   check(
     "fixture-02-stripParentheticals-depth-aware",
@@ -110,31 +104,17 @@ function statusOf(c, artifact) {
   check(
     "fixture-03-allowlistGlobCovers-covered-and-uncovered",
     // COVERED: exact-path match
-    allowlistGlobCovers(
-      ".claude/sync-manifest.yaml",
-      ".claude/sync-manifest.yaml",
-    ) === true &&
+    allowlistGlobCovers(".claude/sync-manifest.yaml", ".claude/sync-manifest.yaml") === true &&
       // COVERED: /** prefix swallows a child file
-      allowlistGlobCovers(
-        ".claude/commands/**",
-        ".claude/commands/codify.md",
-      ) === true &&
+      allowlistGlobCovers(".claude/commands/**", ".claude/commands/codify.md") === true &&
       // COVERED: /** prefix swallows a child GLOB entry (e.g. validate-*.mjs)
-      allowlistGlobCovers(".claude/bin/**", ".claude/bin/validate-*.mjs") ===
-        true &&
+      allowlistGlobCovers(".claude/bin/**", ".claude/bin/validate-*.mjs") === true &&
       // COVERED: /** prefix matches the dir itself
-      allowlistGlobCovers(
-        ".claude/audit-fixtures/**",
-        ".claude/audit-fixtures/**",
-      ) === true &&
+      allowlistGlobCovers(".claude/audit-fixtures/**", ".claude/audit-fixtures/**") === true &&
       // UNCOVERED: root-level file under no subtree glob (the #440 gap class)
-      allowlistGlobCovers(
-        ".claude/commands/**",
-        ".claude/operators.roster.schema.json",
-      ) === false &&
+      allowlistGlobCovers(".claude/commands/**", ".claude/operators.roster.schema.json") === false &&
       // UNCOVERED: a /** prefix does NOT match a sibling subtree
-      allowlistGlobCovers(".claude/rules/**", ".claude/skills/sweep/**") ===
-        false,
+      allowlistGlobCovers(".claude/rules/**", ".claude/skills/sweep/**") === false,
   );
 }
 
@@ -228,9 +208,7 @@ The allowlist (load-bearing paths only; synthetic fixture span start)
 
 **\`paths:\` frontmatter is the load-trigger SUPERSET** — synthetic fixture span end.
 `;
-  const root = buildFixtureRoot({
-    ".claude/rules/self-referential-codify.md": rule,
-  });
+  const root = buildFixtureRoot({ ".claude/rules/self-referential-codify.md": rule });
   try {
     const c = checkAllowlistPathsCoverage(root);
     const blocking = c.results.filter((r) => r.status === STATUS.FAIL);
@@ -263,9 +241,7 @@ paths:
 - **Commands:** \`.claude/commands/codify.md\`
 - **Data files (codify-class):** \`.claude/operators.roster.schema.json\`
 `;
-  const root = buildFixtureRoot({
-    ".claude/rules/self-referential-codify.md": rule,
-  });
+  const root = buildFixtureRoot({ ".claude/rules/self-referential-codify.md": rule });
   try {
     const c = checkAllowlistPathsCoverage(root);
     check(
@@ -301,9 +277,7 @@ The allowlist (load-bearing paths only; synthetic fixture span start)
 
 **\`paths:\` frontmatter is the load-trigger SUPERSET** — synthetic fixture span end.
 `;
-  const root = buildFixtureRoot({
-    ".claude/rules/self-referential-codify.md": rule,
-  });
+  const root = buildFixtureRoot({ ".claude/rules/self-referential-codify.md": rule });
   try {
     const c = checkAllowlistPathsCoverage(root);
     const blocking = c.results.filter((r) => r.status === STATUS.FAIL);
@@ -352,27 +326,15 @@ The allowlist (load-bearing paths only; synthetic fixture span start)
   check(
     "fixture-10-allowlistGlobCovers-braceset-glob",
     // COVERED: brace-set /** glob covers an entry under ONE member
-    allowlistGlobCovers(
-      ".claude/{commands,rules,bin}/**",
-      ".claude/rules/foo.md",
-    ) === true &&
+    allowlistGlobCovers(".claude/{commands,rules,bin}/**", ".claude/rules/foo.md") === true &&
       // COVERED: brace-set /** glob covers an entry under a DIFFERENT member
-      allowlistGlobCovers(
-        ".claude/{commands,rules,bin}/**",
-        ".claude/bin/validate-*.mjs",
-      ) === true &&
+      allowlistGlobCovers(".claude/{commands,rules,bin}/**", ".claude/bin/validate-*.mjs") === true &&
       // COVERED: brace-set EXACT-path glob covers one expanded member
       allowlistGlobCovers(".claude/{a.md,b.md}", ".claude/b.md") === true &&
       // UNCOVERED: brace-set /** glob does NOT cover an entry outside ALL members
-      allowlistGlobCovers(
-        ".claude/{commands,rules}/**",
-        ".claude/skills/foo.md",
-      ) === false &&
+      allowlistGlobCovers(".claude/{commands,rules}/**", ".claude/skills/foo.md") === false &&
       // REGRESSION: a plain (non-brace) /** glob still covers as before
-      allowlistGlobCovers(
-        ".claude/commands/**",
-        ".claude/commands/codify.md",
-      ) === true,
+      allowlistGlobCovers(".claude/commands/**", ".claude/commands/codify.md") === true,
   );
 }
 
@@ -399,9 +361,7 @@ The allowlist (load-bearing paths only; synthetic fixture span start)
 
 **\`paths:\` frontmatter is the load-trigger SUPERSET** — synthetic fixture span end.
 `;
-  const root = buildFixtureRoot({
-    ".claude/rules/self-referential-codify.md": rule,
-  });
+  const root = buildFixtureRoot({ ".claude/rules/self-referential-codify.md": rule });
   try {
     const c = checkAllowlistPathsCoverage(root);
     const blocking = c.results.filter((r) => r.status === STATUS.FAIL);
@@ -451,15 +411,11 @@ ${bullets}
     const rule = spanned(
       "- **Commands:** \`.claude/commands/codify.md\`\n- **Bogus-category (codify-class):** \`.claude/commands/codify.md\`",
     );
-    const root = buildFixtureRoot({
-      ".claude/rules/self-referential-codify.md": rule,
-    });
+    const root = buildFixtureRoot({ ".claude/rules/self-referential-codify.md": rule });
     try {
       const c = checkAllowlistPathsCoverage(root);
       const hits = c.results.filter(
-        (r) =>
-          r.status === STATUS.FAIL &&
-          /unrecognized-allowlist-bullet:/.test(r.detail || ""),
+        (r) => r.status === STATUS.FAIL && /unrecognized-allowlist-bullet:/.test(r.detail || ""),
       );
       check(
         "fixture-12-R15F4-unrecognized-bullet-in-span-is-loud",
@@ -475,15 +431,11 @@ ${bullets}
   //     Without this arm, an always-firing guard would pass (a) and prove nothing.
   {
     const rule = spanned("- **Commands:** \`.claude/commands/codify.md\`");
-    const root = buildFixtureRoot({
-      ".claude/rules/self-referential-codify.md": rule,
-    });
+    const root = buildFixtureRoot({ ".claude/rules/self-referential-codify.md": rule });
     try {
       const c = checkAllowlistPathsCoverage(root);
       const hits = c.results.filter(
-        (r) =>
-          r.status === STATUS.FAIL &&
-          /unrecognized-allowlist-bullet/.test(r.detail || ""),
+        (r) => r.status === STATUS.FAIL && /unrecognized-allowlist-bullet/.test(r.detail || ""),
       );
       check(
         "fixture-13-R15F4-recognized-bullets-stay-silent",
@@ -508,15 +460,11 @@ paths:
 
 - **Commands:** \`.claude/commands/codify.md\`
 `;
-    const root = buildFixtureRoot({
-      ".claude/rules/self-referential-codify.md": rule,
-    });
+    const root = buildFixtureRoot({ ".claude/rules/self-referential-codify.md": rule });
     try {
       const c = checkAllowlistPathsCoverage(root);
       const drift = c.results.filter(
-        (r) =>
-          r.status === STATUS.FAIL &&
-          /could not locate the § Rule 2 allowlist span/.test(r.detail || ""),
+        (r) => r.status === STATUS.FAIL && /could not locate the § Rule 2 allowlist span/.test(r.detail || ""),
       );
       check(
         "fixture-14-R15F4-anchor-drift-is-reported-not-swallowed",

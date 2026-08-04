@@ -18,32 +18,32 @@ non-vacuity mutation test, not by these fixtures.
 
 ## Why these particular cases
 
-| fixture                            | code     | what it locks                                                           |
-| ---------------------------------- | -------- | ----------------------------------------------------------------------- |
-| `fixture-clean`                    | —        | all three reachability lanes resolve; zero defects                      |
-| `fixture-obsolete-canon-deleted`   | A        | **anti-vacuity anchor — MUST fire**                                     |
-| `fixture-variant-only-declared`    | B        | A/B discrimination: identical tree, one declaration                     |
-| `fixture-phantom-null`             | E5       | `manifest-null` overlay sitting at the mirror path                      |
-| `fixture-phantom-rename-shadow`    | E5       | rename redirect shadowing a mirror-path file                            |
-| `fixture-manifest-drift-e1-e2-e3`  | E1/E2/E3 | declared-but-absent, declared-for-absent-canon, dangling `variant_only` |
-| `fixture-double-declared-e4`       | E4       | one file claimed by both lanes                                          |
-| `fixture-stale-heuristic`          | C        | threshold arithmetic; C never changes exit code                         |
-| `fixture-non-composed-undeclared`  | A        | **regression lock** on a real false positive (see below)                |
-| `fixture-anti-vacuity-no-variants` | —        | empty variant set → exit 2, never 0                                     |
-| `fixture-anti-vacuity-no-canon`    | —        | empty canon set → exit 2, never mass-A                                  |
+| fixture | code | what it locks |
+| --- | --- | --- |
+| `fixture-clean` | — | all three reachability lanes resolve; zero defects |
+| `fixture-obsolete-canon-deleted` | A | **anti-vacuity anchor — MUST fire** |
+| `fixture-variant-only-declared` | B | A/B discrimination: identical tree, one declaration |
+| `fixture-phantom-null` | E5 | `manifest-null` overlay sitting at the mirror path |
+| `fixture-phantom-rename-shadow` | E5 | rename redirect shadowing a mirror-path file |
+| `fixture-manifest-drift-e1-e2-e3` | E1/E2/E3 | declared-but-absent, declared-for-absent-canon, dangling `variant_only` |
+| `fixture-double-declared-e4` | E4 | one file claimed by both lanes |
+| `fixture-stale-heuristic` | C | threshold arithmetic; C never changes exit code |
+| `fixture-non-composed-undeclared` | A | **regression lock** on a real false positive (see below) |
+| `fixture-anti-vacuity-no-variants` | — | empty variant set → exit 2, never 0 |
+| `fixture-anti-vacuity-no-canon` | — | empty canon set → exit 2, never mass-A |
 
 ## The two load-bearing pairs
 
 **`fixture-obsolete-canon-deleted` + `fixture-variant-only-declared`** are
 byte-identical trees. The only difference is one `variant_only:` declaration,
 and it flips the verdict from A to B. This pair is the evidence that category B
-is _declared_, never _guessed_ — the property #1416 requires, because without it
+is *declared*, never *guessed* — the property #1416 requires, because without it
 A and B are indistinguishable and the whole validator is useless.
 
 **`fixture-non-composed-undeclared`** locks a false positive this validator
 actually produced. Its first run against the real tree reported
 `variants/py/hooks/validate-prod-deploy.js` as "declared for a canon that does
-not exist". The canon file existed; the canon _walk_ only covered composed
+not exist". The canon file existed; the canon *walk* only covered composed
 categories, so `hooks/` was invisible to it. Hand-verification caught it before
 the number was quoted. The fixture pins the distinction the bug erased: canon
 existence spans all categories, path-mirror reachability spans only the composed

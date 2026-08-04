@@ -189,8 +189,7 @@ const path = require("path");
 // is what it was added to exercise. Channel note, scoped honestly: the settings.json `env` surface
 // denylists `COC_TEST_` (loom#1450), but a host/shell export is open by documented design.
 const NOFOLLOW_SUPPORTED =
-  (fs.constants.O_NOFOLLOW || 0) !== 0 &&
-  process.env.COC_TEST_FORCE_NO_NOFOLLOW !== "1";
+  (fs.constants.O_NOFOLLOW || 0) !== 0 && process.env.COC_TEST_FORCE_NO_NOFOLLOW !== "1";
 
 /**
  * `O_DIRECTORY` — POSIX; absent on Windows. Needed to pin the sink DIRECTORY by identity
@@ -207,8 +206,7 @@ const O_DIRECTORY = fs.constants.O_DIRECTORY || 0;
  * that fully supports it (loom#1518 review, MEDIUM). A seam may simulate a weaker platform for the
  * behaviour it was built to exercise; it must not disarm a different control as a side effect.
  */
-const DIR_PIN_AVAILABLE =
-  (fs.constants.O_NOFOLLOW || 0) !== 0 && O_DIRECTORY !== 0;
+const DIR_PIN_AVAILABLE = (fs.constants.O_NOFOLLOW || 0) !== 0 && O_DIRECTORY !== 0;
 
 /**
  * One-time loud WARN when the real platform lacks `O_NOFOLLOW` (R1 F6).
@@ -310,8 +308,7 @@ function _resolveRoots(roots) {
  *          | {ok: false, reason: string}}
  */
 function captureDirIdentity(realSinkDir, dirPinAvailable) {
-  const supported =
-    dirPinAvailable === undefined ? DIR_PIN_AVAILABLE : dirPinAvailable;
+  const supported = dirPinAvailable === undefined ? DIR_PIN_AVAILABLE : dirPinAvailable;
   if (!supported)
     return {
       ok: true,
@@ -322,10 +319,7 @@ function captureDirIdentity(realSinkDir, dirPinAvailable) {
     };
   let dfd = null;
   try {
-    dfd = fs.openSync(
-      realSinkDir,
-      fs.constants.O_RDONLY | O_DIRECTORY | fs.constants.O_NOFOLLOW,
-    );
+    dfd = fs.openSync(realSinkDir, fs.constants.O_RDONLY | O_DIRECTORY | fs.constants.O_NOFOLLOW);
     const st = fs.fstatSync(dfd);
     return { ok: true, enforced: true, dev: st.dev, ino: st.ino };
   } catch (e) {
@@ -395,13 +389,7 @@ function captureDirIdentity(realSinkDir, dirPinAvailable) {
  *   is the only way to exercise the three-phase sequence deterministically.
  * @returns {{ok: true} | {ok: false, reason: string}}
  */
-function reconcileFdIdentity(
-  fd,
-  realSinkDir,
-  sinkPath,
-  expectedDir,
-  __windowHook,
-) {
+function reconcileFdIdentity(fd, realSinkDir, sinkPath, expectedDir, __windowHook) {
   if (!expectedDir || expectedDir.ok !== true)
     return {
       ok: false,
@@ -531,26 +519,16 @@ function reconcileFdIdentity(
  *           dirIdentityEnforced?: boolean, error?: string, reason?: string}}
  */
 function appendSinkLine(a) {
-  const nofollowSupported =
-    a && a.__simulateMissingNofollow ? false : NOFOLLOW_SUPPORTED;
-  const fail = (error, reason) => ({
-    ok: false,
-    error,
-    reason,
-    nofollowSupported,
-  });
+  const nofollowSupported = a && a.__simulateMissingNofollow ? false : NOFOLLOW_SUPPORTED;
+  const fail = (error, reason) => ({ ok: false, error, reason, nofollowSupported });
   // Keyed on the REAL platform capability, never the test seam: the warning is about the host,
   // and firing it for a simulated run would train readers to ignore it.
   if (!NOFOLLOW_SUPPORTED) _warnDegradedOnce();
 
-  if (!a || typeof a !== "object")
-    return fail("bad arguments", "appendSinkLine requires an options object");
+  if (!a || typeof a !== "object") return fail("bad arguments", "appendSinkLine requires an options object");
   const { repoDir, sinkPath, line } = a;
   if (typeof repoDir !== "string" || !repoDir)
-    return fail(
-      "bad arguments",
-      "repoDir MUST be a non-empty string (it is the containment boundary)",
-    );
+    return fail("bad arguments", "repoDir MUST be a non-empty string (it is the containment boundary)");
   if (typeof sinkPath !== "string" || !sinkPath)
     return fail("bad arguments", "sinkPath MUST be a non-empty string");
   if (typeof line !== "string")
@@ -566,15 +544,11 @@ function appendSinkLine(a) {
 
   // TEST SEAM ONLY (see the @param note). Called synchronously at the two named windows so a test
   // can perform the directory swap AT the race point and get a deterministic end-to-end verdict.
-  const win =
-    a && typeof a.__testWindowHook === "function" ? a.__testWindowHook : null;
+  const win = a && typeof a.__testWindowHook === "function" ? a.__testWindowHook : null;
 
   let fd = null;
   try {
-    const declared = [
-      repoDir,
-      ...(Array.isArray(a.additionalRoots) ? a.additionalRoots : []),
-    ];
+    const declared = [repoDir, ...(Array.isArray(a.additionalRoots) ? a.additionalRoots : [])];
     const realRoots = _resolveRoots(declared);
     if (realRoots.length === 0)
       // Fail CLOSED: no declared root resolves, so there is no boundary to check against.
@@ -591,10 +565,7 @@ function appendSinkLine(a) {
     try {
       realProbe = fs.realpathSync(_deepestExistingAncestor(sinkDir));
     } catch (e) {
-      return fail(
-        "containment failed",
-        `sink ancestor does not resolve: ${e.message}`,
-      );
+      return fail("containment failed", `sink ancestor does not resolve: ${e.message}`);
     }
     if (!containedInAny(realProbe))
       return fail(
@@ -607,10 +578,7 @@ function appendSinkLine(a) {
     try {
       fs.mkdirSync(sinkDir, { recursive: true });
     } catch (e) {
-      return fail(
-        "mkdir failed",
-        `could not create sink directory ${JSON.stringify(sinkDir)}: ${e.message}`,
-      );
+      return fail("mkdir failed", `could not create sink directory ${JSON.stringify(sinkDir)}: ${e.message}`);
     }
 
     // Re-verify AFTER the mkdir. The ancestor check cleared the path that existed at probe time;
@@ -621,10 +589,7 @@ function appendSinkLine(a) {
     try {
       realSinkDir = fs.realpathSync(sinkDir);
     } catch (e) {
-      return fail(
-        "containment failed",
-        `sink directory does not resolve after mkdir: ${e.message}`,
-      );
+      return fail("containment failed", `sink directory does not resolve after mkdir: ${e.message}`);
     }
     if (!containedInAny(realSinkDir))
       return fail(
@@ -659,10 +624,7 @@ function appendSinkLine(a) {
       } catch (e) {
         // ENOENT is the happy path — the sink does not exist yet and will be created below.
         if (e.code !== "ENOENT")
-          return fail(
-            "lstat failed",
-            `could not lstat sink path ${JSON.stringify(sinkPath)}: ${e.message}`,
-          );
+          return fail("lstat failed", `could not lstat sink path ${JSON.stringify(sinkPath)}: ${e.message}`);
       }
     }
 
@@ -696,10 +658,7 @@ function appendSinkLine(a) {
           `sink path ${JSON.stringify(sinkPath)} is a FIFO with no reader — refusing to append ` +
             `(O_NONBLOCK turned what would be an unbounded blocking open into this refusal)`,
         );
-      return fail(
-        "open failed",
-        `could not open sink ${JSON.stringify(sinkPath)}: ${e.message}`,
-      );
+      return fail("open failed", `could not open sink ${JSON.stringify(sinkPath)}: ${e.message}`);
     }
 
     if (win) win("after-open");
@@ -714,10 +673,7 @@ function appendSinkLine(a) {
           `file reachable under another name`,
       );
     if (!st.isFile())
-      return fail(
-        "not a regular file",
-        `sink path ${JSON.stringify(sinkPath)} is not a regular file`,
-      );
+      return fail("not a regular file", `sink path ${JSON.stringify(sinkPath)} is not a regular file`);
 
     // (6b) INTERMEDIATE-COMPONENT TOCTOU — the second half of defense 6 (loom#1513).
     //
@@ -749,13 +705,7 @@ function appendSinkLine(a) {
     // the nlink check. Note (c) is NOT answered by "a swap cannot redirect an already-open fd":
     // the three-phase attack does not redirect the fd, it forges the PATH CHECK's view of where
     // the fd's file lives. That argument was made here before and was wrong (loom#1518, HIGH).
-    const ident = reconcileFdIdentity(
-      fd,
-      realSinkDir,
-      sinkPath,
-      dirIdentity,
-      win,
-    );
+    const ident = reconcileFdIdentity(fd, realSinkDir, sinkPath, dirIdentity, win);
     if (!ident.ok) return fail("sink identity mismatch", ident.reason);
 
     // (4) Enforce the mode on EVERY append, not just creation — repairs a pre-existing 0o644 sink.
@@ -794,10 +744,7 @@ function appendSinkLine(a) {
             `another name`,
         );
     } catch (e) {
-      return fail(
-        "fstat failed",
-        `could not re-check the sink before writing: ${e.message}`,
-      );
+      return fail("fstat failed", `could not re-check the sink before writing: ${e.message}`);
     }
 
     const payload = Buffer.from(line + "\n", "utf8");

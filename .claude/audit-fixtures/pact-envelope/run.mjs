@@ -30,9 +30,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const BASE = JSON.parse(
-  readFileSync(join(here, "valid-v1_1-envelope.json"), "utf8"),
-);
+const BASE = JSON.parse(readFileSync(join(here, "valid-v1_1-envelope.json"), "utf8"));
 const clone = () => JSON.parse(JSON.stringify(BASE));
 
 const cases = [
@@ -134,24 +132,15 @@ for (const c of cases) {
   const env = c.mutate(clone());
   const res = validatePactEnvelope(env);
   const okValid = res.valid === c.valid;
-  const okCode =
-    c.code === null
-      ? res.errors.length === 0
-      : res.errors.some((e) => e.code === c.code);
+  const okCode = c.code === null ? res.errors.length === 0 : res.errors.some((e) => e.code === c.code);
   if (okValid && okCode) {
     passed++;
-    process.stdout.write(
-      `  PASS  ${c.label} → valid=${res.valid}${c.code ? ` [${c.code}]` : ""}\n`,
-    );
+    process.stdout.write(`  PASS  ${c.label} → valid=${res.valid}${c.code ? ` [${c.code}]` : ""}\n`);
   } else {
     failed++;
-    process.stderr.write(
-      `  FAIL  ${c.label}: expected valid=${c.valid} code=${c.code}, got valid=${res.valid} codes=${JSON.stringify(res.errors.map((e) => e.code))}\n`,
-    );
+    process.stderr.write(`  FAIL  ${c.label}: expected valid=${c.valid} code=${c.code}, got valid=${res.valid} codes=${JSON.stringify(res.errors.map((e) => e.code))}\n`);
   }
 }
 
-process.stdout.write(
-  `\npact-envelope fixtures: ${passed} passed, ${failed} failed\n`,
-);
+process.stdout.write(`\npact-envelope fixtures: ${passed} passed, ${failed} failed\n`);
 process.exit(failed > 0 ? 1 : 0);
