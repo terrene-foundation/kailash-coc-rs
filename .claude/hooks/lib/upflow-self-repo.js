@@ -254,8 +254,15 @@ let _lastGitStderr = null;
  * `git remote get-url --push origin` returns the FETCH url when no distinct
  * `pushurl` is configured, so on an ordinary single-identity remote this returns
  * the same string as `_readOriginRemote` and the caller's comparison is a no-op.
- * It differs only in git's triangular workflow, which is precisely the case the
- * caller refuses.
+ * It differs in git's triangular configurations — of which there are THREE, and
+ * an earlier revision of this sentence said it "differs ONLY in git's triangular
+ * workflow, which is precisely the case the caller refuses". Both halves were
+ * false: `remote.origin.pushurl` is only ONE of the three forms, and the other
+ * two left this read returning the FETCH url, so the caller saw agreement and
+ * never refused. Measured, with `remote.pushDefault=fork` and no pushurl on
+ * origin: `git remote get-url --push origin` returned the upstream, and
+ * `deriveSelfRepoRef` returned ok=true. That is why this helper resolves the
+ * EFFECTIVE push remote rather than asking about origin's own pushurl.
  *
  * Deliberately does NOT touch `_lastGitStderr`: that variable carries the
  * diagnostic for the FETCH read, which is the one whose failure denies the
@@ -333,11 +340,52 @@ function _readPushRemote(cwd) {
  */
 function _sameDerivedIdentity(a, b) {
   if (!a || !b) return false;
-  if (normalizeComponent(a.host) !== normalizeComponent(b.host)) return false;
   // ADO-ness must match: an ADO identity and a non-ADO one are never the same
   // repo even if their owner/name happen to coincide.
   if (!!a.ado !== !!b.ado) return false;
-  if (a.ado) return isSelfRepoAdo(a.ado, b.ado);
+
+  if (a.ado) {
+    // ADO: the org/project/repo TRIPLE is the identity, and the host is
+    // DELIBERATELY excluded. `_parseAdo` has already gated the host to a closed
+    // Azure DevOps set, and the SAME repository is addressed by several of those
+    // hosts depending on transport — `dev.azure.com` for https and
+    // `ssh.dev.azure.com` for ssh are one repo, as are `<org>.visualstudio.com`
+    // and `vs-ssh.visualstudio.com`.
+    //
+    // COMPARING THE RAW HOST HERE SHIPPED A LOCKOUT. The first cut of this
+    // function tested `normalizeComponent(a.host) !== normalizeComponent(b.host)`
+    // for BOTH shapes, which refused an ordinary ADO clone whose push url merely
+    // uses ssh:
+    //   fetch https://dev.azure.com/<org>/<proj>/_git/<repo>
+    //   push  git@ssh.dev.azure.com:v3/<org>/<proj>/<repo>
+    // — a maintainer locked out of their own repo, the same class as the ADO
+    // collection-form regression this module already records. Every instrument
+    // reported green on it: the differential drives SINGLE remotes and never a
+    // fetch/push pair, and the fence suite's only permissive triangular case was
+    // GitHub. The ADO permissive case added alongside this fix is what reds it.
+    //
+    // Cross-org is still caught, because `_parseAdo` derives `org` from the
+    // subdomain on the `<org>.visualstudio.com` form and from the path
+    // elsewhere, so a different org yields a different `ado.org` on every form.
+    return isSelfRepoAdo(a.ado, b.ado);
+  }
+
+  // Non-ADO: the host IS part of the identity — an owner/name pair alone does
+  // not say WHERE the repo lives, which is the same argument
+  // `vcs-github-adapter.js` makes for its own host check. Fetch
+  // `github.com/o/r` against push `internal-mirror.example/o/r` is two repos.
+  //
+  // FAIL CLOSED on an un-normalizable host. `normalizeComponent` returns null
+  // for anything outside `[A-Za-z0-9._-]`, so two DIFFERENT bracketed IPv6
+  // authorities would both normalize to null and compare EQUAL — a fail-OPEN
+  // default inside a fail-closed gate. Not reachable today (neither provider
+  // serves IPv6 literals), closed anyway on this file's own standard that a
+  // known-incorrect comparison becomes a bypass the moment a caller compares
+  // differently.
+  const ha = normalizeComponent(a.host);
+  const hb = normalizeComponent(b.host);
+  if (ha === null || hb === null) return false;
+  if (ha !== hb) return false;
   return isSelfRepo({ owner: a.owner, name: a.name }, b);
 }
 
@@ -861,7 +909,7 @@ function deriveSelfRepoRef(cwd) {
 
   // TRIANGULAR-REMOTE REFUSAL. The derivation above reads the FETCH url, and
   // `git remote get-url --push origin` returns the fetch url UNLESS a distinct
-  // `pushurl` is configured. In git's documented triangular workflow —
+  // `pushurl` is configured. In ONE of git's documented triangular forms —
   // `git clone <upstream> && git remote set-url --push origin <fork>` —
   // `remote.origin.url` IS the upstream, so this fence derived the UPSTREAM and
   // authorized a merge on it from a downstream contributor's tree. No attacker

@@ -156,31 +156,27 @@ t(
 
 t(
   "deriveSelfRepoRef/git-stderr-does-not-leak-across-calls",
-  // NO REDDENING MUTATION IS KNOWN FOR THE RESET ITSELF — stated plainly rather
-  // than claimed, because claiming one would be the defect this whole suite
-  // exists to catch. Deleting `_lastGitStderr = null;` leaves this suite GREEN.
+  // THIS CASE WAS PREVIOUSLY RECORDED AS HAVING NO REDDENING MUTATION, resolved
+  // "INERT, not vacuous". THAT VERDICT WAS WRONG, and it is worth stating why,
+  // because it is the exact failure this suite exists to catch — an unfalsified
+  // claim about an instrument.
   //
-  // RESOLVED as an INERT mutation, not a vacuous test (`instrument-discipline.md`
-  // MUST-2(b) requires collapsing the two hypotheses, not picking one). The
-  // deleted line is at function entry and executes on every call, so the
-  // mutation is unquestionably REACHED. It produces no behavioral difference
-  // because every null-return path this fixture can drive goes through the
-  // `catch`, which ALWAYS assigns — measured:
-  //   call 1 (real repo, no origin) -> THREW; stderr "error: No such remote
-  //     'origin'"                      -> catch assigns a string
-  //   call 2 (nonexistent directory) -> THREW; stderr empty
-  //                                     -> catch assigns null
-  // The only branches that return null WITHOUT assigning are `!gitBin` (git
-  // absent from PATH) and an empty-stdout success, and neither is reachable from
-  // an in-process fixture without stubbing the module under test — which would
-  // instrument the stub, not the code.
+  // The reasoning rested on: "the only null-return paths that assign nothing are
+  // `!gitBin` and an empty-stdout success, and neither is reachable from an
+  // in-process fixture without stubbing." The `!gitBin` half is sound. The
+  // empty-stdout half is FALSE — an adversarial round produced the reachable
+  // input, from an ordinary repo with no stubbing:
+  //     git config remote.origin.url " "
+  //     git remote get-url origin   ->  exit 0, stdout " \n"
+  // which `.trim()`s to "" and returns null through the SUCCESS branch. The
+  // earlier case used a nonexistent directory for call 2, which THROWS and so
+  // goes through the catch — and the catch always assigns. So the case was
+  // driving the one shape that could not discriminate, and the "inert" verdict
+  // was a reachability argument that did not hold.
   //
-  // The reset therefore remains DEFENSIVE: correct, one line, and it closes the
-  // latent path if either unreachable branch ever becomes reachable. What this
-  // case pins is the PROPERTY (no cross-call leak), which is worth holding on
-  // its own; it is NOT an instrument for the reset line, and must not be cited
-  // as one.
-  "no known reddening mutation — see the comment above; the property is pinned, the reset line is inert w.r.t. reachable inputs",
+  // Corrected: call 2 now drives the whitespace-url path, the mutation REDS, and
+  // the reset is not merely defensive — it prevents a LIVE cross-call leak.
+  "upflow-self-repo.js::_readOriginRemote — delete the `_lastGitStderr = null;` reset at function entry",
   () => {
     // Call 1 fails with a stderr naming THIS directory; call 2 fails on a
     // directory git cannot even enter. Call 2's refusal must not quote call 1's
@@ -191,14 +187,28 @@ t(
       const repo = path.join(root, "a-repo");
       fs.mkdirSync(repo);
       execFileSync("git", ["init", "-q"], { cwd: repo, stdio: "ignore" });
-      // Call 1: a real git repo with NO origin -> git writes to stderr.
+      // Call 1: a real git repo with NO origin. git EXITS NON-ZERO and writes
+      // "error: No such remote 'origin'" to stderr, so the catch assigns.
       const first = selfRepo.deriveSelfRepoRef(repo);
       if (first.ok) return "setup invariant broken: call 1 should refuse";
-      // Call 2: a non-existent directory. git cannot even start here, so this
-      // path must not inherit call 1's message.
-      const second = selfRepo.deriveSelfRepoRef(path.join(root, "nope"));
+
+      // Call 2 MUST take a null-return path that assigns NOTHING, or this case
+      // cannot discriminate. A WHITESPACE-ONLY origin url is that path, and it
+      // is an ordinary repo — no stubbing:
+      //     git config remote.origin.url " "
+      //     git remote get-url origin   ->  exits 0, stdout " \n"
+      // `_readOriginRemote` then does `s.trim()` -> "" -> `return s || null`,
+      // i.e. the SUCCESS branch, which never touches `_lastGitStderr`.
+      const repo2 = path.join(root, "b-repo");
+      fs.mkdirSync(repo2);
+      execFileSync("git", ["init", "-q"], { cwd: repo2, stdio: "ignore" });
+      execFileSync("git", ["config", "remote.origin.url", " "], {
+        cwd: repo2,
+        stdio: "ignore",
+      });
+      const second = selfRepo.deriveSelfRepoRef(repo2);
       if (second.ok) return "setup invariant broken: call 2 should refuse";
-      if (second.reason.includes("a-repo")) {
+      if (second.reason.includes("a-repo") || second.reason.includes("git said")) {
         return `call 2's refusal leaked call 1's stderr: ${JSON.stringify(second.reason.slice(0, 200))}`;
       }
       return null;

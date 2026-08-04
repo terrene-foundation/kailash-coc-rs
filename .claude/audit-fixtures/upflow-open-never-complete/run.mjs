@@ -831,6 +831,34 @@ const cases = [
     // pushes went to the fork. Two of git's three documented triangular
     // configurations were invisible to it. Reds if `_readPushRemote` is
     // narrowed back to `["remote","get-url","--push","origin"]`.
+    // THE ADO PERMISSIVE POLARITY, and its absence let a LOCKOUT ship green.
+    // `dev.azure.com` (https) and `ssh.dev.azure.com` (ssh) address the SAME
+    // repository — the transport differs, the identity does not. A first cut of
+    // `_sameDerivedIdentity` compared the raw host for both shapes and therefore
+    // REFUSED this remote: a maintainer on an ordinary ADO clone with an ssh
+    // push url, locked out of their own repo. Same class as the ADO
+    // collection-form regression this suite already records.
+    //
+    // It shipped because every existing instrument was blind to it. The
+    // differential oracle drives SINGLE remotes and never a fetch/push PAIR; the
+    // only permissive triangular case was GitHub, where https and ssh share the
+    // host `github.com`, so it agreed under every candidate comparison and could
+    // not discriminate. This case is the missing sibling.
+    //
+    // Reds if the ADO branch is ever made to compare the raw host again.
+    name: "ado/triangular-same-identity-different-transport-allows",
+    mutation:
+      "upflow-self-repo.js::_sameDerivedIdentity — compare the raw host on the ADO branch too (instead of the org/project/repo triple alone)",
+    repo: {
+      dirName: "coc-rs",
+      remote: ADO_SELF_REMOTE,
+      pushRemote: "git@ssh.dev.azure.com:v3/contoso/platform/coc-rs",
+    },
+    adapter: ADO,
+    prRef: { repoRef: ADO_SELF, prId: 42 },
+    expect: { ok: true, fired: true },
+  },
+  {
     name: "gh/triangular-push-default-remote-refuses",
     mutation:
       "upflow-self-repo.js::_readPushRemote — resolve only origin's own pushurl, ignoring branch.<n>.pushRemote and remote.pushDefault",

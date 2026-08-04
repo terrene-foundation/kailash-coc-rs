@@ -550,6 +550,7 @@ plain-ASCII traversal string, and no case configured a push url:
 | `gh/triangular-same-slug-different-host-refuses` | `_sameDerivedIdentity` drop the host equality test | exactly 1 — itself |
 | `ado/triangular-cross-org-same-project-repo-refuses` | `_sameDerivedIdentity` compare the owner/name slug instead of routing ADO through `isSelfRepoAdo` | exactly 1 — itself |
 | `gh/triangular-push-default-remote-refuses` | `_readPushRemote` resolve only origin's own pushurl | exactly 1 — itself |
+| `ado/triangular-same-identity-different-transport-allows` | `_sameDerivedIdentity` compare the raw host on the ADO branch too | exactly 1 — itself |
 
 The last is the **permissive polarity** of the triangular guard and is not
 optional: that guard's obvious failure mode is locking out a legitimate

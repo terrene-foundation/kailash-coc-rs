@@ -45,7 +45,9 @@ adversarial round measuring that its removal left the fence suite fully green.
 | `getProvider` → `PROVIDERS[id]` (plain index)                                    | 1 — `getProvider/inherited-keys-are-not-providers`        |
 | `sanitizeForReason` → narrow the class back (drop U+061C / U+200B-200F / U+FEFF) | 1 — `sanitizeForReason/strips-structure-forging-classes`  |
 | `getProvider` → interpolate `id` raw into the refusal reason                     | 1 — `getProvider/refusal-reason-is-sanitized-and-bounded` |
-| `_readOriginRemote` → delete `_lastGitStderr = null;`                            | **0 — see below**                                         |
+| `displayPrId` → a class that also eats digits (over-tighten) | 1 — `displayPrId/preserves-a-legitimate-id` |
+| `getProvider` → over-tighten the membership test | 1 — `getProvider/real-providers-still-resolve` |
+| `_readOriginRemote` → delete `_lastGitStderr = null;` | 1 — `deriveSelfRepoRef/git-stderr-does-not-leak-across-calls` |
 
 Each suite is **bipolar**: alongside every strip/refuse case there is a
 preserve/allow case, because a refusal-only suite cannot detect over-tightening.
@@ -53,33 +55,40 @@ preserve/allow case, because a refusal-only suite cannot detect over-tightening.
 refusing `"github"`, would each be a real regression that a one-sided suite
 would pass.
 
-## The one guard with no reddening mutation, and why that is recorded not hidden
+## The "no reddening mutation" verdict recorded here was WRONG
 
-Deleting the `_lastGitStderr = null;` reset leaves this suite **green**.
+Recorded rather than quietly corrected, because an unfalsified claim about an
+instrument is exactly what this suite exists to catch — and this file made one.
 
-Resolved as an **INERT mutation, not a vacuous test** — the two hypotheses
-`instrument-discipline.md` MUST-2(b) requires collapsing. The deleted line sits
-at function entry and executes on every call, so the mutation is reached. It
-changes nothing because every null-return path a fixture can drive goes through
-the `catch`, which always assigns. Measured:
+An earlier revision tabled the `_lastGitStderr` reset as **0 — no reddening
+mutation**, resolved "INERT, not vacuous", on this reasoning:
+
+> the only null-return paths that assign nothing are `!gitBin` and an
+> empty-stdout success, and neither is reachable from an in-process fixture
+> without stubbing the module under test.
+
+**The `!gitBin` half is sound. The empty-stdout half is false.** An adversarial
+round produced the reachable input, from an ordinary git repo, no stubbing:
 
 ```
-call 1 (real repo, no origin) -> THREW; stderr "error: No such remote 'origin'"
-                                 -> catch assigns a string
-call 2 (nonexistent directory) -> THREW; stderr empty
-                                 -> catch assigns null
+$ git config remote.origin.url " "
+$ git remote get-url origin | od -c
+0000000       \n          exit=0
 ```
 
-The only branches returning null **without** assigning are `!gitBin` (git absent
-from `PATH`) and an empty-stdout success. Neither is reachable from an in-process
-fixture without stubbing the module under test — which would instrument the stub,
-not the code.
+`_readOriginRemote` then does `s.trim()` -> `""` -> `return s || null` through the
+**success** branch, which never touches `_lastGitStderr`. The old case used a
+NONEXISTENT DIRECTORY for its second call — that path THROWS, so it goes through
+the `catch`, and the catch always assigns. The case was driving the one shape
+that could not discriminate, and "inert" was a reachability argument that was
+stated but never tested.
 
-So the reset stays as **defensive** code: correct, one line, and it closes the
-latent path if either branch ever becomes reachable. The case
-`deriveSelfRepoRef/git-stderr-does-not-leak-across-calls` pins the no-cross-call-
-leak PROPERTY, which is worth holding on its own — but it is **not** an instrument
-for the reset line and must not be cited as one.
+Corrected: the second call now drives the whitespace-url path, and deleting the
+reset REDS. Two consequences beyond the table row — the reset is **not**
+defensive code for a latent path, it prevents a LIVE cross-call stderr leak on a
+driveable input; and the `instrument-discipline.md` MUST-2(b) resolution was
+unearned. Collapsing two hypotheses toward "inert" requires the reachability
+argument to be *tested*, not merely asserted.
 
 ## Source-literal discipline
 
