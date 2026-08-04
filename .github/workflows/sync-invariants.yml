@@ -1,0 +1,132 @@
+name: Sync Invariants
+
+# WHY THIS WORKFLOW EXISTS
+#
+# An inbound loom sync PR merged and SILENTLY REVERTED three fixes that had
+# landed on main hours earlier — a `wx` refusal + action digest in
+# `cross-repo-authorize.mjs` (a receipt collision could destroy an audit
+# record), the category-based-replace contract in `sync-from-template.md`, and
+# the obsoleted∩shipped disjointness in `.coc-obsoleted`. There was no conflict,
+# no warning, and no failing check. `auto-merge.yml` is notification-only and did
+# not auto-merge; the merge was a deliberate admin action taken against a PR that
+# looked clean because nothing was checking.
+#
+# The repo already SHIPPED a tool built for this class —
+# `.claude/bin/sync-preflight-local-mods.mjs` — and no workflow referenced it.
+#
+# WHY THE GATE LIVES HERE AND NOT IN `.claude/`
+#
+# `.claude/**` artifacts are Class-A non-durable (`rules/artifact-flow.md`): a
+# local edit to a synced file is rebuilt away by the next `/sync-to-use`, so a
+# check placed there would be reverted by the very mechanism it guards against.
+# The reverting sync touched ZERO files under `.github/` — verified:
+#
+#     $ git diff --name-only c4305de f9058ae -- .github/     # (empty)
+#
+# So a workflow added here SURVIVES syncs. It cannot prevent an artifact being
+# overwritten. It CAN turn a silent revert into a red check that refuses the
+# merge, which is the property that was missing.
+#
+# SCOPE, HONESTLY
+#
+# Gate A is a CONTENT check, not an ancestry check, because the incident was a
+# content revert inside a branch that already contained the fixes. It detects a
+# PR dropping substantive lines a local commit authored; it does NOT detect a
+# semantic revert that preserves every line. Gate B is exact. Full per-gate
+# capability and limitation statements are in the script headers.
+#
+# NOTE ON ENFORCEMENT: this workflow FAILS the check run. Whether a red check
+# actually blocks the merge depends on branch protection (required status
+# checks). Register `sync-invariants` as required, or an admin merge can still
+# proceed over the red — loudly, but proceed.
+
+on:
+  pull_request:
+    branches: [main]
+
+# PR-gate only. Under the admin-merge flow the merge commit's tree equals the
+# PR head's tree, so re-running on the merge-commit push is redundant
+# (`rules/ci-runners.md` §13). No `push:` trigger.
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-invariants-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  sync-invariants:
+    name: Sync invariants (local-fix discard + obsoleted disjointness)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Gate A walks per-file commit history to distinguish locally-authored
+          # commits from inbound syncs. A shallow clone silently truncates that
+          # history and would produce a clean PASS by omission, so full depth is
+          # load-bearing, not a convenience. The script independently refuses to
+          # run on a shallow repository rather than trusting this setting.
+          fetch-depth: 0
+
+      # Gate A — would this PR discard consumer-authored work?
+      #
+      # Exit contract is THREE-VALUED and deliberately not collapsed:
+      #   0 = nothing at risk
+      #   2 = a discard was found; a human decides
+      #   1 = the check DID NOT RUN — never read as safe
+      # Both 1 and 2 fail. Treating "did not run" as "nothing at risk" is the
+      # exact fail-open this workflow exists to close
+      # (`rules/evidence-first-claims.md` MUST-3: an errored command is zero
+      # evidence, never confirmation).
+      - name: "Gate A — local-fix discard detection"
+        env:
+          # PR body and SHAs are passed through the environment, never
+          # interpolated into the shell. A PR body is attacker-controlled text;
+          # `${{ }}` interpolation into a `run:` block would be a script
+          # injection sink.
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set +e
+          bash .github/scripts/check-local-fix-discard.sh "$BASE_SHA" "$HEAD_SHA"
+          rc=$?
+          set -e
+          case "$rc" in
+            0)
+              echo "Gate A: clean."
+              ;;
+            2)
+              echo "::error title=Gate A::This PR discards locally-authored work in shared .claude/ artifacts. See the step log for the exact files, the local commits that authored the lines, and the resolution options (including ACK-DISCARD)."
+              exit 1
+              ;;
+            *)
+              echo "::error title=Gate A did not run::The check exited $rc, which means it could not run — NOT that the PR is clean. Failing closed."
+              exit 1
+              ;;
+          esac
+
+      # Gate B — does .coc-obsoleted list a path this same tree ships?
+      #
+      # Runs against the checked-out tree. For a `pull_request` event
+      # actions/checkout materializes the MERGE result, which is precisely the
+      # tree a downstream consumer would receive.
+      - name: "Gate B — obsoleted ∩ shipped disjointness"
+        run: |
+          set +e
+          bash .github/scripts/check-obsoleted-disjoint.sh
+          rc=$?
+          set -e
+          case "$rc" in
+            0)
+              echo "Gate B: disjoint."
+              ;;
+            2)
+              echo "::error title=Gate B::.coc-obsoleted lists paths this tree still ships. A downstream /sync-from-template deletes every listed path — including the copy this release hands it. See the step log for the offending paths."
+              exit 1
+              ;;
+            *)
+              echo "::error title=Gate B did not run::The check exited $rc, which means it could not run — NOT that the tree is disjoint. Failing closed."
+              exit 1
+              ;;
+          esac
