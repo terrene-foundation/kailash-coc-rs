@@ -302,7 +302,8 @@ cases.push({
   setup: { coordinationOn: false, withWorktree: false },
   poison: ["9999", "10000"],
   forceSkipSign: true,
-  expect: (r) => r.ok === true && r.reservation && r.reservation.slot === "10001",
+  expect: (r) =>
+    r.ok === true && r.reservation && r.reservation.slot === "10001",
   describe: 'slot === "10001" (monotonic past 9999, not pinned at 10000)',
 });
 
@@ -322,7 +323,8 @@ cases.push({
     "journal-reserve.js — pin SLOT_RE back to /^(\\d{4})-/ (the disk scan then cannot see 5-digit files)",
   setup: { coordinationOn: false, withWorktree: false },
   journalFiles: ["10000-someone-DECISION-prior-entry.md"],
-  expect: (r) => r.ok === true && r.reservation && r.reservation.slot === "10001",
+  expect: (r) =>
+    r.ok === true && r.reservation && r.reservation.slot === "10001",
   describe:
     'slot === "10001" (the on-disk 10000 was seen, not skipped back to 0001)',
 });
@@ -393,28 +395,82 @@ cases.push({
   // (`instrument-discipline.md` MUST-2(a)).
   name: "roster/absent-roster-proceeds",
   mutation:
-    "journal-reserve.js::_foldHighWater — drop the `err.code === \"ENOENT\"` arm and throw on every roster read failure",
+    'journal-reserve.js::_foldHighWater — drop the `err.code === "ENOENT"` arm and throw on every roster read failure',
   setup: { coordinationOn: false, withWorktree: false },
   seedSlots: ["0007"],
   expect: (r) => r.ok === true,
-  describe: "ok === true (no roster is not a failure — coordination is OFF by default)",
+  describe:
+    "ok === true (no roster is not a failure — coordination is OFF by default)",
 });
 
 cases.push({
-  // THE THIRD POLARITY: a roster that reads and parses CLEANLY must proceed.
-  // Distinguishes "refuses when the read fails" from "refuses whenever a roster
-  // is present at all" — the ENOENT case cannot, because it never exercises the
-  // read. Also green before the fix; named as the over-tightening guard it is,
-  // not as fix evidence.
+  // THE THIRD POLARITY: a roster that reads, parses, AND RESOLVES A PERSON must
+  // proceed. Distinguishes "refuses when the read fails" from "refuses whenever
+  // a roster is present at all" — the ENOENT case cannot, because it never
+  // exercises the read. Green before the #84 fix as well as after; named as the
+  // over-tightening guard it is, not as fix evidence.
+  //
+  // THIS CASE PREVIOUSLY SEEDED `{persons: {}}` AND WAS ITSELF THE BUG BELOW.
+  // An empty persons map resolves NO signer, which collapses the fold high-water
+  // exactly as a null roster does — so the case was pinning the defeating shape
+  // as CORRECT behavior. Seeding a roster with a real person is what makes this
+  // a guard against over-tightening rather than a licence for the gap.
   name: "roster/valid-roster-proceeds",
   mutation:
     "journal-reserve.js::_foldHighWater — throw unconditionally after reading the roster (ignore the parse result)",
   setup: { coordinationOn: false, withWorktree: false },
   seedSlots: ["0007"],
-  roster: JSON.stringify({ persons: {} }),
+  roster: JSON.stringify({
+    persons: {
+      "fixture-person": {
+        display_id: "fixture-op",
+        keys: ["FIXTUREKEYFINGERPRINT"],
+      },
+    },
+  }),
   expect: (r) => r.ok === true,
-  describe: "ok === true (a readable, parseable roster is not a refusal condition)",
+  describe:
+    "ok === true (a roster that reads, parses, and resolves a person is not a refusal condition)",
 });
+
+for (const [label, body] of [
+  ["null", "null"],
+  ["empty-object", "{}"],
+  ["null-persons", JSON.stringify({ persons: null })],
+  ["empty-persons", JSON.stringify({ persons: {} })],
+]) {
+  cases.push({
+    // THE #84 GUARD COVERED READ AND PARSE ONLY, AND THE SILENT PATH SURVIVED.
+    // Distinguishing ENOENT from a read/parse failure closes the CORRUPT-BYTES
+    // route to the collapse and leaves the EMPTIED one wide open: each body
+    // below parses cleanly, so nothing throws, and each then resolves NO signer
+    // at `coordination-log.js::_resolveRosterPerson` — which makes `_verifyRule1`
+    // reject EVERY record ("signer verified_id not in roster keys"), empties
+    // `folded.accepted`, and drives `high` to 0. That is byte-for-byte the state
+    // the removed `catch { roster = null; }` produced: the fold half of the
+    // high-water vanishes and a slot a sibling operator already reserved is
+    // handed out again.
+    //
+    // The attacker-preferred route is the SILENT one, and it is the CHEAPER one
+    // — writing `{}` is easier than corrupting bytes, and this sits squarely in
+    // the threat model this file cites (a write-capable team member seeking
+    // sabotage). A guard that fails loud on corruption and silent on erasure is
+    // not a guard against erasure.
+    //
+    // "Parsed but resolves nobody" is UNKNOWN, not ABSENT, and refuses — the
+    // same disposition `coordination-mode.js` already takes for a corrupt
+    // roster (`implicit-corrupt-roster-failclosed`), which the two modules
+    // otherwise disagreed about for these exact bytes.
+    name: `roster/${label}-roster-refuses-rather-than-restarting-high-water`,
+    mutation:
+      "journal-reserve.js::_foldHighWater — accept any successfully-parsed roster (drop the resolves-a-person check), restoring the silent collapse",
+    setup: { coordinationOn: false, withWorktree: false },
+    seedSlots: ["0007"],
+    roster: body,
+    expect: (r) => r.ok === false,
+    describe: `ok === false (a roster of \`${body}\` parses but resolves no signer, which collapses the fold high-water to 0)`,
+  });
+}
 
 let failed = 0;
 for (const c of cases) {

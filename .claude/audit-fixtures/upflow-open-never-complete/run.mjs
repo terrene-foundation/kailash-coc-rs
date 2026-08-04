@@ -931,6 +931,73 @@ const cases = [
     expect: { ok: true, fired: true },
   },
   {
+    // THE MIXED-FORM TRIANGULAR LOCKOUT THE QUAD WIDENING CREATED, and the
+    // reason `_collectionAbsent` is no longer a comparison operand.
+    //
+    // ONLY the legacy 3-segment org-subdomain form carries a collection; the
+    // ssh v3 form has no slot for one. So an ordinary ADO clone mid-URL-
+    // migration — legacy https fetch, modern ssh push, ONE repository —
+    // derived collection=DefaultCollection on one side and null on the other.
+    // Under the first cut of the quad ("absent matches ONLY absent") that
+    // present-vs-absent pair REFUSED, and the refusal was the triangular
+    // lockout: org, project and repo all identical, the tree locked out of its
+    // own repo. Measured before the fix:
+    //   derive ok:false — "fetches from contoso.visualstudio.com
+    //   contoso/platform/coc-rs but pushes to ssh.dev.azure.com
+    //   contoso/platform/coc-rs; the two disagree about which repo this tree IS"
+    // — the two operands the reason prints are IDENTICAL, which is the tell.
+    //
+    // THIS IS THE SAME CLASS THIS MODULE ALREADY SHIPPED ONCE (see the raw-host
+    // comparison lockout recorded in `_sameDerivedIdentity`), reached by a new
+    // route, and every instrument was green: the pre-existing permissive
+    // triangular case drives the MODERN form on BOTH sides, so both collections
+    // are absent, the compare is absent-vs-absent, and it passes no matter what
+    // the rule is. A permissive case that cannot red is not an instrument.
+    //
+    // THE FIX IS SEMANTIC, NOT A SPECIAL CASE: an absent collection IS the
+    // DEFAULT collection. `dev.azure.com/<org>/...` and the 2-segment
+    // subdomain form both address the org's default collection, which on the
+    // hosted hosts this module gates is named `DefaultCollection`. So absent
+    // normalizes to `defaultcollection` and is COMPARED rather than
+    // side-channelled. Cross-collection stays closed — `OtherCollection` still
+    // differs from an absent/default side — which the sibling refusal cases
+    // below pin.
+    name: "ado/mixed-form-triangular-default-collection-allows",
+    mutation:
+      "upflow-self-repo.js::isSelfRepoAdo — restore the absent-matches-only-absent rule (`if (lAbsent !== rAbsent) return false;`) instead of normalizing absent to the default collection",
+    repo: {
+      dirName: "coc-rs",
+      remote:
+        "https://contoso.visualstudio.com/DefaultCollection/platform/_git/coc-rs",
+      pushRemote: "git@ssh.dev.azure.com:v3/contoso/platform/coc-rs",
+    },
+    adapter: ADO,
+    prRef: {
+      repoRef: { ...ADO_SELF, collection: "DefaultCollection" },
+      prId: 42,
+    },
+    expect: { ok: true, fired: true },
+  },
+  {
+    // THE PERMISSIVE HALF'S OWN GUARD: absent normalizing to the default must
+    // NOT become a wildcard. A NON-default collection on one side and an absent
+    // (= default) side are DIFFERENT repositories and must still refuse. Without
+    // this case the fix above could be "make absent match anything" and nothing
+    // would red.
+    name: "ado/non-default-collection-vs-absent-still-refuses",
+    mutation:
+      "upflow-self-repo.js::isSelfRepoAdo — make an absent collection match ANY present collection (a wildcard) instead of normalizing to the default",
+    repo: {
+      dirName: "coc-rs",
+      remote:
+        "https://contoso.visualstudio.com/OtherCollection/platform/_git/coc-rs",
+    },
+    adapter: ADO,
+    prRef: { repoRef: ADO_SELF, prId: 42 },
+    expect: { ok: false, fired: false },
+    expectReason: "collection",
+  },
+  {
     // THE LEGACY VSTS SSH CLONE FORM AS A PUSH URL — a lockout vector the
     // triangular guard newly created out of a pre-existing parse gap.
     // `_parseAdo` filters only `_git`, so the 4-segment `_ssh` shape
@@ -1393,25 +1460,26 @@ const cases = [
   },
   {
     // THE ABSENT-vs-PRESENT POLARITY, caller side unstated. `repoRef` names no
-    // collection; the derived self is on one. An unstated collection is NOT a
-    // wildcard — it is the caller asserting the collection-less (modern) form,
-    // which is a DIFFERENT identity from a collection form. Fail-closed, and
-    // consistent with how `isSelfRepoAdo` already treats a null component on
-    // any of the other three legs.
+    // collection; the derived self is on a NON-DEFAULT one. An unstated
+    // collection is NOT a wildcard — it resolves to the org's DEFAULT
+    // collection, which is a different namespace from `OtherCollection`, so
+    // this refuses.
     //
-    // This is a CONTRACT CHANGE for a caller on a legacy collection remote:
-    // before the quad it completed with a bare {org, project, repo}; now it
-    // must state the collection. The refusal names both sides' collection so
-    // the fix is one field, not a hunt. The alternative — letting absent match
-    // present — is a leg that can never fail, the exact defect class this
-    // suite's README records three times.
-    name: "ado/unstated-collection-does-not-match-a-collection-form",
+    // BOTH POLARITY CASES ORIGINALLY DROVE `DefaultCollection` AND WERE WRONG.
+    // They asserted that an absent collection differs from `DefaultCollection`,
+    // which pinned the mixed-form maintainer lockout as correct behavior — an
+    // ordinary clone with a legacy https fetch and a modern ssh push refused
+    // itself. The cases were not merely passing over a bug, they were the
+    // reason it looked instrumented. Corrected to a NON-DEFAULT collection,
+    // which is what actually makes the two sides different repositories and
+    // preserves what these cases were FOR: absent must not become a wildcard.
+    name: "ado/unstated-collection-does-not-match-a-nondefault-collection-form",
     mutation:
       "upflow-self-repo.js::isSelfRepoAdo — treat an absent `repoRef.collection` as matching any derived collection",
     repo: {
       dirName: "coc-rs",
       remote:
-        "https://contoso.visualstudio.com/DefaultCollection/platform/_git/coc-rs",
+        "https://contoso.visualstudio.com/OtherCollection/platform/_git/coc-rs",
     },
     adapter: ADO,
     prRef: { repoRef: ADO_SELF, prId: 42 },
@@ -1419,18 +1487,23 @@ const cases = [
     expectReason: "cross-repo completion refused",
   },
   {
-    // THE MIRROR POLARITY — caller STATES a collection, derived self is on a
-    // collection-less (modern `dev.azure.com`) form. Refuses for the same
-    // reason and in the same direction. Both polarities are cased because a
-    // one-sided nullable comparison is asymmetric by construction, and only a
-    // pair can show it is not.
-    name: "ado/stated-collection-does-not-match-a-collection-free-form",
+    // THE MIRROR POLARITY — caller STATES a NON-DEFAULT collection, derived
+    // self is on a collection-less (modern `dev.azure.com`) form, which
+    // resolves to the default. Different namespaces, so it refuses. Both
+    // polarities are cased because a one-sided nullable comparison is
+    // asymmetric by construction, and only a pair can show it is not.
+    //
+    // The default-vs-absent direction is the OPPOSITE assertion and is pinned
+    // separately by `ado/mixed-form-triangular-default-collection-allows`;
+    // together the three cover absent-matches-default, absent-differs-from-
+    // non-default, and non-default-differs-from-absent.
+    name: "ado/stated-nondefault-collection-does-not-match-a-collection-free-form",
     mutation:
       "upflow-self-repo.js::isSelfRepoAdo — treat an absent derived collection as matching any stated `repoRef.collection`",
     repo: { dirName: "coc-rs", remote: ADO_SELF_REMOTE },
     adapter: ADO,
     prRef: {
-      repoRef: { ...ADO_SELF, collection: "DefaultCollection" },
+      repoRef: { ...ADO_SELF, collection: "OtherCollection" },
       prId: 42,
     },
     expect: { ok: false, fired: false },

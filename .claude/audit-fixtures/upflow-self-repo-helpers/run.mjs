@@ -56,6 +56,20 @@ const RLM = String.fromCharCode(0x200f); // RIGHT-TO-LEFT MARK
 const ZWSP = String.fromCharCode(0x200b); // ZERO WIDTH SPACE
 const BOM = String.fromCharCode(0xfeff); // ZERO WIDTH NO-BREAK SPACE
 const CSI8 = String.fromCharCode(0x9b); // C1 8-bit CSI (ANSI without ESC)
+// Added after an adversarial round found the class still incomplete against the
+// hide-content half of its OWN stated threat. The zero-widths above were
+// included with the rationale "hide content and split tokens" — these hide
+// content identically and were not:
+const WJ = String.fromCharCode(0x2060); // WORD JOINER
+const INVPLUS = String.fromCharCode(0x2064); // INVISIBLE PLUS
+const VS16 = String.fromCharCode(0xfe0f); // VARIATION SELECTOR-16
+// The Unicode TAG block is the canonical invisible-text-smuggling channel:
+// U+E0020-E007F encode printable ASCII invisibly, so an entire instruction can
+// ride inside a host or an error message. These reasons reach PR bodies and
+// journals that a downstream AGENT reads, which makes this an injection channel
+// rather than a log-cosmetics issue.
+const TAG_A = String.fromCodePoint(0xe0041); // TAG LATIN CAPITAL A
+const TAG_CANCEL = String.fromCodePoint(0xe007f); // CANCEL TAG
 
 const cases = [];
 const t = (name, mutation, fn) => cases.push({ name, mutation, fn });
@@ -138,6 +152,11 @@ t(
       RLM,
       ZWSP,
       BOM,
+      WJ,
+      INVPLUS,
+      VS16,
+      TAG_A,
+      TAG_CANCEL,
     ]) {
       const out = selfRepo.sanitizeForReason(`host${payload}evil.example`);
       if (out.includes(payload)) {

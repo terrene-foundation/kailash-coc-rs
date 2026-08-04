@@ -289,6 +289,39 @@ function _foldHighWater(repoDir, dirRel) {
         `roster unparseable at ${rosterPath}: ${err && err.message ? err.message : String(err)}`,
       );
     }
+    // PARSING CLEANLY IS NOT THE SAME AS RESOLVING ANYONE, and the difference is
+    // the whole gap this closes. Distinguishing ENOENT from a read/parse failure
+    // (above) closes the CORRUPT-BYTES route to the high-water collapse and
+    // leaves the EMPTIED one open: `null`, `{}`, `{"persons":null}` and
+    // `{"persons":{}}` all parse without throwing, and each then resolves NO
+    // signer at `coordination-log.js::_resolveRosterPerson` — which makes
+    // `_verifyRule1` reject EVERY record ("signer verified_id not in roster
+    // keys"), empties `folded.accepted`, and drives `high` to 0. That is
+    // byte-for-byte the state the old `catch { roster = null; }` produced.
+    //
+    // So the guard above, alone, failed LOUD on corruption and SILENT on
+    // erasure — and erasure is both the cheaper act (write `{}`; no need to
+    // craft invalid JSON) and the one this file's own threat model names
+    // (`multi-operator-coordination.md`: a write-capable team member seeking
+    // sabotage). A guard that only catches the noisy half is not a guard.
+    //
+    // "Parsed but resolves nobody" is UNKNOWN, not ABSENT. ABSENT is ENOENT,
+    // which is legitimate because coordination is opt-in and a solo repo has no
+    // roster; a roster file that EXISTS was written by someone, so an empty one
+    // is a roster that lost its persons, not a repo that never had them. This
+    // is the same disposition `coordination-mode.js` already takes for a corrupt
+    // roster (`implicit-corrupt-roster-failclosed`) — the two modules disagreed
+    // about exactly these bytes until now.
+    const persons =
+      roster && typeof roster === "object" ? roster.persons : null;
+    const resolvesSomeone =
+      persons && typeof persons === "object" && Object.keys(persons).length > 0;
+    if (!resolvesSomeone) {
+      throw new Error(
+        `roster at ${rosterPath} parses but resolves no persons; refusing to hand out a possibly-reserved slot ` +
+          "(an empty roster rejects every folded record, which silently collapses the fold high-water to 0)",
+      );
+    }
   }
 
   // skipSignatureVerify: the journal-slot HIGH-WATER needs only chain

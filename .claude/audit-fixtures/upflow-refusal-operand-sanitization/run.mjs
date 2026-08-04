@@ -672,6 +672,92 @@ t(
 );
 
 t(
+  "gh+ado/userinfo-scrub-covers-credentials-containing-a-slash",
+  "upflow-self-repo.js::_URL_USERINFO_RE — restore the `[^\\s/@]` userinfo class (which cannot cross a `/`) instead of the `:`-anchored class that can",
+  () => {
+    // THE SCRUB'S FIRST CUT MISSED THE MOST LIKELY CREDENTIAL SHAPE. The class
+    // was `[^\s/@]`, chosen so that `https://h/a@b` — an `@` in a PATH, not
+    // userinfo — would not match. Correct about the path case, and wrong about
+    // credentials: the run cannot cross a `/`, so any secret CONTAINING one
+    // never reaches the terminating `@` and the whole match fails, leaving the
+    // credential verbatim in a reason that is logged and may be embedded in a
+    // PR body.
+    //
+    // THAT IS NOT AN EXOTIC INPUT. The base64 alphabet is A-Za-z0-9+/= — `+`
+    // and `=` passed the old class, `/` did not — so base64-encoded service
+    // credentials, Azure storage keys, and any password a user configured
+    // un-percent-encoded in a remote URL all landed in the miss. Measured
+    // before the fix: `https://user:abc/def@dev.azure.com/o/p` came back
+    // verbatim, while the no-slash control `user:abcdef` masked correctly —
+    // which is exactly why the original cases could not see it.
+    //
+    // The fix anchors on the `:` that separates user from password instead of
+    // forbidding `/`, so the path case still does not match (no `:` in `h/a`)
+    // and the credential case does.
+    const SECRET = "abc/def+ghi=";
+    for (const [label, res] of [
+      [
+        "gh",
+        gh.fetchRepoOwner(
+          throwing(
+            `fatal: unable to access 'https://oauth2:${SECRET}@github.com/acme/widget.git/': 403`,
+          ),
+          GH_REPO,
+        ),
+      ],
+      [
+        "ado",
+        ado.createUpflowPR(
+          throwing(
+            `request failed for https://build:${SECRET}@dev.azure.com/acme/core/_git/widget`,
+          ),
+          { repoRef: ADO_REPO, head: "feat/x", title: "t" },
+        ),
+      ],
+    ]) {
+      const e = typedRefusal(res, `${label} slash-bearing credential`);
+      if (e) return e;
+      if (res.reason.includes(SECRET)) {
+        return `${label}: slash-bearing credential survived verbatim: ${JSON.stringify(res.reason.slice(0, 240))}`;
+      }
+      if (!res.reason.includes("***@")) {
+        return `${label}: expected the canonical ***@ mask; got ${JSON.stringify(res.reason.slice(0, 240))}`;
+      }
+    }
+    return null;
+  },
+);
+
+t(
+  "gh+ado/userinfo-scrub-leaves-a-path-at-sign-alone",
+  "upflow-self-repo.js::_URL_USERINFO_RE — widen the userinfo class to `[^\\s@]` (dropping the `:` anchor), so an `@` in a PATH is masked as if it were userinfo",
+  () => {
+    // THE OVER-SCRUB POLARITY, and the constraint that makes the fix above a
+    // fix rather than a trade. Widening the class to simply allow `/` would
+    // also swallow `https://host/a/b@c` — an `@` in a path, no credential — and
+    // destroy the path in a diagnostic. Requiring a `:` inside the run keeps
+    // that case untouched, because a bare path segment has none.
+    //
+    // Without this case, "allow `/` in userinfo" and "mask everything up to any
+    // `@`" are indistinguishable: both make the slash case pass.
+    const res = gh.fetchRepoOwner(
+      throwing(
+        "fatal: unable to access 'https://github.com/acme/widget/tree@v2': 404",
+      ),
+      GH_REPO,
+    );
+    const e = typedRefusal(res, "gh path-at-sign");
+    if (e) return e;
+    if (res.reason.includes("***@")) {
+      return `an @ in a PATH was masked as userinfo, destroying the diagnostic: ${JSON.stringify(res.reason.slice(0, 240))}`;
+    }
+    return res.reason.includes("acme/widget/tree@v2")
+      ? null
+      : `the path did not survive intact: ${JSON.stringify(res.reason.slice(0, 240))}`;
+  },
+);
+
+t(
   "gh+ado/transport-error-refusals-are-bounded",
   "vcs-github-adapter.js / vcs-azure-adapter.js — drop the length bound from the transport-error reason helper",
   () => {

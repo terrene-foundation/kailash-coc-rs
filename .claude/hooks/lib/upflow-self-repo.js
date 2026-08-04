@@ -1143,24 +1143,62 @@ function isSelfRepoAdo(repoRef, selfAdo) {
     const r = normalizeComponent(selfAdo[k]);
     if (l === null || r === null || l !== r) return false;
   }
-  const lAbsent = _collectionAbsent(repoRef.collection);
-  const rAbsent = _collectionAbsent(selfAdo.collection);
-  if (lAbsent !== rAbsent) return false;
-  if (lAbsent) return true;
-  const lc = normalizeComponent(repoRef.collection);
-  const rc = normalizeComponent(selfAdo.collection);
+  // ABSENT IS NOT A THIRD STATE — IT IS THE DEFAULT COLLECTION, so it is
+  // NORMALIZED AND COMPARED like every other component above, not routed around
+  // the comparison. See `_normalizeCollection` for why, and for the lockout the
+  // first cut of this shipped.
+  const lc = _normalizeCollection(repoRef.collection);
+  const rc = _normalizeCollection(selfAdo.collection);
   return lc !== null && rc !== null && lc === rc;
 }
 
 /**
- * Is an ADO collection component ABSENT? Absent is `undefined` (the field was
- * never set — every pre-quad `repoRef`), `null` (a form with no collection
- * slot), or `""`. Everything else is PRESENT and gets compared; a present value
- * that fails to normalize is a mismatch, not an absence, which is why this
- * asks only the absence question and leaves normalization to the caller.
+ * Normalize an ADO collection component, resolving ABSENT to the DEFAULT
+ * COLLECTION so it can be COMPARED rather than special-cased.
+ *
+ * ABSENT IS NOT A THIRD STATE. `undefined` (the field was never set — every
+ * pre-quad `repoRef`), `null` (a form with no collection slot), and `""` all
+ * mean "the caller did not name a collection", and on the hosted ADO hosts this
+ * module gates, not naming one addresses the org's DEFAULT collection. Of the
+ * four recognized forms, only the legacy 3-segment org-subdomain URL carries a
+ * collection segment at all; `dev.azure.com/<org>/<project>/_git/<repo>`, the
+ * ssh v3 form, and the 2-segment subdomain form all address the default. So
+ * absent and `DefaultCollection` name the SAME namespace and MUST compare equal.
+ *
+ * THE FIRST CUT OF THE QUAD GOT THIS WRONG AND SHIPPED A MAINTAINER LOCKOUT.
+ * It ruled "absent matches ONLY absent", reasoning that letting absent match
+ * present would make the leg one that can never fail. That reasoning was sound
+ * about wildcards and wrong about DEFAULTS: it is exactly the OVER-tightening
+ * direction, and it refused an ordinary ADO clone mid-URL-migration — legacy
+ * https fetch, modern ssh push, ONE repository — because one side parsed a
+ * collection and the other had no slot for one. Measured: `deriveSelfRepoRef`
+ * returned ok:false with a triangular-remote refusal whose two printed operands
+ * were IDENTICAL (`contoso/platform/coc-rs` on both sides). That is the SAME
+ * lockout class `_sameDerivedIdentity` records having shipped once already via
+ * raw-host comparison, reached by a new route — and every instrument was green,
+ * because the only permissive triangular case drove the modern form on BOTH
+ * sides and so compared absent-to-absent under any rule.
+ *
+ * NORMALIZING IS NOT WILDCARDING, and the distinction is the whole point: a
+ * NON-default collection still differs from an absent side, so cross-collection
+ * stays closed (`OtherCollection` != `defaultcollection`). Both directions are
+ * pinned — `ado/mixed-form-triangular-default-collection-allows` reds if this
+ * reverts to absent-matches-only-absent, and
+ * `ado/non-default-collection-vs-absent-still-refuses` reds if it becomes a
+ * wildcard. A one-sided pair could not tell those apart.
+ *
+ * SCOPE: `DefaultCollection` is the default collection name on the hosted hosts
+ * in this module's closed set. On-prem Azure DevOps Server, where a collection
+ * may be named anything and there need be no default, is already recorded as
+ * OUT OF SCOPE for this module.
  */
-function _collectionAbsent(v) {
-  return v === undefined || v === null || v === "";
+const _ADO_DEFAULT_COLLECTION = "defaultcollection";
+
+function _normalizeCollection(v) {
+  if (v === undefined || v === null || v === "") {
+    return _ADO_DEFAULT_COLLECTION;
+  }
+  return normalizeComponent(v);
 }
 
 /**
@@ -1275,7 +1313,29 @@ function sanitizeForReason(text) {
     // neutrals. Zero-widths (U+200B-U+200D) and U+FEFF hide content and split
     // tokens rather than reorder, which is the same forge-structure-in-a-log
     // outcome, so they go too.
-    /[\x00-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufeff]/g,
+    // The HIDE-CONTENT half of this class was incomplete against its own stated
+    // threat and was extended after an adversarial round. U+200B-200D and U+FEFF
+    // were included on the reasoning that they "hide content and split tokens
+    // rather than reorder" \u2014 and U+2060-2064 (WORD JOINER + the invisible
+    // operators) and U+FE00-FE0F (variation selectors) do exactly that too, and
+    // were surviving.
+    //
+    // U+E0000-E007F IS THE ONE THAT MATTERS MOST. The Unicode TAG block encodes
+    // printable ASCII invisibly (U+E0020-E007F), which is the canonical channel
+    // for smuggling text past a human reader. These reasons are logged AND may
+    // be embedded by /codify Step-7c in a PR body or journal entry that a
+    // downstream AGENT reads, so an invisible instruction here is a
+    // prompt-injection vector, not a display-cosmetics issue. Requires the `u`
+    // flag for the astral range.
+    //
+    // WHY NOT A POSITIVE ALLOWLIST, given this file argues for one 60 lines up
+    // in `displayPrId`: that argument holds where the vocabulary is enumerable
+    // (`[0-9]` for a PR id). Here the whole point is to preserve arbitrary
+    // readable non-ASCII \u2014 git's stderr names paths the operator must recognize
+    // \u2014 so an allowlist would mangle the diagnostic this text exists to provide.
+    // The denylist is the right strategy for THIS operand and the wrong one for
+    // that one; what was missing was completeness within the strategy.
+    /[\x00-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028\u2029\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufe00-\ufe0f\ufeff\u{e0000}-\u{e007f}]/gu,
     "?",
   );
 }
@@ -1316,9 +1376,39 @@ function sanitizeForReason(text) {
 // is NOT covered by this regex.
 const REASON_OPERAND_MAX = 256; // code points, per operand
 
-// Scheme-anchored on purpose: `[^\s/@]*` cannot cross a `/`, so `https://h/a@b`
-// (an `@` in a PATH, not userinfo) does not match and is left alone.
-const _URL_USERINFO_RE = /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)[^\s/@]{0,4096}@/g;
+// Scheme-anchored, and anchored on the `:` THAT SEPARATES USER FROM PASSWORD.
+//
+// THE FIRST CUT WAS `[^\s/@]{0,4096}@` — a class that cannot cross a `/` — so
+// that `https://h/a@b` (an `@` in a PATH, not userinfo) would not match. It was
+// right about the path case and WRONG about the credentials it exists to catch:
+// a secret CONTAINING a `/` never reaches the terminating `@`, the whole match
+// fails, and the credential survives VERBATIM into a reason that is logged and
+// may be embedded in a PR body. Measured before this fix:
+//     https://user:abc/def@dev.azure.com/o/p   -> unchanged, credential intact
+//     https://user:abcdef@dev.azure.com/o/p    -> https://***@dev.azure.com/o/p
+// The no-slash control masking correctly is exactly why the original cases could
+// not see the miss.
+//
+// THAT IS THE COMMON SHAPE, NOT AN EXOTIC ONE: the base64 alphabet is
+// A-Za-z0-9+/= — `+` and `=` passed the old class and `/` did not — so
+// base64-encoded service credentials, Azure storage keys, and any password
+// configured un-percent-encoded in a remote URL all landed in the miss.
+//
+// Anchoring on the `:` keeps the path case out (a bare path segment such as
+// `h/a` has no `:` before the `@`) while letting the userinfo run contain `/`.
+// The first run excludes `:` so the two runs are disjoint and the match stays
+// linear; both are bounded, and the whole scan is capped by `_SCRUB_WINDOW`.
+//
+// ACCEPTED OVER-SCRUB, stated rather than discovered later: a URL carrying BOTH
+// an explicit port AND an `@` in its path (`https://host:8080/a@b`) matches and
+// masks to `https://***@b`. That combination is rare in a transport error, and
+// the direction is the safe one — over-masking a diagnostic beats leaking a
+// credential (`security.md` § "No secrets in logs"). Both polarities are pinned:
+// `gh+ado/userinfo-scrub-covers-credentials-containing-a-slash` reds if the
+// class stops crossing `/`, and `gh+ado/userinfo-scrub-leaves-a-path-at-sign-
+// alone` reds if the `:` anchor is dropped for a blanket `[^\s@]`.
+const _URL_USERINFO_RE =
+  /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)[^\s@:]{0,512}:[^\s@]{0,4096}@/g;
 
 // UTF-16 units the scrub examines. Two reasons it is a WINDOW, not the whole
 // string. (1) COST: with an UNBOUNDED scheme run the replace was quadratic in
