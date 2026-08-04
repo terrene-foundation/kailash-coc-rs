@@ -15,9 +15,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  stripBuildInternalReferences,
-} from "../../bin/lib/strip-build-internal.mjs";
+import { stripBuildInternalReferences } from "../../bin/lib/strip-build-internal.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -68,7 +66,13 @@ for (const fn of inputs) {
   const input = fs.readFileSync(inputPath, "utf8");
   const expected = fs.readFileSync(expectedPath, "utf8");
   const { stripped } = stripBuildInternalReferences(input);
-  check(`fixture ${fn}`, stripped === expected, stripped === expected ? "" : `mismatch (len in=${input.length} expected=${expected.length} actual=${stripped.length})`);
+  check(
+    `fixture ${fn}`,
+    stripped === expected,
+    stripped === expected
+      ? ""
+      : `mismatch (len in=${input.length} expected=${expected.length} actual=${stripped.length})`,
+  );
 }
 
 // ── 3. Idempotence check: running the strip twice on a real source

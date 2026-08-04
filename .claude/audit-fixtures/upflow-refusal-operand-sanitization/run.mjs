@@ -970,6 +970,42 @@ t(
 );
 
 t(
+  "gh+ado/userinfo-scrub-masks-a-quote-bearing-credential-inside-json",
+  "upflow-self-repo.js::_URL_USERINFO_JSON_RE — drop the `\\\\\\\\.` escape-pair alternative (back to a plain `[^\\\\s\\\"]` run), so an escaped quote inside userinfo ends the run before the credential's `@`",
+  () => {
+    // THE JSON HALF OF THE QUOTE LEAK. The text path was fixed for a
+    // quote-bearing credential; the JSON path was left with a plain `[^\s"]`
+    // run and a comment asserting it was covered "because inside JSON that
+    // quote arrives escaped as \\" and the backslash, not the quote, is what
+    // the run meets." That reasoning is FALSE — a character class is applied
+    // PER CHARACTER, so a preceding backslash does not shield the `"` from
+    // `[^\s"]`. Measured against the shipped pattern:
+    //   reasonOperand({url:'https://oauth2:abc"def@dev.azure.com/x'})
+    //     -> {"url":"https://oauth2:abc\"def@dev.azure.com/x"}   VERBATIM
+    //
+    // ASSERT ON THE ESCAPED FORM. `JSON.stringify` emits the credential as
+    // `abc\"def`, so a check for the raw `abc"def` PASSES even while the
+    // credential is fully present — the assertion has to match what is actually
+    // on the wire, or it reports clean over a leak.
+    const res = gh.fetchRepoOwner(
+      failing(
+        { url: 'https://oauth2:abc"def@dev.azure.com/acme/core/_git/w' },
+        403,
+      ),
+      GH_REPO,
+    );
+    const e = typedRefusal(res, "gh quote-in-json credential");
+    if (e) return e;
+    if (res.reason.includes('abc\\"def') || res.reason.includes('abc"def')) {
+      return `quote-bearing credential survived inside JSON: ${JSON.stringify(res.reason.slice(0, 240))}`;
+    }
+    return res.reason.includes("***@")
+      ? null
+      : `expected the ***@ mask; got ${JSON.stringify(res.reason.slice(0, 240))}`;
+  },
+);
+
+t(
   "gh+ado/userinfo-scrub-masks-a-credential-in-double-encoded-json",
   "upflow-self-repo.js — point `reasonOperand` at the TEXT pattern, or narrow the JSON run further so an escaped `\\\\\\\"` ends it before the credential's `@`",
   () => {
@@ -978,12 +1014,18 @@ t(
     // arrive ESCAPED (`\\"`). The question is whether the run stops at the
     // backslash-quote pair before reaching the credential's `@`.
     //
-    // It does not, and the reason is worth pinning rather than reasoning about:
-    // the run meets the BACKSLASH first, and `\\` is not in the excluded set, so
-    // it crosses into the escape and the following `"` terminates only the
-    // OUTER field — after the credential. Verified rather than assumed, because
-    // "the quote bound might eat the escape" is exactly the kind of plausible
-    // mechanism that has been wrong four times in this file's history.
+    // It does not — but NOT for the reason an earlier version of this comment
+    // gave. That comment claimed "the run meets the BACKSLASH first and crosses
+    // into the escape", which is wrong about THIS input: the escapes here sit
+    // BEFORE `https://` and AFTER the URL, so the run from `oauth2:` reaches the
+    // `@` having met no backslash at all. The case passed for an unrelated
+    // reason, which is the same "plausible mechanism" trap the sibling comment
+    // warns about — recorded rather than quietly corrected.
+    //
+    // The escape-crossing property IS real and IS load-bearing; it is just
+    // exercised by `…-masks-a-quote-bearing-credential-inside-json` above, where
+    // the escaped quote falls INSIDE the userinfo. This case covers the
+    // different shape: a stringified body whose escapes bracket the URL.
     const inner = JSON.stringify({
       url: "https://oauth2:s3cr3t@dev.azure.com/acme/core/_git/widget",
     });

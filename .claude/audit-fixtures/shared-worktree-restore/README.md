@@ -10,12 +10,12 @@ Inputs are Bash command sequences as a session would issue them. The discriminat
 **whether the restored path was MUTATED earlier in the same sequence** — not the mere presence of
 `git checkout --`, which is an ordinary and legitimate discard.
 
-| Fixture                                    | Expects           | Predicate locked                                                                                                                                                                                    |
-| ------------------------------------------ | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fixture                                    | Expects           | Predicate locked                                                                                                                                                                                         |
+| ------------------------------------------ | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `flag-git-checkout-restore-after-edit.txt` | `halt-and-report` | A path is mutated (`sed -i`) then restored with `git checkout -- <same path>`. This is the mutate-and-restore shape: `checkout` restores from the INDEX, so any staged-then-edited content is destroyed. |
-| `flag-git-restore-after-edit.txt`          | `halt-and-report` | Same class via the modern spelling `git restore <path>` and a different mutation vehicle (heredoc append). Locks that the detector keys on the OPERATION, not on the literal `checkout` token.        |
-| `skip-cp-backup-restore.txt`               | `null`            | The compliant shape: `cp` backup taken BEFORE the mutation, restore from the backup, digest comparison after. MUST NOT flag.                                                                          |
-| `skip-checkout-file-never-edited.txt`      | `null`            | `git checkout -- <path>` on a path the sequence never mutated — an ordinary discard of unrelated drift. MUST NOT flag; flagging every `checkout` would make the detector unusable.                     |
+| `flag-git-restore-after-edit.txt`          | `halt-and-report` | Same class via the modern spelling `git restore <path>` and a different mutation vehicle (heredoc append). Locks that the detector keys on the OPERATION, not on the literal `checkout` token.           |
+| `skip-cp-backup-restore.txt`               | `null`            | The compliant shape: `cp` backup taken BEFORE the mutation, restore from the backup, digest comparison after. MUST NOT flag.                                                                             |
+| `skip-checkout-file-never-edited.txt`      | `null`            | `git checkout -- <path>` on a path the sequence never mutated — an ordinary discard of unrelated drift. MUST NOT flag; flagging every `checkout` would make the detector unusable.                       |
 
 **Severity note.** The flag cases expect `halt-and-report`, never `block`, per
 `rules/hook-output-discipline.md` MUST-2: whether a given `git checkout --` is a mutation-restore

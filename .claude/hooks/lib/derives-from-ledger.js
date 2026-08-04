@@ -103,7 +103,11 @@ function _sinkPath(repoDir, session) {
     ? session.replace(/[^A-Za-z0-9._-]/g, "_")
     : "unknown-session";
   const suffix = hasSession
-    ? crypto.createHash("sha256").update(session, "utf8").digest("hex").slice(0, 8)
+    ? crypto
+        .createHash("sha256")
+        .update(session, "utf8")
+        .digest("hex")
+        .slice(0, 8)
     : "00000000";
   return path.join(
     repoDir,
@@ -227,7 +231,13 @@ function _appendToSink(root, edge) {
     sinkPath: _sinkPath(root, edge.session_id),
     line: JSON.stringify(edge),
   });
-  if (!w.ok) return { ok: false, stage: "sink", edge, error: `${w.error} — ${w.reason}` };
+  if (!w.ok)
+    return {
+      ok: false,
+      stage: "sink",
+      edge,
+      error: `${w.error} — ${w.reason}`,
+    };
   return { ok: true, edge, sinkPath: w.sinkPath };
 }
 
@@ -269,7 +279,14 @@ function emitCodifyArtifactEdges(a) {
     };
   // An explicit EMPTY array is legitimate and distinguishable: ok:true with staged 0.
   if (a.artifacts.length === 0)
-    return { ok: true, staged: 0, rejected: 0, orphans: 0, results: [], empty: true };
+    return {
+      ok: true,
+      staged: 0,
+      rejected: 0,
+      orphans: 0,
+      results: [],
+      empty: true,
+    };
 
   const artifacts = a.artifacts;
   // VALIDATE EVERY ARTIFACT BEFORE WRITING ANY ROW. Per-artifact independent writes meant a batch

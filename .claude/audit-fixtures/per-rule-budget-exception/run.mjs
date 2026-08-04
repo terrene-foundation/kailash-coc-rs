@@ -228,20 +228,39 @@ const resolveFixtures = [
   },
   {
     name: "fixture-15-empty-corpus-yields-no-grant",
-    input: { cli: "codex", lang: "rs", rule: "security.md", exceptions: [], now: "2026-07-26" },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      rule: "security.md",
+      exceptions: [],
+      now: "2026-07-26",
+    },
     expect: null,
   },
   {
     name: "fixture-16-non-array-corpus-yields-no-grant",
-    input: { cli: "codex", lang: "rs", rule: "security.md", exceptions: null, now: "2026-07-26" },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      rule: "security.md",
+      exceptions: null,
+      now: "2026-07-26",
+    },
     expect: null,
   },
 ];
 
 for (const f of resolveFixtures) {
   const out = resolvePerRuleBudgetException(f.input);
-  const ok = f.expect === null ? out === null : out !== null && out.rule === "security.md";
-  check(f.name, ok, ok ? "" : `expected ${f.expect}, got ${JSON.stringify(out)}`);
+  const ok =
+    f.expect === null
+      ? out === null
+      : out !== null && out.rule === "security.md";
+  check(
+    f.name,
+    ok,
+    ok ? "" : `expected ${f.expect}, got ${JSON.stringify(out)}`,
+  );
 }
 
 // ── effectivePerRuleBlockCeiling — composition ──────────────────────────────
@@ -276,7 +295,11 @@ const ceilingFixtures = [
 
 for (const f of ceilingFixtures) {
   const out = effectivePerRuleBlockCeiling(f.base, f.ex);
-  check(f.name, out === f.expect, out === f.expect ? "" : `expected ${f.expect}, got ${out}`);
+  check(
+    f.name,
+    out === f.expect,
+    out === f.expect ? "" : `expected ${f.expect}, got ${out}`,
+  );
 }
 
 // ── assertPerRuleBudgetExceptionsBounded — budget-relative bounds ───────────
@@ -327,7 +350,9 @@ for (const f of boundFixtures) {
   } catch (err) {
     if (f.expectThrow) {
       ok = f.expectThrow.test(err.message);
-      reason = ok ? "" : `threw, but message did not match ${f.expectThrow}: ${err.message}`;
+      reason = ok
+        ? ""
+        : `threw, but message did not match ${f.expectThrow}: ${err.message}`;
     } else {
       ok = false;
       reason = `unexpected throw: ${err.message}`;
@@ -418,23 +443,35 @@ const parseFixtures = [
   },
   {
     name: "fixture-36-non-integer-ceiling-throws",
-    src: WELL_FORMED.replace(/granted_block_ceiling_bytes: 9600/, "granted_block_ceiling_bytes: nine"),
+    src: WELL_FORMED.replace(
+      /granted_block_ceiling_bytes: 9600/,
+      "granted_block_ceiling_bytes: nine",
+    ),
     expectThrow: /positive integer byte count/,
   },
   {
     name: "fixture-37-fractional-ceiling-throws",
-    src: WELL_FORMED.replace(/granted_block_ceiling_bytes: 9600/, "granted_block_ceiling_bytes: 9600.5"),
+    src: WELL_FORMED.replace(
+      /granted_block_ceiling_bytes: 9600/,
+      "granted_block_ceiling_bytes: 9600.5",
+    ),
     // Bytes are integral; a fractional ceiling is a declaration error.
     expectThrow: /positive integer byte count/,
   },
   {
     name: "fixture-38-zero-ceiling-throws",
-    src: WELL_FORMED.replace(/granted_block_ceiling_bytes: 9600/, "granted_block_ceiling_bytes: 0"),
+    src: WELL_FORMED.replace(
+      /granted_block_ceiling_bytes: 9600/,
+      "granted_block_ceiling_bytes: 0",
+    ),
     expectThrow: /positive integer byte count/,
   },
   {
     name: "fixture-39-negative-ceiling-throws",
-    src: WELL_FORMED.replace(/granted_block_ceiling_bytes: 9600/, "granted_block_ceiling_bytes: -1"),
+    src: WELL_FORMED.replace(
+      /granted_block_ceiling_bytes: 9600/,
+      "granted_block_ceiling_bytes: -1",
+    ),
     expectThrow: /positive integer byte count/,
   },
   {
@@ -460,7 +497,10 @@ const parseFixtures = [
   },
   {
     name: "fixture-44-unknown-cli-throws",
-    src: WELL_FORMED.replace(/clis: \[codex, gemini\]/, "clis: [codex, claude]"),
+    src: WELL_FORMED.replace(
+      /clis: \[codex, gemini\]/,
+      "clis: [codex, claude]",
+    ),
     // A typo'd CLI would silently cover nothing while reading as coverage.
     expectThrow: /unknown cli "claude"/,
   },
@@ -515,10 +555,7 @@ const parseFixtures = [
   },
   {
     name: "fixture-49-bare-dash-list-item-parses-not-silently-dropped",
-    src: WELL_FORMED.replace(
-      /^\s*- lane: rs$/m,
-      "      -\n        lane: rs",
-    ),
+    src: WELL_FORMED.replace(/^\s*- lane: rs$/m, "      -\n        lane: rs"),
     // YAML permits a bare `-` opening an item whose fields all sit below it.
     // The headroom sibling's fixture-36 caught this exact shape silently
     // parsing to zero entries — a written waiver evaporating with no error.
@@ -564,7 +601,9 @@ for (const f of parseFixtures) {
   } catch (err) {
     if (f.expectThrow) {
       ok = f.expectThrow.test(err.message);
-      reason = ok ? "" : `threw, but message did not match ${f.expectThrow}: ${err.message}`;
+      reason = ok
+        ? ""
+        : `threw, but message did not match ${f.expectThrow}: ${err.message}`;
     } else {
       ok = false;
       reason = `unexpected throw: ${err.message}`;

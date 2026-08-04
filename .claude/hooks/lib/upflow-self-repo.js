@@ -1448,10 +1448,11 @@ const REASON_OPERAND_MAX = 256; // code points, per operand
 // whitespace-only run crossed FIELD BOUNDARIES and fabricated a false host —
 //     {"url":"https://dev.azure.com/a/b/_git/c","user":"x@acme.com"}
 //       ->  {"url":"https://***@acme.com"}
-// — and a `"` cannot appear unescaped inside a JSON string value, so it is the
-// field delimiter rather than a character a credential might carry. A credential
-// WITH a quote is still masked here, because inside JSON that quote arrives
-// escaped as `\"` and the backslash, not the quote, is what the run meets.
+// — and a BARE `"` cannot appear inside a JSON string value, so it is the field
+// delimiter rather than a character a credential might carry. Crossing an
+// ESCAPED quote is what lets a quote-bearing credential still mask; see
+// `_URL_USERINFO_JSON_RE` below, where the first attempt at this got the
+// mechanism wrong and leaked.
 //
 // THE PATTERN THAT KEPT REGENERATING THIS BUG, named so the next editor does not
 // repeat it: every prior revision was justified against the PREVIOUS round's
@@ -1461,8 +1462,27 @@ const REASON_OPERAND_MAX = 256; // code points, per operand
 // newly admits/excludes must still MASK, and the over-mask bound must still HOLD.
 const _URL_USERINFO_TEXT_RE =
   /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)[^\s]{0,8192}@/g;
+// ESCAPE-AWARE, and the plain `[^\s"]` form it replaces did NOT mask a
+// quote-bearing credential — the comment above claimed it did, on the reasoning
+// that "the backslash, not the quote, is what the run meets". That is false: a
+// character class is applied PER CHARACTER, so a preceding `\` does not shield
+// the `"` from `[^\s"]`. Measured against the shipped `[^\s"]`:
+//   reasonOperand({url:'https://oauth2:abc"def@dev.azure.com/x'})
+//     -> {"url":"https://oauth2:abc\"def@dev.azure.com/x"}   credential VERBATIM
+// The run stopped at the escaped quote and never reached the terminating `@`.
+//
+// The alternation crosses an ESCAPE PAIR (`\\.`) but still stops at a BARE `"`,
+// which is the actual JSON field delimiter — an unescaped `"` cannot occur inside
+// a string value, so it and only it ends the field. Both properties therefore
+// hold at once: a credential containing a quote masks, and the field boundary
+// still contains the run.
+//
+// The two alternatives are DISJOINT — `[^\s"\\]` excludes the backslash that
+// `\\.` starts with — so there is no ambiguous adjacency to backtrack across.
+// Re-measured on 200KB adversarial inputs (backslash-dense, plain, mixed): 1ms,
+// 7ms, 0ms.
 const _URL_USERINFO_JSON_RE =
-  /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)[^\s"]{0,8192}@/g;
+  /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)(?:\\.|[^\s"\\]){0,8192}@/g;
 
 // UTF-16 units the scrub examines. Two reasons it is a WINDOW, not the whole
 // string. (1) COST: with an UNBOUNDED scheme run the replace was quadratic in

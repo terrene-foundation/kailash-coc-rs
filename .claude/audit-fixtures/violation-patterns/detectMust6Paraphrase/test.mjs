@@ -79,7 +79,9 @@ function readFixture(name) {
 }
 
 function readExpected(name) {
-  const raw = fs.readFileSync(path.join(HERE, name + ".expected"), "utf8").trim();
+  const raw = fs
+    .readFileSync(path.join(HERE, name + ".expected"), "utf8")
+    .trim();
   return JSON.parse(raw);
 }
 
@@ -114,7 +116,11 @@ function assertResult(result, expected, label) {
   }
   assert.notEqual(result, null, `${label}: expected finding; got null`);
   assert.equal(result.rule_id, expected.rule_id, `${label}: rule_id mismatch`);
-  assert.equal(result.severity, expected.severity, `${label}: severity mismatch`);
+  assert.equal(
+    result.severity,
+    expected.severity,
+    `${label}: severity mismatch`,
+  );
   assert.equal(
     result.detection_layer,
     expected.detection_layer,
@@ -158,7 +164,9 @@ for (const name of CASES) {
 // workspaces/<x>/journal/, cites a root journal/. Real on-disk layout
 // (not via journalDir override) so the candidate-dir walker fires.
 test("detectMust6Paraphrase: flag-cross-dir-resolution", () => {
-  const tmp = fs.mkdtempSync(path.join(tmpdir(), `f29-must6-cross-${Date.now()}-`));
+  const tmp = fs.mkdtempSync(
+    path.join(tmpdir(), `f29-must6-cross-${Date.now()}-`),
+  );
   try {
     // Build repo layout: tmp/journal/ (root) + tmp/workspaces/myws/journal/ (sub)
     const rootJournal = path.join(tmp, "journal");

@@ -72,22 +72,39 @@ const SETTINGS = {
       {
         matcher: "Bash",
         hooks: [
-          { type: "command", command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/bash-gate.js"' },
+          {
+            type: "command",
+            command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/bash-gate.js"',
+          },
         ],
       },
       {
         matcher: "Edit|Write|MultiEdit|NotebookEdit",
         hooks: [
-          { type: "command", command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/stateless-edit-gate.js"' },
-          { type: "command", command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/coordination-guard.js"' },
-          { type: "command", command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/dual-gate.js"' },
+          {
+            type: "command",
+            command:
+              'node "$CLAUDE_PROJECT_DIR/.claude/hooks/stateless-edit-gate.js"',
+          },
+          {
+            type: "command",
+            command:
+              'node "$CLAUDE_PROJECT_DIR/.claude/hooks/coordination-guard.js"',
+          },
+          {
+            type: "command",
+            command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/dual-gate.js"',
+          },
         ],
       },
       // dual-gate is ALSO registered under Bash (P5).
       {
         matcher: "Bash",
         hooks: [
-          { type: "command", command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/dual-gate.js"' },
+          {
+            type: "command",
+            command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/dual-gate.js"',
+          },
         ],
       },
     ],
@@ -118,7 +135,11 @@ function setup() {
     path.join(root, ".claude", "settings.json"),
     JSON.stringify(SETTINGS, null, 2),
   );
-  return { root, hooksDir, settingsPath: path.join(root, ".claude", "settings.json") };
+  return {
+    root,
+    hooksDir,
+    settingsPath: path.join(root, ".claude", "settings.json"),
+  };
 }
 
 function filesFor(policies, tool) {
@@ -138,30 +159,49 @@ try {
   const apply = filesFor(res.policies, "apply_patch");
 
   // P1 — Bash matcher → shell + unified_exec, NEVER apply_patch.
-  check("01", "bash-gate→shell/unified_exec only",
-    shell.has("bash-gate.js") && unified.has("bash-gate.js") && !apply.has("bash-gate.js"),
-    `shell=${shell.has("bash-gate.js")} unified=${unified.has("bash-gate.js")} apply=${apply.has("bash-gate.js")}`);
+  check(
+    "01",
+    "bash-gate→shell/unified_exec only",
+    shell.has("bash-gate.js") &&
+      unified.has("bash-gate.js") &&
+      !apply.has("bash-gate.js"),
+    `shell=${shell.has("bash-gate.js")} unified=${unified.has("bash-gate.js")} apply=${apply.has("bash-gate.js")}`,
+  );
 
   // P2 — edit matcher + MARKER → apply_patch (AC#1).
-  check("02", "stateless-edit-gate (marker)→apply_patch",
+  check(
+    "02",
+    "stateless-edit-gate (marker)→apply_patch",
     apply.has("stateless-edit-gate.js") && !shell.has("stateless-edit-gate.js"),
-    `apply=${apply.has("stateless-edit-gate.js")}`);
+    `apply=${apply.has("stateless-edit-gate.js")}`,
+  );
 
   // P3 — edit matcher, NO marker → EXCLUDED from apply_patch (AC#2).
-  check("03", "coordination-guard (no marker) EXCLUDED from apply_patch",
+  check(
+    "03",
+    "coordination-guard (no marker) EXCLUDED from apply_patch",
     !apply.has("coordination-guard.js"),
-    `apply=${apply.has("coordination-guard.js")} (MUST be false)`);
+    `apply=${apply.has("coordination-guard.js")} (MUST be false)`,
+  );
 
   // P4 — the 4-tool matcher resolved at all (DF-AC6-1 regression guard):
   //      if it had silently dropped, apply_patch would be empty.
-  check("04", "multi-tool edit matcher resolves (DF-AC6-1 guard)",
+  check(
+    "04",
+    "multi-tool edit matcher resolves (DF-AC6-1 guard)",
     apply.size > 0,
-    `apply_patch entries=${apply.size}`);
+    `apply_patch entries=${apply.size}`,
+  );
 
   // P5 — dual registration + marker → shell + unified_exec + apply_patch.
-  check("05", "dual-gate (Bash+edit+marker)→all three tools",
-    shell.has("dual-gate.js") && unified.has("dual-gate.js") && apply.has("dual-gate.js"),
-    `shell=${shell.has("dual-gate.js")} unified=${unified.has("dual-gate.js")} apply=${apply.has("dual-gate.js")}`);
+  check(
+    "05",
+    "dual-gate (Bash+edit+marker)→all three tools",
+    shell.has("dual-gate.js") &&
+      unified.has("dual-gate.js") &&
+      apply.has("dual-gate.js"),
+    `shell=${shell.has("dual-gate.js")} unified=${unified.has("dual-gate.js")} apply=${apply.has("dual-gate.js")}`,
+  );
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
 }
@@ -172,7 +212,5 @@ for (const c of cases) {
   if (!c.pass) failed++;
   process.stdout.write(`${tag}  ${c.id}  ${c.name}  [${c.detail}]\n`);
 }
-process.stdout.write(
-  `\n${cases.length - failed}/${cases.length} cases pass\n`,
-);
+process.stdout.write(`\n${cases.length - failed}/${cases.length} cases pass\n`);
 process.exit(failed === 0 ? 0 : 1);

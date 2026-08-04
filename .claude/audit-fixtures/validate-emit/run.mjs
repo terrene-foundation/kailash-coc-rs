@@ -97,8 +97,11 @@ function statusOf(check, artifactSubstr) {
   const c = parseToolList(undefined);
   check(
     "fixture-02-parseToolList",
-    a.length === 3 && a[0] === "Read" && a[2] === "Bash" &&
-      b.length === 3 && b[1] === "Edit" &&
+    a.length === 3 &&
+      a[0] === "Read" &&
+      a[2] === "Bash" &&
+      b.length === 3 &&
+      b[1] === "Edit" &&
       c.length === 0,
     `a=${JSON.stringify(a)} b=${JSON.stringify(b)} c=${JSON.stringify(c)}`,
   );
@@ -144,8 +147,8 @@ function statusOf(check, artifactSubstr) {
 // ----------------------------------------------------------------------
 {
   const fm = "---\nname: x\ndescription: y\n---\n";
-  const okBody = Array(150).fill("line").join("\n");      // 150 lines, at cap
-  const overBody = Array(160).fill("line").join("\n");    // 160 lines, over
+  const okBody = Array(150).fill("line").join("\n"); // 150 lines, at cap
+  const overBody = Array(160).fill("line").join("\n"); // 160 lines, over
   const root = buildFixtureRoot({
     ".claude/commands/ok.md": fm + okBody + "\n",
     ".claude/commands/over.md": fm + overBody + "\n",
@@ -167,11 +170,14 @@ function statusOf(check, artifactSubstr) {
 // fixture-06 — check 3 read-only specialist tools
 // ----------------------------------------------------------------------
 {
-  const agentsRule = "Read-only specialists (`clean-agent`, `dirty-agent`) MUST NOT be delegated implementation tasks.\n";
+  const agentsRule =
+    "Read-only specialists (`clean-agent`, `dirty-agent`) MUST NOT be delegated implementation tasks.\n";
   const root = buildFixtureRoot({
     ".claude/rules/agents.md": agentsRule,
-    ".claude/agents/clean-agent.md": "---\nname: clean-agent\ntools: Read, Grep, Glob\n---\nbody\n",
-    ".claude/agents/dirty-agent.md": "---\nname: dirty-agent\ntools: Read, Write, Edit, Bash\n---\nbody\n",
+    ".claude/agents/clean-agent.md":
+      "---\nname: clean-agent\ntools: Read, Grep, Glob\n---\nbody\n",
+    ".claude/agents/dirty-agent.md":
+      "---\nname: dirty-agent\ntools: Read, Write, Edit, Bash\n---\nbody\n",
   });
   try {
     const c = checkReadonlySpecialistTools(root);
@@ -191,8 +197,10 @@ function statusOf(check, artifactSubstr) {
 // ----------------------------------------------------------------------
 {
   const root = buildFixtureRoot({
-    ".claude/agents/ok-agent.md": "---\nname: ok-agent\ntools: Read, Bash, Grep, Glob\n---\nbody\n",
-    ".claude/agents/ls-agent.md": "---\nname: ls-agent\ntools: Read, Glob, Grep, LS\n---\nbody\n",
+    ".claude/agents/ok-agent.md":
+      "---\nname: ok-agent\ntools: Read, Bash, Grep, Glob\n---\nbody\n",
+    ".claude/agents/ls-agent.md":
+      "---\nname: ls-agent\ntools: Read, Glob, Grep, LS\n---\nbody\n",
   });
   try {
     const c = checkToolCanonicality(root);
@@ -275,9 +283,12 @@ next_top_level: foo
     check(
       "fixture-10-parseEmitExclusions",
       ex &&
-        Array.isArray(ex.codex) && ex.codex.length === 2 &&
-        ex.codex[0] === "skills/aaa/**" && ex.codex[1] === "agents/bbb.md" &&
-        Array.isArray(ex.gemini) && ex.gemini.length === 1 &&
+        Array.isArray(ex.codex) &&
+        ex.codex.length === 2 &&
+        ex.codex[0] === "skills/aaa/**" &&
+        ex.codex[1] === "agents/bbb.md" &&
+        Array.isArray(ex.gemini) &&
+        ex.gemini.length === 1 &&
         ex.gemini[0] === "skills/ccc/**",
       JSON.stringify(ex),
     );
@@ -315,14 +326,18 @@ next_top_level: foo
 // previously `.match` returned only the first ruleRef and silently skipped
 // the second. matchAll now visits both.
 {
-  const indexRow = "| concern | `rules/a.md` and `rules/b.md` | `**/*.rs` | CO |\n";
+  const indexRow =
+    "| concern | `rules/a.md` and `rules/b.md` | `**/*.rs` | CO |\n";
   const root = buildFixtureRoot({
     "CLAUDE.md": indexRow,
-    ".claude/rules/a.md": "---\npriority: 10\nscope: path-scoped\npaths:\n  - \"**/*.rs\"\n---\nbody\n",
-    ".claude/rules/b.md": "---\npriority: 10\nscope: path-scoped\npaths:\n  - \"**/*.py\"\n---\nbody\n",
+    ".claude/rules/a.md":
+      '---\npriority: 10\nscope: path-scoped\npaths:\n  - "**/*.rs"\n---\nbody\n',
+    ".claude/rules/b.md":
+      '---\npriority: 10\nscope: path-scoped\npaths:\n  - "**/*.py"\n---\nbody\n',
   });
   try {
-    const { checkPathsAnnotationConsistency } = await import("../../bin/validate-emit.mjs");
+    const { checkPathsAnnotationConsistency } =
+      await import("../../bin/validate-emit.mjs");
     const c = checkPathsAnnotationConsistency(root);
     // a.md has rs in paths → PASS; b.md lacks rs but is annotated → FAIL.
     // Both must be present in the result set (the bug was that b was silently dropped).
@@ -330,8 +345,10 @@ next_top_level: foo
     const bRes = c.results.find((r) => r.artifact.endsWith("b.md"));
     check(
       "fixture-12-check-6-multi-rule-per-row",
-      aRes && aRes.status === STATUS.PASS &&
-        bRes && bRes.status === STATUS.FAIL,
+      aRes &&
+        aRes.status === STATUS.PASS &&
+        bRes &&
+        bRes.status === STATUS.FAIL,
       `aRes=${JSON.stringify(aRes)} bRes=${JSON.stringify(bRes)}`,
     );
   } finally {
@@ -349,9 +366,9 @@ next_top_level: foo
 {
   const root = buildFixtureRoot({
     "fx/clean-flag-suppression.txt": "x", // starts with `clean-` → CLEAN (strict prefix)
-    "fx/safe-foo.txt": "x",               // legacy broad-match would have counted as clean — must NOT
-    "fx/flag-real.txt": "x",              // strict prefix → flag
-    "fx/clean-real.txt": "x",             // strict prefix → clean
+    "fx/safe-foo.txt": "x", // legacy broad-match would have counted as clean — must NOT
+    "fx/flag-real.txt": "x", // strict prefix → flag
+    "fx/clean-real.txt": "x", // strict prefix → clean
   });
   try {
     const { classifyFixtures } = await import("../../bin/validate-emit.mjs");
@@ -376,10 +393,12 @@ next_top_level: foo
 // body as frontmatter. check 1 now fails it explicitly.
 {
   const root = buildFixtureRoot({
-    ".claude/commands/unterm.md": "---\nname: unterm\n(no closing dashes)\n\nbody never starts\n",
+    ".claude/commands/unterm.md":
+      "---\nname: unterm\n(no closing dashes)\n\nbody never starts\n",
   });
   try {
-    const { checkCommandFrontmatter } = await import("../../bin/validate-emit.mjs");
+    const { checkCommandFrontmatter } =
+      await import("../../bin/validate-emit.mjs");
     const c = checkCommandFrontmatter(root);
     check(
       "fixture-14-check-1-unterminated-frontmatter-fails",
@@ -399,7 +418,8 @@ next_top_level: foo
 // trailing markdown into invalid TOML (the tomlLiteralEscape escape-bug class).
 // Clean shape → no errors; premature-close shape → flagged.
 {
-  const { validateGeminiCommandToml } = await import("../../bin/validate-emit.mjs");
+  const { validateGeminiCommandToml } =
+    await import("../../bin/validate-emit.mjs");
   const good = `name = "demo"\ndescription = "A demo."\nprompt = '''\nbody \`x\` "q"\n'''\ntools = ["read_file"]\n`;
   const bad = `name = "demo"\ndescription = "A demo."\nprompt = '''\nbody ''' early close\nprose\n'''\ntools = []\n`;
   const goodErrs = validateGeminiCommandToml(good);
@@ -418,7 +438,8 @@ next_top_level: foo
 // `.claude/rules/<file>.md` resolving to a real source file; the extractor must
 // surface EVERY citation (matchAll, not just the first) so no dangling row hides.
 {
-  const { extractRulesIndexCitations } = await import("../../bin/validate-emit.mjs");
+  const { extractRulesIndexCitations } =
+    await import("../../bin/validate-emit.mjs");
   const text =
     "| A | g | `.claude/rules/a.md` |\n| B | g | `.claude/rules/b-c.md` |\n| C | g | `.claude/rules/d.md` |\n";
   const cites = extractRulesIndexCitations(text);
@@ -444,16 +465,32 @@ next_top_level: foo
   const a = {
     shell: [
       { source_file: "b.js", cc_matchers: ["Bash"], invocation: "subprocess" },
-      { source_file: "a.js", cc_matchers: ["Edit", "Write"], invocation: "subprocess" },
+      {
+        source_file: "a.js",
+        cc_matchers: ["Edit", "Write"],
+        invocation: "subprocess",
+      },
     ],
   };
   const aReordered = {
     shell: [
-      { source_file: "a.js", cc_matchers: ["Write", "Edit"], invocation: "subprocess" },
+      {
+        source_file: "a.js",
+        cc_matchers: ["Write", "Edit"],
+        invocation: "subprocess",
+      },
       { source_file: "b.js", cc_matchers: ["Bash"], invocation: "subprocess" },
     ],
   };
-  const dropped = { shell: [{ source_file: "a.js", cc_matchers: ["Edit", "Write"], invocation: "subprocess" }] };
+  const dropped = {
+    shell: [
+      {
+        source_file: "a.js",
+        cc_matchers: ["Edit", "Write"],
+        invocation: "subprocess",
+      },
+    ],
+  };
   check(
     "fixture-17-canonicalPolicies-order-insensitive-and-drop-detecting",
     canonicalPolicies(a) === canonicalPolicies(aReordered) &&
@@ -559,28 +596,37 @@ obsoleted:
     nullPhantoms: new Set(["variants/py/skills/02-dataflow/SKILL.md"]),
   };
   const arm = (p) => classifyVariantFile(p, ctx);
-  const a1 = arm("variants/py/skills/01-core-sdk/SKILL.md");   // arm 1 variants-overlay
-  const a2 = arm("variants/py/scripts/migrate.py");            // arm 2 variant-only
-  const a3r = arm("variants/codex/rules/agents.md");           // arm 3 convention-rule (CLI axis)
+  const a1 = arm("variants/py/skills/01-core-sdk/SKILL.md"); // arm 1 variants-overlay
+  const a2 = arm("variants/py/scripts/migrate.py"); // arm 2 variant-only
+  const a3r = arm("variants/codex/rules/agents.md"); // arm 3 convention-rule (CLI axis)
   const a3t = arm("variants/py-codex/rules/worktree-isolation.md"); // arm 3 ternary axis
-  const a3w = arm("variants/codex/wrappers/foo.md");           // arm 3 convention-wrapper
-  const a4 = arm("variants/py/skills/02-dataflow/SKILL.md");   // arm 4 null-ack (isolated)
-  const a5r = arm("variants/README.md");                       // arm 5 README
+  const a3w = arm("variants/codex/wrappers/foo.md"); // arm 3 convention-wrapper
+  const a4 = arm("variants/py/skills/02-dataflow/SKILL.md"); // arm 4 null-ack (isolated)
+  const a5r = arm("variants/README.md"); // arm 5 README
   const a5e = arm("variants/rs/rules/ci-runners.operator.local.example.md"); // arm 5 .example.
   const orphan = arm("variants/py/skills/project/leftover.md"); // NO arm → orphan
-  const badAxis = arm("variants/pyy/rules/typo.md");           // unknown axis → orphan (not mis-flagged)
-  const wrapNonCli = arm("variants/py/wrappers/foo.md");       // wrappers only valid for a CLI axis → orphan
+  const badAxis = arm("variants/pyy/rules/typo.md"); // unknown axis → orphan (not mis-flagged)
+  const wrapNonCli = arm("variants/py/wrappers/foo.md"); // wrappers only valid for a CLI axis → orphan
   check(
     "fixture-20-classifyVariantFile-one-clean-per-arm-plus-orphan",
-    a1.ok && a1.arm === "variants-overlay" &&
-      a2.ok && a2.arm === "variant-only" &&
-      a3r.ok && a3r.arm === "convention-rule" &&
-      a3t.ok && a3t.arm === "convention-rule" &&
-      a3w.ok && a3w.arm === "convention-wrapper" &&
-      a4.ok && a4.arm === "null-ack" &&
-      a5r.ok && a5r.arm === "readme-or-example" &&
-      a5e.ok && a5e.arm === "readme-or-example" &&
-      !orphan.ok && orphan.arm === "orphan" &&
+    a1.ok &&
+      a1.arm === "variants-overlay" &&
+      a2.ok &&
+      a2.arm === "variant-only" &&
+      a3r.ok &&
+      a3r.arm === "convention-rule" &&
+      a3t.ok &&
+      a3t.arm === "convention-rule" &&
+      a3w.ok &&
+      a3w.arm === "convention-wrapper" &&
+      a4.ok &&
+      a4.arm === "null-ack" &&
+      a5r.ok &&
+      a5r.arm === "readme-or-example" &&
+      a5e.ok &&
+      a5e.arm === "readme-or-example" &&
+      !orphan.ok &&
+      orphan.arm === "orphan" &&
       !badAxis.ok && // an unknown axis is NOT mis-allowlisted by arm 3
       !wrapNonCli.ok, // wrappers under a non-CLI axis are NOT allowlisted
     `a1=${JSON.stringify(a1)} a3t=${JSON.stringify(a3t)} a4=${JSON.stringify(a4)} orphan=${JSON.stringify(orphan)} badAxis=${JSON.stringify(badAxis)} wrapNonCli=${JSON.stringify(wrapNonCli)}`,
@@ -595,7 +641,8 @@ obsoleted:
 // NOT flagged (git-tracked enumeration); a declared file → PASS.
 {
   const { execFileSync } = await import("node:child_process");
-  const { checkVariantOrphan, STATUS: ST } = await import("../../bin/validate-emit.mjs");
+  const { checkVariantOrphan, STATUS: ST } =
+    await import("../../bin/validate-emit.mjs");
   const manifest = `variants:
   skills/01-core-sdk/SKILL.md:
     py: variants/py/skills/01-core-sdk/SKILL.md
@@ -608,7 +655,8 @@ variant_only:
     ".claude/variants/py/skills/01-core-sdk/SKILL.md": "declared overlay\n",
     ".claude/variants/py/scripts/migrate.py": "# variant_only\n",
     ".claude/variants/codex/rules/agents.md": "# convention tree\n",
-    ".claude/variants/py/skills/project/leftover.md": "ORPHAN — no allowlist arm\n",
+    ".claude/variants/py/skills/project/leftover.md":
+      "ORPHAN — no allowlist arm\n",
   });
   try {
     execFileSync("git", ["init", "-q"], { cwd: root });
@@ -616,15 +664,26 @@ variant_only:
     execFileSync("git", ["add", "-A"], { cwd: root });
     // An untracked operator-local file must be invisible to the check.
     mkdirSync(join(root, ".claude/variants/py/rules"), { recursive: true });
-    writeFileSync(join(root, ".claude/variants/py/rules/foo.operator.local.md"), "untracked\n");
+    writeFileSync(
+      join(root, ".claude/variants/py/rules/foo.operator.local.md"),
+      "untracked\n",
+    );
     const c = checkVariantOrphan(root);
-    const orphan = c.results.find((r) => r.artifact === "variants/py/skills/project/leftover.md");
-    const declared = c.results.find((r) => r.artifact === "variants/py/skills/01-core-sdk/SKILL.md");
-    const untrackedSeen = c.results.find((r) => r.artifact.includes("operator.local"));
+    const orphan = c.results.find(
+      (r) => r.artifact === "variants/py/skills/project/leftover.md",
+    );
+    const declared = c.results.find(
+      (r) => r.artifact === "variants/py/skills/01-core-sdk/SKILL.md",
+    );
+    const untrackedSeen = c.results.find((r) =>
+      r.artifact.includes("operator.local"),
+    );
     check(
       "fixture-21-checkVariantOrphan-git-tracked-enumeration",
-      orphan && orphan.status === ST.FAIL &&
-        declared && declared.status === ST.PASS &&
+      orphan &&
+        orphan.status === ST.FAIL &&
+        declared &&
+        declared.status === ST.PASS &&
         !untrackedSeen, // untracked operator-local companion is OUT of scope
       JSON.stringify(c.results),
     );
@@ -657,7 +716,8 @@ next_top: y
         m.size === 2 &&
         JSON.stringify(m.get("commands/analyze.md")) ===
           JSON.stringify(["build", "use-consumer"]) &&
-        JSON.stringify(m.get("commands/foo.md")) === JSON.stringify(["platform"]),
+        JSON.stringify(m.get("commands/foo.md")) ===
+          JSON.stringify(["platform"]),
       JSON.stringify([...m]),
     );
   } finally {
@@ -672,7 +732,8 @@ next_top: y
 // a near-copy of the loom_only mutual-exclusion check would WRONGLY fail this).
 // SKIP(WARN): zero on-disk match. FAIL: out-of-enum role. FAIL: empty role list.
 {
-  const { checkSurfaceRoleMembership } = await import("../../bin/validate-emit.mjs");
+  const { checkSurfaceRoleMembership } =
+    await import("../../bin/validate-emit.mjs");
   const manifest = `tiers:
   coc:
     - commands/redteam.md
@@ -711,9 +772,8 @@ surface_roles:
 // (absent = full emission, invariant #7 back-compat). Valid role → PASS,
 // out-of-enum → FAIL.
 {
-  const { parseReposRoles, checkSurfaceRoleMembership } = await import(
-    "../../bin/validate-emit.mjs"
-  );
+  const { parseReposRoles, checkSurfaceRoleMembership } =
+    await import("../../bin/validate-emit.mjs");
   const manifest = `repos:
   base:
     build: null
@@ -763,7 +823,9 @@ next_top: x
   // (a) consistent → PASS
   {
     const root = buildFixtureRoot({
-      ".claude/sync-manifest.yaml": MF("  commands/sdk.md: [build, use-consumer]"),
+      ".claude/sync-manifest.yaml": MF(
+        "  commands/sdk.md: [build, use-consumer]",
+      ),
       "CLAUDE.md": DESURF(["sdk"]),
     });
     try {
@@ -801,7 +863,9 @@ next_top: x
   // (c) doc claims, manifest missing → FAIL (the reverse direction)
   {
     const root = buildFixtureRoot({
-      ".claude/sync-manifest.yaml": MF("  commands/db.md: [build, use-consumer]"),
+      ".claude/sync-manifest.yaml": MF(
+        "  commands/db.md: [build, use-consumer]",
+      ),
       "CLAUDE.md": DESURF(["db", "sdk"]), // /sdk has no manifest entry
     });
     try {
@@ -821,7 +885,9 @@ next_top: x
   // bullets so set-equality (1) passes; only the disjointness check (2) fires)
   {
     const root = buildFixtureRoot({
-      ".claude/sync-manifest.yaml": MF("  commands/start.md: [build, use-consumer]"),
+      ".claude/sync-manifest.yaml": MF(
+        "  commands/start.md: [build, use-consumer]",
+      ),
       "CLAUDE.md": DESURF(["start"]) + UNIV(["start"]),
     });
     try {
@@ -844,7 +910,9 @@ next_top: x
   // (e) source unreadable (no CLAUDE.md) → SKIP, never silent PASS
   {
     const root = buildFixtureRoot({
-      ".claude/sync-manifest.yaml": MF("  commands/sdk.md: [build, use-consumer]"),
+      ".claude/sync-manifest.yaml": MF(
+        "  commands/sdk.md: [build, use-consumer]",
+      ),
     });
     try {
       const c = checkClaudeMdSurfaceRoleParity(root);
@@ -881,7 +949,10 @@ next_top: x
       hooks[r.event] = hooks[r.event] || [];
       let g = hooks[r.event].find((x) => x.matcher === r.matcher);
       if (!g) {
-        g = r.matcher === undefined ? { hooks: [] } : { matcher: r.matcher, hooks: [] };
+        g =
+          r.matcher === undefined
+            ? { hooks: [] }
+            : { matcher: r.matcher, hooks: [] };
         hooks[r.event].push(g);
       }
       g.hooks.push({ type: "command", command: r.command ?? CMD(r.name) });
@@ -895,12 +966,26 @@ next_top: x
   const hookRoot = (sources, regs, gf) =>
     buildFixtureRoot({
       ".claude/settings.json": settingsFor(regs),
-      ...(gf ? { ".claude/hook-event-grandfather.json": JSON.stringify({ grandfathered: gf }, null, 2) } : {}),
-      ...Object.fromEntries(Object.entries(sources).map(([n, src]) => [`.claude/hooks/${n}`, src])),
+      ...(gf
+        ? {
+            ".claude/hook-event-grandfather.json": JSON.stringify(
+              { grandfathered: gf },
+              null,
+              2,
+            ),
+          }
+        : {}),
+      ...Object.fromEntries(
+        Object.entries(sources).map(([n, src]) => [`.claude/hooks/${n}`, src]),
+      ),
     });
-  const hdr = (...lines) => `#!/usr/bin/env node\n/**\n${lines.map((l) => ` * ${l}`).join("\n")}\n */\n`;
-  const detailOf = (c, name) => (c.results.find((r) => r.artifact === `hooks/${name}`) || {}).detail || "";
-  const stat = (c, name) => (c.results.find((r) => r.artifact === `hooks/${name}`) || {}).status || null;
+  const hdr = (...lines) =>
+    `#!/usr/bin/env node\n/**\n${lines.map((l) => ` * ${l}`).join("\n")}\n */\n`;
+  const detailOf = (c, name) =>
+    (c.results.find((r) => r.artifact === `hooks/${name}`) || {}).detail || "";
+  const stat = (c, name) =>
+    (c.results.find((r) => r.artifact === `hooks/${name}`) || {}).status ||
+    null;
   const withRoot = (sources, regs, fn, gf) => {
     const root = hookRoot(sources, regs, gf);
     try {
@@ -936,7 +1021,9 @@ next_top: x
   //     MALFORMED, never silently dropped (a dropped line = an undeclared
   //     registration that still reads as declared).
   {
-    const p = parseHookEventMarkers(hdr("@hook-event: SessionStart lifecycle no parens"));
+    const p = parseHookEventMarkers(
+      hdr("@hook-event: SessionStart lifecycle no parens"),
+    );
     check(
       "fixture-hookEvent-b-parseMalformedNotDropped",
       p.markers.length === 0 && p.malformed.length === 1,
@@ -947,7 +1034,11 @@ next_top: x
   // (c) CONTROL — lifecycle at SessionStart PASSes. The rule must NOT condemn
   //     every SessionStart hook; a session banner belongs there.
   withRoot(
-    { "banner.js": hdr("@hook-event: SessionStart (lifecycle) — the session boundary IS the subject.") },
+    {
+      "banner.js": hdr(
+        "@hook-event: SessionStart (lifecycle) — the session boundary IS the subject.",
+      ),
+    },
     [{ name: "banner.js", event: "SessionStart" }],
     (c) =>
       check(
@@ -959,12 +1050,17 @@ next_top: x
 
   // (d) MUST-2 — verification at SessionStart FAILs. The co-owner's finding.
   withRoot(
-    { "verify.js": hdr("@hook-event: SessionStart (verification) — checks this session's edits.") },
+    {
+      "verify.js": hdr(
+        "@hook-event: SessionStart (verification) — checks this session's edits.",
+      ),
+    },
     [{ name: "verify.js", event: "SessionStart" }],
     (c) =>
       check(
         "fixture-hookEvent-d-verificationAtSessionStart-FAIL",
-        stat(c, "verify.js") === STATUS.FAIL && /MUST-2/.test(detailOf(c, "verify.js")),
+        stat(c, "verify.js") === STATUS.FAIL &&
+          /MUST-2/.test(detailOf(c, "verify.js")),
         detailOf(c, "verify.js"),
       ),
   );
@@ -972,7 +1068,11 @@ next_top: x
   // (e) CONTROL — telemetry under `*` PASSes. A heartbeat genuinely belongs on
   //     every tool call; `*` is not a defect on its own.
   withRoot(
-    { "beat.js": hdr("@hook-event: PreToolUse:* (telemetry) — every tool call is the subject.") },
+    {
+      "beat.js": hdr(
+        "@hook-event: PreToolUse:* (telemetry) — every tool call is the subject.",
+      ),
+    },
     [{ name: "beat.js", event: "PreToolUse", matcher: "*" }],
     (c) =>
       check(
@@ -984,12 +1084,17 @@ next_top: x
 
   // (f) MUST-3 — a guard under `*` FAILs (narrow to the tools that can act).
   withRoot(
-    { "wide.js": hdr("@hook-event: PreToolUse:* (guard) — blocks writes outside the worktree.") },
+    {
+      "wide.js": hdr(
+        "@hook-event: PreToolUse:* (guard) — blocks writes outside the worktree.",
+      ),
+    },
     [{ name: "wide.js", event: "PreToolUse", matcher: "*" }],
     (c) =>
       check(
         "fixture-hookEvent-f-guardUnderStar-FAIL",
-        stat(c, "wide.js") === STATUS.FAIL && /MUST-3/.test(detailOf(c, "wide.js")),
+        stat(c, "wide.js") === STATUS.FAIL &&
+          /MUST-3/.test(detailOf(c, "wide.js")),
         detailOf(c, "wide.js"),
       ),
   );
@@ -997,12 +1102,17 @@ next_top: x
   // (g) MUST-4 — marker declares one event, settings.json registers another.
   //     The re-homing drift lock.
   withRoot(
-    { "moved.js": hdr("@hook-event: SessionStart (lifecycle) — stale rationale for a moved hook.") },
+    {
+      "moved.js": hdr(
+        "@hook-event: SessionStart (lifecycle) — stale rationale for a moved hook.",
+      ),
+    },
     [{ name: "moved.js", event: "PostToolUse", matcher: "Bash" }],
     (c) =>
       check(
         "fixture-hookEvent-g-declaredVsRegisteredMismatch-FAIL",
-        stat(c, "moved.js") === STATUS.FAIL && /MUST-4/.test(detailOf(c, "moved.js")),
+        stat(c, "moved.js") === STATUS.FAIL &&
+          /MUST-4/.test(detailOf(c, "moved.js")),
         detailOf(c, "moved.js"),
       ),
   );
@@ -1011,7 +1121,11 @@ next_top: x
   //     Without the shared `normalizeMatcher`, `Write|Edit` vs `Edit|Write`
   //     would report a false mismatch on a correctly-wired hook.
   withRoot(
-    { "order.js": hdr("@hook-event: PreToolUse:Edit|Write (guard) — order-insensitive matcher.") },
+    {
+      "order.js": hdr(
+        "@hook-event: PreToolUse:Edit|Write (guard) — order-insensitive matcher.",
+      ),
+    },
     [{ name: "order.js", event: "PreToolUse", matcher: "Write|Edit" }],
     (c) =>
       check(
@@ -1024,24 +1138,34 @@ next_top: x
   // (i) MUST-1 — an unrecognized CLASS token FAILs rather than falling out of
   //     the comparison (a typo must not silently disable the MUST-2 predicate).
   withRoot(
-    { "typo.js": hdr("@hook-event: SessionStart (verifiction) — typo in the class token.") },
+    {
+      "typo.js": hdr(
+        "@hook-event: SessionStart (verifiction) — typo in the class token.",
+      ),
+    },
     [{ name: "typo.js", event: "SessionStart" }],
     (c) =>
       check(
         "fixture-hookEvent-i-unknownClassToken-FAIL",
-        stat(c, "typo.js") === STATUS.FAIL && /unrecognized class/.test(detailOf(c, "typo.js")),
+        stat(c, "typo.js") === STATUS.FAIL &&
+          /unrecognized class/.test(detailOf(c, "typo.js")),
         detailOf(c, "typo.js"),
       ),
   );
 
   // (j) MUST-1 — an unrecognized EVENT token FAILs (positive allowlist).
   withRoot(
-    { "badevt.js": hdr("@hook-event: SessionStarted (lifecycle) — not a CC hook event.") },
+    {
+      "badevt.js": hdr(
+        "@hook-event: SessionStarted (lifecycle) — not a CC hook event.",
+      ),
+    },
     [{ name: "badevt.js", event: "SessionStart" }],
     (c) =>
       check(
         "fixture-hookEvent-j-unknownEventToken-FAIL",
-        stat(c, "badevt.js") === STATUS.FAIL && /unrecognized hook event/.test(detailOf(c, "badevt.js")),
+        stat(c, "badevt.js") === STATUS.FAIL &&
+          /unrecognized hook event/.test(detailOf(c, "badevt.js")),
         detailOf(c, "badevt.js"),
       ),
   );
@@ -1053,7 +1177,8 @@ next_top: x
     (c) =>
       check(
         "fixture-hookEvent-k-emptyRationale-FAIL",
-        stat(c, "empty.js") === STATUS.FAIL && /empty rationale/.test(detailOf(c, "empty.js")),
+        stat(c, "empty.js") === STATUS.FAIL &&
+          /empty rationale/.test(detailOf(c, "empty.js")),
         detailOf(c, "empty.js"),
       ),
   );
@@ -1071,10 +1196,13 @@ next_top: x
       [{ name: "old.js", event: "SessionStart" }],
     );
     try {
-      const c = checkHookEventDeclaration(root, { grandfathered: new Set(["old.js"]) });
+      const c = checkHookEventDeclaration(root, {
+        grandfathered: new Set(["old.js"]),
+      });
       check(
         "fixture-hookEvent-l-noMarkerGrandfathered-WARN",
-        stat(c, "old.js") === STATUS.SKIP && detailOf(c, "old.js").startsWith("WARN:"),
+        stat(c, "old.js") === STATUS.SKIP &&
+          detailOf(c, "old.js").startsWith("WARN:"),
         detailOf(c, "old.js"),
       );
     } finally {
@@ -1089,13 +1217,16 @@ next_top: x
   withRoot(
     {
       "wired.js": hdr("@hook-event: SessionStart (lifecycle) — registered."),
-      "githook.js": hdr("@settings-registration: git-hook — installed per-clone."),
+      "githook.js": hdr(
+        "@settings-registration: git-hook — installed per-clone.",
+      ),
     },
     [{ name: "wired.js", event: "SessionStart" }],
     (c) =>
       check(
         "fixture-hookEvent-m-unregisteredNotWarned-SKIP",
-        stat(c, "githook.js") === STATUS.SKIP && !detailOf(c, "githook.js").startsWith("WARN:"),
+        stat(c, "githook.js") === STATUS.SKIP &&
+          !detailOf(c, "githook.js").startsWith("WARN:"),
         detailOf(c, "githook.js"),
       ),
   );
@@ -1105,7 +1236,11 @@ next_top: x
   //     not "registered at whatever the fake command mentions" — otherwise this
   //     check would certify a masquerading registration as event-deliberated.
   withRoot(
-    { "masq.js": hdr("@hook-event: SessionStart (lifecycle) — declared but not genuinely wired.") },
+    {
+      "masq.js": hdr(
+        "@hook-event: SessionStart (lifecycle) — declared but not genuinely wired.",
+      ),
+    },
     [
       {
         name: "masq.js",
@@ -1116,7 +1251,8 @@ next_top: x
     (c) =>
       check(
         "fixture-hookEvent-n-nonCanonicalNotARegistration-SKIP",
-        stat(c, "masq.js") === STATUS.SKIP && !detailOf(c, "masq.js").startsWith("WARN:"),
+        stat(c, "masq.js") === STATUS.SKIP &&
+          !detailOf(c, "masq.js").startsWith("WARN:"),
         detailOf(c, "masq.js"),
       ),
   );
@@ -1148,12 +1284,17 @@ next_top: x
   //     verification-at-SessionStart hook shipped with no marker takes the same
   //     non-blocking SKIP as a pre-existing one and /sync stays green.
   withRoot(
-    { "brandnew.js": hdr("Hook: brandnew — shipped after the rule landed, no declaration.") },
+    {
+      "brandnew.js": hdr(
+        "Hook: brandnew — shipped after the rule landed, no declaration.",
+      ),
+    },
     [{ name: "brandnew.js", event: "SessionStart" }],
     (c) =>
       check(
         "fixture-hookEvent-s-newHookNotGrandfathered-FAIL",
-        stat(c, "brandnew.js") === STATUS.FAIL && /MUST-1/.test(detailOf(c, "brandnew.js")),
+        stat(c, "brandnew.js") === STATUS.FAIL &&
+          /MUST-1/.test(detailOf(c, "brandnew.js")),
         detailOf(c, "brandnew.js"),
       ),
   );
@@ -1205,7 +1346,9 @@ next_top: x
     const ownMissing = grab("./reconcile-settings-hooks.mjs");
     const nestedEsm = grab("./present/reconcile-settings-hooks.mjs");
     const nestedCjs = grab("./present/cjs-reconcile-settings-hooks.js");
-    const syntaxErr = Object.assign(new Error("Unexpected token"), { code: "ERR_MODULE_SYNTAX" });
+    const syntaxErr = Object.assign(new Error("Unexpected token"), {
+      code: "ERR_MODULE_SYNTAX",
+    });
     const S = "reconcile-settings-hooks";
 
     // ANTI-VACUITY CONTROL, per this file's own "dead control" convention. If Node
@@ -1252,12 +1395,17 @@ next_top: x
   //     plus posture-gate.js, which had been PASSing. Without (y), broadening the
   //     detector reds two thirds of the corpus and CI stays green.
   withRoot(
-    { "typo.js": hdr("@hook-events: PreToolUse:Bash (guard) — plural typo; still a real declaration.") },
+    {
+      "typo.js": hdr(
+        "@hook-events: PreToolUse:Bash (guard) — plural typo; still a real declaration.",
+      ),
+    },
     [{ name: "typo.js", event: "PreToolUse", matcher: "Bash" }],
     (c) =>
       check(
         "fixture-hookEvent-x-nearMissMisspelledMarker-FAIL",
-        stat(c, "typo.js") === STATUS.FAIL && /malformed declaration/.test(detailOf(c, "typo.js")),
+        stat(c, "typo.js") === STATUS.FAIL &&
+          /malformed declaration/.test(detailOf(c, "typo.js")),
         `status=${stat(c, "typo.js")} detail=${detailOf(c, "typo.js")}`,
       ),
     ["typo.js"],
@@ -1268,13 +1416,13 @@ next_top: x
       // own output payload — the shape the over-broad draft mistook for a marker.
       // readHookHeader reads the WHOLE file, so a body line is in scope.
       "payload.js":
-        '#!/usr/bin/env node\n/**\n * payload.js — no @hook-event marker; grandfathered.\n */\n' +
-        'process.stdout.write(JSON.stringify({\n' +
-        '  hookSpecificOutput: {\n' +
+        "#!/usr/bin/env node\n/**\n * payload.js — no @hook-event marker; grandfathered.\n */\n" +
+        "process.stdout.write(JSON.stringify({\n" +
+        "  hookSpecificOutput: {\n" +
         '    hookEvent: "PreToolUse",\n' +
         '    permissionDecision: "allow",\n' +
-        '  },\n' +
-        '}));\n',
+        "  },\n" +
+        "}));\n",
     },
     [{ name: "payload.js", event: "PreToolUse", matcher: "Bash" }],
     (c) =>
@@ -1292,12 +1440,17 @@ next_top: x
   //     cleared MUST-3 (short-circuit on null) AND MUST-4 (normalizeMatcher(null)
   //     === "" === the registered key), so writing LESS was the cheaper bypass.
   withRoot(
-    { "nomatch.js": hdr("@hook-event: PreToolUse (guard) — blocks writes outside the worktree.") },
+    {
+      "nomatch.js": hdr(
+        "@hook-event: PreToolUse (guard) — blocks writes outside the worktree.",
+      ),
+    },
     [{ name: "nomatch.js", event: "PreToolUse" }],
     (c) =>
       check(
         "fixture-hookEvent-t-guardAbsentMatcher-FAIL",
-        stat(c, "nomatch.js") === STATUS.FAIL && /MUST-3/.test(detailOf(c, "nomatch.js")),
+        stat(c, "nomatch.js") === STATUS.FAIL &&
+          /MUST-3/.test(detailOf(c, "nomatch.js")),
         detailOf(c, "nomatch.js"),
       ),
   );
@@ -1307,12 +1460,17 @@ next_top: x
   //     `guard` at PreToolUse/PostToolUse; the table and the worked example
   //     disagreed on day one, and no predicate enforced either.
   withRoot(
-    { "ssguard.js": hdr("@hook-event: SessionStart (guard) — repairs settings.json.") },
+    {
+      "ssguard.js": hdr(
+        "@hook-event: SessionStart (guard) — repairs settings.json.",
+      ),
+    },
     [{ name: "ssguard.js", event: "SessionStart" }],
     (c) =>
       check(
         "fixture-hookEvent-u-narrowClassNoToolAxis-FAIL",
-        stat(c, "ssguard.js") === STATUS.FAIL && /no tool axis/.test(detailOf(c, "ssguard.js")),
+        stat(c, "ssguard.js") === STATUS.FAIL &&
+          /no tool axis/.test(detailOf(c, "ssguard.js")),
         detailOf(c, "ssguard.js"),
       ),
   );
@@ -1323,12 +1481,17 @@ next_top: x
   //     `js|mjs|cjs`, so the walk and the recognizer disagreed, and the walk lost
   //     silently. Asserting a row EXISTS is the point.
   withRoot(
-    { "modern.mjs": hdr("@hook-event: SessionStart (verification) — wrong, and must be SEEN to be wrong.") },
+    {
+      "modern.mjs": hdr(
+        "@hook-event: SessionStart (verification) — wrong, and must be SEEN to be wrong.",
+      ),
+    },
     [{ name: "modern.mjs", event: "SessionStart" }],
     (c) =>
       check(
         "fixture-hookEvent-v-registeredMjsProducesRow-FAIL",
-        stat(c, "modern.mjs") === STATUS.FAIL && /MUST-2/.test(detailOf(c, "modern.mjs")),
+        stat(c, "modern.mjs") === STATUS.FAIL &&
+          /MUST-2/.test(detailOf(c, "modern.mjs")),
         `row=${stat(c, "modern.mjs")} detail=${detailOf(c, "modern.mjs").slice(0, 120)}`,
       ),
   );
@@ -1383,7 +1546,9 @@ next_top: x
       });
       check(
         "fixture-hookEvent-q-recognizerInjectable-PASS",
-        injected.results.some((r) => r.artifact === "hooks/x.js" && r.status === STATUS.PASS),
+        injected.results.some(
+          (r) => r.artifact === "hooks/x.js" && r.status === STATUS.PASS,
+        ),
         JSON.stringify(injected.results),
       );
     } finally {
@@ -1394,7 +1559,11 @@ next_top: x
   // (p) A hook registered at MULTIPLE events must declare ALL of them; declaring
   //     only one is a MUST-4 registered-but-undeclared finding.
   withRoot(
-    { "multi.js": hdr("@hook-event: SessionStart (lifecycle) — only half the story.") },
+    {
+      "multi.js": hdr(
+        "@hook-event: SessionStart (lifecycle) — only half the story.",
+      ),
+    },
     [
       { name: "multi.js", event: "SessionStart" },
       { name: "multi.js", event: "PreToolUse", matcher: "Bash" },

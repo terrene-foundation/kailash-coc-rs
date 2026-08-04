@@ -20,8 +20,18 @@ const root = ri !== -1 && args[ri + 1] ? args[ri + 1] : process.cwd();
 
 const violated = existsSync(join(root, "VIOLATION"));
 const verdict = violated
-  ? { grade: "INVALID", passed: false, score: 0, checks: [{ id: "marker", critical: true, passed: false }] }
-  : { grade: "VALID", passed: true, score: 100, checks: [{ id: "marker", critical: true, passed: true }] };
+  ? {
+      grade: "INVALID",
+      passed: false,
+      score: 0,
+      checks: [{ id: "marker", critical: true, passed: false }],
+    }
+  : {
+      grade: "VALID",
+      passed: true,
+      score: 100,
+      checks: [{ id: "marker", critical: true, passed: true }],
+    };
 
 process.stdout.write(JSON.stringify(verdict));
 process.exit(violated ? 1 : 0);

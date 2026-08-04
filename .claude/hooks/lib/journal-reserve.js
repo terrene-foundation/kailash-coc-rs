@@ -430,7 +430,31 @@ function _foldHighWater(repoDir, dirRel) {
       // exactly this axis: `roster/targeted-erasure-…` reds if the rule scoping
       // is dropped back to nothing, and `roster/ordinary-chain-continuation-…`
       // reds if it is widened to every rule.
-      if (!entry || entry.rule !== "rule-1") return false;
+      // BOTH ROSTER-CAUSED RULES, and scoping to rule-1 alone missed the
+      // cheaper attack. `rule-1` asks "does the roster resolve this signer's
+      // fingerprint"; `rule-4` asks "does the record's `person_id` match the
+      // person the roster resolved that fingerprint TO". Both answers are
+      // DERIVED FROM THE ROSTER, so both are roster-caused losses.
+      //
+      // Measured: renaming a roster persons-map KEY from `alice` to
+      // `alice.smith` while keeping the identical key entry and fingerprint
+      // leaves rule-1 PASSING (the fingerprint still resolves) and reds rule-4
+      // (`alice` != `alice.smith`). The record leaves `accepted`, the fold
+      // high-water collapses, and the slot is re-issued — the exact outcome
+      // `roster/targeted-erasure-…` locks, reached by an edit that is quieter
+      // than the erasure: the roster still names the person, still names the
+      // key, still resolves the fingerprint.
+      //
+      // rule-2 (chain), rule-3 (fork) and `shape` stay EXCLUDED — those are
+      // availability events, not roster events, and including them permanently
+      // denied the receipt on an ordinary repo (see the previous entry in this
+      // file's history). rule-5 and presence-proof are roster-dependent but
+      // structurally unreachable for a reservation record: rule-5 gates on
+      // `type === "compaction-checkpoint"`, and presence-proof only fires on a
+      // record carrying `content.presence_proof`, which a reservation has not.
+      if (!entry || (entry.rule !== "rule-1" && entry.rule !== "rule-4")) {
+        return false;
+      }
       const rec = entry.record;
       if (!rec || rec.type !== "journal-slot-reservation") return false;
       return ((rec.content || {}).dir || null) === dirRel;

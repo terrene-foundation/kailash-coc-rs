@@ -12,55 +12,118 @@ const BLOCK_CAP = 61440; // matches the live `block_cap_bytes` for context/root.
 const fixtures = [
   {
     name: "fixture-01-above-band-clean",
-    input: { cli: "codex", lang: "rs", emissionBytes: 49152, blockCap: BLOCK_CAP, floorPct: 10, proximityBandPct: 15 },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      emissionBytes: 49152,
+      blockCap: BLOCK_CAP,
+      floorPct: 10,
+      proximityBandPct: 15,
+    },
     // 49152/61440 = 80% used → 20% headroom > 15% band → null
     expect: null,
   },
   {
     name: "fixture-02-within-band-advisory",
-    input: { cli: "codex", lang: "rs", emissionBytes: 54068, blockCap: BLOCK_CAP, floorPct: 10, proximityBandPct: 15 },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      emissionBytes: 54068,
+      blockCap: BLOCK_CAP,
+      floorPct: 10,
+      proximityBandPct: 15,
+    },
     // 54068/61440 = 88% used → 12% headroom (within [10, 15)) → advisory
     expectShape: { headroom_pct: 12, proximity_band_pct: 15 },
   },
   {
     name: "fixture-03-at-band-edge",
-    input: { cli: "codex", lang: "rs", emissionBytes: 52224, blockCap: BLOCK_CAP, floorPct: 10, proximityBandPct: 15 },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      emissionBytes: 52224,
+      blockCap: BLOCK_CAP,
+      floorPct: 10,
+      proximityBandPct: 15,
+    },
     // 52224/61440 = 85% used → 15% headroom EXACTLY → null (band edge exclusive)
     expect: null,
   },
   {
     name: "fixture-04-at-floor-edge",
-    input: { cli: "codex", lang: "rs", emissionBytes: 55296, blockCap: BLOCK_CAP, floorPct: 10, proximityBandPct: 15 },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      emissionBytes: 55296,
+      blockCap: BLOCK_CAP,
+      floorPct: 10,
+      proximityBandPct: 15,
+    },
     // 55296/61440 = 90% used → 10% headroom EXACTLY → advisory (floor edge inclusive at-or-above)
     expectShape: { headroom_pct: 10, proximity_band_pct: 15 },
   },
   {
     name: "fixture-05-below-floor",
-    input: { cli: "codex", lang: "rs", emissionBytes: 56058, blockCap: BLOCK_CAP, floorPct: 10, proximityBandPct: 15 },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      emissionBytes: 56058,
+      blockCap: BLOCK_CAP,
+      floorPct: 10,
+      proximityBandPct: 15,
+    },
     // 56058/61440 = 91.24% used → 8.76% headroom < floor → null (BLOCK case handled by validateAggregateHeadroom)
     expect: null,
   },
   {
     name: "fixture-06-misconfig-band-le-floor",
-    input: { cli: "codex", lang: "rs", emissionBytes: 54068, blockCap: BLOCK_CAP, floorPct: 15, proximityBandPct: 10 },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      emissionBytes: 54068,
+      blockCap: BLOCK_CAP,
+      floorPct: 15,
+      proximityBandPct: 10,
+    },
     // band=10 ≤ floor=15 → misconfiguration → null
     expect: null,
   },
   {
     name: "fixture-07-zero-blockcap",
-    input: { cli: "codex", lang: "rs", emissionBytes: 0, blockCap: 0, floorPct: 10, proximityBandPct: 15 },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      emissionBytes: 0,
+      blockCap: 0,
+      floorPct: 10,
+      proximityBandPct: 15,
+    },
     // blockCap=0 → null (division-by-zero guard)
     expect: null,
   },
   {
     name: "fixture-08-negative-blockcap",
-    input: { cli: "codex", lang: "rs", emissionBytes: 100, blockCap: -1, floorPct: 10, proximityBandPct: 15 },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      emissionBytes: 100,
+      blockCap: -1,
+      floorPct: 10,
+      proximityBandPct: 15,
+    },
     // blockCap<=0 → null (security-reviewer M4 — defense against malformed input)
     expect: null,
   },
   {
     name: "fixture-09-nan-emission",
-    input: { cli: "codex", lang: "rs", emissionBytes: NaN, blockCap: BLOCK_CAP, floorPct: 10, proximityBandPct: 15 },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      emissionBytes: NaN,
+      blockCap: BLOCK_CAP,
+      floorPct: 10,
+      proximityBandPct: 15,
+    },
     // NaN propagates through computation; both `< floor` and `>= band` comparisons
     // return false for NaN, so the function would fall through to advisory construction.
     // Security-reviewer M4 caveat: caller MUST sanitize input; we lock current behavior here.
@@ -69,7 +132,14 @@ const fixtures = [
   },
   {
     name: "fixture-10-output-shape-completeness",
-    input: { cli: "codex", lang: "rs", emissionBytes: 54068, blockCap: BLOCK_CAP, floorPct: 10, proximityBandPct: 15 },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      emissionBytes: 54068,
+      blockCap: BLOCK_CAP,
+      floorPct: 10,
+      proximityBandPct: 15,
+    },
     // Within-band advisory MUST include ALL documented keys (security-reviewer M4).
     expectKeys: [
       "cli",
@@ -107,7 +177,9 @@ for (const f of fixtures) {
         if (typeof v === "number") return Math.abs(result[k] - v) < 0.01;
         return result[k] === v;
       });
-      reason = ok ? "" : `shape mismatch: expected ${JSON.stringify(f.expectShape)}, got ${JSON.stringify(result)}`;
+      reason = ok
+        ? ""
+        : `shape mismatch: expected ${JSON.stringify(f.expectShape)}, got ${JSON.stringify(result)}`;
     }
   } else if (f.expectAdvisoryOrNull) {
     // structural: function did not throw; result is either null or an object
@@ -120,7 +192,9 @@ for (const f of fixtures) {
     } else {
       const missing = f.expectKeys.filter((k) => !(k in result));
       ok = missing.length === 0;
-      reason = ok ? "" : `missing keys in advisory object: ${missing.join(", ")}`;
+      reason = ok
+        ? ""
+        : `missing keys in advisory object: ${missing.join(", ")}`;
     }
   }
 
@@ -145,7 +219,13 @@ const rule11Fixtures = [
   {
     name: "fixture-11-empty-entries-no-fire",
     // Predicate: empty history → count=0, fires=false (clock bootstraps at land-time).
-    input: { entries: [], ruleName: "security.md", cli: "codex", lang: "rs", asOfDate: ASOF },
+    input: {
+      entries: [],
+      ruleName: "security.md",
+      cli: "codex",
+      lang: "rs",
+      asOfDate: ASOF,
+    },
     expect: { count: 0, fires: false },
   },
   {
@@ -153,9 +233,18 @@ const rule11Fixtures = [
     // Predicate: 1 prior Rule-10 invocation on same (rule, CLI, lang) within 30d → fires.
     input: {
       entries: [
-        { date: "2026-05-22", rule: "security.md", cli: "codex", lang: "rs", path: "a" },
+        {
+          date: "2026-05-22",
+          rule: "security.md",
+          cli: "codex",
+          lang: "rs",
+          path: "a",
+        },
       ],
-      ruleName: "security.md", cli: "codex", lang: "rs", asOfDate: ASOF,
+      ruleName: "security.md",
+      cli: "codex",
+      lang: "rs",
+      asOfDate: ASOF,
     },
     expect: { count: 1, fires: true },
   },
@@ -165,11 +254,32 @@ const rule11Fixtures = [
     // Tests the structural lane match (NOT regex-over-prose).
     input: {
       entries: [
-        { date: "2026-05-22", rule: "security.md", cli: "gemini", lang: "rs", path: "a" }, // different cli
-        { date: "2026-05-22", rule: "security.md", cli: "codex", lang: "py", path: "a" },  // different lang
-        { date: "2026-05-22", rule: "agents.md", cli: "codex", lang: "rs", path: "a" },    // different rule
+        {
+          date: "2026-05-22",
+          rule: "security.md",
+          cli: "gemini",
+          lang: "rs",
+          path: "a",
+        }, // different cli
+        {
+          date: "2026-05-22",
+          rule: "security.md",
+          cli: "codex",
+          lang: "py",
+          path: "a",
+        }, // different lang
+        {
+          date: "2026-05-22",
+          rule: "agents.md",
+          cli: "codex",
+          lang: "rs",
+          path: "a",
+        }, // different rule
       ],
-      ruleName: "security.md", cli: "codex", lang: "rs", asOfDate: ASOF,
+      ruleName: "security.md",
+      cli: "codex",
+      lang: "rs",
+      asOfDate: ASOF,
     },
     expect: { count: 0, fires: false },
   },
@@ -179,9 +289,18 @@ const rule11Fixtures = [
     // ASOF=2026-05-23, cutoff = 2026-04-23; entry date 2026-04-22 is OUTSIDE window.
     input: {
       entries: [
-        { date: "2026-04-22", rule: "security.md", cli: "codex", lang: "rs", path: "a" },
+        {
+          date: "2026-04-22",
+          rule: "security.md",
+          cli: "codex",
+          lang: "rs",
+          path: "a",
+        },
       ],
-      ruleName: "security.md", cli: "codex", lang: "rs", asOfDate: ASOF,
+      ruleName: "security.md",
+      cli: "codex",
+      lang: "rs",
+      asOfDate: ASOF,
     },
     expect: { count: 0, fires: false },
   },
@@ -191,11 +310,32 @@ const rule11Fixtures = [
     // This is the strongest corpus-level-review escalation signal.
     input: {
       entries: [
-        { date: "2026-05-10", rule: "security.md", cli: "codex", lang: "rs", path: "a" }, // 13 days ago
-        { date: "2026-05-22", rule: "security.md", cli: "codex", lang: "rs", path: "b" }, // 1 day ago
-        { date: "2026-04-01", rule: "security.md", cli: "codex", lang: "rs", path: "a" }, // outside window
+        {
+          date: "2026-05-10",
+          rule: "security.md",
+          cli: "codex",
+          lang: "rs",
+          path: "a",
+        }, // 13 days ago
+        {
+          date: "2026-05-22",
+          rule: "security.md",
+          cli: "codex",
+          lang: "rs",
+          path: "b",
+        }, // 1 day ago
+        {
+          date: "2026-04-01",
+          rule: "security.md",
+          cli: "codex",
+          lang: "rs",
+          path: "a",
+        }, // outside window
       ],
-      ruleName: "security.md", cli: "codex", lang: "rs", asOfDate: ASOF,
+      ruleName: "security.md",
+      cli: "codex",
+      lang: "rs",
+      asOfDate: ASOF,
     },
     expect: { count: 2, fires: true },
   },
@@ -207,7 +347,9 @@ for (const f of rule11Fixtures) {
   try {
     const result = countPriorRule10Invocations(f.input);
     ok = result.count === f.expect.count && result.fires === f.expect.fires;
-    reason = ok ? "" : `expected count=${f.expect.count} fires=${f.expect.fires}, got count=${result.count} fires=${result.fires}`;
+    reason = ok
+      ? ""
+      : `expected count=${f.expect.count} fires=${f.expect.fires}, got count=${result.count} fires=${result.fires}`;
   } catch (err) {
     ok = false;
     reason = `threw: ${err.message}`;

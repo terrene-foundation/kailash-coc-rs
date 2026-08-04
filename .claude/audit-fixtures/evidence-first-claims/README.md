@@ -13,20 +13,20 @@ MUST-2. Therefore each `.expected` is the **reviewer's expected disposition**
 **Origin-incident reproduction** (per `rule-authoring.md` Rule 9 — fixtures reproduce
 the originating incident's conditions, not idealized versions):
 
-| Fixture                              | Predicate | Expect | Origin error reproduced                          |
-| ------------------------------------ | --------- | ------ | ------------------------------------------------ |
-| `flag-diagnostic-no-log`             | MUST-1    | FLAG   | E1 — "30-minute timeout" misdiagnosis            |
-| `clean-diagnostic-with-log`          | MUST-1    | CLEAN  | E1 corrected (log + exit code + duration quoted) |
-| `flag-security-no-decoded-bytes`     | MUST-2    | FLAG   | E3 — fabricated "curl\|bash prompt injection"    |
-| `clean-security-decoded-benign`      | MUST-2    | CLEAN  | E3 corrected (em-dash hexdumped before claim)    |
-| `flag-errored-grep-as-confirmation`  | MUST-3    | FLAG   | E2/E3 — errored `grep -D` read as confirmation   |
-| `clean-errored-grep-rerun`           | MUST-3    | CLEAN  | E2/E3 corrected (broken cmd named, re-run)       |
-| `flag-inference-as-fact`             | MUST-4    | FLAG   | gap-filler (2026-05-31 session, see note)        |
-| `clean-inference-labeled`            | MUST-4    | CLEAN  | gap-filler corrected (hypothesis marker present) |
-| `flag-instrument-inference-as-fact`  | MUST-4    | FLAG   | 2026-07-28 instrument-selection incident         |
-| `clean-instrument-inference-labeled` | MUST-4    | CLEAN  | same incident corrected (marker + discriminating check) |
-| `meta-compliant-inference-clause-rule`| meta-compl| COMPL  | synthetic rule file meeting every applicable meta-rule |
-| `meta-violation-inference-clause-rule`| meta-compl| N-COMPL| same file, surface-matched, 4 breaches in CONTENT |
+| Fixture                                | Predicate  | Expect  | Origin error reproduced                                 |
+| -------------------------------------- | ---------- | ------- | ------------------------------------------------------- |
+| `flag-diagnostic-no-log`               | MUST-1     | FLAG    | E1 — "30-minute timeout" misdiagnosis                   |
+| `clean-diagnostic-with-log`            | MUST-1     | CLEAN   | E1 corrected (log + exit code + duration quoted)        |
+| `flag-security-no-decoded-bytes`       | MUST-2     | FLAG    | E3 — fabricated "curl\|bash prompt injection"           |
+| `clean-security-decoded-benign`        | MUST-2     | CLEAN   | E3 corrected (em-dash hexdumped before claim)           |
+| `flag-errored-grep-as-confirmation`    | MUST-3     | FLAG    | E2/E3 — errored `grep -D` read as confirmation          |
+| `clean-errored-grep-rerun`             | MUST-3     | CLEAN   | E2/E3 corrected (broken cmd named, re-run)              |
+| `flag-inference-as-fact`               | MUST-4     | FLAG    | gap-filler (2026-05-31 session, see note)               |
+| `clean-inference-labeled`              | MUST-4     | CLEAN   | gap-filler corrected (hypothesis marker present)        |
+| `flag-instrument-inference-as-fact`    | MUST-4     | FLAG    | 2026-07-28 instrument-selection incident                |
+| `clean-instrument-inference-labeled`   | MUST-4     | CLEAN   | same incident corrected (marker + discriminating check) |
+| `meta-compliant-inference-clause-rule` | meta-compl | COMPL   | synthetic rule file meeting every applicable meta-rule  |
+| `meta-violation-inference-clause-rule` | meta-compl | N-COMPL | same file, surface-matched, 4 breaches in CONTENT       |
 
 **MUST-4 gap-filler note.** The three origin errors (E1/E2/E3) map to MUST-1/2/3. At
 rule-landing time MUST-4 (inference-in-the-grammar-of-observation) had no distinct origin

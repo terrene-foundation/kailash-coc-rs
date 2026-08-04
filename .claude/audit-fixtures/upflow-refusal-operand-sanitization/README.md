@@ -136,6 +136,13 @@ remaining four are covered by the RED-before-fix measurements recorded in
 § "RED before" (each was observed failing against the unfixed code, which is the
 same evidence a mutation provides — the pre-fix source IS the mutation).
 
+**M17** — `_URL_USERINFO_JSON_RE` → drop the `\\.` escape-pair alternative (back
+to a plain `[^\s"]` run) → reds exactly 1,
+`…-masks-a-quote-bearing-credential-inside-json`. Executed; an earlier attempt at
+this mutation was INERT (a `perl` pattern that never matched, so the constant was
+unchanged and the suite stayed green) — resolved by re-applying it as a literal
+edit and confirming the constant actually changed before reading the result.
+
 **Two cases are NOT mutation-validated and are recorded as such:**
 `…-still-masks-a-credential-inside-a-json-field` (the paired polarity for M15) and
 `…-masks-a-credential-in-double-encoded-json` (the nested-escape case). Both were
@@ -145,8 +152,8 @@ implied — each is a plausible instrument, not a measured one, until someone po
 `reasonOperand` at a pattern that lets a JSON-embedded credential through and
 observes it red.
 
-So: **44 cases** — 42 with measured evidence (the M1–M13 set + M14–M16 + four
-RED-before-fix observations), 2 declared un-measured.
+So: **45 cases**. Re-derive rather than trusting this line —
+`node .claude/audit-fixtures/upflow-refusal-operand-sanitization/run.mjs | tail -1`.
 
 This count has now been wrong twice, in both directions, and both times the fix
 for one round's stale number went stale inside the same session as new cases

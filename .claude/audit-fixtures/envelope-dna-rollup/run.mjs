@@ -38,7 +38,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const BASE = JSON.parse(readFileSync(join(here, "valid-iso-gdpr-toy.json"), "utf8"));
+const BASE = JSON.parse(
+  readFileSync(join(here, "valid-iso-gdpr-toy.json"), "utf8"),
+);
 const clone = () => JSON.parse(JSON.stringify(BASE));
 
 // Synthetic tenant-token regex — a case-insensitive alternation over a made-up
@@ -59,7 +61,11 @@ const cases = [
   {
     label: "forward-materialization-mismatch",
     mutate: (e) => {
-      e.rollup.forward["C-secret-env-only"] = ["FC-secret-env", "SC-crypto-policy", "GDPR-Art32"]; // wrong article
+      e.rollup.forward["C-secret-env-only"] = [
+        "FC-secret-env",
+        "SC-crypto-policy",
+        "GDPR-Art32",
+      ]; // wrong article
       return e;
     },
     valid: false,
@@ -124,7 +130,11 @@ const cases = [
   {
     label: "forward-index-phantom",
     mutate: (e) => {
-      e.rollup.forward["C-ghost-constraint"] = ["FC-secret-env", "SC-crypto-policy", "A.8.24"]; // key no constraint resolves to
+      e.rollup.forward["C-ghost-constraint"] = [
+        "FC-secret-env",
+        "SC-crypto-policy",
+        "A.8.24",
+      ]; // key no constraint resolves to
       return e;
     },
     valid: false,
@@ -160,7 +170,8 @@ const cases = [
   {
     label: "tenant-token",
     mutate: (e) => {
-      e.cascade.framework_controls[0].title = "AcmeTenant internal secret handling"; // leaked tenant name
+      e.cascade.framework_controls[0].title =
+        "AcmeTenant internal secret handling"; // leaked tenant name
       return e;
     },
     valid: false,
@@ -201,15 +212,24 @@ for (const c of cases) {
   const env = c.mutate(clone());
   const res = validateEnvelope(env, { tenantTokenRe: SYNTH_TENANT_RE });
   const okValid = res.valid === c.valid;
-  const okCode = c.code === null ? res.errors.length === 0 : res.errors.some((e) => e.code === c.code);
+  const okCode =
+    c.code === null
+      ? res.errors.length === 0
+      : res.errors.some((e) => e.code === c.code);
   if (okValid && okCode) {
     passed++;
-    process.stdout.write(`  PASS  ${c.label} → valid=${res.valid}${c.code ? ` [${c.code}]` : ""}\n`);
+    process.stdout.write(
+      `  PASS  ${c.label} → valid=${res.valid}${c.code ? ` [${c.code}]` : ""}\n`,
+    );
   } else {
     failed++;
-    process.stderr.write(`  FAIL  ${c.label}: expected valid=${c.valid} code=${c.code}, got valid=${res.valid} codes=${JSON.stringify(res.errors.map((e) => e.code))}\n`);
+    process.stderr.write(
+      `  FAIL  ${c.label}: expected valid=${c.valid} code=${c.code}, got valid=${res.valid} codes=${JSON.stringify(res.errors.map((e) => e.code))}\n`,
+    );
   }
 }
 
-process.stdout.write(`\nenvelope-dna-rollup fixtures: ${passed} passed, ${failed} failed\n`);
+process.stdout.write(
+  `\nenvelope-dna-rollup fixtures: ${passed} passed, ${failed} failed\n`,
+);
 process.exit(failed > 0 ? 1 : 0);

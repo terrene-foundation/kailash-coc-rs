@@ -8,13 +8,13 @@ The detector does not exist yet; these fixtures are the acceptance criteria it m
 Inputs are the worktree-creation + session-rooting commands as a session would issue them. The
 discriminating predicate is **whether the created path resolves inside the repo top-level**.
 
-| Fixture                                   | Expects           | Predicate locked                                                                                                                                                                |
-| ----------------------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `flag-nested-claude-worktrees.txt`        | `halt-and-report` | Durable session worktree created under `.claude/worktrees/` and rooted into. The canonical nesting trap.                                                                          |
-| `flag-enterworktree-name-durable.txt`     | `halt-and-report` | `EnterWorktree({name})` for durable session work — creates under `.claude/worktrees/` by construction, so the name form is itself the violation.                                  |
+| Fixture                                      | Expects           | Predicate locked                                                                                                                                                                          |
+| -------------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `flag-nested-claude-worktrees.txt`           | `halt-and-report` | Durable session worktree created under `.claude/worktrees/` and rooted into. The canonical nesting trap.                                                                                  |
+| `flag-enterworktree-name-durable.txt`        | `halt-and-report` | `EnterWorktree({name})` for durable session work — creates under `.claude/worktrees/` by construction, so the name form is itself the violation.                                          |
 | `flag-nested-below-repo-root-not-claude.txt` | `halt-and-report` | Nested at `./wt/x` — BELOW the repo root but NOT under `.claude/worktrees/`. Locks that the predicate is "inside the repo top-level", not a literal `.claude/worktrees/` substring match. |
-| `skip-sibling-outside-repo.txt`           | `null`            | The compliant shape: path derived location-independently via `git-common-dir`, placed in the MAIN repo's parent as `.<slug>-wt/<name>`. MUST NOT flag.                            |
-| `skip-enterworktree-path-sibling.txt`     | `null`            | `EnterWorktree({path})` targeting an existing sibling worktree — the sanctioned first-entry re-root. MUST NOT flag.                                                               |
+| `skip-sibling-outside-repo.txt`              | `null`            | The compliant shape: path derived location-independently via `git-common-dir`, placed in the MAIN repo's parent as `.<slug>-wt/<name>`. MUST NOT flag.                                    |
+| `skip-enterworktree-path-sibling.txt`        | `null`            | `EnterWorktree({path})` targeting an existing sibling worktree — the sanctioned first-entry re-root. MUST NOT flag.                                                                       |
 
 **Severity note.** Flag cases expect `halt-and-report`, never `block`, per
 `rules/hook-output-discipline.md` MUST-2 — placement is judgment-bearing over session setup.

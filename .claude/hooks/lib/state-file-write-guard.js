@@ -440,9 +440,14 @@ function tierClassify(input) {
 
   let verdict;
   try {
-    verdict = verifyDetachedSignature(signedBytes, claimedSignature, publicKey, {
-      expectedFpr: expectedFingerprint,
-    });
+    verdict = verifyDetachedSignature(
+      signedBytes,
+      claimedSignature,
+      publicKey,
+      {
+        expectedFpr: expectedFingerprint,
+      },
+    );
   } catch (e) {
     // A THROWING verifier is zero evidence, never a pass.
     return {

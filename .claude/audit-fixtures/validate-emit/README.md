@@ -85,32 +85,32 @@ what force the check to discriminate by declared CLASS rather than blanket-flag 
 event, so a later "tighten the detector" edit that drops the class distinction reds
 here instead of shipping a false-positive storm.
 
-| Case  | Predicate                                                     | Expect |
-| ----- | ------------------------------------------------------------- | ------ |
-| `c`   | CONTROL — `lifecycle` at `SessionStart`                        | PASS   |
-| `d`   | MUST-2 — `verification` at `SessionStart`                      | FAIL   |
-| `e`   | CONTROL — `telemetry` under `*`                                | PASS   |
-| `f`   | MUST-3 — `guard` under `*`                                     | FAIL   |
-| `g`   | MUST-4 — declared event ≠ registered event (re-homing drift)   | FAIL   |
-| `h`   | MUST-4 scope — matcher ORDER normalized (`Write\|Edit`)         | PASS   |
-| `i`   | MUST-1 — unrecognized CLASS token (typo must not disable `d`)  | FAIL   |
-| `j`   | MUST-1 — unrecognized EVENT token (positive allowlist)         | FAIL   |
-| `k`   | MUST-1 — empty rationale                                       | FAIL   |
-| `l`   | GRANDFATHER — no marker ⇒ non-blocking `SKIP` + `WARN:` detail | SKIP   |
-| `m`   | SCOPE — unregistered hook is NOT warned (git-hook class)       | SKIP   |
-| `n`   | SCOPE — a NON-CANONICAL command is not a registration (S1)     | SKIP   |
-| `o`   | a malformed line reports ONCE, not also as a MUST-4 mismatch   | FAIL   |
-| `p`   | multi-registration hook declaring only one event               | FAIL   |
-| `q`   | shared-recognizer seam is injectable (F1030d lazy-load)        | PASS   |
-| `r`   | declaration BEYOND any header slice is still read              | FAIL   |
-| `s`   | GRANDFATHER IS BOUNDED — hook not in the land-time snapshot    | FAIL   |
-| `t`   | MUST-3 — ABSENT matcher is the WIDEST, not the narrowest       | FAIL   |
-| `u`   | MUST-3 arm 2 — narrow class at an event with NO tool axis      | FAIL   |
-| `v`   | registered `.mjs` produces a ROW (registration-driven enum)    | FAIL   |
-| `w`   | lazy seam discriminates on the SPECIFIER, not the error CODE   | PASS   |
-| `w0`  | ANTI-VACUITY CONTROL — generated errors DO carry the parent    | PASS   |
-| `x`   | NEAR-MISS recall — misspelled keyword is MALFORMED, not silent | FAIL   |
-| `y`   | NEAR-MISS precision — a `hookEvent:` payload key is NOT one    | SKIP   |
+| Case | Predicate                                                      | Expect |
+| ---- | -------------------------------------------------------------- | ------ |
+| `c`  | CONTROL — `lifecycle` at `SessionStart`                        | PASS   |
+| `d`  | MUST-2 — `verification` at `SessionStart`                      | FAIL   |
+| `e`  | CONTROL — `telemetry` under `*`                                | PASS   |
+| `f`  | MUST-3 — `guard` under `*`                                     | FAIL   |
+| `g`  | MUST-4 — declared event ≠ registered event (re-homing drift)   | FAIL   |
+| `h`  | MUST-4 scope — matcher ORDER normalized (`Write\|Edit`)        | PASS   |
+| `i`  | MUST-1 — unrecognized CLASS token (typo must not disable `d`)  | FAIL   |
+| `j`  | MUST-1 — unrecognized EVENT token (positive allowlist)         | FAIL   |
+| `k`  | MUST-1 — empty rationale                                       | FAIL   |
+| `l`  | GRANDFATHER — no marker ⇒ non-blocking `SKIP` + `WARN:` detail | SKIP   |
+| `m`  | SCOPE — unregistered hook is NOT warned (git-hook class)       | SKIP   |
+| `n`  | SCOPE — a NON-CANONICAL command is not a registration (S1)     | SKIP   |
+| `o`  | a malformed line reports ONCE, not also as a MUST-4 mismatch   | FAIL   |
+| `p`  | multi-registration hook declaring only one event               | FAIL   |
+| `q`  | shared-recognizer seam is injectable (F1030d lazy-load)        | PASS   |
+| `r`  | declaration BEYOND any header slice is still read              | FAIL   |
+| `s`  | GRANDFATHER IS BOUNDED — hook not in the land-time snapshot    | FAIL   |
+| `t`  | MUST-3 — ABSENT matcher is the WIDEST, not the narrowest       | FAIL   |
+| `u`  | MUST-3 arm 2 — narrow class at an event with NO tool axis      | FAIL   |
+| `v`  | registered `.mjs` produces a ROW (registration-driven enum)    | FAIL   |
+| `w`  | lazy seam discriminates on the SPECIFIER, not the error CODE   | PASS   |
+| `w0` | ANTI-VACUITY CONTROL — generated errors DO carry the parent    | PASS   |
+| `x`  | NEAR-MISS recall — misspelled keyword is MALFORMED, not silent | FAIL   |
+| `y`  | NEAR-MISS precision — a `hookEvent:` payload key is NOT one    | SKIP   |
 
 **`s`–`v` are the adversarial-round group (2026-08-01), and they share one
 property: every one of them PASSED before its fix.** The check reported clean on
@@ -118,7 +118,7 @@ the very defects it exists to catch. `s` closes an UNBOUNDED grandfather (a
 brand-new `verification`@`SessionStart` hook shipped with no marker took the same
 non-blocking SKIP as a pre-existing one, and `/sync` stayed green). `t` closes the
 write-LESS bypass: with the matcher OMITTED, a `guard` at `PreToolUse` cleared
-MUST-3 (short-circuit on null) *and* MUST-4 (`normalizeMatcher(null) === ""` ===
+MUST-3 (short-circuit on null) _and_ MUST-4 (`normalizeMatcher(null) === ""` ===
 the registered key) while firing on every tool call. `u` closes the day-one
 disagreement between the rule's class table and the check. `v` is the
 fail-open enumeration itself — a registered `.mjs` hook vanished with no row.
@@ -156,19 +156,19 @@ the listed cases and left its control green. Each target reddening is also what
 proves the mutation reached the code under test — the second live hypothesis
 MUST-2(b) requires ruling out. Clean baseline: **55 passed, 0 failed, exit 0**.
 
-| Mutation applied to `validate-emit.mjs`                                       | Reds        | Control stays green |
-| ----------------------------------------------------------------------------- | ----------- | ------------------- |
-| MUST-2 arm gated off (`cls === "verification" && event === "SessionStart"`)    | `d` `v` `r` | `c`                 |
-| MUST-3 wide-matcher arm drops `*` (`parts.length === 0` only)                  | `f`         | `e`                 |
-| MUST-3 wide-matcher arm drops ABSENT (`parts.includes("*")` only)              | `t`         | `f`                 |
-| MUST-3 arm 2 (no-tool-axis) gated off                                          | `u`         | `c` `d`             |
-| MUST-4 set-equality push gated off (`if (missing.length \|\| extra.length)`)    | `g` `p`     | `h`                 |
-| grandfather unbounded (`grandfathered.has(h)` → `true`)                        | `s`         | `l`                 |
-| grandfather advisory loses its `WARN:` prefix                                  | `l`         | `m`                 |
-| registration loop restricted to `.js` (the discarded disk-walk direction)      | `v`         | all others          |
-| `isMissingOwnSpecifier` → whole-message `includes()` (the pre-fix shape)       | `w`         | `w0`                |
-| near-miss branch removed from `parseHookEventMarkers`                          | `x`         | `y`                 |
-| near-miss over-broadened to match a bare keyword (`@?` prefix)                 | `y`         | `x`                 |
+| Mutation applied to `validate-emit.mjs`                                      | Reds        | Control stays green |
+| ---------------------------------------------------------------------------- | ----------- | ------------------- |
+| MUST-2 arm gated off (`cls === "verification" && event === "SessionStart"`)  | `d` `v` `r` | `c`                 |
+| MUST-3 wide-matcher arm drops `*` (`parts.length === 0` only)                | `f`         | `e`                 |
+| MUST-3 wide-matcher arm drops ABSENT (`parts.includes("*")` only)            | `t`         | `f`                 |
+| MUST-3 arm 2 (no-tool-axis) gated off                                        | `u`         | `c` `d`             |
+| MUST-4 set-equality push gated off (`if (missing.length \|\| extra.length)`) | `g` `p`     | `h`                 |
+| grandfather unbounded (`grandfathered.has(h)` → `true`)                      | `s`         | `l`                 |
+| grandfather advisory loses its `WARN:` prefix                                | `l`         | `m`                 |
+| registration loop restricted to `.js` (the discarded disk-walk direction)    | `v`         | all others          |
+| `isMissingOwnSpecifier` → whole-message `includes()` (the pre-fix shape)     | `w`         | `w0`                |
+| near-miss branch removed from `parseHookEventMarkers`                        | `x`         | `y`                 |
+| near-miss over-broadened to match a bare keyword (`@?` prefix)               | `y`         | `x`                 |
 
 Two rows are worth reading twice. **The MUST-2 row reds THREE cases, not one** —
 `v` and `r` each assert a MUST-2 verdict as their payload (that a registered `.mjs`

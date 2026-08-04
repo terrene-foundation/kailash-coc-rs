@@ -89,7 +89,10 @@ const EMIT_SCRIPT = __filename.replace(
 // identically to a live /sync invocation. The bin/ + rules/ + manifest
 // surface is shared across all integration fixtures.
 function buildTempLoomRepo(tag) {
-  const dir = join(tmpdir(), `f23e-${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+  const dir = join(
+    tmpdir(),
+    `f23e-${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  );
   mkdirSync(dir, { recursive: true });
   gitInit(dir);
   // Copy the LIVE .claude/bin + .claude/rules + .claude/skills + manifest
@@ -106,9 +109,13 @@ function buildTempLoomRepo(tag) {
   // inside emit.mjs's composer. Copy in full so emit doesn't choke on a
   // missing skill referenced from a rule.
   if (existsSync(join(realRoot, ".claude", "skills"))) {
-    cpSync(join(realRoot, ".claude", "skills"), join(dir, ".claude", "skills"), {
-      recursive: true,
-    });
+    cpSync(
+      join(realRoot, ".claude", "skills"),
+      join(dir, ".claude", "skills"),
+      {
+        recursive: true,
+      },
+    );
   }
   // sync-manifest.yaml lives at .claude/sync-manifest.yaml per emit.mjs
   // REPO resolution (REPO = .claude/bin/.. /.. = repo root; manifest at
@@ -189,7 +196,13 @@ function runValidator(repoRoot, extraArgs = []) {
 {
   const tmp = buildTempLoomRepo("fix-02");
   try {
-    const result = runValidator(tmp, ["--base", "HEAD", "--head", "HEAD", "--json"]);
+    const result = runValidator(tmp, [
+      "--base",
+      "HEAD",
+      "--head",
+      "HEAD",
+      "--json",
+    ]);
     let report = null;
     try {
       report = JSON.parse(result.stdout || "{}");
@@ -250,7 +263,8 @@ function runValidator(repoRoot, extraArgs = []) {
         );
         writeFileSync(
           targetRule,
-          cur + "\n\n## F23e Fixture Probe\n\nMUST exercise the validator gate.\n",
+          cur +
+            "\n\n## F23e Fixture Probe\n\nMUST exercise the validator gate.\n",
         );
         execFileSync("git", ["checkout", "-b", "feat/f23e-fixture-03"], {
           cwd: tmp,
@@ -355,12 +369,16 @@ function runValidator(repoRoot, extraArgs = []) {
     );
     writeFileSync(
       pathScopedRule,
-      "---\nscope: path-scoped\npriority: 10\npaths: \"foo/**\"\n---\n\n# Test path-scoped rule\n\nMUST not fire Rule 10.\n",
+      '---\nscope: path-scoped\npriority: 10\npaths: "foo/**"\n---\n\n# Test path-scoped rule\n\nMUST not fire Rule 10.\n',
     );
     execFileSync("git", ["checkout", "-b", "feat/f23e-fixture-06"], {
       cwd: tmp,
     });
-    gitCommit(tmp, "test: add path-scoped rule with MUST", "2026-05-23T13:00:00Z");
+    gitCommit(
+      tmp,
+      "test: add path-scoped rule with MUST",
+      "2026-05-23T13:00:00Z",
+    );
 
     const result = runValidator(tmp, [
       "--base",

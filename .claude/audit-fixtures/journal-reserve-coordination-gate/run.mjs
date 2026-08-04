@@ -605,6 +605,43 @@ cases.push({
     'ok === false AND step === "fold-high-water" (main\'s degenerate roster governs a worktree that has none of its own)',
 });
 
+cases.push({
+  // THE SECOND ROSTER-CAUSED RULE, and the cheapest roster attack of the three.
+  //
+  // The roster below is well-formed, non-empty, names a person, carries a key,
+  // and RESOLVES THE RESERVING FINGERPRINT — so rule-1 PASSES. Only the
+  // persons-map KEY was renamed (`fixture-person` -> `fixture-person-RENAMED`),
+  // which reds `rule-4`: the record claims `person_id: "fixture-person"` while
+  // the roster resolves that fingerprint to `fixture-person-RENAMED`.
+  //
+  // Both questions are answered FROM THE ROSTER, so both are roster-caused
+  // losses — but a filter scoped to rule-1 alone skipped this one, and the
+  // reservation silently stopped raising the high-water. That is byte-for-byte
+  // the outcome `roster/targeted-erasure-…` locks, reached by an edit QUIETER
+  // than the erasure: nothing is deleted, nothing is emptied, every shape check
+  // and every "does it resolve the signer" check still passes.
+  //
+  // This is the third distinct shape on this axis, after the four erasure shapes
+  // and the availability case. The axis has now oscillated twice; the three
+  // together bound it from every direction the fold can produce.
+  name: "roster/persons-key-rename-loses-the-reservation-and-refuses",
+  mutation:
+    'journal-reserve.js::_foldHighWater — scope the rejection filter back to `entry.rule !== "rule-1"` alone, dropping the rule-4 arm',
+  setup: { coordinationOn: false, withWorktree: false },
+  seedSlots: ["0007"],
+  roster: JSON.stringify({
+    persons: {
+      "fixture-person-RENAMED": {
+        display_id: "fixture-op",
+        keys: [{ fingerprint: "FIXTUREKEYFINGERPRINT" }],
+      },
+    },
+  }),
+  expect: (r) => r.ok === false && r.step === "fold-high-water",
+  describe:
+    'ok === false AND step === "fold-high-water" (a roster that resolves the FINGERPRINT but not the PERSON still loses the reservation)',
+});
+
 let failed = 0;
 for (const c of cases) {
   let made = null;

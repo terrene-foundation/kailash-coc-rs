@@ -21,7 +21,13 @@
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync, chmodSync, rmSync, existsSync } from "node:fs";
+import {
+  mkdirSync,
+  writeFileSync,
+  chmodSync,
+  rmSync,
+  existsSync,
+} from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -44,7 +50,7 @@ function setupStub() {
     STUB_PATH,
     [
       "#!/usr/bin/env bash",
-      "echo \"STUB_CODEX_FORWARDED: $*\"",
+      'echo "STUB_CODEX_FORWARDED: $*"',
       "exit 0",
       "",
     ].join("\n"),
@@ -96,7 +102,8 @@ const CASES = [
     name: "03-valid-phase-argv-tty",
     args: ["analyze", "test prompt"],
     expectExit: 0,
-    expectStdoutMatch: /^STUB_CODEX_FORWARDED: exec --json --output-schema=.*analyze\.schema\.json/,
+    expectStdoutMatch:
+      /^STUB_CODEX_FORWARDED: exec --json --output-schema=.*analyze\.schema\.json/,
     description: "valid phase + argv prompt → forwards to codex exec",
   },
   {
@@ -104,15 +111,18 @@ const CASES = [
     args: ["analyze", "test prompt"],
     input: "", // empty stdin; reproduces non-TTY shape that surfaced H-1
     expectExit: 0,
-    expectStdoutMatch: /^STUB_CODEX_FORWARDED: exec --json --output-schema=.*analyze\.schema\.json -c project_doc_max_bytes=65536 -- test prompt$/,
-    description: "REGRESSION GUARD for H-1: argv wins over empty stdin in non-TTY context",
+    expectStdoutMatch:
+      /^STUB_CODEX_FORWARDED: exec --json --output-schema=.*analyze\.schema\.json -c project_doc_max_bytes=65536 -- test prompt$/,
+    description:
+      "REGRESSION GUARD for H-1: argv wins over empty stdin in non-TTY context",
   },
   {
     name: "05-piped-stdin",
     args: ["analyze"],
     input: "piped prompt body",
     expectExit: 0,
-    expectStdoutMatch: /^STUB_CODEX_FORWARDED: exec --json --output-schema=.*analyze\.schema\.json -c project_doc_max_bytes=65536 -- piped prompt body$/,
+    expectStdoutMatch:
+      /^STUB_CODEX_FORWARDED: exec --json --output-schema=.*analyze\.schema\.json -c project_doc_max_bytes=65536 -- piped prompt body$/,
     description: "no argv + piped stdin → stdin used as prompt",
   },
   {
@@ -132,7 +142,8 @@ const CASES = [
     args: ["test prompt via shim"],
     via: "coc-analyze",
     expectExit: 0,
-    expectStdoutMatch: /^STUB_CODEX_FORWARDED: exec --json --output-schema=.*analyze\.schema\.json -c project_doc_max_bytes=65536 -- test prompt via shim$/,
+    expectStdoutMatch:
+      /^STUB_CODEX_FORWARDED: exec --json --output-schema=.*analyze\.schema\.json -c project_doc_max_bytes=65536 -- test prompt via shim$/,
     description: "basename-driven phase via coc-analyze symlink",
   },
   {
@@ -140,7 +151,8 @@ const CASES = [
     args: ["../../foo", "test"],
     expectExit: 2,
     expectStderrMatch: /^ERROR: invalid phase '\.\.\/\.\.\/foo'/,
-    description: "REGRESSION GUARD for S-1: phase-name path-traversal rejected before path construction",
+    description:
+      "REGRESSION GUARD for S-1: phase-name path-traversal rejected before path construction",
   },
 ];
 
@@ -179,17 +191,30 @@ for (const c of CASES) {
   }
 
   const exitOk = result.status === c.expectExit;
-  const stdoutOk = c.expectStdoutMatch ? c.expectStdoutMatch.test(result.stdout) : true;
-  const stderrOk = c.expectStderrMatch ? c.expectStderrMatch.test(result.stderr) : true;
+  const stdoutOk = c.expectStdoutMatch
+    ? c.expectStdoutMatch.test(result.stdout)
+    : true;
+  const stderrOk = c.expectStderrMatch
+    ? c.expectStderrMatch.test(result.stderr)
+    : true;
 
   if (exitOk && stdoutOk && stderrOk) {
     console.log(`  PASS  ${c.name} — ${c.description}`);
   } else {
     failures++;
     console.error(`  FAIL  ${c.name} — ${c.description}`);
-    if (!exitOk) console.error(`        expected exit ${c.expectExit}, got ${result.status}`);
-    if (!stdoutOk) console.error(`        stdout did not match ${c.expectStdoutMatch}\n        stdout: ${result.stdout}`);
-    if (!stderrOk) console.error(`        stderr did not match ${c.expectStderrMatch}\n        stderr: ${result.stderr}`);
+    if (!exitOk)
+      console.error(
+        `        expected exit ${c.expectExit}, got ${result.status}`,
+      );
+    if (!stdoutOk)
+      console.error(
+        `        stdout did not match ${c.expectStdoutMatch}\n        stdout: ${result.stdout}`,
+      );
+    if (!stderrOk)
+      console.error(
+        `        stderr did not match ${c.expectStderrMatch}\n        stderr: ${result.stderr}`,
+      );
   }
 }
 

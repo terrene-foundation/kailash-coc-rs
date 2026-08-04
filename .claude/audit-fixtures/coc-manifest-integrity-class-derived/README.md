@@ -20,11 +20,11 @@ The fix derives both sets from `.claude/VERSION::type` through the one shared
 predicate (`lib/manifest-source.mjs::readRepoClass`), splitting by who owns the
 data:
 
-| class | where the pin set comes from |
-| ----- | ---------------------------- |
-| `coc-source` (loom) | loom's own set, declared **in code** (`IN_CODE_PIN_SETS`) |
-| every other class | that repo's **own** eval-manifest (`_must_register_artifacts`, `_required_structural_entries`) |
-| unresolvable | **fail closed** — never pick a set |
+| class               | where the pin set comes from                                                                   |
+| ------------------- | ---------------------------------------------------------------------------------------------- |
+| `coc-source` (loom) | loom's own set, declared **in code** (`IN_CODE_PIN_SETS`)                                      |
+| every other class   | that repo's **own** eval-manifest (`_must_register_artifacts`, `_required_structural_entries`) |
+| unresolvable        | **fail closed** — never pick a set                                                             |
 
 **Undeclared is not empty.** A repo routed to the manifest-declared branch that
 declares neither pins nor an explicit `_declared_no_pins` is UNCONFIGURED and
@@ -32,18 +32,18 @@ hard-fails, the same ratchet check (k) already applies via `_declared_empty`.
 
 ## Case matrix (10 cases — 7 flag, 3 clean)
 
-| # | case | polarity | predicate exercised |
-| - | ---- | -------- | ------------------- |
-| 01 | no `.claude/VERSION` | flag | class UNRESOLVED → fail closed |
-| 02 | out-of-vocabulary class value | flag | positive allowlist, not a denylist |
-| 03 | `coc-source`, in-code set | clean | the in-code branch governs |
-| 04 | `coc-source` + a stray manifest pin | flag | a would-be-ignored declaration is surfaced |
-| 05 | `coc-build`, nothing declared | flag | **the loom#1393 regression itself** |
-| 06 | `coc-build` + valid `_declared_no_pins` | clean | the legible way to be green |
-| 07 | `coc-build` + expired declaration | flag | no permanent blanket |
-| 08 | `coc-build` + intact pin | clean | anti-vacuity control for 09/10 |
-| 09 | `coc-build`, pinned entry deleted | flag | the (i) disarm, now reachable on BUILD |
-| 10 | `coc-build`, `fixturesDir` repointed | flag | the (h)-sibling decoy lever |
+| #   | case                                    | polarity | predicate exercised                        |
+| --- | --------------------------------------- | -------- | ------------------------------------------ |
+| 01  | no `.claude/VERSION`                    | flag     | class UNRESOLVED → fail closed             |
+| 02  | out-of-vocabulary class value           | flag     | positive allowlist, not a denylist         |
+| 03  | `coc-source`, in-code set               | clean    | the in-code branch governs                 |
+| 04  | `coc-source` + a stray manifest pin     | flag     | a would-be-ignored declaration is surfaced |
+| 05  | `coc-build`, nothing declared           | flag     | **the loom#1393 regression itself**        |
+| 06  | `coc-build` + valid `_declared_no_pins` | clean    | the legible way to be green                |
+| 07  | `coc-build` + expired declaration       | flag     | no permanent blanket                       |
+| 08  | `coc-build` + intact pin                | clean    | anti-vacuity control for 09/10             |
+| 09  | `coc-build`, pinned entry deleted       | flag     | the (i) disarm, now reachable on BUILD     |
+| 10  | `coc-build`, `fixturesDir` repointed    | flag     | the (h)-sibling decoy lever                |
 
 Both polarities are mandatory and the runner **enforces** it: a set with zero
 flag cases or zero clean cases exits non-zero, so a fixture file that silently

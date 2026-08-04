@@ -37,10 +37,12 @@ const HOOKS_LIB = path.resolve(
 const { detectGhIssueCloseAsNotPlanned } = require(HOOKS_LIB);
 
 function readFixture(name) {
-  return fs.readFileSync(
-    path.resolve(path.dirname(new URL(import.meta.url).pathname), name),
-    "utf8",
-  ).trim();
+  return fs
+    .readFileSync(
+      path.resolve(path.dirname(new URL(import.meta.url).pathname), name),
+      "utf8",
+    )
+    .trim();
 }
 
 test("flag: gh issue close --reason not_planned (bare)", () => {
@@ -60,7 +62,7 @@ test("flag: gh pr close --reason wontfix", () => {
   assert.equal(result.rule_id, "value-prioritization/MUST-4");
 });
 
-test("flag: gh issue close --reason \"not_planned\" (quoted form)", () => {
+test('flag: gh issue close --reason "not_planned" (quoted form)', () => {
   const cmd = readFixture("flag-quoted-reason.txt");
   const result = detectGhIssueCloseAsNotPlanned(cmd);
   assert.notEqual(result, null);
@@ -83,7 +85,7 @@ test("clean: no gh close at all", () => {
   assert.equal(result, null);
 });
 
-test("skip: --reason \"$REASON\" (shell variable per MUST-3)", () => {
+test('skip: --reason "$REASON" (shell variable per MUST-3)', () => {
   const cmd = readFixture("skip-shell-variable.txt");
   const result = detectGhIssueCloseAsNotPlanned(cmd);
   assert.equal(
@@ -120,7 +122,7 @@ test("flag: --reason flag before ticket id (Round-2 MED-C2)", () => {
   assert.equal(result.rule_id, "value-prioritization/MUST-4");
 });
 
-test("skip: --reason \"${REASON}\" (brace-form shell variable, Round-2 MED-C1)", () => {
+test('skip: --reason "${REASON}" (brace-form shell variable, Round-2 MED-C1)', () => {
   // Brace-form shell variable expansion `${VAR}` MUST be skipped
   // alongside the bare `$VAR` form per hook-output-discipline.md
   // MUST-3.

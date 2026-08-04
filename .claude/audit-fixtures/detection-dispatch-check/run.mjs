@@ -37,7 +37,13 @@ import {
   stripComments,
   stripFrontmatter,
 } from "../../bin/detection-dispatch-check.mjs";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -119,7 +125,7 @@ function makeRepo(files) {
 // fixture-04-require-literal-multiline-trailing-comma
 // ------------------------------------------------------------------
 {
-  const src = ['const x = require(', '  "./lib/state-io.js",', ");"].join("\n");
+  const src = ["const x = require(", '  "./lib/state-io.js",', ");"].join("\n");
   const { specifiers } = extractRequireEdges(src);
   check(
     "fixture-04-require-literal-multiline-trailing-comma",
@@ -187,7 +193,8 @@ function makeRepo(files) {
             matcher: "Bash",
             hooks: [
               {
-                command: 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/detect-violations.js"',
+                command:
+                  'node "$CLAUDE_PROJECT_DIR/.claude/hooks/detect-violations.js"',
               },
             ],
           },
@@ -218,7 +225,9 @@ function makeRepo(files) {
 // gate, never a finding list.
 // ------------------------------------------------------------------
 {
-  const root = makeRepo({ ".claude/settings.json": JSON.stringify({ hooks: {} }) });
+  const root = makeRepo({
+    ".claude/settings.json": JSON.stringify({ hooks: {} }),
+  });
   try {
     const { roots, ok } = loadRegisteredRoots(root);
     check(
@@ -263,11 +272,14 @@ function makeRepo(files) {
     ".claude/hooks/lib/b.js": "module.exports = {};",
   });
   try {
-    const roots = new Map([[".claude/hooks/entry.js", [{ event: "Stop", matcher: "*" }]]]);
+    const roots = new Map([
+      [".claude/hooks/entry.js", [{ event: "Stop", matcher: "*" }]],
+    ]);
     const { reach } = buildDispatchClosure(root, roots);
     check(
       "fixture-11-transitive-two-hops-reachable",
-      reach.has(".claude/hooks/lib/b.js") && reach.get(".claude/hooks/lib/b.js").depth === 2,
+      reach.has(".claude/hooks/lib/b.js") &&
+        reach.get(".claude/hooks/lib/b.js").depth === 2,
       `keys=${JSON.stringify([...reach.keys()])}`,
     );
   } finally {
@@ -288,7 +300,9 @@ function makeRepo(files) {
     ".claude/hooks/lib/c.js": "module.exports = {};",
   });
   try {
-    const roots = new Map([[".claude/hooks/registered.js", [{ event: "Stop", matcher: "*" }]]]);
+    const roots = new Map([
+      [".claude/hooks/registered.js", [{ event: "Stop", matcher: "*" }]],
+    ]);
     const { reach } = buildDispatchClosure(root, roots);
     check(
       "fixture-12-unregistered-hook-does-not-confer-dispatch",
@@ -311,11 +325,14 @@ function makeRepo(files) {
     ".claude/hooks/lib/b.js": 'require("./a.js");',
   });
   try {
-    const roots = new Map([[".claude/hooks/entry.js", [{ event: "Stop", matcher: "*" }]]]);
+    const roots = new Map([
+      [".claude/hooks/entry.js", [{ event: "Stop", matcher: "*" }]],
+    ]);
     const { reach } = buildDispatchClosure(root, roots);
     check(
       "fixture-13-require-cycle-terminates",
-      reach.has(".claude/hooks/lib/a.js") && reach.has(".claude/hooks/lib/b.js"),
+      reach.has(".claude/hooks/lib/a.js") &&
+        reach.has(".claude/hooks/lib/b.js"),
       `keys=${JSON.stringify([...reach.keys()])}`,
     );
   } finally {
@@ -332,7 +349,9 @@ function makeRepo(files) {
     ".claude/hooks/lib/d.js": "module.exports = {};",
   });
   try {
-    const roots = new Map([[".claude/hooks/entry.js", [{ event: "Stop", matcher: "*" }]]]);
+    const roots = new Map([
+      [".claude/hooks/entry.js", [{ event: "Stop", matcher: "*" }]],
+    ]);
     const { reach } = buildDispatchClosure(root, roots);
     check(
       "fixture-14-extensionless-specifier-resolves",
@@ -353,7 +372,9 @@ function makeRepo(files) {
     ".claude/hooks/entry.js": 'require("../../../../etc/passwd");',
   });
   try {
-    const roots = new Map([[".claude/hooks/entry.js", [{ event: "Stop", matcher: "*" }]]]);
+    const roots = new Map([
+      [".claude/hooks/entry.js", [{ event: "Stop", matcher: "*" }]],
+    ]);
     const { reach } = buildDispatchClosure(root, roots);
     check(
       "fixture-15-closure-never-escapes-root",
@@ -373,21 +394,69 @@ function makeRepo(files) {
 // reasons (sanctioned deferral / another scanner's red / not a dispatch unit).
 // ==========================================================================
 {
-  const roots = new Map([[".claude/hooks/entry.js", [{ event: "Stop", matcher: "*" }]]]);
-  const reach = new Map([
-    [".claude/hooks/entry.js", { root: ".claude/hooks/entry.js", events: [], depth: 0, via: [] }],
-    [".claude/hooks/lib/reached.js", { root: ".claude/hooks/entry.js", events: [], depth: 1, via: [] }],
+  const roots = new Map([
+    [".claude/hooks/entry.js", [{ event: "Stop", matcher: "*" }]],
   ]);
-  const claim = (over) => ({ path: ".claude/hooks/lib/x.js", deferred: false, resolves: true, ...over });
+  const reach = new Map([
+    [
+      ".claude/hooks/entry.js",
+      { root: ".claude/hooks/entry.js", events: [], depth: 0, via: [] },
+    ],
+    [
+      ".claude/hooks/lib/reached.js",
+      { root: ".claude/hooks/entry.js", events: [], depth: 1, via: [] },
+    ],
+  ]);
+  const claim = (over) => ({
+    path: ".claude/hooks/lib/x.js",
+    deferred: false,
+    resolves: true,
+    ...over,
+  });
 
   const cases = [
-    ["fixture-16-deferred-not-fatal", claim({ deferred: true }), "deferred", false],
-    ["fixture-17-unresolved-delegated-not-fatal", claim({ resolves: false }), "unresolved-delegated", false],
-    ["fixture-18-directory-not-dispatchable", claim({ path: ".claude/hooks/lib/" }), "non-dispatchable-target", false],
-    ["fixture-19-non-script-not-dispatchable", claim({ path: ".claude/hooks/README.md" }), "non-dispatchable-target", false],
-    ["fixture-20-registered-root-is-dispatched-direct", claim({ path: ".claude/hooks/entry.js" }), "dispatched-direct", false],
-    ["fixture-21-in-closure-is-dispatched-transitive", claim({ path: ".claude/hooks/lib/reached.js" }), "dispatched-transitive", false],
-    ["fixture-22-unreachable-is-undispatched-and-fatal", claim({}), "undispatched", true],
+    [
+      "fixture-16-deferred-not-fatal",
+      claim({ deferred: true }),
+      "deferred",
+      false,
+    ],
+    [
+      "fixture-17-unresolved-delegated-not-fatal",
+      claim({ resolves: false }),
+      "unresolved-delegated",
+      false,
+    ],
+    [
+      "fixture-18-directory-not-dispatchable",
+      claim({ path: ".claude/hooks/lib/" }),
+      "non-dispatchable-target",
+      false,
+    ],
+    [
+      "fixture-19-non-script-not-dispatchable",
+      claim({ path: ".claude/hooks/README.md" }),
+      "non-dispatchable-target",
+      false,
+    ],
+    [
+      "fixture-20-registered-root-is-dispatched-direct",
+      claim({ path: ".claude/hooks/entry.js" }),
+      "dispatched-direct",
+      false,
+    ],
+    [
+      "fixture-21-in-closure-is-dispatched-transitive",
+      claim({ path: ".claude/hooks/lib/reached.js" }),
+      "dispatched-transitive",
+      false,
+    ],
+    [
+      "fixture-22-unreachable-is-undispatched-and-fatal",
+      claim({}),
+      "undispatched",
+      true,
+    ],
   ];
 
   for (const [name, input, expectState, expectFatal] of cases) {
@@ -455,7 +524,9 @@ function makeRepo(files) {
 // fixture-25-bare-export-listing-is-not-a-use
 // ------------------------------------------------------------------
 {
-  const src = ["function f() {}", "module.exports = {", "  f,", "};"].join("\n");
+  const src = ["function f() {}", "module.exports = {", "  f,", "};"].join(
+    "\n",
+  );
   const { definitions, uses } = countSymbolSites(src, "f");
   check(
     "fixture-25-bare-export-listing-is-not-a-use",
@@ -470,7 +541,10 @@ function makeRepo(files) {
 // ONE line was counted as a use, reporting a never-called symbol as `invoked`.
 // ------------------------------------------------------------------
 {
-  const src = ["function neverCalled({ a }) { return a; }", "module.exports = { neverCalled };"].join("\n");
+  const src = [
+    "function neverCalled({ a }) { return a; }",
+    "module.exports = { neverCalled };",
+  ].join("\n");
   const { definitions, uses } = countSymbolSites(src, "neverCalled");
   check(
     "fixture-26-inline-export-manifest-is-not-a-use",
@@ -492,7 +566,10 @@ function makeRepo(files) {
     "/* block comment naming detectStreetlightSelection twice: detectStreetlightSelection */",
     "module.exports = { detectStreetlightSelection };",
   ].join("\n");
-  const { definitions, uses } = countSymbolSites(stripComments(src), "detectStreetlightSelection");
+  const { definitions, uses } = countSymbolSites(
+    stripComments(src),
+    "detectStreetlightSelection",
+  );
   check(
     "fixture-27-comment-mention-is-not-a-use",
     definitions === 1 && uses === 0,
@@ -506,9 +583,15 @@ function makeRepo(files) {
 // matches `exports =` must remain a use.
 // ------------------------------------------------------------------
 {
-  const src = ["function g() {}", "module.exports = { value: g() };"].join("\n");
+  const src = ["function g() {}", "module.exports = { value: g() };"].join(
+    "\n",
+  );
   const { uses } = countSymbolSites(src, "g");
-  check("fixture-28-call-inside-export-manifest-line-still-counts", uses === 1, `got uses=${uses}`);
+  check(
+    "fixture-28-call-inside-export-manifest-line-still-counts",
+    uses === 1,
+    `got uses=${uses}`,
+  );
 }
 
 // ------------------------------------------------------------------
@@ -552,7 +635,9 @@ function makeRepo(files) {
 // fixture-31-line-comment-is-not-an-edge
 // ------------------------------------------------------------------
 {
-  const { specifiers } = extractRequireEdges('// require("./lib/dead.js");\nconst p = require("path");');
+  const { specifiers } = extractRequireEdges(
+    '// require("./lib/dead.js");\nconst p = require("path");',
+  );
   check(
     "fixture-31-line-comment-is-not-an-edge",
     !specifiers.includes("./lib/dead.js") && specifiers.includes("path"),
@@ -564,7 +649,9 @@ function makeRepo(files) {
 // fixture-32-block-comment-is-not-an-edge
 // ------------------------------------------------------------------
 {
-  const { specifiers } = extractRequireEdges('/*\n require("./lib/dead.js");\n*/\nconst p = require("path");');
+  const { specifiers } = extractRequireEdges(
+    '/*\n require("./lib/dead.js");\n*/\nconst p = require("path");',
+  );
   check(
     "fixture-32-block-comment-is-not-an-edge",
     !specifiers.includes("./lib/dead.js"),
@@ -576,7 +663,9 @@ function makeRepo(files) {
 // fixture-33-require-inside-a-string-is-not-an-edge
 // ------------------------------------------------------------------
 {
-  const { specifiers } = extractRequireEdges(`const doc = "call require('./lib/dead.js') to load";`);
+  const { specifiers } = extractRequireEdges(
+    `const doc = "call require('./lib/dead.js') to load";`,
+  );
   check(
     "fixture-33-require-inside-a-string-is-not-an-edge",
     !specifiers.includes("./lib/dead.js"),
@@ -590,7 +679,10 @@ function makeRepo(files) {
 // in a comment must not desync the string state and swallow following code.
 // ------------------------------------------------------------------
 {
-  const src = ["// don't let this apostrophe desync the scan", 'require("./lib/real.js");'].join("\n");
+  const src = [
+    "// don't let this apostrophe desync the scan",
+    'require("./lib/real.js");',
+  ].join("\n");
   const { specifiers } = extractRequireEdges(src);
   check(
     "fixture-34-masking-preserves-real-specifiers",
@@ -604,7 +696,11 @@ function makeRepo(files) {
 // Previously invisible: neither followed nor counted as dynamic.
 // ------------------------------------------------------------------
 {
-  const src = ['export { a } from "./x.js";', 'export * from "./y.js";', 'import "./z.js";'].join("\n");
+  const src = [
+    'export { a } from "./x.js";',
+    'export * from "./y.js";',
+    'import "./z.js";',
+  ].join("\n");
   const { specifiers } = extractRequireEdges(src);
   check(
     "fixture-35-export-from-and-bare-import-are-edges",
@@ -618,7 +714,9 @@ function makeRepo(files) {
 // The `FOLD_PATH = ".claude/hooks/lib/fold-rule-9c.js"` dispatch shape.
 // ------------------------------------------------------------------
 {
-  const { stringPaths } = extractRequireEdges('const FOLD_PATH = ".claude/hooks/lib/fold-rule-9c.js";');
+  const { stringPaths } = extractRequireEdges(
+    'const FOLD_PATH = ".claude/hooks/lib/fold-rule-9c.js";',
+  );
   check(
     "fixture-36-string-hook-path-is-collected",
     stringPaths.includes(".claude/hooks/lib/fold-rule-9c.js"),
@@ -630,7 +728,9 @@ function makeRepo(files) {
 // fixture-37-commented-hook-path-is-not-collected
 // ------------------------------------------------------------------
 {
-  const { stringPaths } = extractRequireEdges('// see ".claude/hooks/lib/fold-rule-9c.js" for the shape');
+  const { stringPaths } = extractRequireEdges(
+    '// see ".claude/hooks/lib/fold-rule-9c.js" for the shape',
+  );
   check(
     "fixture-37-commented-hook-path-is-not-collected",
     stringPaths.length === 0,
@@ -644,7 +744,11 @@ function makeRepo(files) {
 // ------------------------------------------------------------------
 {
   const { dynamic } = extractRequireEdges("const m = import(modulePath);");
-  check("fixture-38-dynamic-import-counted", dynamic === 1, `got dynamic=${dynamic}`);
+  check(
+    "fixture-38-dynamic-import-counted",
+    dynamic === 1,
+    `got dynamic=${dynamic}`,
+  );
 }
 
 // ------------------------------------------------------------------
@@ -661,11 +765,16 @@ function makeRepo(files) {
 // hides a finding rather than inventing one, and it is a usable evasion.
 // ------------------------------------------------------------------
 {
-  const deadIf = extractRequireEdges('if (false) { require("./lib/dead.js"); }');
-  const deadReturn = extractRequireEdges('function f(){ return 1; require("./lib/dead.js"); }');
+  const deadIf = extractRequireEdges(
+    'if (false) { require("./lib/dead.js"); }',
+  );
+  const deadReturn = extractRequireEdges(
+    'function f(){ return 1; require("./lib/dead.js"); }',
+  );
   check(
     "fixture-43-dead-code-require-is-FOLLOWED",
-    deadIf.specifiers.includes("./lib/dead.js") && deadReturn.specifiers.includes("./lib/dead.js"),
+    deadIf.specifiers.includes("./lib/dead.js") &&
+      deadReturn.specifiers.includes("./lib/dead.js"),
     `if(false)=${JSON.stringify(deadIf.specifiers)} after-return=${JSON.stringify(deadReturn.specifiers)} — if these are now EMPTY the scanner gained reachability analysis and STATED BOUNDS #2 must be rewritten`,
   );
 }
@@ -682,11 +791,18 @@ function makeRepo(files) {
 {
   const outside = mkdtempSync(join(tmpdir(), "ddc-out-"));
   writeFileSync(join(outside, "escapee.js"), "module.exports = {};\n");
-  const root = makeRepo({ ".claude/hooks/entry.js": 'require("./lib/escape.js");' });
+  const root = makeRepo({
+    ".claude/hooks/entry.js": 'require("./lib/escape.js");',
+  });
   try {
     mkdirSync(join(root, ".claude/hooks/lib"), { recursive: true });
-    symlinkSync(join(outside, "escapee.js"), join(root, ".claude/hooks/lib/escape.js"));
-    const roots = new Map([[".claude/hooks/entry.js", [{ event: "Stop", matcher: "*" }]]]);
+    symlinkSync(
+      join(outside, "escapee.js"),
+      join(root, ".claude/hooks/lib/escape.js"),
+    );
+    const roots = new Map([
+      [".claude/hooks/entry.js", [{ event: "Stop", matcher: "*" }]],
+    ]);
     const { reach } = buildDispatchClosure(root, roots);
     check(
       "fixture-39-escaping-symlink-is-refused",
@@ -709,8 +825,13 @@ function makeRepo(files) {
     ".claude/hooks/lib/actual.js": "module.exports = {};\n",
   });
   try {
-    symlinkSync(join(root, ".claude/hooks/lib/actual.js"), join(root, ".claude/hooks/lib/link.js"));
-    const roots = new Map([[".claude/hooks/entry.js", [{ event: "Stop", matcher: "*" }]]]);
+    symlinkSync(
+      join(root, ".claude/hooks/lib/actual.js"),
+      join(root, ".claude/hooks/lib/link.js"),
+    );
+    const roots = new Map([
+      [".claude/hooks/entry.js", [{ event: "Stop", matcher: "*" }]],
+    ]);
     const { reach } = buildDispatchClosure(root, roots);
     check(
       "fixture-40-in-tree-symlink-is-followed",
@@ -726,7 +847,14 @@ function makeRepo(files) {
 // fixture-41-frontmatter-stripped-line-numbers-preserved
 // ------------------------------------------------------------------
 {
-  const src = ['---', 'paths:', '  - "**/.claude/hooks/**"', '---', '', 'body line 6'].join("\n");
+  const src = [
+    "---",
+    "paths:",
+    '  - "**/.claude/hooks/**"',
+    "---",
+    "",
+    "body line 6",
+  ].join("\n");
   const out = stripFrontmatter(src);
   check(
     "fixture-41-frontmatter-stripped-line-numbers-preserved",
@@ -742,9 +870,15 @@ function makeRepo(files) {
 // ------------------------------------------------------------------
 {
   const src = "# Rule\n\nbody\n";
-  check("fixture-42-no-frontmatter-passes-through", stripFrontmatter(src) === src, "content changed");
+  check(
+    "fixture-42-no-frontmatter-passes-through",
+    stripFrontmatter(src) === src,
+    "content changed",
+  );
 }
 
 // ==========================================================================
-process.stdout.write(`\ndetection-dispatch-check fixtures: ${passed} passed, ${failed} failed\n`);
+process.stdout.write(
+  `\ndetection-dispatch-check fixtures: ${passed} passed, ${failed} failed\n`,
+);
 process.exit(failed === 0 ? 0 : 1);

@@ -1,1 +1,4 @@
-{"args":"list --porcelain","refs":{"--porcelain":{"ahead":0,"behind":9}}}
+{
+  "args": "list --porcelain",
+  "refs": { "--porcelain": { "ahead": 0, "behind": 9 } }
+}

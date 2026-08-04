@@ -21,20 +21,20 @@ HARD-FAILS a pinned entry whose violation case pins no `critical_failures`.
 
 ## Cases
 
-| Case                             | Exit | Classification state exercised          | Pinned critical check      |
-| -------------------------------- | ---- | --------------------------------------- | -------------------------- |
-| `clean-wired-and-resolving`      | 0    | `wired-and-resolving`                   | —                          |
-| `clean-no-wiring`                | 0    | `no-wiring`                             | —                          |
-| `clean-wired-no-detection-block` | 0    | `wired-no-detection-block`              | —                          |
-| `clean-deferred-fixtures-absent` | 0    | `deferred-fixtures-absent` (not fatal)  | —                          |
-| `clean-fp-illustrative-example`  | 0    | FP(1) fenced DO/DO-NOT example          | —                          |
-| `clean-fp-shell-command`         | 0    | FP(2) shell commands + flags            | —                          |
-| `clean-fp-absent-by-design`      | 0    | FP(3) paths asserted ABSENT             | —                          |
-| `clean-fp-glob-placeholder`      | 0    | FP(4) globs / `<id>` placeholders       | —                          |
-| `violation-dangling-scanner`     | 1    | `dangling-live-reference` (scanner)     | `dangling-scanner-binding` |
-| `violation-dangling-fixtures`    | 1    | `dangling-live-reference` (fixtures)    | `dangling-fixtures-binding`|
-| `violation-dangling-probes`      | 1    | `dangling-live-reference` (probes)      | `dangling-probes-binding`  |
-| `violation-empty-corpus`         | 1    | fail-closed on an unreadable corpus     | `corpus-readable`          |
+| Case                             | Exit | Classification state exercised         | Pinned critical check       |
+| -------------------------------- | ---- | -------------------------------------- | --------------------------- |
+| `clean-wired-and-resolving`      | 0    | `wired-and-resolving`                  | —                           |
+| `clean-no-wiring`                | 0    | `no-wiring`                            | —                           |
+| `clean-wired-no-detection-block` | 0    | `wired-no-detection-block`             | —                           |
+| `clean-deferred-fixtures-absent` | 0    | `deferred-fixtures-absent` (not fatal) | —                           |
+| `clean-fp-illustrative-example`  | 0    | FP(1) fenced DO/DO-NOT example         | —                           |
+| `clean-fp-shell-command`         | 0    | FP(2) shell commands + flags           | —                           |
+| `clean-fp-absent-by-design`      | 0    | FP(3) paths asserted ABSENT            | —                           |
+| `clean-fp-glob-placeholder`      | 0    | FP(4) globs / `<id>` placeholders      | —                           |
+| `violation-dangling-scanner`     | 1    | `dangling-live-reference` (scanner)    | `dangling-scanner-binding`  |
+| `violation-dangling-fixtures`    | 1    | `dangling-live-reference` (fixtures)   | `dangling-fixtures-binding` |
+| `violation-dangling-probes`      | 1    | `dangling-live-reference` (probes)     | `dangling-probes-binding`   |
+| `violation-empty-corpus`         | 1    | fail-closed on an unreadable corpus    | `corpus-readable`           |
 
 The clean cases share exit 0 and grade `VALID`, so the manifest cannot
 discriminate them either. Their classification state is pinned instead by
@@ -48,9 +48,9 @@ Two of them reproduce failures the scanner hits on loom's REAL corpus:
 
 - `clean-fp-illustrative-example` mirrors `coc-artifact-eval-coverage.md`, whose
   own worked example is a literal `- **Detection mechanism:**` bullet naming
-  `foo-readiness-check.mjs` inside a ```` ```text ```` fence, and
+  `foo-readiness-check.mjs` inside a ` ```text ` fence, and
   `trust-posture.md`, whose only Detection bullet is the canonical 8-field
-  TEMPLATE inside a ```` ```markdown ```` fence. A scanner that does not strip
+  TEMPLATE inside a ` ```markdown ` fence. A scanner that does not strip
   fenced blocks reports danglers against both.
 - `clean-fp-absent-by-design` mirrors `knowledge-convergence.md`, which cites
   `.claude/team-memory/team-memory.md` precisely because that aggregate file is

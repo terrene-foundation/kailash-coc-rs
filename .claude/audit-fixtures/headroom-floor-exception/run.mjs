@@ -52,60 +52,110 @@ function check(name, ok, reason) {
 const resolveFixtures = [
   {
     name: "fixture-01-declared-lane-declared-cli-in-force",
-    input: { cli: "codex", lang: "rs", exceptions: EXCEPTIONS, now: "2026-07-26" },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      exceptions: EXCEPTIONS,
+      now: "2026-07-26",
+    },
     // The one granted case: lane matches, cli is named, date is before expiry.
     expect: "exception",
   },
   {
     name: "fixture-02-second-declared-cli-also-covered",
-    input: { cli: "gemini", lang: "rs", exceptions: EXCEPTIONS, now: "2026-07-26" },
+    input: {
+      cli: "gemini",
+      lang: "rs",
+      exceptions: EXCEPTIONS,
+      now: "2026-07-26",
+    },
     // Parity: an entry naming both CLIs covers both (no per-CLI duplication).
     expect: "exception",
   },
   {
     name: "fixture-03-undeclared-lane-not-covered",
-    input: { cli: "codex", lang: "py", exceptions: EXCEPTIONS, now: "2026-07-26" },
+    input: {
+      cli: "codex",
+      lang: "py",
+      exceptions: EXCEPTIONS,
+      now: "2026-07-26",
+    },
     // NARROWNESS: a sibling lane never inherits another lane's grant.
     expect: null,
   },
   {
     name: "fixture-04-base-lane-not-covered",
-    input: { cli: "codex", lang: null, exceptions: EXCEPTIONS, now: "2026-07-26" },
+    input: {
+      cli: "codex",
+      lang: null,
+      exceptions: EXCEPTIONS,
+      now: "2026-07-26",
+    },
     // lang=null normalizes to lane "base", which holds no grant.
     expect: null,
   },
   {
     name: "fixture-05-undeclared-cli-not-covered",
-    input: { cli: "cursor", lang: "rs", exceptions: EXCEPTIONS, now: "2026-07-26" },
+    input: {
+      cli: "cursor",
+      lang: "rs",
+      exceptions: EXCEPTIONS,
+      now: "2026-07-26",
+    },
     // A CLI absent from `clis:` gets nothing, even on the granted lane.
     expect: null,
   },
   {
     name: "fixture-06-day-before-expiry-in-force",
-    input: { cli: "codex", lang: "rs", exceptions: EXCEPTIONS, now: "2026-10-30" },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      exceptions: EXCEPTIONS,
+      now: "2026-10-30",
+    },
     expect: "exception",
   },
   {
     name: "fixture-07-expiry-day-inclusive",
-    input: { cli: "codex", lang: "rs", exceptions: EXCEPTIONS, now: "2026-10-31" },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      exceptions: EXCEPTIONS,
+      now: "2026-10-31",
+    },
     // Expiry is inclusive — in force through the end of the declared date.
     expect: "exception",
   },
   {
     name: "fixture-08-day-after-expiry-lapsed",
-    input: { cli: "codex", lang: "rs", exceptions: EXCEPTIONS, now: "2026-11-01" },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      exceptions: EXCEPTIONS,
+      now: "2026-11-01",
+    },
     // THE load-bearing case: expiry turns the gate RED, it does not lapse
     // into permission.
     expect: null,
   },
   {
     name: "fixture-09-long-after-expiry-still-lapsed",
-    input: { cli: "codex", lang: "rs", exceptions: EXCEPTIONS, now: "2031-01-01" },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      exceptions: EXCEPTIONS,
+      now: "2031-01-01",
+    },
     expect: null,
   },
   {
     name: "fixture-10-invalid-clock-fails-closed",
-    input: { cli: "codex", lang: "rs", exceptions: EXCEPTIONS, now: "not-a-date" },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      exceptions: EXCEPTIONS,
+      now: "not-a-date",
+    },
     // Cannot establish the exception is unexpired → deny it.
     expect: null,
   },
@@ -116,7 +166,12 @@ const resolveFixtures = [
   },
   {
     name: "fixture-12-calendar-invalid-clock-fails-closed",
-    input: { cli: "codex", lang: "rs", exceptions: EXCEPTIONS, now: "2026-13-45" },
+    input: {
+      cli: "codex",
+      lang: "rs",
+      exceptions: EXCEPTIONS,
+      now: "2026-13-45",
+    },
     // Shape-valid but not a date — Date round-trip rejects it.
     expect: null,
   },
@@ -136,7 +191,15 @@ const resolveFixtures = [
     input: {
       cli: "codex",
       lang: "rs",
-      exceptions: [{ lane: "py", clis: ["codex"], granted_floor_pct: 6, expires: "2030-01-01" }, RS],
+      exceptions: [
+        {
+          lane: "py",
+          clis: ["codex"],
+          granted_floor_pct: 6,
+          expires: "2030-01-01",
+        },
+        RS,
+      ],
       now: "2026-07-26",
     },
     // Non-matching entries are skipped, not treated as a match.
@@ -153,8 +216,13 @@ for (const f of resolveFixtures) {
       ok = result === null;
       reason = ok ? "" : `expected null, got ${JSON.stringify(result)}`;
     } else {
-      ok = result !== null && result.lane === "rs" && result.granted_floor_pct === 8.5;
-      reason = ok ? "" : `expected the rs exception, got ${JSON.stringify(result)}`;
+      ok =
+        result !== null &&
+        result.lane === "rs" &&
+        result.granted_floor_pct === 8.5;
+      reason = ok
+        ? ""
+        : `expected the rs exception, got ${JSON.stringify(result)}`;
     }
   } catch (err) {
     ok = false;
@@ -271,7 +339,10 @@ const parseFixtures = [
   },
   {
     name: "fixture-28-non-numeric-grant-throws",
-    src: WELL_FORMED.replace(/granted_floor_pct: 8\.5/, "granted_floor_pct: soon"),
+    src: WELL_FORMED.replace(
+      /granted_floor_pct: 8\.5/,
+      "granted_floor_pct: soon",
+    ),
     expectThrow: /granted_floor_pct must be a finite number/,
   },
   {
@@ -286,7 +357,10 @@ const parseFixtures = [
   },
   {
     name: "fixture-31-unknown-cli-throws",
-    src: WELL_FORMED.replace(/clis: \[codex, gemini\]/, "clis: [codex, gemeni]"),
+    src: WELL_FORMED.replace(
+      /clis: \[codex, gemini\]/,
+      "clis: [codex, gemeni]",
+    ),
     expectThrow: /unknown cli "gemeni"/,
   },
   {
@@ -308,7 +382,8 @@ const parseFixtures = [
       /^(\s*)- lane: rs$/m,
       '$1- lane: py\n$1  clis: [codex]\n$1  granted_floor_pct: 9\n$1  expires: "2026-10-31"\n$1  issue: 1355\n$1- lane: rs',
     ),
-    expectOk: (out) => out.length === 2 && out[0].lane === "py" && out[1].lane === "rs",
+    expectOk: (out) =>
+      out.length === 2 && out[0].lane === "py" && out[1].lane === "rs",
   },
   {
     name: "fixture-35-comment-lines-inside-block-ignored",
@@ -333,7 +408,10 @@ const parseFixtures = [
     ),
     // A scalar sitting between the key and the first `-` belongs to no entry;
     // it must not be silently folded into the first one.
-    expectOk: (out) => out.length === 1 && out[0].lane === "rs" && out[0].stray_key === undefined,
+    expectOk: (out) =>
+      out.length === 1 &&
+      out[0].lane === "rs" &&
+      out[0].stray_key === undefined,
   },
   {
     name: "fixture-38-non-key-value-line-inside-block-ignored",
@@ -357,7 +435,10 @@ const parseFixtures = [
   },
   {
     name: "fixture-40-grant-at-or-above-100-throws",
-    src: WELL_FORMED.replace(/granted_floor_pct: 8\.5/, "granted_floor_pct: 100"),
+    src: WELL_FORMED.replace(
+      /granted_floor_pct: 8\.5/,
+      "granted_floor_pct: 100",
+    ),
     // Upper bound of the permitted range — a 100% floor would demand zero
     // emission and is a declaration error, not a grant.
     expectThrow: /outside the permitted \[5, 100\) range/,
@@ -393,7 +474,9 @@ for (const f of parseFixtures) {
   } catch (err) {
     if (f.expectThrow) {
       ok = f.expectThrow.test(err.message);
-      reason = ok ? "" : `threw, but message did not match ${f.expectThrow}: ${err.message}`;
+      reason = ok
+        ? ""
+        : `threw, but message did not match ${f.expectThrow}: ${err.message}`;
     } else {
       ok = false;
       reason = `unexpected throw: ${err.message}`;

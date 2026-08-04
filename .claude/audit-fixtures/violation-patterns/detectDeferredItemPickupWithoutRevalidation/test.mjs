@@ -115,7 +115,11 @@ test("flag: revalidation marker JUST OUTSIDE 250-char proximity boundary (Round-
   // does not appear to satisfy the gate when it semantically does not.
   const text = readFixture("flag-revalidation-just-outside-250.txt");
   const result = detectDeferredItemPickupWithoutRevalidation(text);
-  assert.notEqual(result, null, "expected flag (revalidation too far); got null");
+  assert.notEqual(
+    result,
+    null,
+    "expected flag (revalidation too far); got null",
+  );
   assert.equal(result.rule_id, "value-prioritization/MUST-3");
 });
 

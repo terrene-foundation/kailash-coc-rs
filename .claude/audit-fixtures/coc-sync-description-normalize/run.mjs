@@ -50,8 +50,7 @@ const CASES = [
       description: "Kailash COC Claude (Python) - hooks + variant overlays",
     },
     lbl: "Ruby",
-    expectDescription:
-      "Kailash COC Claude (Ruby) - hooks + variant overlays",
+    expectDescription: "Kailash COC Claude (Ruby) - hooks + variant overlays",
   },
   {
     name: "py: idempotent — (Python) → (Python)",
@@ -71,8 +70,7 @@ const CASES = [
       description: "Kailash COC Claude - no parenthetical to swap",
     },
     lbl: "Rust",
-    expectDescription:
-      "Kailash COC Claude - no parenthetical to swap",
+    expectDescription: "Kailash COC Claude - no parenthetical to swap",
   },
   {
     name: "rs: rs source already (Rust) → unchanged",

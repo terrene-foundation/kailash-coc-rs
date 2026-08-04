@@ -138,7 +138,10 @@ function appendStamped(repoDir, filePath, partial, opts) {
     // here inflates the record past the pre-sign probe, which downgrades the row to the
     // caller's unsigned fallback (see `detect-violations.js::_logViolation`). Mirrors the
     // same bound in `state-io.js::appendViolation` so the two appenders agree.
-    session_id: String(process.env.CLAUDE_SESSION_ID || "unknown").slice(0, 128),
+    session_id: String(process.env.CLAUDE_SESSION_ID || "unknown").slice(
+      0,
+      128,
+    ),
     repo: stripRepoPath(repoDir),
     verified_id: identity.verified_id,
     person_id: identity.person_id,
@@ -253,7 +256,9 @@ function appendStamped(repoDir, filePath, partial, opts) {
   // `repoDir` itself stays the provenance value stamped into the signed record above.
   const boundaryRoots = [];
   try {
-    const { resolveMainCheckout } = require(path.join(__dirname, "state-resolver.js"));
+    const { resolveMainCheckout } = require(
+      path.join(__dirname, "state-resolver.js"),
+    );
     const mainCheckout = resolveMainCheckout(repoDir);
     if (mainCheckout) boundaryRoots.push(mainCheckout);
   } catch {
@@ -266,7 +271,12 @@ function appendStamped(repoDir, filePath, partial, opts) {
     sinkPath: filePath,
     line,
   });
-  if (!w.ok) return { ok: false, error: "append failed", reason: `${w.error}: ${w.reason}` };
+  if (!w.ok)
+    return {
+      ok: false,
+      error: "append failed",
+      reason: `${w.error}: ${w.reason}`,
+    };
 
   return { ok: true, id: record.id, line };
 }

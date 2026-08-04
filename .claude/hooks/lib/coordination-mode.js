@@ -133,7 +133,11 @@ const { spawnSync } = require("child_process");
 // THE shared git-subprocess allowlist (loom#1462 F1). One module, every guard that
 // spawns git — per rules/security.md § Enforcement-Surface Parity, two copies of an
 // env allowlist is exactly the shape that leaves one of them a variable behind.
-const { resolveGitBinary, resetGitBinaryCache, gitEnv } = require("./git-subprocess-env.js");
+const {
+  resolveGitBinary,
+  resetGitBinaryCache,
+  gitEnv,
+} = require("./git-subprocess-env.js");
 
 // O_NOFOLLOW / O_NONBLOCK are POSIX-only; Node leaves them undefined on Windows.
 // `| 0` degrades to a plain O_RDONLY there rather than producing NaN flags. The
@@ -220,7 +224,10 @@ function _readJsonPinned(p) {
   } catch (e) {
     if (e && e.code === "ENOENT") return { ok: false, absent: true };
     if (e && (e.code === "ELOOP" || e.code === "EMLINK")) {
-      return { ok: false, error: `symlinked config path refused (O_NOFOLLOW): ${p}` };
+      return {
+        ok: false,
+        error: `symlinked config path refused (O_NOFOLLOW): ${p}`,
+      };
     }
     return { ok: false, error: e && e.message ? e.message : String(e) };
   }
@@ -340,7 +347,8 @@ function _isCanonicalEcosystemConfig(repoDir, ident) {
     // must therefore still sit at `<realRepo>/.claude/bin` — anything else means
     // the location was moved, which is the same un-auditable condition as an env
     // relocation.
-    if (realCanonicalDir !== path.join(realRepo, ".claude", "bin")) return false;
+    if (realCanonicalDir !== path.join(realRepo, ".claude", "bin"))
+      return false;
     // IDENTITY, NOT PATH (loom#1447). `lstat` (never `stat`) on the canonical
     // location: a symlink there yields the LINK's own inode, which can never equal
     // the regular-file inode `_readJsonPinned` returns, so the symlinked-canonical
@@ -394,7 +402,10 @@ function _isCanonicalEcosystemConfig(repoDir, ident) {
 function _gitRun(repoDir, args, opts) {
   const bin = resolveGitBinary(opts);
   if (!bin) {
-    return { ok: false, unavailable: "no git binary found (candidates or PATH)" };
+    return {
+      ok: false,
+      unavailable: "no git binary found (candidates or PATH)",
+    };
   }
   const r = spawnSync(bin, ["-C", repoDir, ...args], {
     encoding: "utf8",
@@ -412,7 +423,11 @@ function _gitRun(repoDir, args, opts) {
   }
   if (r.signal) return { ok: false, unavailable: `git killed (${r.signal})` };
   if (r.status !== 0) {
-    return { ok: false, status: r.status, stderr: String(r.stderr || "").trim() };
+    return {
+      ok: false,
+      status: r.status,
+      stderr: String(r.stderr || "").trim(),
+    };
   }
   return { ok: true, stdout: r.stdout };
 }
@@ -876,8 +891,8 @@ function _committedDisableAttested(repoDir, opts) {
     return {
       attested: Boolean(
         committed &&
-          committed.coordination &&
-          committed.coordination.enabled === false,
+        committed.coordination &&
+        committed.coordination.enabled === false,
       ),
       ref: auth.ref,
     };
@@ -986,9 +1001,11 @@ function _committedRosterEnrolled(repoDir, opts) {
   // one resolution, and each consult is a subprocess. Injected opts always recompute
   // (test seam), mirroring coordinationMode's own cache discipline.
   const injected = Boolean(
-    opts && (opts.rosterPath || opts.gitBin || opts.gitCandidates || opts.gitPath),
+    opts &&
+    (opts.rosterPath || opts.gitBin || opts.gitCandidates || opts.gitPath),
   );
-  if (!injected && _headRosterCache.has(repoDir)) return _headRosterCache.get(repoDir);
+  if (!injected && _headRosterCache.has(repoDir))
+    return _headRosterCache.get(repoDir);
   const verdict = _computeCommittedRosterEnrolled(repoDir, opts);
   if (!injected) _headRosterCache.set(repoDir, verdict);
   return verdict;
@@ -1010,7 +1027,8 @@ function _computeCommittedRosterEnrolled(repoDir, opts) {
   // ANSWERED WITHOUT READING A REF: the repository holds no objects at all, so no
   // committed roster can exist anywhere in it. This is the fresh-`git init` scratch
   // directory, and it must stay OFF (see § THE ATTESTATION BASE, object-count branch).
-  if (base.kind === "empty-repo") return { state: "not-enrolled", kind: base.kind };
+  if (base.kind === "empty-repo")
+    return { state: "not-enrolled", kind: base.kind };
 
   const rel = _repoRelPosix(repoDir, _canonicalRosterPath(repoDir));
   const unanswered = [];
@@ -1033,10 +1051,10 @@ function _computeCommittedRosterEnrolled(repoDir, opts) {
       const v = JSON.parse(b.text);
       const anchored = Boolean(
         v &&
-          typeof v === "object" &&
-          !Array.isArray(v) &&
-          v.genesis &&
-          _isGenesisAnchored(v.genesis),
+        typeof v === "object" &&
+        !Array.isArray(v) &&
+        v.genesis &&
+        _isGenesisAnchored(v.genesis),
       );
       // DEFINITE either way: the blob was read and parsed.
       return {
@@ -1240,7 +1258,8 @@ function coordinationMode(repoDir, opts) {
       // re-resolves `cand` — it is used only for operator-facing warning text.
       const r = _readJsonPinned(cand);
       if (!r.ok) {
-        if (r.error) warnings.push(`ecosystem-config unreadable (${cand}): ${r.error}`);
+        if (r.error)
+          warnings.push(`ecosystem-config unreadable (${cand}): ${r.error}`);
         continue;
       }
       if (
@@ -1332,7 +1351,8 @@ function coordinationMode(repoDir, opts) {
     // OPPOSITE disposition from the corrupt-roster case one branch below.
     const r = _readJsonPinned(rp);
     const malformed =
-      r.ok && (!r.value || typeof r.value !== "object" || Array.isArray(r.value));
+      r.ok &&
+      (!r.value || typeof r.value !== "object" || Array.isArray(r.value));
     if (
       r.ok &&
       !malformed &&
@@ -1368,7 +1388,10 @@ function coordinationMode(repoDir, opts) {
           "cannot determine whether HEAD carries an anchored roster; fail-closed toward " +
           "ON. Make git reachable to resolve this repo's real enrollment state",
       );
-      result = { enabled: true, source: "implicit-head-indeterminate-failclosed" };
+      result = {
+        enabled: true,
+        source: "implicit-head-indeterminate-failclosed",
+      };
     } else if (_committedRosterEnrolled(rd, o).state === "enrolled") {
       // loom#1462 F2 — the ONLY branch left here is "the working-tree roster is ABSENT
       // or carries no anchored genesis". Both spellings erase the sole evidence tier 4

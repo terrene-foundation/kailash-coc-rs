@@ -7,16 +7,16 @@ loom issue #385).
 
 ## Cases (8)
 
-| ID  | Name                       | Asserts                                                        |
-| --- | -------------------------- | -------------------------------------------------------------- |
-| 01  | no-args                    | exit 2; usage on stderr                                        |
-| 02  | invalid-phase              | exit 3; "schema file ... not found" + phases list              |
-| 03  | valid-phase-argv-tty       | exit 0; forwards `codex exec --json --output-schema=<phase>`   |
-| 04  | valid-phase-argv-nontty    | **REGRESSION GUARD for CRIT H-1** — argv wins in non-TTY ctx   |
-| 05  | piped-stdin                | exit 0; stdin used as prompt when no argv                      |
-| 06  | empty-prompt               | exit 2; whitespace-only stdin rejected                         |
-| 07  | phase-suffix-shim          | exit 0; basename-driven phase via `coc-<phase>` symlink        |
-| 08  | traversal-rejected         | **REGRESSION GUARD for HIGH S-1** — phase-name path-traversal  |
+| ID  | Name                    | Asserts                                                       |
+| --- | ----------------------- | ------------------------------------------------------------- |
+| 01  | no-args                 | exit 2; usage on stderr                                       |
+| 02  | invalid-phase           | exit 3; "schema file ... not found" + phases list             |
+| 03  | valid-phase-argv-tty    | exit 0; forwards `codex exec --json --output-schema=<phase>`  |
+| 04  | valid-phase-argv-nontty | **REGRESSION GUARD for CRIT H-1** — argv wins in non-TTY ctx  |
+| 05  | piped-stdin             | exit 0; stdin used as prompt when no argv                     |
+| 06  | empty-prompt            | exit 2; whitespace-only stdin rejected                        |
+| 07  | phase-suffix-shim       | exit 0; basename-driven phase via `coc-<phase>` symlink       |
+| 08  | traversal-rejected      | **REGRESSION GUARD for HIGH S-1** — phase-name path-traversal |
 
 ## Invocation
 

@@ -5,7 +5,10 @@
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import { resolveOverlay, loadManifestVariants } from "../../bin/lib/variant-overlay.mjs";
+import {
+  resolveOverlay,
+  loadManifestVariants,
+} from "../../bin/lib/variant-overlay.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,7 +42,9 @@ check(
 );
 check(
   "rename: overlay path points at rust-version-bump.md",
-  renameRes.path.endsWith("variants/rs/skills/10-deployment-git/rust-version-bump.md"),
+  renameRes.path.endsWith(
+    "variants/rs/skills/10-deployment-git/rust-version-bump.md",
+  ),
   renameRes.path,
 );
 check(
@@ -47,10 +52,7 @@ check(
   renameRes.destRelPath === "10-deployment-git/rust-version-bump.md",
   renameRes.destRelPath,
 );
-check(
-  "rename: overlay file exists on disk",
-  fs.existsSync(renameRes.path),
-);
+check("rename: overlay file exists on disk", fs.existsSync(renameRes.path));
 
 // ── 3. Manifest-null — py axis on rules/agents.md returns kind=manifest-null
 const nullRes = resolveOverlay("rules", "agents.md", "py");
@@ -59,10 +61,7 @@ check(
   nullRes.kind === "manifest-null",
   `got ${nullRes.kind}`,
 );
-check(
-  "manifest-null: path = null",
-  nullRes.path === null,
-);
+check("manifest-null: path = null", nullRes.path === null);
 check(
   "manifest-null: destRelPath unchanged",
   nullRes.destRelPath === "agents.md",
@@ -71,7 +70,14 @@ check(
 // ── 4. Phantom — manifest says py:null but variants/py/rules/ci-runners.md
 //      exists on disk. Resolver MUST still return manifest-null (declarative
 //      intent wins). Caller skips the overlay even though the file exists.
-const phantomPath = path.join(REPO, ".claude", "variants", "py", "rules", "ci-runners.md");
+const phantomPath = path.join(
+  REPO,
+  ".claude",
+  "variants",
+  "py",
+  "rules",
+  "ci-runners.md",
+);
 const phantomExists = fs.existsSync(phantomPath);
 check(
   "phantom: variants/py/rules/ci-runners.md exists on disk (preserves the test)",
@@ -90,7 +96,11 @@ if (phantomExists) {
 // ── 5. Path-mirror fallback — manifest has no entry for an artifact, the
 //      resolver falls through to path-mirror. Use a synthetic key the
 //      manifest never declares.
-const fallbackRes = resolveOverlay("rules", "this-rule-does-not-exist.md", "rs");
+const fallbackRes = resolveOverlay(
+  "rules",
+  "this-rule-does-not-exist.md",
+  "rs",
+);
 check(
   "path-mirror: kind = path-mirror for un-declared keys",
   fallbackRes.kind === "path-mirror",
@@ -149,7 +159,10 @@ function inlineParse(manifestText) {
     const am = ln.match(axisRe);
     if (am && cur) {
       let raw = am[2].replace(/\s+#.*$/, "").trim();
-      if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+      if (
+        (raw.startsWith('"') && raw.endsWith('"')) ||
+        (raw.startsWith("'") && raw.endsWith("'"))
+      ) {
         raw = raw.slice(1, -1);
       }
       if (raw === "" || raw === "null" || raw === "~") cur.set(am[1], null);
@@ -161,16 +174,21 @@ function inlineParse(manifestText) {
 
 // 7a. Terminal `variants:` block (no following top-level key).
 {
-  const m = inlineParse("variants:\n  rules/x.md:\n    rs: variants/rs/rules/x.md\n");
+  const m = inlineParse(
+    "variants:\n  rules/x.md:\n    rs: variants/rs/rules/x.md\n",
+  );
   check(
     "parser: terminal variants block parses (HIGH-1 regression guard)",
-    m.has("rules/x.md") && m.get("rules/x.md").get("rs") === "variants/rs/rules/x.md",
+    m.has("rules/x.md") &&
+      m.get("rules/x.md").get("rs") === "variants/rs/rules/x.md",
   );
 }
 
 // 7b. Inline `# comment` stripped.
 {
-  const m = inlineParse("variants:\n  rules/x.md:\n    rs: variants/rs/rules/x.md  # trailing\nother:\n");
+  const m = inlineParse(
+    "variants:\n  rules/x.md:\n    rs: variants/rs/rules/x.md  # trailing\nother:\n",
+  );
   check(
     "parser: strips inline trailing comment",
     m.get("rules/x.md").get("rs") === "variants/rs/rules/x.md",
@@ -189,7 +207,9 @@ function inlineParse(manifestText) {
 
 // 7d. Quoted value strips surrounding quotes.
 {
-  const m = inlineParse("variants:\n  rules/x.md:\n    rs: \"variants/rs/rules/x.md\"\nother:\n");
+  const m = inlineParse(
+    'variants:\n  rules/x.md:\n    rs: "variants/rs/rules/x.md"\nother:\n',
+  );
   check(
     "parser: quoted value strips surrounding quotes",
     m.get("rules/x.md").get("rs") === "variants/rs/rules/x.md",
@@ -198,7 +218,9 @@ function inlineParse(manifestText) {
 
 // 7e. Whole-line comment inside block ignored.
 {
-  const m = inlineParse("variants:\n  rules/x.md:\n  # this is a comment\n    rs: variants/rs/rules/x.md\nother:\n");
+  const m = inlineParse(
+    "variants:\n  rules/x.md:\n  # this is a comment\n    rs: variants/rs/rules/x.md\nother:\n",
+  );
   check(
     "parser: whole-line comment ignored",
     m.get("rules/x.md").get("rs") === "variants/rs/rules/x.md",
@@ -213,7 +235,14 @@ function inlineParse(manifestText) {
   // declarations rules/{agents,observability,security,testing,zero-tolerance}.md.
   // Pick zero-tolerance.md and verify composeRule(prism) returns overlay content.
   const { composeRule } = await import("../../bin/emit.mjs");
-  const overlayPath = path.join(REPO, ".claude", "variants", "prism", "rules", "zero-tolerance.md");
+  const overlayPath = path.join(
+    REPO,
+    ".claude",
+    "variants",
+    "prism",
+    "rules",
+    "zero-tolerance.md",
+  );
   if (fs.existsSync(overlayPath)) {
     const overlay = fs.readFileSync(overlayPath, "utf8");
     const isFullFile = !overlay.includes("<!-- slot:");
@@ -230,7 +259,9 @@ function inlineParse(manifestText) {
       );
     }
   } else {
-    console.log("SKIP  MED-2 (no prism zero-tolerance overlay on disk to fixture against)");
+    console.log(
+      "SKIP  MED-2 (no prism zero-tolerance overlay on disk to fixture against)",
+    );
   }
 }
 
