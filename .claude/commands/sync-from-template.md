@@ -24,15 +24,27 @@ The "Project-specific" preservation rule below applies only to downstream USE re
 
 ## Merge Semantics
 
-This is a **merge**, not an overwrite. Three categories of files:
+This is a **category-based replace**, NOT a per-file merge. Say it plainly, because the distinction decides whether your work survives: there is no three-way merge and no conflict surface anywhere in this command. A shared artifact is REPLACED wholesale by the template's copy. Preservation is by PATH CATEGORY only.
 
 | Category                              | Examples                                          | Behavior                      |
 | ------------------------------------- | ------------------------------------------------- | ----------------------------- |
-| **Shared artifacts**                  | agents/analyst.md, rules/security.md              | **Updated** from template     |
+| **Shared artifacts**                  | agents/analyst.md, rules/security.md              | **REPLACED** by the template  |
 | **Project-specific** (USE repos only) | agents/project/\*, skills/project/\*, workspaces/ | **Preserved** — never touched |
-| **Per-repo data**                     | learning/\*, .proposals/                          | **Preserved** — never touched |
+| **Per-repo data**                     | learning/\*, .proposals/, team-memory/\*          | **Preserved** — never touched |
 
-**Rule**: If a file exists in BOTH the template and this repo, the template version wins (it's the upstream source). If a file exists ONLY in this repo, it's preserved. If a file exists ONLY in the template, it's added.
+**Rule**: If a file exists in BOTH the template and this repo, the template version REPLACES yours — any local edit to it is discarded, with no conflict and no warning. If a file exists ONLY in this repo, it's preserved. If a file exists ONLY in the template, it's added.
+
+**Where a consumer authors locally.** `/codify` writes to `agents/project/` and `skills/project/`. For a local RULE or COMMAND, author under `rules/project/` or `commands/project/` (both preserved below) — editing a SHARED `rules/*.md` / `commands/*.md` in place is NOT durable; the next sync replaces it.
+
+### Pre-flight — what this sync would discard (MUST run before step 5)
+
+```bash
+node .claude/bin/sync-preflight-local-mods.mjs --template <resolved-template> --root .
+# 0 = nothing consumer-authored at risk · 2 = some at risk (listed with local commits)
+# 1 = the check did NOT run — never read as safe
+```
+
+Report its counts in the sync header. On exit 2, STOP and surface the at-risk list; do not proceed on the agent's own judgement. The tool changes nothing — it makes the loss visible while it is still preventable.
 
 ## Process
 
@@ -112,8 +124,10 @@ Compare `.coc-sync-marker` timestamps. If already fresh: "Already up to date."
 **Preserved** (never modified by sync):
 
 - `agents/project/**` and `skills/project/**` — project-specific (USE repos only; BUILD repos do not have these directories)
+- `rules/project/**` and `commands/project/**` — the sanctioned local home for consumer-authored rules and commands. A shared `rules/*.md` / `commands/*.md` edited in place is NOT preserved; author here instead.
 - `learning/**` — per-repo learning data
 - `.proposals/**` — review artifacts
+- `team-memory/**` — per-repo signed facts (`promoted_by` / `signed` / `body_anchor` frontmatter). Same per-repo-state class as `learning/**` per `knowledge-convergence.md` MUST-4; a sync MUST NOT replace them.
 - `settings.local.json` — per-repo settings
 - `workspaces/**` — project workspaces
 - `CLAUDE.md` (at repo root) — project-specific directives

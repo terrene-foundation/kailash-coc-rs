@@ -54,6 +54,7 @@
 
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { execFileSync } from "child_process";
 
 const TARGET_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
@@ -112,6 +113,38 @@ function slugify(s) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 48);
+}
+
+// The slug is TRUNCATED to 48 chars for human readability, and truncation
+// discards exactly the discriminating tail: every Step-7c action opens with the
+// same words ("file a Step-7c upflow proposal PR to the template inbox for
+// ..."), so two genuinely distinct same-day authorizations against one target
+// collapsed to ONE filename. Before this discriminator the second write
+// SILENTLY DESTROYED the first receipt (`writeFileSync` with no `wx`), and a
+// receipt is the ONLY thing distinguishing an authorized cross-repo action from
+// an unauthorized one (`repo-scope-discipline.md` § User-Authorized Exception
+// condition 4 — "present = in-scope, absent = critical L1").
+//
+// The digest is taken over the FULL, UNTRUNCATED (target, action, mode) triple,
+// so it discriminates precisely where the slug stops. Consequences, both wanted:
+//   - distinct actions  -> distinct digests -> both receipts survive;
+//   - an identical re-run -> identical digest -> same path -> the `wx` write
+//     refuses, which is correct (the existing receipt already authorizes it and
+//     overwriting would destroy an audit record).
+// `mode` is in the triple because a read receipt and a write receipt for the
+// same action are DISTINCT authorizations at different tiers (a read receipt
+// must never clear a write), so they must never collide onto one filename.
+//
+// 8 hex chars (32 bits) is sized for human-scannable filenames, not collision
+// resistance: this discriminates a handful of same-day receipts in one
+// directory, and a digest collision degrades to the pre-existing refusal (a
+// loud `wx` failure), never to a silent overwrite.
+function actionDigest(target, action, mode) {
+  return crypto
+    .createHash("sha256")
+    .update(`${target}\n${action}\n${mode}`, "utf8")
+    .digest("hex")
+    .slice(0, 8);
 }
 
 /**
@@ -230,7 +263,8 @@ function main() {
   const date = isoDateUTC(now);
   const ts = now.toISOString();
   const slug = slugify(`${target}-${action}`) || "cross-repo";
-  const fileName = `${date}-${slug}.md`;
+  const digest = actionDigest(target, action, mode);
+  const fileName = `${date}-${slug}-${digest}.md`;
   const filePath = path.join(dir, fileName);
 
   // The marker line MUST match violation-patterns.js::
@@ -330,7 +364,25 @@ ${conditionsBlock.map((l) => `- ${l}`).join("\n")}
 -->
 `;
 
-  fs.writeFileSync(filePath, body, { mode: 0o644 });
+  // `wx` — create-or-fail. A receipt is an IMMUTABLE audit record: it is the sole
+  // distinguisher between an authorized cross-repo action and an unauthorized one
+  // (`repo-scope-discipline.md` § User-Authorized Exception condition 4). Silently
+  // overwriting one destroys the evidence for the action it authorized, so the
+  // write MUST fail closed rather than clobber. Reaching this path now means the
+  // SAME (date, target, action, mode) was already authorized — the existing
+  // receipt already covers the action, so refusing costs the caller nothing.
+  try {
+    fs.writeFileSync(filePath, body, { mode: 0o644, flag: "wx" });
+  } catch (e) {
+    if (e && e.code === "EEXIST") {
+      fail(
+        `a receipt for this exact (date, target, action, mode) already exists: ${path.relative(root, filePath)}\n` +
+          `       It is immutable and already authorizes this action — re-run not needed.\n` +
+          `       For a DIFFERENT action, pass a different --action (the filename discriminates on the full action text).`,
+      );
+    }
+    throw e;
+  }
 
   const rel = path.relative(root, filePath);
   const result = {
