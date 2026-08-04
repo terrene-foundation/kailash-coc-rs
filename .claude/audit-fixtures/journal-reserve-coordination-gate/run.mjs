@@ -539,6 +539,44 @@ cases.push({
     'ok === false AND step === "fold-high-water" (a populated roster that does not resolve the RESERVING signer loses that signer\'s slots)',
 });
 
+cases.push({
+  // THE AVAILABILITY POLARITY, and its absence is why the over-widened filter
+  // shipped. Two ordinary reservations from ONE emitter — seq 0 then seq 1 —
+  // against a VALID roster that resolves the signer. This is a healthy repo.
+  //
+  // `_foldHighWater` folds without `perEmitterStateSeed`, so the second record
+  // is `rule-2` rejected ("prev_hash mismatch"). That is an ORDINARY condition,
+  // not an attack: reservations are `checkpoint_exempt`, so exactly this shape
+  // survives every compaction and generation rotation.
+  //
+  // A filter that refuses on ANY rejection rule therefore PERMANENTLY denies
+  // /codify's mandatory journal receipt on a healthy repo — the log is
+  // append-only, so nothing can un-reject the record, and the only escapes are
+  // hand-editing the log (BLOCKED) or deleting the roster (the bypass the guard
+  // exists to close). Measured: the widened filter turned this case red.
+  //
+  // Paired deliberately with `roster/targeted-erasure-…`, which reds in the
+  // OPPOSITE direction. The two together are what stop this axis oscillating:
+  // one forbids under-scoping, the other forbids over-scoping, and no single
+  // change can satisfy only one of them.
+  name: "roster/ordinary-chain-continuation-does-not-deny-the-receipt",
+  mutation:
+    'journal-reserve.js::_foldHighWater — widen the rejection filter to ANY rule (drop `entry.rule !== "rule-1"`), so an ordinary rule-2 chain continuation denies the receipt',
+  setup: { coordinationOn: false, withWorktree: false },
+  seedSlots: ["0007", "0008"],
+  roster: JSON.stringify({
+    persons: {
+      "fixture-person": {
+        display_id: "fixture-op",
+        keys: [{ fingerprint: "FIXTUREKEYFINGERPRINT" }],
+      },
+    },
+  }),
+  expect: (r) => r.ok === true,
+  describe:
+    "ok === true (an ordinary multi-record chain on a VALID roster must not deny the receipt)",
+});
+
 let failed = 0;
 for (const c of cases) {
   let made = null;

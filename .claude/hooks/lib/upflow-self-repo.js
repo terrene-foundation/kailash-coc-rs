@@ -1433,21 +1433,36 @@ const REASON_OPERAND_MAX = 256; // code points, per operand
 // slash-bearing password, DIGIT-slash password (the case that reopened the leak),
 // and no-`@`-means-untouched (the over-mask bound — without it, "mask
 // everything" would pass).
-// The run also stops at `"`, not only whitespace. Whitespace alone was the
-// stated containment, and it does NOT hold on the `reasonOperand` path:
-// `JSON.stringify` emits no inter-token whitespace, so a whole API error body is
-// one whitespace-free run and the greedy match crossed FIELD BOUNDARIES.
-// Measured: `{"url":"https://dev.azure.com/acme/core/_git/widget","user":"build@acme.com"}`
-// collapsed to `{"url":"https://***@acme.com"}` — which is worse than losing a
-// diagnostic, because the result is valid-looking JSON that falsely reads as
-// though the repo host were `acme.com`. A fabricated plausible diagnostic is the
-// failure mode this module's evidence discipline exists to prevent.
+// TWO PATTERNS, ONE PER INPUT FORMAT — because a single bound cannot serve both
+// and trying to make one do it oscillated twice.
 //
-// A `"` cannot appear unescaped inside a JSON string value, so bounding on it
-// stops the run at the field it started in while still masking a credential that
-// lives INSIDE that field (`{"url":"https://u:p@h/a"}` masks correctly). Plain
-// text is unaffected: git wraps URLs in single quotes, not double.
-const _URL_USERINFO_RE = /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)[^\s"]{0,8192}@/g;
+// The whitespace-only bound is correct for PLAIN TEXT (`reasonText`,
+// `reasonFromError`): their input is transport/diagnostic prose, and any
+// character removed from the run is a character a raw-configured password may
+// contain, which re-opens the leak class. That is exactly how the `/` bound and
+// then the `"` bound each leaked — measured for `"`:
+//     https://oauth2:abc"def@github.com/a.git  ->  credential VERBATIM
+//
+// The quote bound is correct for JSON (`reasonOperand`, the only helper that
+// calls `JSON.stringify`): there the input has no inter-token whitespace, so a
+// whitespace-only run crossed FIELD BOUNDARIES and fabricated a false host —
+//     {"url":"https://dev.azure.com/a/b/_git/c","user":"x@acme.com"}
+//       ->  {"url":"https://***@acme.com"}
+// — and a `"` cannot appear unescaped inside a JSON string value, so it is the
+// field delimiter rather than a character a credential might carry. A credential
+// WITH a quote is still masked here, because inside JSON that quote arrives
+// escaped as `\"` and the backslash, not the quote, is what the run meets.
+//
+// THE PATTERN THAT KEPT REGENERATING THIS BUG, named so the next editor does not
+// repeat it: every prior revision was justified against the PREVIOUS round's
+// failure and never re-checked against the failure the previous fix existed to
+// prevent — scope-widening under a narrowing rationale, four times. Any future
+// edit here MUST carry a case at BOTH polarities: a credential of the shape it
+// newly admits/excludes must still MASK, and the over-mask bound must still HOLD.
+const _URL_USERINFO_TEXT_RE =
+  /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)[^\s]{0,8192}@/g;
+const _URL_USERINFO_JSON_RE =
+  /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)[^\s"]{0,8192}@/g;
 
 // UTF-16 units the scrub examines. Two reasons it is a WINDOW, not the whole
 // string. (1) COST: with an UNBOUNDED scheme run the replace was quadratic in
@@ -1461,9 +1476,9 @@ const _URL_USERINFO_RE = /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)[^\s"]{0,8192}@/g;
 // relied upon.
 const _SCRUB_WINDOW = 8192;
 
-function _scrubAndBound(s) {
+function _scrubAndBound(s, re) {
   const win = s.length > _SCRUB_WINDOW ? s.slice(0, _SCRUB_WINDOW) : s;
-  const scrubbed = win.replace(_URL_USERINFO_RE, "$1***@");
+  const scrubbed = win.replace(re || _URL_USERINFO_TEXT_RE, "$1***@");
   // Cheap pre-bound in UTF-16 units BEFORE the code-point walk, so a megabyte
   // operand does not allocate a megabyte array. A code point is at most 2 units,
   // so slicing at 2*MAX+2 units can never leave fewer than MAX+1 code points —
@@ -1521,7 +1536,8 @@ function reasonOperand(value) {
       return "<unstringifiable>";
     }
   }
-  return _scrubAndBound(s);
+  // JSON input -> the field-delimiter bound.
+  return _scrubAndBound(s, _URL_USERINFO_JSON_RE);
 }
 
 /**

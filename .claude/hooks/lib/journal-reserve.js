@@ -380,20 +380,38 @@ function _foldHighWater(repoDir, dirRel) {
   if (rosterRaw !== undefined && process.env.COC_TEST_SKIP_SIGN !== "1") {
     const rejected = (folded && folded.rejected) || [];
     const lost = rejected.filter((entry) => {
-      // ANY rejection rule, not just rule-1. The first cut filtered
-      // `rule === "rule-1"` (roster membership), but `foldLog` emits at least
-      // seven rejection labels — `shape`, `rule-2` (chain), `rule-3` (fork /
-      // equivocation), `rule-4`, `rule-5`, `presence-proof`, `dispatch` — and
-      // EVERY one drops the record from `accepted` with identical consequence:
-      // the reservation stops raising the high-water and its slot is re-issued.
-      // Two are squarely in the substrate's threat model: rule-3 is the named
-      // equivocation condition and is evaluated BEFORE rule-1, and a
-      // dispatch-rejected record rule-2-poisons that emitter's entire subsequent
-      // chain (documented in this file's own header). The load-bearing question
-      // is "was a reservation for this dir lost", not "was it lost for THIS
-      // reason", so the rule predicate is gone and the type + dir scoping —
-      // which is what keeps unrelated record types out — carries the filter.
-      if (!entry) return false;
+      // SCOPED TO ROSTER-CAUSED REJECTIONS (`rule-1`), and the previous
+      // widening to ALL rules was a DENIAL-OF-SERVICE regression, measured.
+      //
+      // The widening's argument was true as far as it went — every rejection
+      // rule drops the record and loses its slot. What it missed is that most of
+      // those rules fire on ORDINARY, non-adversarial conditions, and the
+      // refusal here is PERMANENT: the log is append-only, so no later record can
+      // make a rejected one accepted, and the only escapes are hand-editing the
+      // log (BLOCKED by `multi-operator-coordination.md` § MUST NOT) or deleting
+      // the roster (the very bypass this guard exists to close).
+      //
+      // Measured: two ordinary reservations from one emitter — `seq` 0 then 1 —
+      // fold to 1 accepted + 1 `rule-2` rejection ("prev_hash mismatch"), against
+      // a VALID roster, because `_foldHighWater` does not supply
+      // `perEmitterStateSeed`. Reservations are `checkpoint_exempt`, so exactly
+      // this shape survives every compaction. Under the widened filter that
+      // permanently denied `/codify`'s mandatory journal receipt on a healthy
+      // repo — reopening issue #76's class, which the comment above claims this
+      // check "cannot" do. It could.
+      //
+      // rule-3 (fork) and `shape` are the same story: two clones of one operator
+      // merging, or a record predating a schema field, are availability events,
+      // not roster events. They are real losses and they are NOT silently
+      // ignored — they simply do not belong on a fail-CLOSED path whose only
+      // remedy is the documented bypass. The roster question is the one this
+      // guard can answer AND remediate (`git show HEAD:…roster.json`).
+      //
+      // BOTH POLARITIES ARE PINNED, because this file has now oscillated twice on
+      // exactly this axis: `roster/targeted-erasure-…` reds if the rule scoping
+      // is dropped back to nothing, and `roster/ordinary-chain-continuation-…`
+      // reds if it is widened to every rule.
+      if (!entry || entry.rule !== "rule-1") return false;
       const rec = entry.record;
       if (!rec || rec.type !== "journal-slot-reservation") return false;
       return ((rec.content || {}).dir || null) === dirRel;
@@ -401,8 +419,8 @@ function _foldHighWater(repoDir, dirRel) {
     if (lost.length > 0) {
       const first = lost[0];
       throw new Error(
-        `${lost.length} journal-slot reservation record(s) for "${dirRel}" were REJECTED by the fold ` +
-          `(first: ${first.rule || "?"} — ${first.reason || "no reason given"}); ` +
+        `${lost.length} journal-slot reservation record(s) for "${dirRel}" were rejected at ROSTER MEMBERSHIP ` +
+          `(first: ${first.reason || "rule 1"}); ` +
           "refusing to hand out a possibly-reserved slot. " +
           `The roster at ${rosterPath} does not resolve the signer(s) that reserved them — ` +
           "restore it (e.g. `git show HEAD:.claude/operators.roster.json`) before reserving.",

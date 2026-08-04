@@ -909,6 +909,67 @@ t(
 );
 
 t(
+  "gh+ado/userinfo-scrub-covers-a-credential-containing-a-double-quote",
+  'upflow-self-repo.js — point `reasonText`/`reasonFromError` at the JSON pattern (`[^\\s"]`), so a `"` inside userinfo ends the run before the terminating `@`',
+  () => {
+    // THE LEAK POLARITY FOR THE TEXT PATH, and the fourth instance of one
+    // mechanism: every character removed from the userinfo run is a character a
+    // raw-configured password may contain, and excluding it re-opens the leak.
+    // `/` did it, then the mandatory `:` did it, then `\"` did it. Measured
+    // before the split:
+    //   fatal: unable to access 'https://oauth2:abc"def@github.com/a.git': 403
+    // came back with the credential VERBATIM.
+    //
+    // The `\"` bound is correct for JSON (its input has no inter-token
+    // whitespace, so the run must stop at the field delimiter) and WRONG for
+    // plain text (a password may contain a quote). Hence two patterns, one per
+    // input format — the paired case below pins the JSON side.
+    const SECRET = 'abc"def/ghi';
+    const res = gh.fetchRepoOwner(
+      throwing(
+        `fatal: unable to access 'https://oauth2:${SECRET}@github.com/acme/widget.git/': 403`,
+      ),
+      GH_REPO,
+    );
+    const e = typedRefusal(res, "gh quote-bearing credential");
+    if (e) return e;
+    if (res.reason.includes(SECRET)) {
+      return `quote-bearing credential survived verbatim: ${JSON.stringify(res.reason.slice(0, 240))}`;
+    }
+    return res.reason.includes("***@")
+      ? null
+      : `expected the canonical ***@ mask; got ${JSON.stringify(res.reason.slice(0, 240))}`;
+  },
+);
+
+t(
+  "gh+ado/userinfo-scrub-still-masks-a-credential-inside-a-json-field",
+  "upflow-self-repo.js — point `reasonOperand` at the TEXT pattern (`[^\\s]`), which crosses JSON field boundaries again",
+  () => {
+    // THE PAIRED JSON POLARITY. The field-delimiter bound must stop the run at
+    // the field it started in WITHOUT letting a credential inside that field
+    // escape — otherwise "bound it at the quote" and "stop scrubbing JSON" are
+    // indistinguishable. Together with the field-boundary case, this pins the
+    // JSON pattern from both sides.
+    const res = gh.fetchRepoOwner(
+      failing(
+        { url: "https://oauth2:s3cr3t@dev.azure.com/acme/core/_git/widget" },
+        403,
+      ),
+      GH_REPO,
+    );
+    const e = typedRefusal(res, "gh json credential");
+    if (e) return e;
+    if (res.reason.includes("s3cr3t")) {
+      return `credential inside a JSON field survived: ${JSON.stringify(res.reason.slice(0, 240))}`;
+    }
+    return res.reason.includes("***@")
+      ? null
+      : `expected the ***@ mask inside the JSON field; got ${JSON.stringify(res.reason.slice(0, 240))}`;
+  },
+);
+
+t(
   "gh+ado/transport-error-refusals-are-bounded",
   "vcs-github-adapter.js / vcs-azure-adapter.js — drop the length bound from the transport-error reason helper",
   () => {
