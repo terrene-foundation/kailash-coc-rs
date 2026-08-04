@@ -239,6 +239,14 @@ const GH_UPSTREAM = {
 const GH_SELF_REMOTE =
   "https://github.com/terrene-foundation/kailash-coc-rs.git";
 
+// CONTROL BYTES ARE BUILT FROM CHAR CODES, never written as source literals.
+// A raw C0 byte in this file is invisible to a reviewer — the exact property the
+// guards under test exist to remove from output — and a shell `$(...)` round-trip
+// silently STRIPS a literal newline from a payload, so the construction has to
+// happen in node. A raw U+212A in this suite's test input was caught once on this
+// branch for the same class of reason.
+const CTRL_LF = String.fromCharCode(10);
+
 const ADO_SELF = { org: "contoso", project: "platform", repo: "coc-rs" };
 const ADO_UPSTREAM = {
   org: "contoso",
@@ -707,6 +715,61 @@ const cases = [
     prRef: { repoRef: GH_SELF, prId: 77 },
     expect: { ok: false, fired: false },
     expectReason: "does not parse to an owner/name pair",
+  },
+  {
+    // THE OTHER HALF OF THE SAME GUARD — the residual INSIDE its own character
+    // class. The sibling case above drives a non-ASCII authority; this one
+    // drives a C0 CONTROL BYTE, which the guard's original `[\x00-\x7f]` class
+    // ADMITTED. That admission was not inert:
+    //
+    //   https://contoso<LF>.visualstudio.com/platform/_git/coc-rs
+    //     host                -> "contoso\n.visualstudio.com"
+    //     endsWith(".visualstudio.com")  -> TRUE, so the ADO subdomain branch runs
+    //     org = host.slice(0, indexOf(".")) -> "contoso\n"
+    //     normalizeComponent  -> .trim() -> "contoso"
+    //
+    // i.e. the control-byte authority derives the SAME org as the legitimate
+    // `contoso.visualstudio.com`. Measured before the fix, in a real repo:
+    //     derive   -> ok:true  self.ado {org:"contoso",project:"platform",repo:"coc-rs"}
+    //     complete -> ok:true  fired:true
+    // — an AUTHORIZED completion on a remote whose host git resolves elsewhere.
+    //
+    // `normalizeComponent`'s sibling guard is DELIBERATELY still `[\x00-\x7f]`
+    // and must stay: it runs before a POSITIVE `[A-Za-z0-9._-]` allowlist that
+    // strips controls anyway. The HOST path is the one with no second gate.
+    //
+    // Reachability is ~zero (nothing fetches such a remote — see the IPv6 note
+    // in `_splitRemoteUrl`), so this is a refuse→authorize flip in a parse, not
+    // a live bypass. It is fixed and instrumented on this file's own standard:
+    // safe-by-accident becomes a bypass the moment a caller compares hosts
+    // differently.
+    //
+    // The payload is built with `String.fromCharCode`, never a source literal:
+    // a raw control byte written into this file is invisible to a reviewer, and
+    // a raw U+212A in test input was already caught once on this branch.
+    //
+    // The PERMISSIVE polarity for the same parse path is
+    // `ado/allow-own-repo-visualstudio-subdomain-form` below, which drives the
+    // byte-identical remote WITHOUT the control byte and expects ok:true. Both
+    // are required: a refusal-only pair cannot distinguish this fix from a
+    // refuse-everything parser (commit `1a25ee1` on this branch scored exactly
+    // that as clean).
+    name: "ado/control-byte-authority-refuses-at-derivation",
+    mutation:
+      "upflow-self-repo.js::_splitRemoteUrl — widen the host guard back to `/^[\\x00-\\x7f]*$/` (from `/^[\\x20-\\x7e]*$/`)",
+    repo: {
+      dirName: "coc-rs",
+      remote: `https://contoso${CTRL_LF}.visualstudio.com/platform/_git/coc-rs`,
+    },
+    adapter: ADO,
+    prRef: { repoRef: ADO_SELF, prId: 42 },
+    expect: { ok: false, fired: false },
+    expectReason: "does not parse to an owner/name pair",
+    // The control byte must not survive into the refusal blob either — with the
+    // guard widened the derivation succeeds and this assertion is moot, but if a
+    // future change makes the host reach the reason it reds here rather than
+    // silently forging a log line.
+    expectReasonAbsent: CTRL_LF,
   },
   {
     // THE ONLY INSTRUMENT FOR `displayPrId`, and it needs the NEGATIVE

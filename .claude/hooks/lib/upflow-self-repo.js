@@ -508,8 +508,46 @@ function _splitRemoteUrl(url) {
   // `github.<U+212A>8s.corp`, which lowercases into the set while git and ssh
   // resolve the distinct IDN host. The guard is what makes the property
   // structural rather than a coincidence of the current set's spelling.
+  //
+  // PRINTABLE ASCII, NOT ALL OF ASCII — and the narrowing is the point. The
+  // first cut of this guard was `[\x00-\x7f]`, which ADMITS every C0 control
+  // byte and DEL. That admission was not inert: it is the residual INSIDE the
+  // class the guard was written for.
+  //
+  //   https://contoso<LF>.visualstudio.com/<proj>/_git/<repo>
+  //     host                           -> "contoso\n.visualstudio.com"
+  //     endsWith(".visualstudio.com")  -> TRUE  (the ADO subdomain branch runs)
+  //     org = host.slice(0, indexOf(".")) -> "contoso\n"
+  //     normalizeComponent -> .trim()  -> "contoso"
+  //
+  // — the SAME org the legitimate `contoso.visualstudio.com` derives. Measured
+  // in a real repo before this narrowing: `deriveSelfRepoRef` returned ok:true
+  // with `ado {org:"contoso",...}` and `completeUpflowPR` returned
+  // `ok:true fired:true`. A refuse→authorize flip, not a cosmetic parse defect.
+  //
+  // THE SIBLING GUARD IN `normalizeComponent` IS DELIBERATELY STILL
+  // `[\x00-\x7f]` AND MUST STAY THAT WAY. It runs immediately before a POSITIVE
+  // `[A-Za-z0-9._-]` allowlist that strips every control byte anyway, so
+  // narrowing it there would be redundant. The HOST path is the one with no
+  // second gate — `host` is compared against the closed sets directly — which is
+  // why exactly one of the two moved.
+  //
+  // Reachability is ~zero, and that is stated rather than glossed: nothing
+  // fetches such a remote, the same disposition the `#`/`?` and IPv6 notes in
+  // this function already record. It is closed because THIS FILE'S OWN STANDARD
+  // (see the IPv6 comment below) is that a known-INCORRECT parse is what each of
+  // this module's host defects began as — safe-by-accident becomes a bypass the
+  // moment a caller compares hosts differently. Instrumented by
+  // `audit-fixtures/upflow-open-never-complete/`
+  // ::ado/control-byte-authority-refuses-at-derivation, whose permissive twin
+  // `ado/allow-own-repo-visualstudio-subdomain-form` drives the byte-identical
+  // remote WITHOUT the control byte and must keep resolving.
+  //
+  // No legitimate authority is affected: every character a real host, a port, a
+  // bracketed IPv6 literal, or a userinfo-stripped authority can carry lies in
+  // `\x20-\x7e`.
   // eslint-disable-next-line no-control-regex
-  if (!/^[\x00-\x7f]*$/.test(authority)) return null;
+  if (!/^[\x20-\x7e]*$/.test(authority)) return null;
 
   // No trailing-dot normalization is applied, and that is deliberate: DNS
   // treats `github.com.` as the same absolute name, but this returns it
