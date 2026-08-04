@@ -34,8 +34,9 @@
  * `collection` is OPTIONAL and read ONLY by `completeUpflowPR`'s identity
  * fence: the legacy TFS/VSTS URL form
  * `<org>.visualstudio.com/<collection>/<project>/_git/<repo>` carries one and
- * the three modern forms do not, so absent means "the collection-less form"
- * and matches only absent. Every REST path this adapter builds is
+ * the three modern forms do not, so absent means "the org's DEFAULT
+ * collection" and compares equal to a stated `DefaultCollection`, and unequal
+ * to any other. Every REST path this adapter builds is
  * `{org}/{project}/_apis/...` — see the residual note on `completeUpflowPR`.
  * principal for ADO: an Entra userPrincipalName (string).
  *
@@ -91,8 +92,9 @@ function validateRepoRef(ref) {
     return { valid: false, reason: `repoRef.repo ${reasonText(r.reason)}` };
   }
   // OPTIONAL, and optional in the strict sense: absent (undefined/null/"") is
-  // VALID and means "the collection-less form". It is NOT a wildcard — the
-  // fence's `isSelfRepoAdo` refuses absent-vs-present. Only the legacy
+  // VALID and means "the org's DEFAULT collection". It is NOT a wildcard — the
+  // fence's `isSelfRepoAdo` normalizes absent to `defaultcollection` and then
+  // COMPARES it, so a non-default collection still refuses. Only the legacy
   // `<org>.visualstudio.com/<collection>/<project>/_git/<repo>` form carries one.
   //
   // VALIDATED WITH THE PROJECT SHAPE because a collection appears in the same
@@ -132,7 +134,7 @@ function _fail(error, reason, extra) {
 /**
  * Render an ADO collection component for INCLUSION IN A REFUSAL STRING.
  *
- * Absence is rendered as a visible `<no-collection>` rather than an empty
+ * Absence is rendered as a visible `<default-collection>` rather than an empty
  * string: the collection is the one quad component that is legitimately absent,
  * and a refusal reading `contoso//platform/coc-rs` on both sides would tell a
  * reader nothing about why it refused.
@@ -145,7 +147,12 @@ function _fail(error, reason, extra) {
  * the existing bound, not a new unbounded one.
  */
 function _collectionLabel(v) {
-  if (v === undefined || v === null || v === "") return "<no-collection>";
+  // Rendered as `<default-collection>`, not `<no-collection>`: under
+  // `isSelfRepoAdo` an absent collection IS the default, so labelling it as an
+  // absence understates what differed when the other side names a non-default
+  // one (a refusal printing `othercollection` vs `<no-collection>` reads as
+  // present-vs-missing when it is actually non-default-vs-default).
+  if (v === undefined || v === null || v === "") return "<default-collection>";
   return reasonText(v);
 }
 
@@ -862,7 +869,7 @@ function completeUpflowPR(transport, prRef) {
       // triples and no reason for the refusal — the single most confusing
       // refusal this fence can emit, and the one a legacy-collection maintainer
       // hits first now that an unstated collection no longer matches a present
-      // one. `_collectionLabel` renders absence as `<no-collection>` so the two
+      // one. `_collectionLabel` renders absence as `<default-collection>` so the two
       // sides are visibly different rather than both blank.
       `refusing to complete ${reasonText(repoRef.org)}/${_collectionLabel(repoRef.collection)}/` +
         `${reasonText(repoRef.project)}/${reasonText(repoRef.repo)}` +

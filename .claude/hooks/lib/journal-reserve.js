@@ -312,16 +312,6 @@ function _foldHighWater(repoDir, dirRel) {
     // is the same disposition `coordination-mode.js` already takes for a corrupt
     // roster (`implicit-corrupt-roster-failclosed`) — the two modules disagreed
     // about exactly these bytes until now.
-    const persons =
-      roster && typeof roster === "object" ? roster.persons : null;
-    const resolvesSomeone =
-      persons && typeof persons === "object" && Object.keys(persons).length > 0;
-    if (!resolvesSomeone) {
-      throw new Error(
-        `roster at ${rosterPath} parses but resolves no persons; refusing to hand out a possibly-reserved slot ` +
-          "(an empty roster rejects every folded record, which silently collapses the fold high-water to 0)",
-      );
-    }
   }
 
   // skipSignatureVerify: the journal-slot HIGH-WATER needs only chain
@@ -339,6 +329,61 @@ function _foldHighWater(repoDir, dirRel) {
     process.env.COC_TEST_SKIP_SIGN === "1"
       ? records
       : (folded && folded.accepted) || [];
+
+  // A RESERVATION RECORD REJECTED FOR ROSTER MEMBERSHIP IS LOST HIGH-WATER, and
+  // this asks that question DIRECTLY rather than through a proxy for it.
+  //
+  // The first cut of this guard asked "does the roster name ANYBODY"
+  // (`Object.keys(roster.persons).length > 0`). That is a different question
+  // from the one the fold actually answers: `_resolveRosterPerson` resolves
+  // PER-RECORD, keyed on THAT record's `verified_id`, so a roster naming alice
+  // and bob with BOB'S ENTRY DELETED still passes a non-empty check while every
+  // record bob emitted fails rule 1, drops out of `accepted`, and stops
+  // contributing to `high` — the same collapse, scoped to one emitter, reached
+  // by an edit CHEAPER and QUIETER than the `{}` erasure the proxy did catch.
+  // (`clean-instantiate.mjs::placeholderRoster` ships a non-empty roster that
+  // resolves no real signer, so "non-empty yet resolves nobody" is a state this
+  // repo already produces, not a hypothetical.)
+  //
+  // It also OVER-fired: an empty roster on a coordination-OFF repo refused even
+  // when no reservation record existed to lose, which re-opens issue #76's class
+  // — the journal receipt `/codify` mandates becoming unsatisfiable — through a
+  // new input. This check cannot: with no rule-1-rejected reservation record for
+  // this dir, there is nothing to refuse about.
+  //
+  // Scoped to `journal-slot-reservation` records for THIS `dir` because those
+  // are the only records whose loss can hand out a taken slot; a rule-1
+  // rejection of some unrelated record type is not this function's business.
+  // Skipped under COC_TEST_SKIP_SIGN=1 for the same reason `accepted` is: that
+  // mode bypasses the fold entirely, so there are no rejections to read.
+  // GATED ON A ROSTER BEING PRESENT, and that gate is load-bearing. With NO
+  // roster file (the ENOENT arm above, which leaves `roster` null), rule 1
+  // rejects every record for want of a roster to check against — but that is the
+  // NORMAL state of a solo, un-enrolled, coordination-OFF repo, not evidence
+  // that a reservation was lost. Refusing there would make `/codify`'s mandatory
+  // journal receipt unsatisfiable on exactly those repos, which is issue #76's
+  // failure class re-opened through a new input. A roster that EXISTS was
+  // written by someone, so records it fails to resolve are records whose
+  // reservations we can no longer see.
+  if (roster !== null && process.env.COC_TEST_SKIP_SIGN !== "1") {
+    const rejected = (folded && folded.rejected) || [];
+    const lost = rejected.filter((entry) => {
+      if (!entry || entry.rule !== "rule-1") return false;
+      const rec = entry.record;
+      if (!rec || rec.type !== "journal-slot-reservation") return false;
+      return ((rec.content || {}).dir || null) === dirRel;
+    });
+    if (lost.length > 0) {
+      const first = lost[0];
+      throw new Error(
+        `${lost.length} journal-slot reservation record(s) for "${dirRel}" were rejected at roster membership ` +
+          `(first: ${first.reason || "rule 1"}); refusing to hand out a possibly-reserved slot. ` +
+          `The roster at ${rosterPath} does not resolve the signer(s) that reserved them — ` +
+          "restore it (e.g. `git show HEAD:.claude/operators.roster.json`) before reserving.",
+      );
+    }
+  }
+
   let high = 0;
   for (const rec of accepted) {
     if (!rec || rec.type !== "journal-slot-reservation") continue;

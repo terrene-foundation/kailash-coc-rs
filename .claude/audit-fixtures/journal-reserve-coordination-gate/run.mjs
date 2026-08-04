@@ -135,7 +135,7 @@ const UNSIGNED_IDENTITY = { display_id: "fixture-op" };
  * `skipSignatureVerify: true` on the normal path too, which is precisely why an
  * unvalidated `content.slot` is reachable.
  */
-function writeSlotRecord(repoDir, slot) {
+function writeSlotRecord(repoDir, slot, seq) {
   const { resolveLogPath } = require(path.join(LIB, "state-io.js"));
   const logPath = resolveLogPath(repoDir);
   fs.mkdirSync(path.dirname(logPath), { recursive: true });
@@ -144,6 +144,23 @@ function writeSlotRecord(repoDir, slot) {
     JSON.stringify({
       type: "journal-slot-reservation",
       content: { dir: "journal", slot },
+      // FULL ENVELOPE, NOT A BARE `{type, content}`. The first cut of this
+      // helper emitted only those two fields, which `foldLog` rejects at the
+      // SHAPE check ("verified_id missing") long before roster membership is
+      // ever consulted. That made every roster case unable to exercise the
+      // property it claimed to test: the records never reached rule 1, so an
+      // emptied roster and a valid one produced the SAME fold outcome (nothing
+      // accepted), and the cases passed only because the guard under test at
+      // the time refused on the roster's shape rather than on the fold's
+      // verdict. A record that cannot reach the check is not an instrument for
+      // it. Measured shape requirements, in rejection order: verified_id,
+      // person_id, then a non-negative integer seq.
+      verified_id: SIGNED_IDENTITY.verified_id,
+      person_id: SIGNED_IDENTITY.person_id,
+      ts: "2026-08-04T00:00:00Z",
+      seq: typeof seq === "number" ? seq : 0,
+      prev_hash: null,
+      sig: "fixture-signature",
     }) + "\n",
     "utf8",
   );
@@ -420,17 +437,23 @@ cases.push({
     "journal-reserve.js::_foldHighWater — throw unconditionally after reading the roster (ignore the parse result)",
   setup: { coordinationOn: false, withWorktree: false },
   seedSlots: ["0007"],
+  // KEYS ARE `{fingerprint}` OBJECTS, NOT BARE STRINGS. `_resolveRosterPerson`
+  // matches on `k.fingerprint === verified_id`, so a string key resolves NOBODY
+  // — the first cut of this case used `keys: ["FIXTUREKEY…"]` and was therefore
+  // a roster that looked valid, read as valid, and resolved nothing. It passed
+  // only while the guard under test asked about the roster's SHAPE; the moment
+  // the guard began reading the fold's verdict it failed, correctly.
   roster: JSON.stringify({
     persons: {
       "fixture-person": {
         display_id: "fixture-op",
-        keys: ["FIXTUREKEYFINGERPRINT"],
+        keys: [{ fingerprint: "FIXTUREKEYFINGERPRINT" }],
       },
     },
   }),
   expect: (r) => r.ok === true,
   describe:
-    "ok === true (a roster that reads, parses, and resolves a person is not a refusal condition)",
+    "ok === true (a roster that reads, parses, and RESOLVES THE RESERVING SIGNER is not a refusal condition)",
 });
 
 for (const [label, body] of [
@@ -472,6 +495,41 @@ for (const [label, body] of [
   });
 }
 
+cases.push({
+  // TARGETED ERASURE — the shape a "does the roster name ANYBODY" check cannot
+  // see, and the reason this guard reads the fold's verdict instead of the
+  // roster's shape.
+  //
+  // The roster below is well-formed and NON-EMPTY: it names a person, with a
+  // key. It simply does not name the person who RESERVED the seeded slot.
+  // `_resolveRosterPerson` resolves PER-RECORD on that record's `verified_id`,
+  // so every reservation from the erased signer fails rule 1, drops out of
+  // `accepted`, and stops contributing to the high-water — the identical
+  // collapse the empty-roster cases produce, scoped to one emitter.
+  //
+  // It is also the CHEAPER attack: deleting one person's entry from a roster
+  // that still looks populated is quieter than truncating the file to `{}`,
+  // and a shape-based guard reports green throughout. `clean-instantiate.mjs`
+  // ships a non-empty placeholder roster that resolves no real signer, so
+  // "non-empty yet resolves nobody" is a state this repo already produces.
+  name: "roster/targeted-erasure-of-the-reserving-signer-refuses",
+  mutation:
+    "journal-reserve.js::_foldHighWater — replace the rule-1 rejection check with a roster-shape check (e.g. `Object.keys(roster.persons).length > 0`), which this roster passes",
+  setup: { coordinationOn: false, withWorktree: false },
+  seedSlots: ["0007"],
+  roster: JSON.stringify({
+    persons: {
+      "someone-else": {
+        display_id: "other-op",
+        keys: [{ fingerprint: "SOMEOTHERKEYFINGERPRINT" }],
+      },
+    },
+  }),
+  expect: (r) => r.ok === false,
+  describe:
+    "ok === false (a populated roster that does not resolve the RESERVING signer loses that signer's slots)",
+});
+
 let failed = 0;
 for (const c of cases) {
   let made = null;
@@ -500,7 +558,11 @@ for (const c of cases) {
     // ones. Same writer — the distinction is what the case is asserting about,
     // not how the record is written.
     const logSlots = c.poison || c.seedSlots;
-    if (logSlots) for (const s of logSlots) writeSlotRecord(made.repoDir, s);
+    // Sequential `seq` per record: the fold chains per emitter, and every record
+    // here carries the same `verified_id`, so a constant seq would be rejected
+    // on chain order rather than on the property under test.
+    if (logSlots)
+      logSlots.forEach((s, i) => writeSlotRecord(made.repoDir, s, i));
     const prevSkipSign = process.env.COC_TEST_SKIP_SIGN;
     if (c.forceSkipSign) process.env.COC_TEST_SKIP_SIGN = "1";
     let r;

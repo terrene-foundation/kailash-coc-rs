@@ -729,6 +729,89 @@ t(
 );
 
 t(
+  "gh+ado/userinfo-scrub-covers-a-bare-token-with-no-colon",
+  "upflow-self-repo.js::_URL_USERINFO_RE — make the `:` MANDATORY again (drop the `(?::…)?` optional group), which stops masking a colon-less userinfo",
+  () => {
+    // THE THIRD POLARITY, AND ITS ABSENCE ALREADY COST A REGRESSION. The fix for
+    // the slash-bearing credential anchored the match on the `user:pass` colon
+    // and made that colon MANDATORY — which silently stopped masking
+    // `https://<TOKEN>@host`, the DOCUMENTED PAT-clone form on BOTH providers
+    // this module gates (GitHub `https://<token>@github.com/o/r.git`, Azure
+    // DevOps `https://<PAT>@dev.azure.com/org/proj/_git/repo`). The previous
+    // regex DID mask it. Measured after that fix and before this case existed:
+    //   fatal: unable to access 'https://ghp_16C7…B4a@github.com/acme/widget.git': 403
+    // came back verbatim, PAT intact.
+    //
+    // It was invisible because every case in this suite — including the two the
+    // slash fix ADDED — drove a colon-bearing userinfo (`oauth2:`, `build:`).
+    // That is the same shape the slash fix's own comment records about the cut
+    // before it ("the no-slash control masking correctly is exactly why the
+    // original cases could not see the miss"), repeated one polarity over. Three
+    // polarities are required because there are three userinfo shapes: bare
+    // token, `user:pass`, and `user:pass-containing-a-slash`.
+    const TOKEN = "ghp_ZZZZ000011112222333344445555666677";
+    for (const [label, res] of [
+      [
+        "gh",
+        gh.fetchRepoOwner(
+          throwing(
+            `fatal: unable to access 'https://${TOKEN}@github.com/acme/widget.git/': 403`,
+          ),
+          GH_REPO,
+        ),
+      ],
+      [
+        "ado",
+        ado.createUpflowPR(
+          throwing(
+            `request failed for https://${TOKEN}@dev.azure.com/acme/core/_git/widget`,
+          ),
+          { repoRef: ADO_REPO, head: "feat/x", title: "t" },
+        ),
+      ],
+    ]) {
+      const e = typedRefusal(res, `${label} bare-token credential`);
+      if (e) return e;
+      if (res.reason.includes(TOKEN)) {
+        return `${label}: bare-token credential survived verbatim: ${JSON.stringify(res.reason.slice(0, 240))}`;
+      }
+      if (!res.reason.includes("***@")) {
+        return `${label}: expected the canonical ***@ mask; got ${JSON.stringify(res.reason.slice(0, 240))}`;
+      }
+    }
+    return null;
+  },
+);
+
+t(
+  "gh+ado/userinfo-scrub-preserves-the-host-when-a-port-is-present",
+  "upflow-self-repo.js::_URL_USERINFO_RE — let the post-colon run cross `/` unrestricted, so a port plus a path `@` swallows the host",
+  () => {
+    // THE HOST-PRESERVATION INVARIANT, which the scrub states twice as
+    // load-bearing ("the HOST is deliberately preserved — the message must stay
+    // diagnostic", and `observability.md` § 6.2's `scheme://***@host[:port]/path`
+    // form) and which no case pinned when a PORT is present.
+    //
+    // The two pre-existing host-survival cases drive PORT-LESS URLs, so neither
+    // can red on this; a `host:port` URL whose PATH also carries an `@` supplies
+    // the colon the userinfo match anchors on, and an unrestricted post-colon
+    // run would consume straight through the host to that path `@`, masking
+    // `https://host:8443/a/b@c` down to `https://***@c`.
+    const res = gh.fetchRepoOwner(
+      throwing(
+        "fatal: unable to access 'https://github.com:8443/acme/widget/tree@v2': 404",
+      ),
+      GH_REPO,
+    );
+    const e = typedRefusal(res, "gh host-with-port");
+    if (e) return e;
+    return res.reason.includes("github.com")
+      ? null
+      : `the scrub ate the host on a ported URL, breaking the stated diagnostic invariant: ${JSON.stringify(res.reason.slice(0, 240))}`;
+  },
+);
+
+t(
   "gh+ado/userinfo-scrub-leaves-a-path-at-sign-alone",
   "upflow-self-repo.js::_URL_USERINFO_RE — widen the userinfo class to `[^\\s@]` (dropping the `:` anchor), so an `@` in a PATH is masked as if it were userinfo",
   () => {

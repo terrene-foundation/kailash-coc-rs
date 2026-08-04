@@ -779,7 +779,9 @@ function _parseAdo(host, segments) {
     // `collection` stays null on all of them. That null is what keeps the
     // widening backward-compatible for every existing caller: two modern forms
     // compare null-to-null and are unaffected. It is NOT a wildcard — see
-    // `isSelfRepoAdo`, where absent matches only absent.
+    // `_normalizeCollection`, where absent resolves to the DEFAULT collection
+    // and is then compared like any other value, so a NON-default collection
+    // still differs from an absent side.
   } else {
     // NOT INDEPENDENTLY LOAD-BEARING, and measured to be so rather than
     // assumed. Relaxing this line alone to `< 3` reds NOTHING — the suite stays
@@ -1117,24 +1119,25 @@ function isSelfRepo(repoRef, self) {
  * only on the legacy 3-segment `<org>.visualstudio.com/<collection>/...`. So
  * null is a legitimate VALUE here, not a failure, and it needs its own rule.
  *
- * THE RULE: absent matches ONLY absent. Two collection-less remotes compare
- * null-to-null and are unaffected — that is what makes the widening
- * backward-compatible for every existing caller and every modern-form case.
- * Absent-vs-present REFUSES. An absent collection is the caller asserting the
- * collection-LESS form, which is a different identity from a collection form;
- * it is not a wildcard.
+ * THE RULE: absent IS the default collection, so it is NORMALIZED and COMPARED
+ * like the other three legs rather than routed around the comparison. See
+ * `_normalizeCollection`. Two collection-less remotes still compare equal, which
+ * is what makes the widening backward-compatible for every existing caller and
+ * every modern-form case; a NON-default collection still differs from an absent
+ * side in both directions, so cross-collection stays closed.
  *
- * THAT DIRECTION IS DELIBERATE AND IT IS A CONTRACT CHANGE. Letting absent
- * match present would make this leg one that can never fail from the adapter
- * (`repoRef` had no collection field at all before this change), which is the
- * exact defect the fixture README records three separate times — the ADO `org`
- * leg, the GitHub `owner` leg, and the ADO `project` leg, each of which
- * self-compared or was carried by a sibling and instrumented nothing. It is
- * also the direction this module takes everywhere else it meets an
- * under-determined identity: refuse. The cost is real and is stated rather than
- * glossed — a caller on a legacy collection remote that completed with a bare
- * {org, project, repo} must now name the collection. The refusal names BOTH
- * sides' collection so that is a one-field fix, not a hunt.
+ * AN EARLIER VERSION OF THIS DOCSTRING ARGUED THE OPPOSITE — "absent matches
+ * ONLY absent", on the reasoning that letting absent match present would make
+ * this leg one that can never fail. That reasoning is correct about WILDCARDS
+ * and wrong about DEFAULTS, and the rule it produced shipped a maintainer
+ * lockout: an ordinary ADO clone mid-URL-migration (legacy https fetch, modern
+ * ssh push, ONE repository) compared present-vs-absent and refused itself.
+ * `_normalizeCollection` carries the measurement and the full post-mortem.
+ *
+ * The distinction that keeps this from being the never-fails leg: normalizing is
+ * not wildcarding. Absent resolves to ONE specific value (`defaultcollection`)
+ * and is then compared; it does not match anything else. Both directions are
+ * pinned by fixtures that red independently.
  */
 function isSelfRepoAdo(repoRef, selfAdo) {
   if (!repoRef || !selfAdo) return false;
@@ -1399,16 +1402,45 @@ const REASON_OPERAND_MAX = 256; // code points, per operand
 // The first run excludes `:` so the two runs are disjoint and the match stays
 // linear; both are bounded, and the whole scan is capped by `_SCRUB_WINDOW`.
 //
-// ACCEPTED OVER-SCRUB, stated rather than discovered later: a URL carrying BOTH
-// an explicit port AND an `@` in its path (`https://host:8080/a@b`) matches and
-// masks to `https://***@b`. That combination is rare in a transport error, and
-// the direction is the safe one — over-masking a diagnostic beats leaking a
-// credential (`security.md` § "No secrets in logs"). Both polarities are pinned:
-// `gh+ado/userinfo-scrub-covers-credentials-containing-a-slash` reds if the
-// class stops crossing `/`, and `gh+ado/userinfo-scrub-leaves-a-path-at-sign-
-// alone` reds if the `:` anchor is dropped for a blanket `[^\s@]`.
+// THE COLON IS OPTIONAL, AND MAKING IT MANDATORY WAS A REGRESSION. The first
+// attempt at the slash fix REQUIRED a `user:pass` colon, which silently stopped
+// masking `https://<TOKEN>@host` — the DOCUMENTED PAT-clone form on BOTH
+// providers this module gates (GitHub `https://<token>@github.com/o/r.git`,
+// Azure DevOps `https://<PAT>@dev.azure.com/org/proj/_git/repo`), and a form the
+// ORIGINAL regex handled. Measured before this correction: a bare `ghp_…` PAT
+// came back verbatim in a logged reason. It was invisible because every case in
+// the suite drove a colon-bearing userinfo — the same blindness the slash miss
+// had, one polarity over. THERE ARE THREE USERINFO SHAPES and all three are now
+// pinned: bare token, `user:pass`, and `user:pass-containing-a-slash`.
+//
+// A COLON-LESS USERINFO MAY NOT CROSS `/`; only the post-colon run may. That is
+// what keeps `https://h/a@b` (an `@` in a PATH) out: from `h` the run stops at
+// `/`, and neither a `:` nor an `@` follows.
+//
+// THE PORT LOOKAHEAD PRESERVES THE HOST. Without it, `https://host:8443/a/b@c`
+// supplies a colon and the post-colon run would consume straight through the
+// host to the path's `@`, masking the whole thing to `https://***@c` — breaking
+// the invariant this module states twice as load-bearing (the HOST is preserved
+// so the message stays diagnostic; `observability.md` § 6.2's
+// `scheme://***@host[:port]/path` form). A PORT is digits followed by `/` or
+// whitespace or end-of-string; a PASSWORD is not, so the negative lookahead
+// separates them. `https://user:1234@host` still masks — `1234@` is neither
+// `\d+[/\s]` nor `\d+$`.
+//
+// Linearity, stated precisely because an earlier draft of this comment got the
+// reason wrong: the two runs are NOT disjoint (`[^\s@:/]` is a subset of
+// `[^\s@]`). What bounds the work is that each quantifier has an unambiguous
+// terminator it cannot itself contain — the first cannot contain `:` or `/`, the
+// second cannot contain `@` — so neither has a boundary to backtrack across.
+// Both are bounded and the whole scan is capped by `_SCRUB_WINDOW`.
+//
+// Four polarities are pinned, and each reds alone:
+// `…-covers-a-bare-token-with-no-colon` (mandatory colon),
+// `…-covers-credentials-containing-a-slash` (post-colon run stops at `/`),
+// `…-leaves-a-path-at-sign-alone` (colon-less run allowed to cross `/`),
+// `…-preserves-the-host-when-a-port-is-present` (port lookahead dropped).
 const _URL_USERINFO_RE =
-  /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)[^\s@:]{0,512}:[^\s@]{0,4096}@/g;
+  /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)[^\s@:/]{0,512}(?::(?!\d+[/\s]|\d+$)[^\s@]{0,4096})?@/g;
 
 // UTF-16 units the scrub examines. Two reasons it is a WINDOW, not the whole
 // string. (1) COST: with an UNBOUNDED scheme run the replace was quadratic in

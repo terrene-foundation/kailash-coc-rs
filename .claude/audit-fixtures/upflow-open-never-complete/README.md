@@ -674,19 +674,32 @@ a sentence.
 
 An unstated `repoRef.collection` no longer matches a present derived one. A
 caller on a legacy collection remote that completed with a bare
-`{org, project, repo}` must now name the collection. That is a REAL break, and
-the direction was chosen deliberately: letting absent match present would make
-the collection a leg that can never fail from the adapter (the pre-quad
-`repoRef` had no such field at all), which is the exact defect this README
-already records three times — the ADO `org` leg, the GitHub `owner` leg, and the
-ADO `project` leg. The refusal names both sides' collection (absence renders as
-`<no-collection>`) so the fix is one field. Observed:
+`{org, project, repo}` must now name the collection **when that collection is
+not the default**. The refusal names both sides' collection (absence renders as
+`<default-collection>`) so the fix is one field. Observed:
 
 ```
-refusing to complete contoso/<no-collection>/platform/coc-rs!42 — this repo
+refusing to complete contoso/<default-collection>/platform/coc-rs!42 — this repo
 derives as contoso/othercollection/platform/coc-rs. A PR may only be completed
 on the repo you ARE. …
 ```
+
+**CORRECTED — this section previously argued the opposite rule and that rule
+shipped a lockout.** It read: "letting absent match present would make the
+collection a leg that can never fail from the adapter … which is the exact
+defect this README already records three times". That reasoning is sound about
+WILDCARDS and wrong about DEFAULTS. Only the legacy 3-segment form carries a
+collection, so under "absent matches only absent" an ordinary ADO clone
+mid-URL-migration — legacy https fetch, modern ssh push, ONE repository —
+compared present-vs-absent and REFUSED ITSELF, with a triangular-remote reason
+whose two printed operands were identical. Absent is now normalized to
+`defaultcollection` and COMPARED; normalizing is not wildcarding, so the
+never-fails concern does not apply (absent resolves to one specific value and
+matches nothing else), and cross-collection stays closed. The label changed with
+it, which is why the quoted output above differs from the one this section
+carried before. Recorded rather than silently rewritten — a README that argued
+for a shipped lockout is exactly the kind of standing instruction-to-revert this
+suite exists to catch.
 
 #### What this pass does NOT fix
 
