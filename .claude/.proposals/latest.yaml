@@ -3190,6 +3190,47 @@ changes:
       described in detail above and in neither PR. Requesting them from the offering
       consumers is the unblocking step; the alternative — grafting from the
       descriptions — would produce a rule carrying NEITHER draft's redteam.
+      RELAY REPAIR (appended 2026-08-04; ADDITIVE — nothing above is altered, renumbered
+      or reflowed). An audit of this entry against both offer bodies found THREE Gate-1
+      inputs the deduplicated relay dropped. They are restored here, attributed, heaviest
+      first. For traceability at loom: Offer A is PR #86 and Offer B is PR #87 on this
+      template (via: kailash-coc-rs); both were owner-filed on the consumers' behalf and
+      both bodies are consumer-anonymized, so the numbers carry no consumer identity.
+      (1) OFFER B'S TWO GLOBAL-VS-VARIANT PROPERTIES — the input aimed most directly at
+      the classify call this cluster hands Gate-1, and wholly absent from the relay above.
+      Offer B offered them explicitly as classify inputs: (a) the discipline is
+      LANGUAGE-NEUTRAL AND CLI-NEUTRAL, firing on any repo that holds a checked-in build
+      output; (b) EVERY ECOSYSTEM ALREADY ACCEPTS CLAUSE 1 FOR LOCKFILES, where
+      hand-editing is universally understood to be wrong because the tooling rewrites the
+      file wholesale — that precedent, in offer B's framing, makes the rule land by
+      ANALOGY rather than by argument. Gate-1 should note the tension it must resolve:
+      both properties argue AUDIENCE-WIDE, while both offers independently authored the
+      rule priority:10 / path-scoped, which is a LOAD-COST decision. The two are not
+      necessarily in conflict, but the classify call is where they meet.
+      (2) OFFER A'S MEASURED EVIDENCE — the relay above is qualitative throughout; offer A
+      carried a MEASUREMENT, and it is what makes the rule's case empirically rather than
+      by assertion. A rebuild run to a scratch path and diffed BEFORE anything was
+      overwritten would have moved the deliverable as follows, committed -> rebuilt-from-
+      source: characters 178,670 -> 165,798 (a loss of 12,872); headings 110 -> 79, with
+      54 of the 110 committed headings absent; em-dashes 0 -> 249 (reintroducing what a
+      style pass had removed); per-claim verdict marks present -> absent. Arithmetic note
+      offered as a reading aid, not as a defect claim: 110 - 54 = 56, not 79, so the
+      rebuilt copy also carries 23 headings the committed copy lacks — the two heading
+      figures measure different quantities and are not an inconsistency to resolve.
+      COUNTS ONLY, per (3) below: no extracted document prose is carried here, and this
+      manifest is itself a durable surface.
+      (3) OFFER A'S MUST-3 DISCLOSURE CONSTRAINT — the relay above carries the first half
+      of offer A's MUST-3 (convergence is PROVEN by re-diff, never asserted) and drops the
+      second: EVIDENCE CARRIED INTO ANY DURABLE SURFACE IS COUNTS ONLY, NEVER EXTRACTED
+      DOCUMENT PROSE. That is a disclosure-safety clause rather than a formatting
+      preference, and it is what governed how (2) above had to be recorded in this file.
+      ONE MEASURED OVER-CLAIM INSIDE OFFER A, stated neutrally as fact because Gate-1 will
+      otherwise expect a rule text that is not there: offer A's inbox YAML asserts in its
+      header comment that the rule text is reproduced in the PR body so Gate-1 can review
+      it without a fetch. It is not. Offer A's PR body is 43 lines of prose summary
+      carrying no rule text, and the PR's only added file is the 82-line inbox YAML. WHAT
+      GATE-1 OWES above already records that neither text is in either PR; what is added
+      here is that offer A's own YAML claims the opposite.
     diff_lines: "+306 -0 and +229 -0 as CLAIMED by the two offers' own diff_lines; NEITHER text is present in either PR (measured: the PRs add 82 and 76 lines, the inbox YAML alone). Final size depends on which reachability disposition Gate-1 takes."
 
   # ===================================================================
