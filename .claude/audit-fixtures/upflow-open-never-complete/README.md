@@ -517,14 +517,14 @@ equality above has no number in it to decay.
 The six were then measured rather than assumed. **All six are sound — none
 vacuous**; they were UNDOCUMENTED, not uncovered:
 
-| Case                                                    | Predicate mutated                                                    | Cases redded        |
-| ------------------------------------------------------- | -------------------------------------------------------------------- | ------------------- |
-| `ado/allow-own-repo-legacy-collection-form`             | `_parseAdo` subdomain `!==2 && !==3` → `!==2`                        | exactly 1 — itself  |
-| `ado/discarded-collection-slot-rejects-dirty-segment`   | `_parseAdo` validate-before-drop `segs.some(...)` deleted            | exactly 1 — itself  |
-| `gh/scp-userinfo-fragment-spoof-refuses`                | `_splitRemoteUrl` drop the `isSchemeForm` guard on the authority cut | exactly 1 — itself  |
-| `ado/collection-form-does-not-admit-fragment-injection` | `normalizeComponent` allowlist removed                               | 3, including itself |
-| `ado/path-terminator-byte-in-remote-refuses`            | allowlist reverted to a `?`/`#` denylist                             | 3, including itself |
-| `gh/fragment-injected-path-segments-refuse`             | `_parseRemoteUrl` `parts.length !== 2` → `< 2` + last-two            | 4, including itself |
+| Case                                                    | Predicate mutated                                                    | Cases redded                                     |
+| ------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------ |
+| `ado/allow-own-repo-legacy-collection-form`             | `_parseAdo` subdomain `!==2 && !==3` → `!==2`                        | **4 as of the quad** (see § Twelfth pass row 38) |
+| `ado/discarded-collection-slot-rejects-dirty-segment`   | `_parseAdo` validate-before-drop `segs.some(...)` deleted            | exactly 1 — itself                               |
+| `gh/scp-userinfo-fragment-spoof-refuses`                | `_splitRemoteUrl` drop the `isSchemeForm` guard on the authority cut | exactly 1 — itself                               |
+| `ado/collection-form-does-not-admit-fragment-injection` | `normalizeComponent` allowlist removed                               | 3, including itself                              |
+| `ado/path-terminator-byte-in-remote-refuses`            | allowlist reverted to a `?`/`#` denylist                             | 3, including itself                              |
+| `gh/fragment-injected-path-segments-refuse`             | `_parseRemoteUrl` `parts.length !== 2` → `< 2` + last-two            | 4, including itself                              |
 
 Cases that co-red siblings share a predicate with them; that is expected, not
 dilution. Three isolate to exactly one case.
@@ -541,22 +541,165 @@ with NO instrument** — deleting any of them left the suite fully green, becaus
 every host in the corpus was pure ASCII, every `prId` was plain digits or a
 plain-ASCII traversal string, and no case configured a push url:
 
-| Case                                                        | Predicate mutated                                                           | Cases redded       |
-| ----------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------ |
-| `gh/non-ascii-authority-refuses-at-derivation`              | `_splitRemoteUrl` delete the `[\x00-\x7f]` authority guard                  | exactly 1 — itself |
-| `gh/control-byte-pr-id-neutralized-in-refusal`              | `displayPrId` → `String(value)` (drop the `[^0-9]` allowlist)               | exactly 1 — itself |
-| `gh/triangular-remote-refuses-when-fetch-and-push-disagree` | `deriveSelfRepoRef` delete the `_readPushRemote` disagreement block         | exactly 1 — itself |
-| `gh/triangular-same-identity-different-transport-allows`    | `deriveSelfRepoRef` compare the raw pushUrl string instead of derived slugs | exactly 1 — itself |
-| `gh/triangular-same-slug-different-host-refuses` | `_sameDerivedIdentity` drop the host equality test | exactly 1 — itself |
-| `ado/triangular-cross-org-same-project-repo-refuses` | `_sameDerivedIdentity` compare the owner/name slug instead of routing ADO through `isSelfRepoAdo` | exactly 1 — itself |
-| `gh/triangular-push-default-remote-refuses` | `_readPushRemote` resolve only origin's own pushurl | exactly 1 — itself |
-| `ado/triangular-same-identity-different-transport-allows` | `_sameDerivedIdentity` compare the raw host on the ADO branch too | exactly 1 — itself |
-| `ado/unparseable-legacy-ssh-push-url-does-not-lock-out` | `deriveSelfRepoRef` refuse when `pushParsed` is null | exactly 1 — itself |
+| Case                                                        | Predicate mutated                                                                                 | Cases redded       |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------ |
+| `gh/non-ascii-authority-refuses-at-derivation`              | `_splitRemoteUrl` delete the `[\x00-\x7f]` authority guard                                        | exactly 1 — itself |
+| `gh/control-byte-pr-id-neutralized-in-refusal`              | `displayPrId` → `String(value)` (drop the `[^0-9]` allowlist)                                     | exactly 1 — itself |
+| `gh/triangular-remote-refuses-when-fetch-and-push-disagree` | `deriveSelfRepoRef` delete the `_readPushRemote` disagreement block                               | exactly 1 — itself |
+| `gh/triangular-same-identity-different-transport-allows`    | `deriveSelfRepoRef` compare the raw pushUrl string instead of derived slugs                       | exactly 1 — itself |
+| `gh/triangular-same-slug-different-host-refuses`            | `_sameDerivedIdentity` drop the host equality test                                                | exactly 1 — itself |
+| `ado/triangular-cross-org-same-project-repo-refuses`        | `_sameDerivedIdentity` compare the owner/name slug instead of routing ADO through `isSelfRepoAdo` | exactly 1 — itself |
+| `gh/triangular-push-default-remote-refuses`                 | `_readPushRemote` resolve only origin's own pushurl                                               | exactly 1 — itself |
+| `ado/triangular-same-identity-different-transport-allows`   | `_sameDerivedIdentity` compare the raw host on the ADO branch too                                 | exactly 1 — itself |
+| `ado/unparseable-legacy-ssh-push-url-does-not-lock-out`     | `deriveSelfRepoRef` refuse when `pushParsed` is null                                              | exactly 1 — itself |
 
 The last is the **permissive polarity** of the triangular guard and is not
 optional: that guard's obvious failure mode is locking out a legitimate
 maintainer whose push url differs only in transport (ssh vs https), and a
 refusal-only pair cannot detect over-tightening.
+
+### Twelfth pass — the ADO identity became a QUAD (issue #82, cross-collection)
+
+The ADO identity was `{org, project, repo}` and `_parseAdo` DISCARDED the
+collection segment at `segs.slice(1)`. In legacy TFS/VSTS a collection is a
+NAMESPACE, so these two remotes name two DIFFERENT repositories and yet derived
+an identical triple:
+
+```
+https://<org>.visualstudio.com/DefaultCollection/<proj>/_git/<repo>
+https://<org>.visualstudio.com/OtherCollection/<proj>/_git/<repo>
+```
+
+**No comparison key could close it** — the component was absent from the model
+entirely, so the fix retains the collection through the parse and widens the
+identity to `{org, collection, project, repo}`. `collection` is `null` on the
+three collection-less forms (`dev.azure.com`, `ssh.dev.azure.com:v3`, the
+2-segment `<org>.visualstudio.com`) and set only on the legacy 3-segment form;
+null matches ONLY null, which is what leaves every modern-form case unaffected.
+
+**All five new cases were observed RED against the unfixed source first**, and
+all five failed the same way — `ok=true fired=true`, i.e. the completion was
+AUTHORIZED and the transport FIRED. That is the reported defect measured, not
+inferred.
+
+| #   | Mutation                                                                                   | Applied-check | Verdict | Cases reddened                                                                                                                                                                                                                                   |
+| --- | ------------------------------------------------------------------------------------------ | ------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 31  | `_parseAdo` — drop the collection CAPTURE (exactly the pre-fix behavior: quad → triple)    | 1 → 0         | RED     | `ado/allow-own-repo-legacy-collection-form`, `ado/triangular-cross-collection-same-org-project-repo-refuses`, `ado/unstated-collection-does-not-match-a-collection-form`                                                                         |
+| 32  | `isSelfRepoAdo` — delete the collection comparison entirely                                | 1 → 0         | RED     | `ado/triangular-cross-collection-same-org-project-repo-refuses`, `ado/cross-collection-same-org-project-repo-refuses`, `ado/unstated-collection-does-not-match-a-collection-form`, `ado/stated-collection-does-not-match-a-collection-free-form` |
+| 33  | `isSelfRepoAdo` — an ABSENT `repoRef.collection` matches any derived one (caller wildcard) | 1 → 0         | RED     | `ado/unstated-collection-does-not-match-a-collection-form`                                                                                                                                                                                       |
+| 34  | `isSelfRepoAdo` — an ABSENT derived collection matches any stated one (derived wildcard)   | 1 → 0         | RED     | `ado/stated-collection-does-not-match-a-collection-free-form`                                                                                                                                                                                    |
+| 35  | `vcs-azure-adapter::validateRepoRef` — delete the `ref.collection` validation branch       | 1 → 0         | RED     | `ado/invalid-collection-in-repo-ref-refuses`                                                                                                                                                                                                     |
+
+Rows 33 and 34 are a deliberate PAIR. A nullable comparison is asymmetric by
+construction — one side can be made a wildcard without the other — so a single
+case cannot show the rule holds in both directions. Each row reds exactly its
+own polarity, which is what shows the two are independently instrumented.
+
+Row 31 reddening the PERMISSIVE case (`allow-own-repo-legacy-collection-form`)
+is the retention's over-tightening guard: that case's `repoRef` now STATES the
+collection, so dropping the capture makes it absent-vs-present and it refuses.
+A refusal-only set could not have caught that.
+
+**A first attempt at row 35 was INERT** — the pattern named an indentation the
+formatter had changed, `occurrences=0`, and the harness refused to read the
+resulting run as a verdict. Recorded because this file's own § "A live MUST-2(b)
+trap" says an unapplied mutation is not a verdict, and it applied here.
+
+#### Row 36 — a green RESOLVED by its control, not left as two hypotheses
+
+Retaining the collection put a SECOND guard on the same byte: the
+present-but-unnormalizable check at the end of `_parseAdo`, alongside the
+pre-existing validate-before-use check. Deleting either ALONE now leaves the
+suite green, which is exactly the shape MUST-2(b) forbids reading as a verdict.
+The pair was measured instead:
+
+| #   | Mutation                                                    | Applied-check | Verdict | Reddened                                              |
+| --- | ----------------------------------------------------------- | ------------- | ------- | ----------------------------------------------------- |
+| 36a | delete the trailing collection guard ALONE                  | 1 → 0         | GREEN   | (none)                                                |
+| 36b | delete the validate-before-use `segs.some(...)` check ALONE | 1 → 0         | GREEN   | (none)                                                |
+| 36c | delete BOTH                                                 | 1 → 0, 1 → 0  | RED     | `ado/discarded-collection-slot-rejects-dirty-segment` |
+
+36c is the control that collapses 36a and 36b: each guard is SUBSUMED by its
+sibling, not vacuous — the byte is still guarded, by either one. Both are kept,
+because the trailing guard is what still holds if a future refactor moves or
+drops the early check, which is what happened to the collection slot itself
+once already.
+
+**This invalidated a previously-recorded mutation, and it is corrected rather
+than left standing.** `ado/discarded-collection-slot-rejects-dirty-segment`
+recorded the validate-before-use check ALONE, which was accurate until this
+change and is now 36b — a green. Its `mutation:` field now names the PAIR.
+
+#### Row 38 — the permissive case's OWN mutation, re-measured after its input changed
+
+`ado/allow-own-repo-legacy-collection-form`'s `repoRef` gained a `collection`
+field in this pass. Changing a case's INPUT invalidates every prior measurement
+against it (the same reason the U+212A case above was re-measured after being
+made normalization-proof), so its own recorded mutation was re-run rather than
+assumed to still hold:
+
+| #   | Mutation                                           | Applied-check | Verdict | Cases reddened                                                                                                                                                                                                                 |
+| --- | -------------------------------------------------- | ------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 38  | `_parseAdo` — subdomain `!== 2 && !== 3` → `!== 2` | 1 → 0         | RED     | `ado/allow-own-repo-legacy-collection-form`, `ado/triangular-cross-collection-same-org-project-repo-refuses`, `ado/cross-collection-same-org-project-repo-refuses`, `ado/unstated-collection-does-not-match-a-collection-form` |
+
+Still a valid instrument. It now co-reds three siblings because all four drive
+the 3-segment form; the § "Two cases added after the above" table's
+"exactly 1 — itself" entry for this case is corrected to point here.
+
+#### Row 37 — a PRE-EXISTING equality violation, found by re-running the check
+
+The § "Coverage is stated as an EQUALITY" check below was run after adding this
+pass's cases and reported THREE uncovered cases. Two were this pass's own (fixed
+by writing the full case names into row 32, and by renaming
+`ado/invalid-collection-in-repoRef-refuses` → `…-in-repo-ref-refuses`, since the
+check's `[a-z0-9-]+` pattern cannot see a camelCase segment — a case name that
+the equality check is structurally blind to is a case that silently leaves the
+denominator).
+
+The third was already violating at HEAD, before this pass touched anything
+(verified by running the same check against `git show HEAD:` for both files), so
+it is recorded here rather than attributed to this change. Measured now:
+
+| #   | Mutation                                                                                 | Applied-check | Verdict | Cases reddened                                     |
+| --- | ---------------------------------------------------------------------------------------- | ------------- | ------- | -------------------------------------------------- |
+| 37  | `_splitRemoteUrl` — widen the host guard back to `/^[\x00-\x7f]*$/` (from `[\x20-\x7e]`) | 1 → 0         | RED     | `ado/control-byte-authority-refuses-at-derivation` |
+
+The case was SOUND, not vacuous — undocumented, the same disposition the six
+cases in § "What the previous revision got wrong" took. This is the fourth
+instance of the enumeration-decay class this file records: the equality holds
+only when someone RE-RUNS it, which is why it is written as a command and not as
+a sentence.
+
+#### The contract change this pass ships, stated plainly
+
+An unstated `repoRef.collection` no longer matches a present derived one. A
+caller on a legacy collection remote that completed with a bare
+`{org, project, repo}` must now name the collection. That is a REAL break, and
+the direction was chosen deliberately: letting absent match present would make
+the collection a leg that can never fail from the adapter (the pre-quad
+`repoRef` had no such field at all), which is the exact defect this README
+already records three times — the ADO `org` leg, the GitHub `owner` leg, and the
+ADO `project` leg. The refusal names both sides' collection (absence renders as
+`<no-collection>`) so the fix is one field. Observed:
+
+```
+refusing to complete contoso/<no-collection>/platform/coc-rs!42 — this repo
+derives as contoso/othercollection/platform/coc-rs. A PR may only be completed
+on the repo you ARE. …
+```
+
+#### What this pass does NOT fix
+
+The ADO request path is `{org}/{project}/_apis/...` on every call in the
+adapter — **it has no collection slot**. So a completion authorized on a
+non-default collection is still ADDRESSED collection-free. The identity fix
+makes the caller and the working tree agree on WHICH repo is meant; it does not
+give the request a way to say so. Deliberately not guessed at: emitting
+`{org}/{collection}/{project}/_apis/...` is a claim about ADO's legacy REST
+routing this repo cannot verify, and acting on an incomplete enumeration of ADO
+URL forms is what produced the collection-form lockout regression recorded
+above. Same disposition, same reason, as the `_ssh` parse gap. Recorded at
+`vcs-azure-adapter.js::completeUpflowPR`.
 
 `gh/control-byte-pr-id-neutralized-in-refusal` required a new assertion form,
 `expectReasonAbsent`. A sanitizer's contract is that something does NOT appear in

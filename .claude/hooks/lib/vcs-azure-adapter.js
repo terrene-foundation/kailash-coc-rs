@@ -29,7 +29,14 @@
  *   `rules/verify-resource-existence.md` MUST-2 — the live-API mapping is the
  *   operator-verified runbook's job, not gospel baked into the adapter).
  *
- * repoRef shape for ADO: { org: string, project: string, repo: string }.
+ * repoRef shape for ADO:
+ *   { org: string, project: string, repo: string, collection?: string }.
+ * `collection` is OPTIONAL and read ONLY by `completeUpflowPR`'s identity
+ * fence: the legacy TFS/VSTS URL form
+ * `<org>.visualstudio.com/<collection>/<project>/_git/<repo>` carries one and
+ * the three modern forms do not, so absent means "the collection-less form"
+ * and matches only absent. Every REST path this adapter builds is
+ * `{org}/{project}/_apis/...` — see the residual note on `completeUpflowPR`.
  * principal for ADO: an Entra userPrincipalName (string).
  *
  * Provider-semantics residuals (documented in `ado-api-allowlist.js` header
@@ -83,6 +90,30 @@ function validateRepoRef(ref) {
   if (!r.valid) {
     return { valid: false, reason: `repoRef.repo ${reasonText(r.reason)}` };
   }
+  // OPTIONAL, and optional in the strict sense: absent (undefined/null/"") is
+  // VALID and means "the collection-less form". It is NOT a wildcard — the
+  // fence's `isSelfRepoAdo` refuses absent-vs-present. Only the legacy
+  // `<org>.visualstudio.com/<collection>/<project>/_git/<repo>` form carries one.
+  //
+  // VALIDATED WITH THE PROJECT SHAPE because a collection appears in the same
+  // URL position and is read off the remote by the same `normalizeComponent`
+  // allowlist, so a value this rejects could never match a derived one anyway —
+  // rejecting it HERE makes that a named refusal instead of a silent mismatch.
+  // Present-but-malformed is a caller error and is refused before the fence,
+  // like the three legs above.
+  if (!(
+    ref.collection === undefined ||
+    ref.collection === null ||
+    ref.collection === ""
+  )) {
+    const c = adoLogin.validateAdoProject(ref.collection);
+    if (!c.valid) {
+      return {
+        valid: false,
+        reason: `repoRef.collection ${reasonText(c.reason)}`,
+      };
+    }
+  }
   return { valid: true };
 }
 
@@ -96,6 +127,26 @@ function principalsEqual(a, b) {
 
 function _fail(error, reason, extra) {
   return Object.assign({ ok: false, error, reason }, extra || {});
+}
+
+/**
+ * Render an ADO collection component for INCLUSION IN A REFUSAL STRING.
+ *
+ * Absence is rendered as a visible `<no-collection>` rather than an empty
+ * string: the collection is the one quad component that is legitimately absent,
+ * and a refusal reading `contoso//platform/coc-rs` on both sides would tell a
+ * reader nothing about why it refused.
+ *
+ * PRESENT values go through `reasonText`, the SAME sanitizer every other
+ * operand in these refusal strings uses. It is a caller-authored value reaching
+ * a logged string, so it carries the identical log-injection surface
+ * `displayPrId` and `sanitizeForReason` exist for — `security.md`
+ * § Enforcement-Surface Parity: a new operand on an existing refusal path gets
+ * the existing bound, not a new unbounded one.
+ */
+function _collectionLabel(v) {
+  if (v === undefined || v === null || v === "") return "<no-collection>";
+  return reasonText(v);
 }
 
 // ── Refusal-operand sanitization (GH issue #83) ────────────────────────────
@@ -662,10 +713,34 @@ function createUpflowIssue(transport, issueSpec) {
 }
 
 /**
- * ADO: complete the upflow PR. descriptor: { repoRef:{org,project,repo}, prId }.
+ * ADO: complete the upflow PR.
+ * descriptor: { repoRef:{org,project,repo,collection?}, prId }.
  * prId is PATH-interpolated → integer-only guard.
  * DOCUMENTED-UNVERIFIED endpoint:
  *   PATCH {org}/{project}/_apis/git/repositories/{repo}/pullrequests/{prId}?api-version=7.1
+ *
+ * KNOWN RESIDUAL, RECORDED NOT FIXED — THE REQUEST PATH HAS NO COLLECTION SLOT.
+ * The identity fence below now discriminates collections (the quad), but the
+ * path above is `{org}/{project}/_apis/...` on every call in this adapter. So a
+ * completion authorized on a NON-default collection is still ADDRESSED
+ * collection-free, i.e. to whichever repo the collection-less endpoint resolves
+ * to. The identity fix does not close that, and does not claim to: it makes the
+ * caller and the working tree agree on WHICH repo is meant, which is the defect
+ * that was reported.
+ *
+ * Deliberately NOT guessed at. Emitting `{org}/{collection}/{project}/_apis/...`
+ * for the legacy form is a claim about ADO's legacy REST routing that this repo
+ * cannot verify, and acting on an incomplete enumeration of ADO URL forms is
+ * exactly what produced the collection-form lockout regression this module
+ * already records. Settling it needs a real legacy-collection ADO account —
+ * the same disposition, for the same reason, as the `_ssh` parse gap in
+ * `upflow-self-repo.js::_parseAdo`.
+ *
+ * Effect today: for the ordinary hosted case the derived collection is
+ * `DefaultCollection` and the collection-less path is the same repo, so the
+ * residual is inert; on any other collection the completion would be
+ * misdirected, which is why the fence refusing an under-determined target is
+ * the safer half to have fixed first.
  */
 function completeUpflowPR(transport, prRef) {
   const repoRef = prRef && prRef.repoRef;
@@ -782,9 +857,18 @@ function completeUpflowPR(transport, prRef) {
   if (!selfRepo.isSelfRepoAdo(repoRef, selfAdo)) {
     return _fail(
       "completeUpflowPR: cross-repo completion refused",
-      `refusing to complete ${reasonText(repoRef.org)}/${reasonText(repoRef.project)}/${reasonText(repoRef.repo)}` +
+      // BOTH SIDES' COLLECTION IS NAMED. The identity is a QUAD, so a refusal
+      // that printed only org/project/repo could show two IDENTICAL-looking
+      // triples and no reason for the refusal — the single most confusing
+      // refusal this fence can emit, and the one a legacy-collection maintainer
+      // hits first now that an unstated collection no longer matches a present
+      // one. `_collectionLabel` renders absence as `<no-collection>` so the two
+      // sides are visibly different rather than both blank.
+      `refusing to complete ${reasonText(repoRef.org)}/${_collectionLabel(repoRef.collection)}/` +
+        `${reasonText(repoRef.project)}/${reasonText(repoRef.repo)}` +
         `!${selfRepo.displayPrId(prRef && prRef.prId)} — this repo derives as ${reasonText(selfAdo.org)}/` +
-        `${reasonText(selfAdo.project)}/${reasonText(selfAdo.repo)}. A PR may only be completed on the repo ` +
+        `${_collectionLabel(selfAdo.collection)}/${reasonText(selfAdo.project)}/${reasonText(selfAdo.repo)}. ` +
+        `A PR may only be completed on the repo ` +
         `you ARE. upstream-issue-hygiene.md MUST-4 (Open, Never Complete) — the ` +
         `downstream upflow lane opens a PR against its upstream and stops there.`,
       { self: selfAdo, target: repoRef },

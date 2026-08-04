@@ -184,7 +184,9 @@ function childProgram(adapterPath, prRef) {
     // careful author would actually write — would fall through on a string and
     // leave the case GREEN. With a real function it is honored, the derivation
     // returns the upstream, and the case flips refuse→authorize as intended.
-    `try { r = adapter.completeUpflowPR(transport, ${JSON.stringify(prRef).replace(
+    `try { r = adapter.completeUpflowPR(transport, ${JSON.stringify(
+      prRef,
+    ).replace(
       '"__must_be_ignored__"',
       '(function(){ return {ok:true, self:{host:"github.com", owner:"terrene-foundation", name:"kailash-coc-claude-py", ado:null, source:"remote"}}; })',
     )}); }`,
@@ -202,26 +204,32 @@ function childProgram(adapterPath, prRef) {
 }
 
 function runInRepo(repo, adapterPath, prRef, extraEnv) {
-  const res = spawnSync(process.execPath, ["-e", childProgram(adapterPath, prRef)], {
-    cwd: repo,
-    encoding: "utf8",
-    timeout: 30000,
-    // `extraEnv` exists for ONE case: the ambient-`GIT_DIR` probe. The
-    // derivation routes `git` through `git-subprocess-env.js::gitEnv()`, which
-    // builds the child env from constants so nothing is inherited — and that
-    // routing closes a documented FENCE BYPASS (`GIT_DIR` outranks repository
-    // discovery, so neither `cwd:` nor `-C` pins WHICH repo git resolves).
-    // Until this hook existed no case set `GIT_DIR`, so removing `gitEnv()`
-    // changed no value the harness read.
-    env: extraEnv ? { ...process.env, ...extraEnv } : process.env,
-  });
+  const res = spawnSync(
+    process.execPath,
+    ["-e", childProgram(adapterPath, prRef)],
+    {
+      cwd: repo,
+      encoding: "utf8",
+      timeout: 30000,
+      // `extraEnv` exists for ONE case: the ambient-`GIT_DIR` probe. The
+      // derivation routes `git` through `git-subprocess-env.js::gitEnv()`, which
+      // builds the child env from constants so nothing is inherited — and that
+      // routing closes a documented FENCE BYPASS (`GIT_DIR` outranks repository
+      // discovery, so neither `cwd:` nor `-C` pins WHICH repo git resolves).
+      // Until this hook existed no case set `GIT_DIR`, so removing `gitEnv()`
+      // changed no value the harness read.
+      env: extraEnv ? { ...process.env, ...extraEnv } : process.env,
+    },
+  );
   const line = String(res.stdout || "")
     .split("\n")
     .find((l) => l.startsWith(RESULT_PREFIX));
   if (!line) {
     throw new Error(
       `child produced no result line (status=${res.status}) — stderr: ` +
-        String(res.stderr || "").trim().slice(0, 400),
+        String(res.stderr || "")
+          .trim()
+          .slice(0, 400),
     );
   }
   return JSON.parse(line.slice(RESULT_PREFIX.length));
@@ -285,7 +293,8 @@ const cases = [
     // bare path, or no remote, so none could distinguish it.
     repo: {
       dirName: "kailash-coc-rs",
-      remote: "https://gitlab.internal.example/terrene-foundation/kailash-coc-rs.git",
+      remote:
+        "https://gitlab.internal.example/terrene-foundation/kailash-coc-rs.git",
     },
     adapter: GH,
     prRef: { repoRef: GH_SELF, prId: 77 },
@@ -321,8 +330,7 @@ const cases = [
   },
   {
     name: "gh/case-insensitive-own-repo-still-allowed",
-    mutation:
-      "upflow-self-repo.js::normalizeComponent — drop `.toLowerCase()`",
+    mutation: "upflow-self-repo.js::normalizeComponent — drop `.toLowerCase()`",
     repo: { dirName: "kailash-coc-rs", remote: GH_SELF_REMOTE },
     adapter: GH,
     prRef: {
@@ -341,7 +349,7 @@ const cases = [
     // and the case would stay green — an inert mutation, not a passing test.
     name: "gh/dot-git-suffix-own-repo-still-allowed",
     mutation:
-      "upflow-self-repo.js::normalizeComponent — drop `.replace(/\\.git$/i, \"\")`",
+      'upflow-self-repo.js::normalizeComponent — drop `.replace(/\\.git$/i, "")`',
     repo: {
       dirName: "kailash-coc-rs",
       remote: "https://github.com/terrene-foundation/kailash-coc-rs",
@@ -393,7 +401,8 @@ const cases = [
       "upflow-self-repo.js::_splitRemoteUrl — drop the `authCut` truncation at the first `#`/`?`",
     repo: {
       dirName: "kailash-coc-rs",
-      remote: "https://evil.com#@github.com/terrene-foundation/kailash-coc-rs.git",
+      remote:
+        "https://evil.com#@github.com/terrene-foundation/kailash-coc-rs.git",
     },
     adapter: GH,
     prRef: { repoRef: GH_SELF, prId: 77 },
@@ -410,7 +419,8 @@ const cases = [
       "upflow-self-repo.js::_splitRemoteUrl — drop the `authCut` truncation at the first `#`/`?`",
     repo: {
       dirName: "kailash-coc-rs",
-      remote: "https://evil.com?@github.com/terrene-foundation/kailash-coc-rs.git",
+      remote:
+        "https://evil.com?@github.com/terrene-foundation/kailash-coc-rs.git",
     },
     adapter: GH,
     prRef: { repoRef: GH_SELF, prId: 77 },
@@ -462,8 +472,7 @@ const cases = [
       "upflow-self-repo.js::_parseRemoteUrl — relax `parts.length !== 2` back to `< 2` with the last-two-segments rule",
     repo: {
       dirName: "kailash-coc-rs",
-      remote:
-        "https://github.com/evil/repo#/terrene-foundation/kailash-coc-rs",
+      remote: "https://github.com/evil/repo#/terrene-foundation/kailash-coc-rs",
     },
     adapter: GH,
     // repoRef names the repo the FRAGMENT smuggles in — the exact match the
@@ -554,7 +563,7 @@ const cases = [
   {
     name: "gh/unanchored-scheme-authority-spoof-refuses",
     mutation:
-      "upflow-self-repo.js::_splitRemoteUrl — unanchor the scheme test back to `s.includes(\"://\")` + `s.indexOf(\"://\")`",
+      'upflow-self-repo.js::_splitRemoteUrl — unanchor the scheme test back to `s.includes("://")` + `s.indexOf("://")`',
     repo: {
       dirName: "kailash-coc-rs",
       remote:
@@ -709,7 +718,8 @@ const cases = [
       "upflow-self-repo.js::_splitRemoteUrl — delete the `if (!/^[\\x00-\\x7f]*$/.test(authority)) return null;` guard",
     repo: {
       dirName: "kailash-coc-rs",
-      remote: "https://github.\u212A8s.corp/terrene-foundation/kailash-coc-rs.git",
+      remote:
+        "https://github.\u212A8s.corp/terrene-foundation/kailash-coc-rs.git",
     },
     adapter: GH,
     prRef: { repoRef: GH_SELF, prId: 77 },
@@ -812,8 +822,7 @@ const cases = [
       "upflow-self-repo.js::deriveSelfRepoRef — delete the `_readPushRemote` triangular-disagreement block",
     repo: {
       dirName: "kailash-coc-rs",
-      remote:
-        "https://github.com/terrene-foundation/kailash-coc-claude-py.git",
+      remote: "https://github.com/terrene-foundation/kailash-coc-claude-py.git",
       pushRemote: "https://github.com/some-consumer/kailash-coc-rs.git",
     },
     adapter: GH,
@@ -1008,7 +1017,7 @@ const cases = [
     // time in this change a fix landed untested.
     name: "gh/dot-dot-component-refuses",
     mutation:
-      "upflow-self-repo.js::normalizeComponent — delete the `s === \".\" || s === \"..\" || s.includes(\"/\")` path-shape rejection",
+      'upflow-self-repo.js::normalizeComponent — delete the `s === "." || s === ".." || s.includes("/")` path-shape rejection',
     repo: {
       dirName: "kailash-coc-rs",
       remote: "https://github.com/terrene-foundation/...git",
@@ -1016,7 +1025,10 @@ const cases = [
     adapter: GH,
     // Target normalizes to `..` too, so without the rejection BOTH sides agree
     // and the fence authorizes — the flip this case exists to catch.
-    prRef: { repoRef: { owner: "terrene-foundation", name: "...git" }, prId: 77 },
+    prRef: {
+      repoRef: { owner: "terrene-foundation", name: "...git" },
+      prId: 77,
+    },
     expect: { ok: false, fired: false },
     expectReason: "does not parse to an owner/name pair",
   },
@@ -1135,7 +1147,7 @@ const cases = [
     // all and this legitimate merge would be refused.
     name: "ado/allow-maintainer-completing-own-repo-userinfo-form",
     mutation:
-      "upflow-self-repo.js::_splitRemoteUrl — drop the userinfo strip (`authority.lastIndexOf(\"@\")`)",
+      'upflow-self-repo.js::_splitRemoteUrl — drop the userinfo strip (`authority.lastIndexOf("@")`)',
     repo: {
       dirName: "coc-rs",
       remote: "https://contoso@dev.azure.com/contoso/platform/_git/coc-rs",
@@ -1146,8 +1158,7 @@ const cases = [
   },
   {
     name: "ado/case-insensitive-own-repo-still-allowed",
-    mutation:
-      "upflow-self-repo.js::normalizeComponent — drop `.toLowerCase()`",
+    mutation: "upflow-self-repo.js::normalizeComponent — drop `.toLowerCase()`",
     repo: { dirName: "coc-rs", remote: ADO_SELF_REMOTE },
     adapter: ADO,
     prRef: {
@@ -1165,7 +1176,7 @@ const cases = [
     // project+repo completed. All three components must come from the remote.
     name: "ado/cross-org-same-project-and-repo-refuses",
     mutation:
-      "upflow-self-repo.js::isSelfRepoAdo — drop `org` from the compared key list (`[\"project\", \"repo\"]`)",
+      'upflow-self-repo.js::isSelfRepoAdo — drop `org` from the compared key list (`["project", "repo"]`)',
     repo: { dirName: "coc-rs", remote: ADO_SELF_REMOTE },
     adapter: ADO,
     prRef: {
@@ -1300,6 +1311,13 @@ const cases = [
     // PERMISSIVE by design: `expect ok:true, fired:true`. A refusal-only suite
     // cannot detect an over-tightening, because every over-tightening looks
     // like a correct refusal.
+    //
+    // `repoRef` now STATES the collection. It did not have to before the ADO
+    // identity became a QUAD, because the collection was discarded by the parse
+    // and no comparison could see it. Stating it is what keeps this case
+    // PERMISSIVE under the quad: an unstated collection no longer matches a
+    // present one (that polarity is the sibling case
+    // `ado/unstated-collection-does-not-match-a-collection-form`).
     name: "ado/allow-own-repo-legacy-collection-form",
     mutation:
       "upflow-self-repo.js::_parseAdo — require the org-subdomain form to be exactly 2 segments (drop the optional collection)",
@@ -1309,8 +1327,141 @@ const cases = [
         "https://contoso.visualstudio.com/DefaultCollection/platform/_git/coc-rs",
     },
     adapter: ADO,
-    prRef: { repoRef: ADO_SELF, prId: 42 },
+    prRef: {
+      repoRef: { ...ADO_SELF, collection: "DefaultCollection" },
+      prId: 42,
+    },
     expect: { ok: true, fired: true },
+  },
+  {
+    // THE DEFECT THIS QUAD EXISTS TO CLOSE, on the DERIVED×DERIVED lane — two
+    // remotes that differ ONLY in their collection segment. In legacy TFS/VSTS
+    // a collection is a NAMESPACE, so these name two different repositories:
+    //   fetch https://<org>.visualstudio.com/DefaultCollection/<proj>/_git/<repo>
+    //   push  https://<org>.visualstudio.com/OtherCollection/<proj>/_git/<repo>
+    // Before the collection was retained through `_parseAdo` both sides reduced
+    // to an IDENTICAL {org, project, repo} triple, `_sameDerivedIdentity`
+    // compared them EQUAL, the triangular guard saw no disagreement, and the
+    // completion fired (measured: ok=true fired=true).
+    //
+    // NOT fixable by any rearrangement of the triple — the collection was
+    // absent from the identity model entirely. This case is the instrument for
+    // the widening, and it is the ONE that reds if the collection is dropped
+    // from the parse again.
+    name: "ado/triangular-cross-collection-same-org-project-repo-refuses",
+    mutation:
+      "upflow-self-repo.js::_parseAdo — drop `collection` from the returned ADO identity (revert the quad to a triple)",
+    repo: {
+      dirName: "coc-rs",
+      remote:
+        "https://contoso.visualstudio.com/DefaultCollection/platform/_git/coc-rs",
+      pushRemote:
+        "https://contoso.visualstudio.com/OtherCollection/platform/_git/coc-rs",
+    },
+    adapter: ADO,
+    prRef: {
+      repoRef: { ...ADO_SELF, collection: "DefaultCollection" },
+      prId: 42,
+    },
+    expect: { ok: false, fired: false },
+    expectReason: "triangular remote",
+  },
+  {
+    // THE SAME DEFECT ON THE ADAPTER LANE — caller-stated collection vs derived
+    // collection, both PRESENT and different. The triangular case above reds
+    // through `_sameDerivedIdentity`; this one isolates the `isSelfRepoAdo`
+    // collection leg itself, reached directly from `completeUpflowPR`.
+    //
+    // Both cases are needed for the same reason the README records three times
+    // (the ADO `org` leg, the GitHub `owner` leg, the ADO `project` leg): a leg
+    // exercised only through a sibling path is a leg no case can isolate.
+    name: "ado/cross-collection-same-org-project-repo-refuses",
+    mutation:
+      "upflow-self-repo.js::isSelfRepoAdo — delete the collection comparison (compare org/project/repo only)",
+    repo: {
+      dirName: "coc-rs",
+      remote:
+        "https://contoso.visualstudio.com/OtherCollection/platform/_git/coc-rs",
+    },
+    adapter: ADO,
+    prRef: {
+      repoRef: { ...ADO_SELF, collection: "DefaultCollection" },
+      prId: 42,
+    },
+    expect: { ok: false, fired: false },
+    expectReason: "cross-repo completion refused",
+  },
+  {
+    // THE ABSENT-vs-PRESENT POLARITY, caller side unstated. `repoRef` names no
+    // collection; the derived self is on one. An unstated collection is NOT a
+    // wildcard — it is the caller asserting the collection-less (modern) form,
+    // which is a DIFFERENT identity from a collection form. Fail-closed, and
+    // consistent with how `isSelfRepoAdo` already treats a null component on
+    // any of the other three legs.
+    //
+    // This is a CONTRACT CHANGE for a caller on a legacy collection remote:
+    // before the quad it completed with a bare {org, project, repo}; now it
+    // must state the collection. The refusal names both sides' collection so
+    // the fix is one field, not a hunt. The alternative — letting absent match
+    // present — is a leg that can never fail, the exact defect class this
+    // suite's README records three times.
+    name: "ado/unstated-collection-does-not-match-a-collection-form",
+    mutation:
+      "upflow-self-repo.js::isSelfRepoAdo — treat an absent `repoRef.collection` as matching any derived collection",
+    repo: {
+      dirName: "coc-rs",
+      remote:
+        "https://contoso.visualstudio.com/DefaultCollection/platform/_git/coc-rs",
+    },
+    adapter: ADO,
+    prRef: { repoRef: ADO_SELF, prId: 42 },
+    expect: { ok: false, fired: false },
+    expectReason: "cross-repo completion refused",
+  },
+  {
+    // THE MIRROR POLARITY — caller STATES a collection, derived self is on a
+    // collection-less (modern `dev.azure.com`) form. Refuses for the same
+    // reason and in the same direction. Both polarities are cased because a
+    // one-sided nullable comparison is asymmetric by construction, and only a
+    // pair can show it is not.
+    name: "ado/stated-collection-does-not-match-a-collection-free-form",
+    mutation:
+      "upflow-self-repo.js::isSelfRepoAdo — treat an absent derived collection as matching any stated `repoRef.collection`",
+    repo: { dirName: "coc-rs", remote: ADO_SELF_REMOTE },
+    adapter: ADO,
+    prRef: {
+      repoRef: { ...ADO_SELF, collection: "DefaultCollection" },
+      prId: 42,
+    },
+    expect: { ok: false, fired: false },
+    expectReason: "cross-repo completion refused",
+  },
+  {
+    // THE VALIDATOR LEG. `repoRef.collection` is a NEW caller-authored operand,
+    // so it needs the same shape guard the other three carry — otherwise the
+    // quad's fourth field is the one place a caller can put anything. Refuses
+    // at `validateRepoRef`, BEFORE the fence, like the sibling org/project/repo
+    // guards.
+    //
+    // `Default Collection` (with the space) is the realistic bad value: ADO
+    // permits spaces in display names and the URL-safe form is what the
+    // derivation reads off the remote, so a caller transcribing the display
+    // name is the ordinary way to reach this branch.
+    name: "ado/invalid-collection-in-repo-ref-refuses",
+    mutation:
+      "vcs-azure-adapter.js::validateRepoRef — delete the `ref.collection` validation branch",
+    repo: {
+      dirName: "coc-rs",
+      remote:
+        "https://contoso.visualstudio.com/DefaultCollection/platform/_git/coc-rs",
+    },
+    adapter: ADO,
+    prRef: {
+      repoRef: { ...ADO_SELF, collection: "Default Collection" },
+      prId: 42,
+    },
+    expect: { ok: false, fired: false },
+    expectReason: "repoRef.collection",
   },
   {
     // The injection sibling of the case above, and the reason allowing THREE
@@ -1341,8 +1492,23 @@ const cases = [
     // collides with git's `/info/refs?service=…`), so this is a parse defect,
     // not an escalation. Fixed anyway rather than left safe-by-accident.
     name: "ado/discarded-collection-slot-rejects-dirty-segment",
+    // THE RECORDED MUTATION IS NOW THE PAIR, AND THAT IS A CORRECTION.
+    // This case's mutation used to be the validate-before-use check ALONE, and
+    // that was accurate until the collection stopped being discarded. Retaining
+    // it added a SECOND guard on the same byte — the present-but-unnormalizable
+    // check at the end of `_parseAdo` — so deleting either one alone now leaves
+    // the suite GREEN. Measured, both directions, rather than assumed:
+    //   delete the validate-before-use check ALONE  -> GREEN 53/53
+    //   delete the tail collection guard ALONE      -> GREEN 53/53
+    //   delete BOTH                                 -> RED, this case
+    // Per `instrument-discipline.md` MUST-2(b) the two greens are RESOLVED, not
+    // left as live hypotheses: each is SUBSUMED by its sibling (the pair's RED
+    // is what shows the byte is still guarded), not vacuous. The stale
+    // single-guard mutation is replaced rather than left standing, because an
+    // un-reddening `mutation:` field is precisely what this suite's README
+    // rules out as evidence.
     mutation:
-      "upflow-self-repo.js::_parseAdo — move the `segs.some(normalizeComponent === null)` validate-before-drop check to AFTER the `slice(1)`, or delete it",
+      "upflow-self-repo.js::_parseAdo — the PAIR: delete BOTH the `segs.some(normalizeComponent === null)` validate-before-use check AND the trailing `if (collection !== null && !ado.collection) return null;` guard (either alone leaves the suite green)",
     repo: {
       dirName: "coc-rs",
       remote: "https://contoso.visualstudio.com/platform#/proj2/_git/repo2",

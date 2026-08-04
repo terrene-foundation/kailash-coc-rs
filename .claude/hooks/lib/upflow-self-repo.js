@@ -345,7 +345,7 @@ function _sameDerivedIdentity(a, b) {
   if (!!a.ado !== !!b.ado) return false;
 
   if (a.ado) {
-    // ADO: the org/project/repo TRIPLE is the identity, and the host is
+    // ADO: the org/collection/project/repo QUAD is the identity, and the host is
     // DELIBERATELY excluded. `_parseAdo` has already gated the host to a closed
     // Azure DevOps set, and the SAME repository is addressed by several of those
     // hosts depending on transport — `dev.azure.com` for https and
@@ -367,6 +367,13 @@ function _sameDerivedIdentity(a, b) {
     // Cross-org is still caught, because `_parseAdo` derives `org` from the
     // subdomain on the `<org>.visualstudio.com` form and from the path
     // elsewhere, so a different org yields a different `ado.org` on every form.
+    //
+    // CROSS-COLLECTION IS CAUGHT HERE TOO, and this call site needed NO change
+    // to get it: routing ADO through `isSelfRepoAdo` rather than hand-rolling a
+    // fourth comparison path is what made the quad widening reach the
+    // triangular guard automatically. Both operands are DERIVED here, so both
+    // genuinely carry the collection — this is the lane the cross-collection
+    // defect was reported on, and `_sameDerivedIdentity` is not where it lived.
     return isSelfRepoAdo(a.ado, b.ado);
   }
 
@@ -645,10 +652,16 @@ function _parseAdo(host, segments) {
   // URL forms is precisely what caused the collection-form regression this file
   // records above. Settling it needs a real ADO org emitting `_ssh` clone URLs.
 
-  // VALIDATE EVERY SEGMENT BEFORE ANY IS DROPPED. The collection slot below is
-  // discarded by `slice(1)`, and until this line it was the ONE position in the
-  // whole parser whose content never passed `normalizeComponent` — which made
-  // it a junk drawer that let a dirty path clear the count check:
+  // VALIDATE EVERY SEGMENT BEFORE ANY IS USED OR DROPPED.
+  //
+  // The clause used to read "BEFORE ANY IS DROPPED", and the collection slot
+  // was the thing being dropped. Nothing is dropped any more — the collection
+  // is RETAINED as the quad's fourth component — so the property is restated in
+  // its general form rather than deleted along with the drop it named. It is
+  // still load-bearing, and for the SAME reason: until this line the collection
+  // slot was the ONE position in the whole parser whose content never passed
+  // `normalizeComponent` — a junk drawer that let a dirty path clear the count
+  // check:
   //
   //   https://realorg.visualstudio.com/realproj#/proj2/_git/repo2
   //     filter -> ["realproj#", "proj2", "repo2"]   3, passes the count
@@ -674,6 +687,9 @@ function _parseAdo(host, segments) {
   if (segs.some((p) => normalizeComponent(p) === null)) return null;
 
   let org = null;
+  // The legacy TFS/VSTS collection, or null on every form that has no
+  // collection slot. Declared here so both branches below can see it.
+  let collection = null;
   const isOrgSubdomain =
     host.endsWith(".visualstudio.com") && host !== "vs-ssh.visualstudio.com";
   // EXACT counts, same reasoning as the GitHub branch above and the same
@@ -738,28 +754,32 @@ function _parseAdo(host, segments) {
     // never used. Resolving it needs a signal outside the URL (an API lookup),
     // which this module deliberately does not do.
     if (segs.length !== 2 && segs.length !== 3) return null;
-    if (segs.length === 3) segs = segs.slice(1); // drop the collection
-    // KNOWN GAP, RECORDED NOT FIXED — ADO CROSS-COLLECTION IS NOT DISCRIMINATED.
-    // Dropping the collection here means it is absent from the identity model
-    // ENTIRELY: `_parseAdo` discards it, the ADO `repoRef` has no field for it,
-    // and `isSelfRepoAdo` compares org/project/repo only. In legacy TFS/VSTS
-    // different collections are different namespaces — two different repos —
-    // so this pair derives an IDENTICAL triple and compares equal:
+    // THE COLLECTION IS RETAINED, NOT DROPPED — it is the FOURTH component of
+    // the ADO identity. This line used to be `segs = segs.slice(1)` and the
+    // value went nowhere, which meant cross-collection was not discriminated
+    // ANYWHERE: the parse discarded it, the ADO `repoRef` had no field for it,
+    // and `isSelfRepoAdo` compared org/project/repo only. In legacy TFS/VSTS a
+    // collection is a NAMESPACE, so this pair names two DIFFERENT repositories
+    // and yet derived an IDENTICAL triple and compared EQUAL (measured:
+    // ALLOWED, transport fired):
     //   https://<org>.visualstudio.com/DefaultCollection/<proj>/_git/<repo>
-    //   https://<org>.visualstudio.com/EvilCollection/<proj>/_git/<repo>
-    // Measured: ALLOWED, both sides {org, project, repo} identical.
-    //
-    // NOT fixable by any comparison key over the current triple — no arrangement
-    // of fields that do not include the collection can separate them. Closing it
-    // means retaining the collection through the parse and widening the ADO
-    // identity from a triple to a quad, which also changes `isSelfRepoAdo` and
-    // both adapters' `repoRef` shape. That is a deliberate design change, not a
-    // guard tweak, and it is left for one — recorded here, at the line that
-    // drops the value, so the next reader finds it where the loss happens.
-    //
-    // Scope: PRE-EXISTING and orthogonal to the triangular guard — this pair
-    // compared equal before that guard existed too, and the guard neither
-    // introduced nor widened it.
+    //   https://<org>.visualstudio.com/OtherCollection/<proj>/_git/<repo>
+    // No arrangement of the triple could separate them — the component was
+    // absent from the model, which is why this was an identity-MODEL change
+    // (triple → quad) rather than a comparison tweak. Instrumented by
+    // `ado/triangular-cross-collection-same-org-project-repo-refuses` and
+    // `ado/cross-collection-same-org-project-repo-refuses`.
+    if (segs.length === 3) {
+      collection = segs[0];
+      segs = segs.slice(1);
+    }
+    // ONLY THIS FORM CARRIES A COLLECTION. `dev.azure.com/<org>/<project>/_git/
+    // <repo>`, `ssh.dev.azure.com:v3/...`, and the 2-segment
+    // `<org>.visualstudio.com/<project>/_git/<repo>` have NO collection slot, so
+    // `collection` stays null on all of them. That null is what keeps the
+    // widening backward-compatible for every existing caller: two modern forms
+    // compare null-to-null and are unaffected. It is NOT a wildcard — see
+    // `isSelfRepoAdo`, where absent matches only absent.
   } else {
     // NOT INDEPENDENTLY LOAD-BEARING, and measured to be so rather than
     // assumed. Relaxing this line alone to `< 3` reds NOTHING — the suite stays
@@ -800,10 +820,27 @@ function _parseAdo(host, segments) {
 
   const ado = {
     org: normalizeComponent(org),
+    // NULL MEANS "THIS URL FORM CARRIES NO COLLECTION", never "we could not
+    // read one" — the two are kept distinguishable by the guard below.
+    collection: collection === null ? null : normalizeComponent(collection),
     project: normalizeComponent(segs[segs.length - 2]),
     repo: normalizeComponent(segs[segs.length - 1]),
   };
   if (!ado.org || !ado.project || !ado.repo) return null;
+  // A collection segment that was PRESENT but does not normalize is a PARSE
+  // FAILURE, not an absent collection — collapsing it to null would turn a
+  // dirty segment into the value that matches every collection-less remote.
+  // SUBSUMED BY, NOT REDUNDANT WITH, the validate-before-use check above — and
+  // that is a MEASUREMENT, not a reading of the code. Deleting either guard
+  // ALONE leaves the fixture suite green; deleting BOTH reds
+  // `ado/discarded-collection-slot-rejects-dirty-segment`. So each guard covers
+  // the other on the current segment set, and the green each shows alone is
+  // resolved as SUBSUMPTION rather than left as the two live hypotheses
+  // `instrument-discipline.md` MUST-2(b) would otherwise require (vacuous test
+  // OR inert mutation). Kept BOTH deliberately: this one is the guard that
+  // still holds if a future refactor moves or drops the early check — which is
+  // exactly what happened to the collection slot itself once already.
+  if (collection !== null && !ado.collection) return null;
   return ado;
 }
 
@@ -1066,10 +1103,38 @@ function isSelfRepo(repoRef, self) {
 }
 
 /**
- * ADO shape: {org, project, repo} — all three compared, all three sourced from
- * the DERIVATION (`deriveSelfRepoRef(...).self.ado`). A null/absent `selfAdo`
- * returns false: an origin remote that is not ADO-shaped cannot authorize an
- * ADO completion, and no component may fall back to a value read off `repoRef`.
+ * ADO shape: {org, collection, project, repo} — a QUAD, all four compared, all
+ * four sourced from the DERIVATION (`deriveSelfRepoRef(...).self.ado`) on the
+ * `selfAdo` side. A null/absent `selfAdo` returns false: an origin remote that
+ * is not ADO-shaped cannot authorize an ADO completion, and no component may
+ * fall back to a value read off `repoRef`.
+ *
+ * WHY `collection` CANNOT USE THE OTHER THREE LEGS' RULE. `org`/`project`/`repo`
+ * treat null as fatal, because every ADO URL form carries all three and a null
+ * there means the parse failed. The collection is different: it is ABSENT BY
+ * CONSTRUCTION on three of the four recognized forms (`dev.azure.com`,
+ * `ssh.dev.azure.com:v3`, and the 2-segment `<org>.visualstudio.com`), present
+ * only on the legacy 3-segment `<org>.visualstudio.com/<collection>/...`. So
+ * null is a legitimate VALUE here, not a failure, and it needs its own rule.
+ *
+ * THE RULE: absent matches ONLY absent. Two collection-less remotes compare
+ * null-to-null and are unaffected — that is what makes the widening
+ * backward-compatible for every existing caller and every modern-form case.
+ * Absent-vs-present REFUSES. An absent collection is the caller asserting the
+ * collection-LESS form, which is a different identity from a collection form;
+ * it is not a wildcard.
+ *
+ * THAT DIRECTION IS DELIBERATE AND IT IS A CONTRACT CHANGE. Letting absent
+ * match present would make this leg one that can never fail from the adapter
+ * (`repoRef` had no collection field at all before this change), which is the
+ * exact defect the fixture README records three separate times — the ADO `org`
+ * leg, the GitHub `owner` leg, and the ADO `project` leg, each of which
+ * self-compared or was carried by a sibling and instrumented nothing. It is
+ * also the direction this module takes everywhere else it meets an
+ * under-determined identity: refuse. The cost is real and is stated rather than
+ * glossed — a caller on a legacy collection remote that completed with a bare
+ * {org, project, repo} must now name the collection. The refusal names BOTH
+ * sides' collection so that is a one-field fix, not a hunt.
  */
 function isSelfRepoAdo(repoRef, selfAdo) {
   if (!repoRef || !selfAdo) return false;
@@ -1078,7 +1143,24 @@ function isSelfRepoAdo(repoRef, selfAdo) {
     const r = normalizeComponent(selfAdo[k]);
     if (l === null || r === null || l !== r) return false;
   }
-  return true;
+  const lAbsent = _collectionAbsent(repoRef.collection);
+  const rAbsent = _collectionAbsent(selfAdo.collection);
+  if (lAbsent !== rAbsent) return false;
+  if (lAbsent) return true;
+  const lc = normalizeComponent(repoRef.collection);
+  const rc = normalizeComponent(selfAdo.collection);
+  return lc !== null && rc !== null && lc === rc;
+}
+
+/**
+ * Is an ADO collection component ABSENT? Absent is `undefined` (the field was
+ * never set — every pre-quad `repoRef`), `null` (a form with no collection
+ * slot), or `""`. Everything else is PRESENT and gets compared; a present value
+ * that fails to normalize is a mismatch, not an absence, which is why this
+ * asks only the absence question and leaves normalization to the caller.
+ */
+function _collectionAbsent(v) {
+  return v === undefined || v === null || v === "";
 }
 
 /**
