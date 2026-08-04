@@ -2,6 +2,9 @@
 
 Regression lock for `journal-reserve.js::reserveJournalSlotSigned`'s coordination
 gate — issue #76, **and** the failure that #76's own fix re-opened one path over.
+It also locks the two other ways `_foldHighWater` can silently return a
+high-water of 0: an unvalidated `content.slot` (§ slot-shape) and a swallowed
+roster read (§ roster, issue #84).
 
 Run: `node .claude/audit-fixtures/journal-reserve-coordination-gate/run.mjs`
 (exit 0 = pass, exit 1 = fail). No CI runner invokes it; like its sibling
@@ -31,12 +34,91 @@ answer to that finding.
 Each mutation was applied in an isolated `cp -R` sandbox; the working tree was
 never mutated.
 
-| Mutation                                                                                                         | Cases redded                                                      |
-| ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| replace `isCoordinationEnabled(resolveMainCheckout(repoDir) \|\| repoDir)` with `isCoordinationEnabled(repoDir)` | exactly 1 — `coordination-on/worktree/resolves-main-not-worktree` |
-| `requireSigningIdentity: false` (drop the gate open)                                                             | 2 — both `coordination-on/*` cases                                |
-| `requireSigningIdentity: true` (revert the #76 fix)                                                              | exactly 1 — `coordination-off/main/unsigned-identity-accepted`    |
-| `_foldHighWater` — drop the `/^[0-9]{1,4}$/` slot shape check, restore `Number.isFinite` | exactly 1 — `slot-shape/poisoned-high-water-cannot-escape-4-digits` |
+| Mutation                                                                                                         | Cases redded                                                                                                     |
+| ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| replace `isCoordinationEnabled(resolveMainCheckout(repoDir) \|\| repoDir)` with `isCoordinationEnabled(repoDir)` | exactly 1 — `coordination-on/worktree/resolves-main-not-worktree`                                                |
+| `requireSigningIdentity: false` (drop the gate open)                                                             | 2 — both `coordination-on/*` cases                                                                               |
+| `requireSigningIdentity: true` (revert the #76 fix)                                                              | exactly 1 — `coordination-off/main/unsigned-identity-accepted`                                                   |
+| `_foldHighWater` — drop the `/^[0-9]{1,4}$/` slot shape check, restore `Number.isFinite`                         | exactly 1 — `slot-shape/poisoned-high-water-cannot-escape-4-digits`                                              |
+| `_foldHighWater` — restore the bare `catch { roster = null; }` (revert the #84 fix)                              | exactly 1 — `roster/corrupt-roster-refuses-rather-than-restarting-high-water`                                    |
+| `_foldHighWater` — drop the `err.code === "ENOENT"` arm (refuse on every roster read failure)                    | 3 — `roster/absent-roster-proceeds` + both `slot-shape/*` fold cases (all three seed log records with no roster) |
+| `_foldHighWater` — throw unconditionally after a successful roster parse                                         | exactly 1 — `roster/valid-roster-proceeds`                                                                       |
+
+## The roster read (issue #84)
+
+`_foldHighWater` read `.claude/operators.roster.json` inside a bare
+`catch { roster = null; }`. A null roster is **not inert**:
+`coordination-log.js::_resolveRosterPerson` returns null for it, `_verifyRule1`
+then rejects every record with _"signer verified_id not in roster keys"_ — the
+roster-**membership** gate is explicitly retained under `skipSignatureVerify` —
+so `folded.accepted` is empty and `high` is 0. The fold half of the high-water
+vanishes and a slot a sibling operator already reserved is handed out again:
+the exact outcome the coordination-log read one line above refuses for, in its
+own docstring's words.
+
+The fix mirrors that log read. `ENOENT` alone means _legitimately absent_ (a
+solo / un-enrolled repo — coordination is OPT-IN and OFF by default) and folds
+with a null roster as before; every other failure means _unknown_ and refuses.
+`coordination-mode.js` already draws the same line — an unparseable roster
+fails **closed** there (`implicit-corrupt-roster-failclosed`), so treating the
+same bytes as absence here was inconsistent with the sibling predicate as well
+as with the read directly above.
+
+**Fold path, not raw path — a deliberate call.** The roster cases do NOT set
+`COC_TEST_SKIP_SIGN=1`. That flag sets `accepted = records`, which bypasses the
+fold entirely, so under the raw path a null roster costs nothing and the
+high-water survives. The damage exists only on the fold path, so the cases run
+there. The slot-shape cases force the raw path for the opposite and equally
+deliberate reason: their subject is the slot loop, which synthetic records
+cannot reach through a real fold.
+
+**Measured RED before the fix** — the corrupt-roster case returned:
+
+```
+{"ok":true,"reservation":{"slot":"0001","slot_num":1,
+ "filename":"0001-fixture-op-DECISION-fixture-topic.md", ...}}
+```
+
+i.e. it handed out slot 0001 over an unreadable roster. After the fix it
+returns `ok:false, step:"fold-high-water"`.
+
+**Honest bound on the two proceed-polarity cases.** `roster/absent-roster-proceeds`
+and `roster/valid-roster-proceeds` are green **before** the fix as well as
+after — the bare catch also yielded `roster = null` and proceeded. They are
+therefore **not** evidence for the #84 fix; they are the over-tightening guards
+that distinguish it from a refuse-everything implementation, and each is redded
+by the mutation named in the table above. Stated rather than counted as fix
+evidence (`instrument-discipline.md` MUST-2(a)).
+
+**The `readChainHead` stub was wrong and it was latent.** It returned
+`{ok:true, prev_hash:null, seq:0}`; `coc-emit.js` reads `{lastSeq, lastContentHash}`
+(or `null` for "no prior chain"), so `chainHead.lastSeq + 1` was `NaN` and
+canonical-serialize refused. No case in this file reached the emitter until the
+roster cases were added, so the suite was green over a broken stub. Now `null`.
+
+## Why the malformed-`content.slot` `continue` stays silent
+
+Considered alongside the #84 fix and deliberately **not** changed. The
+dispositions differ because the failures differ in blast radius:
+
+- an unreadable **roster** is GLOBAL — it discards every record, including
+  well-formed ones naming slots a sibling really reserved, so proceeding hands
+  out a taken slot. Refusing is the only safe direction.
+- a malformed or out-of-range **`content.slot`** is LOCAL to one record, and
+  that record names no real slot (`"999999999999999999999"`, `"0004junk"`).
+  Skipping loses no information about the reserved set.
+
+Refusing on a bad shape would also be strictly worse than the poison it
+replaced: one append of `slot: "9999999999"` would permanently deny every
+reservation for every operator — the same permanent denial the shape check
+exists to prevent, reached through the guard instead of around it, at a lower
+cost to the same adversary.
+
+**Residual, recorded not closed:** the skip is unobservable — a poisoning record
+is dropped with no counter and no WARN, so an operator cannot distinguish a
+clean log from one being probed. `_foldHighWater` has no logger surface and sits
+on a guard path where throwing is BLOCKED (`zero-tolerance.md` Rule 3), so
+closing it is a separate change.
 
 ## The slot-shape case and what it actually reaches
 
@@ -51,8 +133,8 @@ every operator on the repo**: a denial of the journal receipt `/codify`
 mandates, from one append.
 
 **The case FORCES `COC_TEST_SKIP_SIGN=1`, and that is load-bearing, not
-convenience.** Measured: on the default fold path this case stays GREEN *even
-under its own mutation*, because the synthetic records a fixture can write are
+convenience.** Measured: on the default fold path this case stays GREEN _even
+under its own mutation_, because the synthetic records a fixture can write are
 rejected by the fold's other rules (chain continuity / emitter registration)
 before reaching the slot loop. A case that cannot red is not an instrument, so
 the env var is set deterministically inside the case rather than left to the

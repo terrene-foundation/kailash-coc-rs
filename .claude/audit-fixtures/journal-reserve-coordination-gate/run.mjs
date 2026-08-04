@@ -149,17 +149,40 @@ function writeSlotRecord(repoDir, slot) {
   );
 }
 
-function reserve(repoDir) {
+// A FULL signing identity plus a stubbed signer. Needed by the roster cases:
+// coordination-mode.js fail-CLOSES a corrupt roster to ON
+// (`implicit-corrupt-roster-failclosed`), so the unsigned lever would be refused
+// by the coordination gate for an unrelated reason and mask what is under test.
+// With signing satisfied, the ONLY thing that can refuse is the fold read.
+const SIGNED_IDENTITY = {
+  display_id: "fixture-op",
+  person_id: "fixture-person",
+  verified_id: "FIXTUREKEYFINGERPRINT",
+};
+const STUB_SIGN = () => ({ ok: true, sig: "fixture-signature" });
+
+function reserve(repoDir, opts) {
+  const o = opts || {};
   delete require.cache[require.resolve(JOURNAL_RESERVE)];
   const { reserveJournalSlotSigned } = require(JOURNAL_RESERVE);
   return reserveJournalSlotSigned(repoDir, {
     dir: "journal",
     type: "DECISION",
     topic: "fixture-topic",
-    identity: UNSIGNED_IDENTITY,
+    identity: o.identity || UNSIGNED_IDENTITY,
     // Emission is stubbed: this fixture is about the GATE, not the transport.
-    readChainHead: () => ({ ok: true, prev_hash: null, seq: 0 }),
+    // Injecting `append` also bypasses coc-emit's default fold-validation,
+    // which is scoped to the default-append path.
+    //
+    // `null` = "no prior chain for this emitter", which coc-emit turns into
+    // `seq: 0, prev_hash: null`. The earlier stub returned
+    // `{ok:true, prev_hash:null, seq:0}` — a shape coc-emit does not read
+    // (it wants `{lastSeq, lastContentHash}`), so `chainHead.lastSeq + 1` was
+    // NaN and canonical-serialize refused. It went unnoticed because no case
+    // in this file reached the emitter until the roster cases were added.
+    readChainHead: () => null,
     append: () => ({ ok: true }),
+    ...(o.sign ? { sign: o.sign } : {}),
   });
 }
 
@@ -304,11 +327,111 @@ cases.push({
     'slot === "10001" (the on-disk 10000 was seen, not skipped back to 0001)',
 });
 
+// ---------------------------------------------------------------------------
+// Roster read in the high-water fold (issue #84)
+// ---------------------------------------------------------------------------
+
+cases.push({
+  // THE INSTRUMENT FOR ISSUE #84. `_foldHighWater` read the roster inside a bare
+  // `catch { roster = null; }`. A null roster is NOT inert: `coordination-log.js
+  // ::_resolveRosterPerson` returns null for it, `_verifyRule1` then rejects
+  // every record with "signer verified_id not in roster keys" (the roster-
+  // MEMBERSHIP gate is explicitly RETAINED under `skipSignatureVerify`), so
+  // `folded.accepted` is empty and `high` is 0. The FOLD HALF OF THE HIGH-WATER
+  // VANISHES, and a slot a sibling operator already reserved is handed out
+  // again — the exact outcome the log read one line above REFUSES for, in its
+  // own words: "a 0 on an unreadable log would hand out an already-reserved
+  // slot."
+  //
+  // WHY THE FOLD PATH, NOT THE RAW PATH — a deliberate call, not a default.
+  // `COC_TEST_SKIP_SIGN=1` sets `accepted = records`, which BYPASSES the fold
+  // entirely, so under the raw path a null roster costs nothing: the high-water
+  // survives. The damage this case locks exists ONLY on the fold path, so the
+  // case runs there (no `forceSkipSign`). The slot-shape cases above force the
+  // raw path for the opposite and equally deliberate reason — their subject is
+  // the slot loop, which synthetic records cannot reach through a real fold.
+  //
+  // The log must be NON-EMPTY or the roster read is never reached: the
+  // `records.length === 0` early return sits above it. One seeded record is
+  // enough; it does not need to survive the fold, because the assertion is
+  // about REFUSING vs PROCEEDING, not about the resulting number.
+  //
+  // WHY A SIGNED IDENTITY HERE. `coordination-mode.js` fail-CLOSES a corrupt
+  // roster to ON (`implicit-corrupt-roster-failclosed`), so the unsigned lever
+  // the coordination cases use would be refused at `step: "reserve"` for an
+  // unrelated reason and mask what is under test. With signing satisfied and
+  // emission stubbed, the fold read is the ONLY thing that can refuse — so the
+  // measured pre-fix result is the DEFECT itself (`ok: true`, slot "0001":
+  // a slot handed out over an unreadable roster), not an incidental refusal.
+  // Worth stating: the coordination predicate ALREADY treats an unparseable
+  // roster as a security-relevant condition and fails closed on it. The fold
+  // read, one module over, treated the same bytes as absence.
+  name: "roster/corrupt-roster-refuses-rather-than-restarting-high-water",
+  mutation:
+    "journal-reserve.js::_foldHighWater — restore the bare `catch { roster = null; }` around the roster read (issue #84)",
+  setup: { coordinationOn: false, withWorktree: false },
+  seedSlots: ["0007"],
+  roster: "{ this is not json",
+  identity: SIGNED_IDENTITY,
+  sign: STUB_SIGN,
+  expect: (r) => r.ok === false && r.step === "fold-high-water",
+  describe:
+    'ok === false AND step === "fold-high-water" (REFUSED at the fold read, not silently restarted from 0)',
+});
+
+cases.push({
+  // THE ENOENT POLARITY, and it is not optional: a refusal-only pair cannot
+  // distinguish the fix from a refuse-everything implementation. A repo that
+  // legitimately has no roster (solo, un-enrolled — coordination is OFF BY
+  // DEFAULT per `multi-operator-coordination.md`) MUST still get a slot. ENOENT
+  // and unreadable are DIFFERENT cases and the fix turns on telling them apart.
+  //
+  // HONEST BOUND: this case is GREEN BEFORE the fix as well as after — the bare
+  // catch also yielded `roster = null` and proceeded. It is therefore NOT an
+  // instrument for the #84 fix; it is the over-tightening guard, and it reds
+  // under the mutation named below. Stated rather than counted as fix evidence
+  // (`instrument-discipline.md` MUST-2(a)).
+  name: "roster/absent-roster-proceeds",
+  mutation:
+    "journal-reserve.js::_foldHighWater — drop the `err.code === \"ENOENT\"` arm and throw on every roster read failure",
+  setup: { coordinationOn: false, withWorktree: false },
+  seedSlots: ["0007"],
+  expect: (r) => r.ok === true,
+  describe: "ok === true (no roster is not a failure — coordination is OFF by default)",
+});
+
+cases.push({
+  // THE THIRD POLARITY: a roster that reads and parses CLEANLY must proceed.
+  // Distinguishes "refuses when the read fails" from "refuses whenever a roster
+  // is present at all" — the ENOENT case cannot, because it never exercises the
+  // read. Also green before the fix; named as the over-tightening guard it is,
+  // not as fix evidence.
+  name: "roster/valid-roster-proceeds",
+  mutation:
+    "journal-reserve.js::_foldHighWater — throw unconditionally after reading the roster (ignore the parse result)",
+  setup: { coordinationOn: false, withWorktree: false },
+  seedSlots: ["0007"],
+  roster: JSON.stringify({ persons: {} }),
+  expect: (r) => r.ok === true,
+  describe: "ok === true (a readable, parseable roster is not a refusal condition)",
+});
+
 let failed = 0;
 for (const c of cases) {
   let made = null;
   try {
     made = makeRepo(c.setup);
+    // `roster` seeds `.claude/operators.roster.json` — the file `_foldHighWater`
+    // reads. Written verbatim, so a case can seed unparseable bytes.
+    if (c.roster !== undefined) {
+      const rosterPath = path.join(
+        made.repoDir,
+        ".claude",
+        "operators.roster.json",
+      );
+      fs.mkdirSync(path.dirname(rosterPath), { recursive: true });
+      fs.writeFileSync(rosterPath, c.roster, "utf8");
+    }
     // `journalFiles` drives the DISK high-water (`_scanHighWater` + `SLOT_RE`),
     // which is a SEPARATE width surface from the coordination-log fold. Without
     // a real numbered file on disk, pinning `SLOT_RE` back to exactly-4 reds
@@ -317,12 +440,16 @@ for (const c of cases) {
     if (c.journalFiles)
       for (const fname of c.journalFiles)
         fs.writeFileSync(path.join(made.repoDir, "journal", fname), "x\n");
-    if (c.poison) for (const s of c.poison) writeSlotRecord(made.repoDir, s);
+    // `poison` seeds hostile/malformed slot values; `seedSlots` seeds ordinary
+    // ones. Same writer — the distinction is what the case is asserting about,
+    // not how the record is written.
+    const logSlots = c.poison || c.seedSlots;
+    if (logSlots) for (const s of logSlots) writeSlotRecord(made.repoDir, s);
     const prevSkipSign = process.env.COC_TEST_SKIP_SIGN;
     if (c.forceSkipSign) process.env.COC_TEST_SKIP_SIGN = "1";
     let r;
     try {
-      r = reserve(made.repoDir);
+      r = reserve(made.repoDir, { identity: c.identity, sign: c.sign });
     } finally {
       if (c.forceSkipSign) {
         if (prevSkipSign === undefined) delete process.env.COC_TEST_SKIP_SIGN;

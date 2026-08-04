@@ -212,7 +212,12 @@ function reserveJournalSlot(dir, opts) {
  * log is the authoritative ordering surface.
  *
  * Read errors REFUSE (throw) rather than silently returning 0 — a 0 on
- * an unreadable log would hand out an already-reserved slot.
+ * an unreadable log would hand out an already-reserved slot. This covers
+ * BOTH inputs the fold needs: the coordination log AND the roster it is
+ * folded against (a null roster makes rule 1 reject every record, which
+ * collapses the high-water to 0 by a different route — issue #84). In both
+ * cases ENOENT alone means "legitimately absent" and returns/proceeds; any
+ * other failure means "unknown" and refuses.
  */
 function _foldHighWater(repoDir, dirRel) {
   const { resolveLogPath } = require("./state-io.js");
@@ -239,14 +244,51 @@ function _foldHighWater(repoDir, dirRel) {
     .filter((r) => r && typeof r === "object");
   if (records.length === 0) return 0;
 
+  // The roster read REFUSES on failure, for the same reason the log read above
+  // does — and it is the same failure, one read over (issue #84).
+  //
+  // A null roster is NOT inert. `coordination-log.js::_resolveRosterPerson`
+  // returns null for it, so `_verifyRule1` rejects EVERY record with "signer
+  // verified_id not in roster keys" — the roster-MEMBERSHIP gate is explicitly
+  // RETAINED under `skipSignatureVerify`, which is the mode this function folds
+  // in. `folded.accepted` is then empty and `high` is 0: the FOLD HALF OF THE
+  // HIGH-WATER VANISHES and a slot a sibling operator already reserved is
+  // handed out again. That is precisely the outcome the log read's own
+  // docstring refuses for. The previous `catch { roster = null; }` swallowed
+  // every read and parse error into that state silently.
+  //
+  // ENOENT is the ONE case that legitimately means "no roster": coordination is
+  // OPT-IN and OFF BY DEFAULT (`multi-operator-coordination.md`), so a solo /
+  // un-enrolled repo has no roster file and MUST still get a slot. It folds
+  // with a null roster exactly as before. Every OTHER failure — unreadable,
+  // unparseable, a directory, a permission error — is an UNKNOWN roster, not an
+  // absent one, and refuses. `coordination-mode.js` already draws this same
+  // line: an unparseable roster fails CLOSED there
+  // (`implicit-corrupt-roster-failclosed`), so treating the same bytes as
+  // absence here was inconsistent with the sibling predicate as well as with
+  // the read directly above.
+  //
+  // `fs.existsSync` is deliberately gone: the ENOENT arm of the read covers it
+  // without the check-then-use gap, and it matches the log read byte for byte.
+  const rosterPath = path.join(repoDir, ".claude", "operators.roster.json");
   let roster = null;
+  let rosterRaw;
   try {
-    const rosterPath = path.join(repoDir, ".claude", "operators.roster.json");
-    if (fs.existsSync(rosterPath)) {
-      roster = JSON.parse(fs.readFileSync(rosterPath, "utf8"));
+    rosterRaw = fs.readFileSync(rosterPath, "utf8");
+  } catch (err) {
+    if (!err || err.code !== "ENOENT") throw err;
+  }
+  if (rosterRaw !== undefined) {
+    try {
+      roster = JSON.parse(rosterRaw);
+    } catch (err) {
+      // JSON.parse throws a SyntaxError carrying no path, and the caller
+      // surfaces `err.message` verbatim — so name the file here or the refusal
+      // is unactionable.
+      throw new Error(
+        `roster unparseable at ${rosterPath}: ${err && err.message ? err.message : String(err)}`,
+      );
     }
-  } catch {
-    roster = null;
   }
 
   // skipSignatureVerify: the journal-slot HIGH-WATER needs only chain
@@ -301,6 +343,35 @@ function _foldHighWater(repoDir, dirRel) {
     // produced the "1e+21" filename. `Number.isSafeInteger` is retained because
     // the digit bound alone would still admit a value past 2^53 if the bound
     // were ever widened again.
+    //
+    // WHY THIS SKIPS SILENTLY WHILE THE ROSTER READ ABOVE REFUSES. The two
+    // dispositions were compared deliberately when #84 landed, and the
+    // asymmetry is load-bearing rather than an oversight:
+    //
+    //   - The roster failure is GLOBAL. One unreadable roster discards EVERY
+    //     record, including well-formed ones naming slots a sibling really did
+    //     reserve. Information about real reservations is lost, so proceeding
+    //     hands out a taken slot. Refusing is the only safe disposition.
+    //   - A malformed or out-of-range `content.slot` is LOCAL to one record,
+    //     and that record names NO REAL SLOT — "999999999999999999999" and
+    //     "0004junk" are not reservations anything can collide with. Skipping
+    //     it loses no information about the reserved set, so the fail-safe
+    //     direction here is to skip, not to refuse.
+    //
+    // Refusing on a bad shape would also be strictly WORSE than the poison it
+    // replaced: one append of `slot: "9999999999"` would permanently deny every
+    // reservation for every operator on the repo, which is the same permanent
+    // denial the shape check exists to prevent, reached through the guard
+    // instead of around it. Same threat model
+    // (`multi-operator-coordination.md`: a write-capable team member seeking
+    // sabotage), lower cost to the attacker.
+    //
+    // The honest residual: the skip is UNOBSERVABLE. A poisoning record is
+    // dropped with no counter and no WARN, so an operator cannot tell a clean
+    // log from one being probed. That is a real gap, and NOT closed here —
+    // `_foldHighWater` has no logger surface and is consulted on a guard path
+    // where throwing is BLOCKED (`zero-tolerance.md` Rule 3). Recorded rather
+    // than silently accepted.
     if (typeof c.slot !== "string" && typeof c.slot !== "number") continue;
     if (!/^[0-9]{1,9}$/.test(String(c.slot))) continue;
     const n = parseInt(c.slot, 10);
@@ -381,7 +452,11 @@ function reserveJournalSlotSigned(repoDir, opts) {
     return {
       ok: false,
       error: "fold high-water read failed",
-      reason: `coordination log unreadable; refusing to hand out a possibly-reserved slot: ${err && err.message ? err.message : String(err)}`,
+      // Names BOTH inputs: the throw can now come from the coordination-log
+      // read OR the roster read (issue #84), and a reason naming only the log
+      // would misdirect the reader at exactly the moment they need the path.
+      // The underlying message carries which one.
+      reason: `coordination log or roster unreadable; refusing to hand out a possibly-reserved slot: ${err && err.message ? err.message : String(err)}`,
       step: "fold-high-water",
     };
   }
