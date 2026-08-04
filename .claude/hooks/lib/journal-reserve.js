@@ -462,11 +462,24 @@ function _foldHighWater(repoDir, dirRel) {
     if (lost.length > 0) {
       const first = lost[0];
       throw new Error(
-        `${lost.length} journal-slot reservation record(s) for "${dirRel}" were rejected at ROSTER MEMBERSHIP ` +
-          `(first: ${first.reason || "rule 1"}); ` +
+        // BRANCHES ON THE RULE, because the two are different failures and the
+        // remedy differs. The first cut framed BOTH as "rejected at roster
+        // membership … the roster does not resolve the signer(s)", which is
+        // FALSE for rule-4: membership PASSED there and the signer WAS resolved
+        // — the mismatch is the record's `person_id` against the person that
+        // fingerprint resolved to. Worse, it pointed at `git show HEAD:…roster`,
+        // which does not fix a legitimately re-keyed `person_id`. An operator
+        // reading a true reason inside false framing is the failure mode this
+        // module keeps recording about its own comments.
+        `${lost.length} journal-slot reservation record(s) for "${dirRel}" were rejected by the fold ` +
+          `(first: ${first.reason || first.rule || "unknown rule"}); ` +
           "refusing to hand out a possibly-reserved slot. " +
-          `The roster at ${rosterPath} does not resolve the signer(s) that reserved them — ` +
-          "restore it (e.g. `git show HEAD:.claude/operators.roster.json`) before reserving.",
+          (first.rule === "rule-4"
+            ? `The roster at ${rosterPath} resolves the signer's key but binds it to a DIFFERENT person_id ` +
+              "than the record claims — reconcile the persons-map key with the emitted records " +
+              "(a persons-map key is declared immutable by the roster schema) before reserving."
+            : `The roster at ${rosterPath} does not resolve the signer(s) that reserved them — ` +
+              "restore it (e.g. `git show HEAD:.claude/operators.roster.json`) before reserving."),
       );
     }
   }

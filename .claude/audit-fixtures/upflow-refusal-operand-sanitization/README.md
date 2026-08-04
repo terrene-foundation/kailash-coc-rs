@@ -92,7 +92,7 @@ to any OTHER consumer. It was observed RED against that intermediate state
 
 `instrument-discipline.md` MUST-2(b): a mutation that does NOT red leaves TWO
 live hypotheses — vacuous test OR inert mutation — so an un-run `mutation:`
-field is a claim, not evidence. **All 16 mutations below were EXECUTED** against
+field is a claim, not evidence. **All 17 mutations below were EXECUTED** against
 the LIVE tree (apply → run the suite → revert, one at a time, scripted so no
 mutation could be left behind).
 
@@ -160,10 +160,16 @@ for one round's stale number went stale inside the same session as new cases
 landed. Re-derive it rather than trusting this line:
 `node .claude/audit-fixtures/upflow-refusal-operand-sanitization/run.mjs | tail -1`.
 
-**Provenance:** all 13 passes ran in the LIVE working tree (not a `cp -R`
-sandbox), because the only files mutated are the two adapters this change owns;
-each pass restored both files from an in-memory backup before the next.
-`git status --porcelain` was clean of adapter drift afterwards.
+**Provenance:** all 17 passes ran in the LIVE working tree (not a `cp -R`
+sandbox); each pass restored the mutated file from a backup before the next, and
+`git status --porcelain` was clean afterwards. M1–M13 mutated the two adapters
+this change owns; M14–M17 mutated `upflow-self-repo.js`, which now holds the
+shared bound+scrub helpers and both userinfo patterns.
+
+This count said "13" through four revisions while mutations M14–M17 were added
+above it — the same hand-asserted-number failure the case-count line two
+paragraphs up records twice. Re-derive rather than trusting it:
+`grep -c '^| M[0-9]' README.md` (table rows) plus the prose M17 entry.
 
 ## What a green run does and does NOT prove
 

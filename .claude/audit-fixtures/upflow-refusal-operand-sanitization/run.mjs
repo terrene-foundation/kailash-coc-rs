@@ -1007,7 +1007,7 @@ t(
 
 t(
   "gh+ado/userinfo-scrub-masks-a-credential-in-double-encoded-json",
-  "upflow-self-repo.js — point `reasonOperand` at the TEXT pattern, or narrow the JSON run further so an escaped `\\\\\\\"` ends it before the credential's `@`",
+  "NONE KNOWN — declared un-measured in README § 'Two cases are NOT mutation-validated'. Both mutations this field previously named were traced and NEITHER can red it: the operand has exactly one `@` and no whitespace, so the TEXT pattern masks identically; and the span between `https://` and that `@` contains no backslash, so narrowing on the escape shortens nothing.",
   () => {
     // THE NESTED CASE, which the `"` bound could plausibly have broken. A remote
     // body often carries a stringified body inside it, so the inner quotes
