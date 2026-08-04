@@ -45,6 +45,7 @@
 
 const githubLogin = require("./github-login.js");
 const ghAllow = require("./gh-api-allowlist.js");
+const { sanitizeForReason } = require("./upflow-self-repo.js");
 
 const providerId = "github";
 
@@ -67,9 +68,13 @@ function validateRepoRef(ref) {
     return { valid: false, reason: "repoRef must be an object" };
   }
   const o = githubLogin.validateGithubLogin(ref.owner);
-  if (!o.valid) return { valid: false, reason: `repoRef.owner ${o.reason}` };
+  if (!o.valid) {
+    return { valid: false, reason: `repoRef.owner ${reasonText(o.reason)}` };
+  }
   const n = githubLogin.validateGithubRepoName(ref.name);
-  if (!n.valid) return { valid: false, reason: `repoRef.name ${n.reason}` };
+  if (!n.valid) {
+    return { valid: false, reason: `repoRef.name ${reasonText(n.reason)}` };
+  }
   return { valid: true };
 }
 
@@ -85,6 +90,162 @@ function _fail(error, reason, extra) {
   return Object.assign({ ok: false, error, reason }, extra || {});
 }
 
+// ── Refusal-operand sanitization (GH issue #83) ────────────────────────────
+//
+// EVERY free-form operand interpolated into a `{ok:false, reason}` string in
+// this file goes through one of the three helpers below. Those reasons are
+// LOGGED, and `/codify` Step-7c may embed them in a PR body or a journal entry:
+// a newline forges a second log line, and an escape sequence reaches a terminal
+// a human reads as this tool's own output.
+//
+// WHY `JSON.stringify` IS NOT A SANITIZER FOR THIS CLASS. It was the escaping
+// mechanism at ~45 refusal sites across the two adapters, and per ECMA-262
+// `QuoteJSONString` it escapes `"`, `\`, and code units BELOW 0x20 (plus lone
+// surrogates since ES2019) — and nothing else. It leaves VERBATIM: 0x7f DEL;
+// the whole C1 range 0x80-0x9f, INCLUDING U+009B 8-bit CSI, an ANSI control
+// introducer that contains no ESC and so passes every ESC-based check;
+// U+2028 / U+2029; and every bidi control. So a `JSON.stringify`'d operand was
+// escaped against the classes that were never the threat and unescaped against
+// the ones that were.
+//
+// PARITY, NOT SELECTIVITY (`security.md` § Enforcement-Surface Parity). PR #80
+// sanitized exactly two operands — `prId` via `displayPrId`, and the derived
+// host + git stderr via `sanitizeForReason` — and left their NEIGHBOURS in the
+// same template literals raw. The module docstring in `upflow-self-repo.js`
+// states the principle it did not finish applying: "the argument for one is the
+// argument for all". Hence: no operand in this file is exempt, including ones
+// that a shape guard has already validated (a no-op there today, and the
+// property survives a future relaxation of that guard).
+//
+// THE SANITIZATION CLASS IS THE ONE SHARED HELPER, not a copy. Character-class
+// removal is `upflow-self-repo.js::sanitizeForReason` — the same function
+// `vcs-provider.js` and both `completeUpflowPR` fences already use. What is
+// per-file here is the thin BOUND + SCRUB wrapper. It is not in
+// `upflow-self-repo.js` (its natural home, next to `sanitizeForReason`) only
+// because that module was owned by a concurrent lane in the change that landed
+// this; and it cannot live in `vcs-provider.js`, which `require`s BOTH adapters
+// at load time — an adapter requiring it back would be a cycle that leaves
+// `PROVIDERS.github` as an empty object. The residual drift risk is the BOUND
+// value, and it has an instrument: `audit-fixtures/upflow-refusal-operand-
+// sanitization/` drives the same operand through both adapters and REDS if the
+// two bounds diverge.
+//
+// WHY A LENGTH BOUND AT ALL. `sanitizeForReason` replaces characters one-for-one
+// and does not shorten. A remote returning a megabyte error body, or a transport
+// throwing a megabyte message, produced a megabyte refusal reason — logged, and
+// possibly embedded in a PR body.
+//
+// WHY A URL-USERINFO SCRUB (`security.md` § "No secrets in logs"). The deriver
+// in `upflow-self-repo.js` deliberately does NOT echo the raw remote URL,
+// because its userinfo may hold a PAT, and truncates git's stderr to 200 chars
+// for the same reason. The catch blocks in this file had neither guard, and a
+// transport built on a PAT-in-URL remote throws an `Error` embedding
+// `https://user:<PAT>@host/...`. The mask is the canonical `scheme://***@host`
+// form of `observability.md` § 6.2, so a `***@` grep finds every masked site,
+// and the HOST is deliberately preserved — the message must stay diagnostic.
+// SCOPE, stated rather than implied: this scrubs URL userinfo ONLY. A credential
+// a transport surfaces some other way (an `Authorization: Basic <b64>` header
+// echoed into an error string) is NOT covered by this regex.
+const REASON_OPERAND_MAX = 256; // code points, per operand
+
+// Scheme-anchored on purpose: `[^\s/@]*` cannot cross a `/`, so `https://h/a@b`
+// (an `@` in a PATH, not userinfo) does not match and is left alone.
+const _URL_USERINFO_RE = /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)[^\s/@]{0,4096}@/g;
+
+// UTF-16 units the scrub examines. Two reasons it is a WINDOW, not the whole
+// string. (1) COST: with an UNBOUNDED scheme run the replace was quadratic in
+// the operand length — measured, a 200 kB operand hung the fixture suite past
+// 120 s. The bounded quantifiers above remove the quadratic; this window caps
+// the linear term. (2) SUFFICIENCY: nothing past REASON_OPERAND_MAX code points
+// reaches the output anyway, and this window is ~16x that. RESIDUAL, recorded
+// rather than implied: a URL whose userinfo is ITSELF longer than the window
+// has no terminating @ inside it, so it does not match and its leading code
+// points would survive. Real PATs are under ~100 chars, so this is stated, not
+// relied upon.
+const _SCRUB_WINDOW = 8192;
+
+function _scrubAndBound(s) {
+  const win = s.length > _SCRUB_WINDOW ? s.slice(0, _SCRUB_WINDOW) : s;
+  const scrubbed = win.replace(_URL_USERINFO_RE, "$1***@");
+  // Cheap pre-bound in UTF-16 units BEFORE the code-point walk, so a megabyte
+  // operand does not allocate a megabyte array. A code point is at most 2 units,
+  // so slicing at 2*MAX+2 units can never leave fewer than MAX+1 code points —
+  // i.e. the truncation branch below is always the one taken when this fires,
+  // and a surrogate half stranded by this cut always sits at index >= MAX and is
+  // dropped by it.
+  const pre =
+    scrubbed.length > REASON_OPERAND_MAX * 2 + 2
+      ? scrubbed.slice(0, REASON_OPERAND_MAX * 2 + 2)
+      : scrubbed;
+  const points = Array.from(pre); // code points, so no lone surrogate at the cut
+  return points.length > REASON_OPERAND_MAX
+    ? `${sanitizeForReason(points.slice(0, REASON_OPERAND_MAX).join(""))}…`
+    : sanitizeForReason(pre);
+}
+
+/**
+ * A BARE interpolation (`${x}` with no JSON quoting) — path fragments, hosts,
+ * principals, a nested validator's `reason`.
+ */
+function reasonText(value) {
+  let s;
+  try {
+    s = typeof value === "string" ? value : String(value);
+  } catch {
+    // `String(value)` invokes a caller/remote-authored `toString`, which may
+    // throw — and this runs INSIDE the refusal path, so a throw here converts a
+    // typed `{ok:false, reason}` into an uncaught exception. The sibling fence
+    // suite asserts `error === null` precisely because a crash reads as a
+    // refusal to any assertion that only checks `ok === false`.
+    return "<unstringifiable>";
+  }
+  return _scrubAndBound(s);
+}
+
+/**
+ * The replacement for every former `JSON.stringify(x)` operand. Keeps the JSON
+ * rendering — its diagnostic value IS the shape (`{"message":"Not Found"}`, not
+ * `[object Object]`) and it keeps a numeric status bare — then sanitizes and
+ * bounds it.
+ */
+function reasonOperand(value) {
+  let s;
+  try {
+    s = JSON.stringify(value);
+  } catch {
+    // Circular structure, a BigInt, or a hostile `toJSON` that throws.
+    s = undefined;
+  }
+  if (typeof s !== "string") {
+    // `JSON.stringify` also returns undefined for undefined / function / symbol.
+    try {
+      s = String(value);
+    } catch {
+      return "<unstringifiable>";
+    }
+  }
+  return _scrubAndBound(s);
+}
+
+/**
+ * The replacement for every former
+ * `${err && err.message ? err.message : String(err)}` interpolation. The
+ * transport is INJECTED, so this text is attacker-influencable in the same way
+ * a remote body is, and it is the operand most likely to carry a credential.
+ */
+function reasonFromError(err) {
+  let s;
+  try {
+    // A property GETTER can throw, as can `toString` on a non-Error throwable
+    // (a transport may throw a string, a null, or anything else).
+    const m = err && err.message;
+    s = m ? String(m) : String(err);
+  } catch {
+    return "<unstringifiable transport error>";
+  }
+  return _scrubAndBound(typeof s === "string" ? s : String(s));
+}
+
 /**
  * gh api repos/{owner}/{repo} → external owner login.
  */
@@ -96,20 +257,20 @@ function fetchRepoOwner(transport, repoRef, opts) {
   } catch (err) {
     return _fail(
       "gh api repos call threw",
-      `network unavailable or transport threw: ${err && err.message ? err.message : String(err)}`,
+      `network unavailable or transport threw: ${reasonFromError(err)}`,
     );
   }
   if (!r || !r.ok) {
     return _fail(
       "gh api repos call failed",
-      `gh api repos/${repoRef.owner}/${repoRef.name} → status ${r && r.status} body ${JSON.stringify(r && r.body)}`,
+      `gh api repos/${reasonText(repoRef.owner)}/${reasonText(repoRef.name)} → status ${reasonOperand(r && r.status)} body ${reasonOperand(r && r.body)}`,
       { status: r && r.status, body: r && r.body },
     );
   }
   if (!r.body || !r.body.owner || typeof r.body.owner.login !== "string") {
     return _fail(
       "gh api repos response malformed",
-      `expected body.owner.login; got ${JSON.stringify(r.body)}`,
+      `expected body.owner.login; got ${reasonOperand(r.body)}`,
     );
   }
   const capture = ghAllow._allowlistRepoOwner(r.body, {
@@ -130,20 +291,20 @@ function fetchOrgAdmin(transport, repoRef, principal, opts) {
   } catch (err) {
     return _fail(
       "org membership call threw",
-      `network unavailable or transport threw: ${err && err.message ? err.message : String(err)}`,
+      `network unavailable or transport threw: ${reasonFromError(err)}`,
     );
   }
   if (!r || !r.ok) {
     return _fail(
       "org membership check failed",
-      `gh api orgs/${org}/memberships/${principal} → status ${r && r.status} body ${JSON.stringify(r && r.body)}`,
+      `gh api orgs/${reasonText(org)}/memberships/${reasonText(principal)} → status ${reasonOperand(r && r.status)} body ${reasonOperand(r && r.body)}`,
       { status: r && r.status, body: r && r.body },
     );
   }
   if (!r.body || typeof r.body.role !== "string") {
     return _fail(
       "org membership response malformed",
-      `expected body.role; got ${JSON.stringify(r.body)}`,
+      `expected body.role; got ${reasonOperand(r.body)}`,
     );
   }
   const capture = ghAllow._allowlistOrgMembership(r.body, {
@@ -171,7 +332,7 @@ function fetchCommitVerification(transport, repoRef, sha, opts) {
   if (typeof sha !== "string" || !/^[0-9a-f]{7,64}$/.test(sha)) {
     return _fail(
       "gh commit sha invalid",
-      `sha must match /^[0-9a-f]{7,64}$/ (commit-hash shape); got ${JSON.stringify(sha)}`,
+      `sha must match /^[0-9a-f]{7,64}$/ (commit-hash shape); got ${reasonOperand(sha)}`,
     );
   }
   const captureTs = (opts && opts.capture_ts) || new Date().toISOString();
@@ -181,13 +342,13 @@ function fetchCommitVerification(transport, repoRef, sha, opts) {
   } catch (err) {
     return _fail(
       "gh api commits call threw",
-      `network unavailable or transport threw: ${err && err.message ? err.message : String(err)}`,
+      `network unavailable or transport threw: ${reasonFromError(err)}`,
     );
   }
   if (!r || !r.ok) {
     return _fail(
       "gh api root-commit call failed",
-      `gh api commits/${sha} → status ${r && r.status} body ${JSON.stringify(r && r.body)}`,
+      `gh api commits/${reasonText(sha)} → status ${reasonOperand(r && r.status)} body ${reasonOperand(r && r.body)}`,
       { status: r && r.status, body: r && r.body },
     );
   }
@@ -218,20 +379,20 @@ function listCollaborators(transport, repoRef, opts) {
   } catch (err) {
     return _fail(
       "gh api collaborators call threw",
-      `network unavailable or transport threw: ${err && err.message ? err.message : String(err)}`,
+      `network unavailable or transport threw: ${reasonFromError(err)}`,
     );
   }
   if (!r || !r.ok) {
     return _fail(
       "gh api collaborators call failed",
-      `gh api repos/${repoRef.owner}/${repoRef.name}/collaborators → status ${r && r.status} body ${JSON.stringify(r && r.body)}`,
+      `gh api repos/${reasonText(repoRef.owner)}/${reasonText(repoRef.name)}/collaborators → status ${reasonOperand(r && r.status)} body ${reasonOperand(r && r.body)}`,
       { status: r && r.status, body: r && r.body },
     );
   }
   if (!Array.isArray(r.body)) {
     return _fail(
       "gh api collaborators response malformed",
-      `expected array body; got ${JSON.stringify(r.body)}`,
+      `expected array body; got ${reasonOperand(r.body)}`,
     );
   }
   const capture = ghAllow._allowlistCollaboratorsList(r.body, {
@@ -289,19 +450,20 @@ const CACHE_KEY_RE = /^[A-Za-z0-9._/-]+$/; // query-param key; bounded, query-sa
 function _dispatchWorkflow(transport, descriptor, label) {
   const repoRef = descriptor && descriptor.repoRef;
   const rv = validateRepoRef(repoRef);
-  if (!rv.valid) return _fail(`${label}: repoRef invalid`, rv.reason);
+  if (!rv.valid)
+    return _fail(`${label}: repoRef invalid`, reasonText(rv.reason));
   const workflow = descriptor.workflow;
   if (typeof workflow !== "string" || !WORKFLOW_ID_RE.test(workflow)) {
     return _fail(
       `${label}: workflow id invalid`,
-      `workflow must match /^[A-Za-z0-9._-]+$/ (filename or numeric id); got ${JSON.stringify(workflow)}`,
+      `workflow must match /^[A-Za-z0-9._-]+$/ (filename or numeric id); got ${reasonOperand(workflow)}`,
     );
   }
   const ref = descriptor.ref === undefined ? "main" : descriptor.ref;
   if (typeof ref !== "string" || !GIT_REF_RE.test(ref)) {
     return _fail(
       `${label}: ref invalid`,
-      `ref must match /^[A-Za-z0-9._/-]+$/ (git ref shape); got ${JSON.stringify(ref)}`,
+      `ref must match /^[A-Za-z0-9._/-]+$/ (git ref shape); got ${reasonOperand(ref)}`,
     );
   }
   const inputs =
@@ -311,7 +473,7 @@ function _dispatchWorkflow(transport, descriptor, label) {
   if (typeof inputs !== "object" || Array.isArray(inputs)) {
     return _fail(
       `${label}: inputs invalid`,
-      `inputs must be a plain object; got ${JSON.stringify(inputs)}`,
+      `inputs must be a plain object; got ${reasonOperand(inputs)}`,
     );
   }
   let r;
@@ -323,13 +485,13 @@ function _dispatchWorkflow(transport, descriptor, label) {
   } catch (err) {
     return _fail(
       `${label}: dispatch threw`,
-      `network unavailable or transport threw: ${err && err.message ? err.message : String(err)}`,
+      `network unavailable or transport threw: ${reasonFromError(err)}`,
     );
   }
   if (!r || !r.ok) {
     return _fail(
       `${label}: dispatch failed`,
-      `POST actions/workflows/${workflow}/dispatches → status ${r && r.status} body ${JSON.stringify(r && r.body)}`,
+      `POST actions/workflows/${reasonText(workflow)}/dispatches → status ${reasonOperand(r && r.status)} body ${reasonOperand(r && r.body)}`,
       { status: r && r.status, body: r && r.body },
     );
   }
@@ -359,12 +521,13 @@ function applyDeployTarget(transport, target) {
 function invalidateCache(transport, scope) {
   const repoRef = scope && scope.repoRef;
   const rv = validateRepoRef(repoRef);
-  if (!rv.valid) return _fail("invalidateCache: repoRef invalid", rv.reason);
+  if (!rv.valid)
+    return _fail("invalidateCache: repoRef invalid", reasonText(rv.reason));
   const key = scope.key;
   if (typeof key !== "string" || !CACHE_KEY_RE.test(key)) {
     return _fail(
       "invalidateCache: cache key invalid",
-      `key must match /^[A-Za-z0-9._/-]+$/ (bounded, query-safe charset); got ${JSON.stringify(key)}`,
+      `key must match /^[A-Za-z0-9._/-]+$/ (bounded, query-safe charset); got ${reasonOperand(key)}`,
     );
   }
   // `key` passes CACHE_KEY_RE (bounded charset — no &, ?, #, =, space) so it
@@ -380,13 +543,13 @@ function invalidateCache(transport, scope) {
   } catch (err) {
     return _fail(
       "invalidateCache: delete threw",
-      `network unavailable or transport threw: ${err && err.message ? err.message : String(err)}`,
+      `network unavailable or transport threw: ${reasonFromError(err)}`,
     );
   }
   if (!r || !r.ok) {
     return _fail(
       "invalidateCache: delete failed",
-      `DELETE actions/caches?key=${key} → status ${r && r.status} body ${JSON.stringify(r && r.body)}`,
+      `DELETE actions/caches?key=${reasonText(key)} → status ${reasonOperand(r && r.status)} body ${reasonOperand(r && r.body)}`,
       { status: r && r.status, body: r && r.body },
     );
   }
@@ -436,7 +599,8 @@ const GITHUB_HOSTS = new Set(["github.com", "www.github.com"]);
 function createUpflowPR(transport, prSpec) {
   const repoRef = prSpec && prSpec.repoRef;
   const rv = validateRepoRef(repoRef);
-  if (!rv.valid) return _fail("createUpflowPR: repoRef invalid", rv.reason);
+  if (!rv.valid)
+    return _fail("createUpflowPR: repoRef invalid", reasonText(rv.reason));
   const head = prSpec.head;
   if (
     typeof head !== "string" ||
@@ -445,7 +609,7 @@ function createUpflowPR(transport, prSpec) {
   ) {
     return _fail(
       "createUpflowPR: head invalid",
-      `head must match /^[A-Za-z0-9._/-]+$/ with no '..' segment (git ref shape); got ${JSON.stringify(head)}`,
+      `head must match /^[A-Za-z0-9._/-]+$/ with no '..' segment (git ref shape); got ${reasonOperand(head)}`,
     );
   }
   const base = prSpec.base === undefined ? "main" : prSpec.base;
@@ -456,14 +620,14 @@ function createUpflowPR(transport, prSpec) {
   ) {
     return _fail(
       "createUpflowPR: base invalid",
-      `base must match /^[A-Za-z0-9._/-]+$/ with no '..' segment (git ref shape); got ${JSON.stringify(base)}`,
+      `base must match /^[A-Za-z0-9._/-]+$/ with no '..' segment (git ref shape); got ${reasonOperand(base)}`,
     );
   }
   const title = prSpec.title;
   if (typeof title !== "string" || title.length === 0) {
     return _fail(
       "createUpflowPR: title invalid",
-      `title must be a non-empty string; got ${JSON.stringify(title)}`,
+      `title must be a non-empty string; got ${reasonOperand(title)}`,
     );
   }
   const body = prSpec.body === undefined ? "" : prSpec.body;
@@ -482,13 +646,13 @@ function createUpflowPR(transport, prSpec) {
   } catch (err) {
     return _fail(
       "createUpflowPR: create threw",
-      `network unavailable or transport threw: ${err && err.message ? err.message : String(err)}`,
+      `network unavailable or transport threw: ${reasonFromError(err)}`,
     );
   }
   if (!r || !r.ok) {
     return _fail(
       "createUpflowPR: create failed",
-      `POST repos/${repoRef.owner}/${repoRef.name}/pulls → status ${r && r.status} body ${JSON.stringify(r && r.body)}`,
+      `POST repos/${reasonText(repoRef.owner)}/${reasonText(repoRef.name)}/pulls → status ${reasonOperand(r && r.status)} body ${reasonOperand(r && r.body)}`,
       { status: r && r.status, body: r && r.body },
     );
   }
@@ -511,12 +675,13 @@ function createUpflowPR(transport, prSpec) {
 function createUpflowIssue(transport, issueSpec) {
   const repoRef = issueSpec && issueSpec.repoRef;
   const rv = validateRepoRef(repoRef);
-  if (!rv.valid) return _fail("createUpflowIssue: repoRef invalid", rv.reason);
+  if (!rv.valid)
+    return _fail("createUpflowIssue: repoRef invalid", reasonText(rv.reason));
   const title = issueSpec.title;
   if (typeof title !== "string" || title.length === 0) {
     return _fail(
       "createUpflowIssue: title invalid",
-      `title must be a non-empty string; got ${JSON.stringify(title)}`,
+      `title must be a non-empty string; got ${reasonOperand(title)}`,
     );
   }
   const body = issueSpec.body === undefined ? "" : issueSpec.body;
@@ -533,7 +698,7 @@ function createUpflowIssue(transport, issueSpec) {
   ) {
     return _fail(
       "createUpflowIssue: labels invalid",
-      `labels must be an array of strings; got ${JSON.stringify(labels)}`,
+      `labels must be an array of strings; got ${reasonOperand(labels)}`,
     );
   }
   const fields =
@@ -547,13 +712,13 @@ function createUpflowIssue(transport, issueSpec) {
   } catch (err) {
     return _fail(
       "createUpflowIssue: create threw",
-      `network unavailable or transport threw: ${err && err.message ? err.message : String(err)}`,
+      `network unavailable or transport threw: ${reasonFromError(err)}`,
     );
   }
   if (!r || !r.ok) {
     return _fail(
       "createUpflowIssue: create failed",
-      `POST repos/${repoRef.owner}/${repoRef.name}/issues → status ${r && r.status} body ${JSON.stringify(r && r.body)}`,
+      `POST repos/${reasonText(repoRef.owner)}/${reasonText(repoRef.name)}/issues → status ${reasonOperand(r && r.status)} body ${reasonOperand(r && r.body)}`,
       { status: r && r.status, body: r && r.body },
     );
   }
@@ -624,7 +789,8 @@ function createUpflowIssue(transport, issueSpec) {
 function completeUpflowPR(transport, prRef) {
   const repoRef = prRef && prRef.repoRef;
   const rv = validateRepoRef(repoRef);
-  if (!rv.valid) return _fail("completeUpflowPR: repoRef invalid", rv.reason);
+  if (!rv.valid)
+    return _fail("completeUpflowPR: repoRef invalid", reasonText(rv.reason));
 
   // --- Open-Never-Complete fence (upstream-issue-hygiene.md MUST-4) ---------
   // Fails CLOSED on every branch: underivable identity, disagreeing identity,
@@ -636,7 +802,7 @@ function completeUpflowPR(transport, prRef) {
       "completeUpflowPR: self-identity underivable",
       `cannot derive this repo's own identity, so a completion cannot be authorized. ` +
         `upstream-issue-hygiene.md MUST-4 (Open, Never Complete): merging is the ` +
-        `upstream maintainer's act on the upstream's OWN repo. (${d && d.reason})`,
+        `upstream maintainer's act on the upstream's OWN repo. (${reasonText(d && d.reason)})`,
     );
   }
   // The derived identity must be an identity on a host THIS adapter serves.
@@ -648,8 +814,8 @@ function completeUpflowPR(transport, prRef) {
   if (!GITHUB_HOSTS.has(d.self.host)) {
     return _fail(
       "completeUpflowPR: non-GitHub self-identity refused",
-      `refusing to merge ${repoRef.owner}/${repoRef.name}#${selfRepo.displayPrId(prRef && prRef.prId)} — ` +
-        `this working tree's origin remote is on host ${selfRepo.sanitizeForReason(d.self.host)}, which this ` +
+      `refusing to merge ${reasonText(repoRef.owner)}/${reasonText(repoRef.name)}#${selfRepo.displayPrId(prRef && prRef.prId)} — ` +
+        `this working tree's origin remote is on host ${reasonText(d.self.host)}, which this ` +
         `adapter does not serve (recognized: ${[...GITHUB_HOSTS].join(", ")}; a ` +
         `GitHub Enterprise appliance host is NOT configured in this repo, so it is ` +
         `NOT accepted). An owner/name pair derived from another host does not ` +
@@ -669,9 +835,9 @@ function completeUpflowPR(transport, prRef) {
   if (d.self.ado !== null) {
     return _fail(
       "completeUpflowPR: Azure DevOps self-identity refused",
-      `refusing to merge ${repoRef.owner}/${repoRef.name}#${selfRepo.displayPrId(prRef && prRef.prId)} — ` +
+      `refusing to merge ${reasonText(repoRef.owner)}/${reasonText(repoRef.name)}#${selfRepo.displayPrId(prRef && prRef.prId)} — ` +
         `this working tree's origin remote is an Azure DevOps remote ` +
-        `(${d.self.ado.org}/${d.self.ado.project}/${d.self.ado.repo}), so it cannot ` +
+        `(${reasonText(d.self.ado.org)}/${reasonText(d.self.ado.project)}/${reasonText(d.self.ado.repo)}), so it cannot ` +
         `establish a GitHub identity. upstream-issue-hygiene.md MUST-4 ` +
         `(Open, Never Complete).`,
       { self: d.self, target: repoRef },
@@ -680,8 +846,8 @@ function completeUpflowPR(transport, prRef) {
   if (!selfRepo.isSelfRepo(repoRef, d.self)) {
     return _fail(
       "completeUpflowPR: cross-repo completion refused",
-      `refusing to merge ${repoRef.owner}/${repoRef.name}#${selfRepo.displayPrId(prRef && prRef.prId)} — ` +
-        `this repo derives as ${d.self.owner}/${d.self.name}. A PR may only be ` +
+      `refusing to merge ${reasonText(repoRef.owner)}/${reasonText(repoRef.name)}#${selfRepo.displayPrId(prRef && prRef.prId)} — ` +
+        `this repo derives as ${reasonText(d.self.owner)}/${reasonText(d.self.name)}. A PR may only be ` +
         `completed on the repo you ARE. upstream-issue-hygiene.md MUST-4 ` +
         `(Open, Never Complete) — the downstream upflow lane opens a PR against its ` +
         `upstream and stops there; the upstream merges it after ` +
@@ -698,7 +864,7 @@ function completeUpflowPR(transport, prRef) {
   ) {
     return _fail(
       "completeUpflowPR: prId invalid",
-      `prId must match /^[0-9]+$/ (PR number); got ${JSON.stringify(prId)}`,
+      `prId must match /^[0-9]+$/ (PR number); got ${reasonOperand(prId)}`,
     );
   }
   const mergeMethod =
@@ -706,7 +872,7 @@ function completeUpflowPR(transport, prRef) {
   if (typeof mergeMethod !== "string" || !MERGE_METHOD_RE.test(mergeMethod)) {
     return _fail(
       "completeUpflowPR: mergeMethod invalid",
-      `mergeMethod must be one of merge|squash|rebase; got ${JSON.stringify(mergeMethod)}`,
+      `mergeMethod must be one of merge|squash|rebase; got ${reasonOperand(mergeMethod)}`,
     );
   }
   // THE PATH IS BUILT FROM THE DERIVED IDENTITY, NOT FROM `repoRef`.
@@ -740,13 +906,13 @@ function completeUpflowPR(transport, prRef) {
   } catch (err) {
     return _fail(
       "completeUpflowPR: merge threw",
-      `network unavailable or transport threw: ${err && err.message ? err.message : String(err)}`,
+      `network unavailable or transport threw: ${reasonFromError(err)}`,
     );
   }
   if (!r || !r.ok) {
     return _fail(
       "completeUpflowPR: merge failed",
-      `PUT pulls/${String(prId)}/merge → status ${r && r.status} body ${JSON.stringify(r && r.body)}`,
+      `PUT pulls/${reasonText(prId)}/merge → status ${reasonOperand(r && r.status)} body ${reasonOperand(r && r.body)}`,
       { status: r && r.status, body: r && r.body },
     );
   }
