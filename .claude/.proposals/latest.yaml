@@ -3277,4 +3277,152 @@ changes:
       proposal.
     diff_lines: "unknown — depends whether Gate-1 takes the per-dir run.mjs shape or teaches the existing canonical driver to read the sidecar pairs (the latter also closes the harness/fixture drift channel)"
 
+  # ===================================================================
+  # CLUSTER 71-72 — TWO TESTED PATCHES, NOT DESCRIPTIONS (2026-08-04).
+  # origin: use-template. Both landed locally at f154548 (PR #94) WITH their
+  # committed fixture runners, so Gate-1 receives a patch whose discrimination
+  # has already been demonstrated rather than a report to re-derive.
+  #
+  # Both are Class-A: `bin/**`, `commands/**` and `audit-fixtures/**` are synced
+  # globs, so the local landing is a stopgap for consumers pulling today and is
+  # rebuilt away by the next /sync-to-use. The durable fix is here.
+  #
+  # 71 is a SECURITY fix and the fourth filing today whose MECHANISM was wrong —
+  # this time wrong in the direction that UNDERSTATED it.
+  # ===================================================================
+  - file: .claude/bin/cross-repo-authorize.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0. Measured at the shipped tool: `fs.writeFileSync`
+      carried NO `wx` flag (grep for `existsSync|already exists|refus|EEXIST|wx`
+      across the file returned ZERO hits before this change), and the receipt
+      filename was `${date}-${slugify(target-action).slice(0,48)}.md` with no
+      discriminator beyond the truncated slug. The tool had NO test coverage of any
+      kind (no fixture dir, no test file referencing it).
+    reason: >-
+      THE FILED REPORT (#88 defect 2) HAD THE OBSERVATION RIGHT AND THE MECHANISM
+      WRONG, AND THE TRUTH IS MORE SEVERE THAN WHAT WAS FILED. It described the
+      second same-day receipt as REFUSED, called the refusal correct, and proposed
+      only to disambiguate the filename "preserving the refusal-to-overwrite
+      invariant". THERE WAS NO SUCH INVARIANT. The second write SILENTLY DESTROYED
+      the first receipt, including its verbatim authorizing instruction.
+      WHY THAT IS A SECURITY DEFECT AND NOT AN ERGONOMICS ONE: a receipt is the SOLE
+      distinguisher between an authorized cross-repo action and an unauthorized one
+      (`repo-scope-discipline.md` § User-Authorized Exception condition 4 — "present
+      = in-scope, absent = critical L1"). Destroying one silently converts an
+      authorized action into an unauthorized-looking one with no error anywhere.
+      PROVEN TIER DEFEAT, which is the part Gate-1 should weigh most. A cheap
+      `--mode read` receipt for the same action DESTROYED an existing `write`
+      authorization; the hook then reported the authorized WRITE action as
+      unauthorized. Measured: write-authorized true -> (read receipt lands) -> false.
+      The read/write tier the tool's own comments call "the design's central tier"
+      was defeated by a FILENAME COLLISION, entirely outside the tier logic.
+      THE FIX IS TWO HALVES AND BOTH ARE REQUIRED — the report proposed only one.
+      (a) `flag: "wx"` — create-or-fail, so an immutable audit record can never be
+      clobbered; reaching that path means the same (date, target, action, mode) was
+      already authorized, so refusing costs the caller nothing and the message says
+      so. (b) an 8-hex sha256 digest over the FULL UNTRUNCATED (target, action,
+      mode) triple appended to the filename, discriminating exactly where the
+      48-char slug stops. `mode` is IN the triple deliberately: a read receipt and a
+      write receipt for one action are DISTINCT authorizations at different tiers
+      and must never collide onto one path.
+      DIGEST SIZING IS STATED RATHER THAN ASSUMED: 32 bits is sized for
+      human-scannable filenames, not collision resistance — it discriminates a
+      handful of same-day receipts in one directory, and a digest collision degrades
+      to the (a) refusal, a LOUD failure, never to a silent overwrite.
+      VERIFIED, AND THE VERIFICATION WAS ITSELF VERIFIED. 17 behavioral checks ship
+      as a committed runner at `.claude/audit-fixtures/cross-repo-authorize/`. Run
+      against the PRE-FIX tool they return PASS 9 / FAIL 8 — so the greens
+      discriminate rather than decorate (`instrument-discipline.md` MUST-2a). Two of
+      them call the REAL consumer
+      (`violation-patterns.js::hasCrossRepoAuthorizationReceipt`), not a
+      re-implementation, because the filename changed and only the real consumer can
+      prove nothing broke. Adversarial checks also run: a hostile `--action` of
+      `../../../../etc/passwd ../ ..\\ %2e%2e` slugifies to `etc-passwd-2e-2e` and
+      writes ZERO files outside `.claude/cross-repo-authz/`; the marker-injection
+      guard still rejects a newline/forged-marker action.
+      COMPATIBLE WITH THE DOCUMENTED CEREMONY, checked rather than assumed:
+      `commands/cross-repo-authorize.md` states "the authorization is spent; a new
+      action needs a new ceremony", so refusing a duplicate MATCHES the one-receipt-
+      one-bounded-action model instead of breaking a retry path.
+      NOTE FOR THE READER WHO HAND-CHECKS THIS: the consumer enforces a 6-hour
+      content-timestamp window, so this repo's committed receipts all resolve false
+      on age. That is expiry by design, NOT a regression from the rename.
+    diff_lines: "+38 -1 in cross-repo-authorize.mjs; +~180 new committed fixture runner + README (measured at f154548)"
+  - file: .claude/commands/sync-from-template.md
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0. Measured in the delivered command: `team-memory`
+      appears 0 times; `rules/project` and `commands/project` appear 0 times and
+      neither directory exists in the tree. No script backs the command (only
+      `sync-from-canon-fetch.mjs`, a different lane), so the "merge" it promises has
+      no implementation anywhere — the contradiction is the whole mechanism.
+    reason: >-
+      THE HEADLINE PROMISED A MERGE AND THE RULE FOUR LINES BELOW SPECIFIED A
+      REPLACE. "This is a merge, not an overwrite" followed by "if a file exists in
+      BOTH, the template version wins" — the second sentence IS an overwrite. There
+      is no three-way merge and no conflict surface anywhere in the command;
+      preservation is by PATH CATEGORY only. RECONCILED TOWARD THE TRUTH, not the
+      promise: the command now says "category-based replace, NOT a per-file merge"
+      and states plainly that a local edit to a shared artifact is discarded with no
+      conflict and no warning.
+      THE GAP THAT MADE IT DESTRUCTIVE: the same command tells consumers to
+      `/codify` locally, but there was no `rules/project/` or `commands/project/`
+      namespace — so a consumer who codified a rule had NOWHERE SANCTIONED to put
+      it, and the edit was destroyed on the next sync. Both namespaces are now
+      preserved and named as the local home, with the durability warning attached.
+      `team-memory/**` is added to the preserved set as per-repo signed state
+      (`promoted_by` / `signed` / `body_anchor` frontmatter), the same class as
+      `learning/**`, per `knowledge-convergence.md` MUST-4.
+      THE ACCEPTANCE CRITERION THAT MATTERED MOST IS NOW MECHANICAL, NOT PROSE. A
+      new `.claude/bin/sync-preflight-local-mods.mjs` reports, BEFORE the sync runs,
+      which shared artifacts would be replaced and which of those carry
+      consumer-authored commits. Three-valued exit so a gate cannot conflate
+      outcomes: 0 = nothing at risk, 2 = a human decides, 1 = the check did NOT run
+      and must never be read as safe.
+      THE LOAD-BEARING DESIGN DECISION, offered because a naive implementation is
+      worse than none: the tool splits DIFFERS-and-stale from
+      DIFFERS-and-consumer-authored, judging authorship by COMMIT SUBJECT. On a
+      healthy consumer nearly every shared artifact differs from the template, so a
+      report keyed on "differs" alone flags everything and is ignored — the
+      alert-fatigue failure that makes a gate worthless.
+      A MEASUREMENT GATE-1 SHOULD NOT HAVE TO REDISCOVER: the sync-subject pattern
+      must be derived per-repo and overridable, not guessed. A plausible first cut
+      (`chore(sync)` / `chore(coc-sync)` / `sync:`) misclassified 59 OF 82 differing
+      artifacts here as consumer-authored, because real syncs also land as
+      `chore(coc):`, `sync(loom):`, `sync(coc):`, `release(coc-template):` and a
+      one-off `feat: … first-sync from loom`. Re-derived against observed history it
+      fell to 10, and those 10 are genuine local edits. The re-derivation command is
+      recorded in the fixture README; `--sync-subject-re` is the override. An
+      unrecognized convention OVER-reports (a false at-risk) and never silently
+      misses a real loss — the correct direction to fail.
+      ONE STRUCTURAL DEFENSE AGAINST THIS RECURRING, which Gate-1 should keep
+      whatever shape it takes: #64 IS one contract stated in TWO places that
+      drifted. The fix reproduces that risk between the command's Preserved list and
+      the tool's `PRESERVED_PREFIXES`, so a parity test parses the list out of the
+      markdown and asserts set equality with the constant. Mutating EITHER side reds
+      it (both directions mutation-confirmed).
+      18 checks ship as a committed runner at
+      `.claude/audit-fixtures/sync-preflight-local-mods/`. The tool is new, so there
+      is no pre-fix baseline to red against; each predicate was MUTATION-TESTED
+      instead — six mutations, each confirmed APPLIED (non-empty diff) and each
+      redding ONLY its own predicate, with the table recorded in the README per
+      `instrument-discipline.md` MUST-2b.
+      TWO RESIDUALS NAMED RATHER THAN SMOOTHED. (1) `sync-from-template.md` is 188
+      lines against the 150 cap — a PRE-EXISTING 174 plus 14 load-bearing contract
+      lines; named rationale per `cc-artifacts.md` Rule 3 (ordered procedural
+      runbook, redundancy trimmed first). Gate-1 may prefer extracting the runbook
+      depth to a paired skill, which would also satisfy `command-skill-parity.md`.
+      (2) The tool over-reports inside a TEMPLATE repo by construction, since a
+      template's own authoring commits are genuine local authorship of what are,
+      from its perspective, shared artifacts. Not a defect; recorded in the tool
+      header so a template-side operator does not misread a large count.
+    diff_lines: "+14 net in sync-from-template.md; +~200 new bin tool; +~250 committed fixture runner + README (measured at f154548)"
+
 status: pending_review
