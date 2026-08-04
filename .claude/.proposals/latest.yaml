@@ -3192,4 +3192,89 @@ changes:
       descriptions — would produce a rule carrying NEITHER draft's redteam.
     diff_lines: "+306 -0 and +229 -0 as CLAIMED by the two offers' own diff_lines; NEITHER text is present in either PR (measured: the PRs add 82 and 76 lines, the inbox YAML alone). Final size depends on which reachability disposition Gate-1 takes."
 
+  # ===================================================================
+  # CLUSTER 70 — A SECURITY FIXTURE SET THAT NO RUNNER READS (2026-08-04).
+  # origin: use-template. Found by reconciling issue #89 against the tree
+  # instead of implementing it on the backlog's say-so: two of its three
+  # acceptance criteria were ALREADY MET, and the third is a materially
+  # sharper defect than the one filed.
+  # ===================================================================
+  - file: .claude/audit-fixtures/signing-mutation-guard/
+    action: added
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0, and the residue is NARROWER than issue #89
+      states — the first two acceptance criteria are already MET at this tree and
+      that was verified rather than assumed:
+      (AC1) the harness DOES establish coordination ON. `.codex-mcp-guard/test-server.mjs`
+      carries `makeCoordinationEnabledRepo()`, building a temp git repo with the
+      tier-2 local override (`.claude/learning/coordination-mode.json` →
+      `{"enabled":true}`), plus a header documenting WHY the passthrough on a
+      coordination-OFF repo is correct rather than fail-open. It deliberately forces
+      ON and not OFF, because `coordination-mode.js` ASYMMETRIC PRECEDENCE honors a
+      force-ON but refuses a force-OFF on an enrolled repo — so the helper cannot be
+      repurposed to weaken a real repo. That is a good defensive choice and is
+      recorded here so a later reader does not "simplify" it away.
+      (AC2) `npm test` in `.codex-mcp-guard/` EXITS 0 — measured, 49/49 server checks
+      + 4/4 validator-13 predicates, with NO change to `signing-mutation-guard.js`.
+      The two failures #89 quotes do NOT reproduce.
+      (AC3) IS the live gap, and the measurement makes it sharper than "add a
+      run.mjs": ALL SEVEN fixture cases are read by NO RUNNER AT ALL. Measured
+      repo-wide, the only referrers of
+      `.claude/audit-fixtures/signing-mutation-guard` are a provenance log, this
+      manifest, and ONE PROSE COMMENT at `test-server.mjs:45`. Nothing anywhere reads
+      `input.json` or `expected.txt` (grep for either filename across the guard's
+      runners returns 0).
+    reason: >-
+      SEVEN `input.json` / `expected.txt` SIDECAR PAIRS SPECIFY A SECURITY GUARD'S
+      CONTRACT AND NOTHING EXECUTES THEM. The harness hand-codes two equivalent
+      scenarios in JavaScript and reaches the same verdicts by a separate path, so
+      the fixture data is DOCUMENTATION WEARING THE SHAPE OF A TEST SUITE.
+      THE CONSEQUENCE IS THE ONE `instrument-discipline.md` NAMES: a fixture that
+      cannot fail is not evidence. Drift between an `expected.txt` and the harness's
+      hand-coded expectation is UNDETECTABLE — the two can disagree indefinitely and
+      every run stays green, because only one of them is ever evaluated. Five of the
+      seven cases (01, 01-halt, 02, 04, 05) are not exercised by ANY path, hand-coded
+      or otherwise; 03 and 06 are covered only by the harness's parallel JS
+      re-implementation of what they describe.
+      THIS IS THE SAME FAILURE SHAPE THE ISSUE ITSELF IS ABOUT, one layer down, which
+      is why it is worth cascading rather than filing as routine cleanup. #74 was
+      filed as a HIGH fail-open in a security guard because two surfaces agreed with
+      each other and both were wrong the same way. The fixture set is a THIRD such
+      surface: it states the contract confidently and is never consulted, so it can
+      neither confirm nor refute the harness it supposedly anchors. A reader
+      triaging the next suspected fail-open would reasonably treat `expected.txt` as
+      ground truth; it has never been executed against the guard.
+      WHAT `cc-artifacts.md` RULE 9 ACTUALLY REQUIRES, since #89's wording
+      over-specifies it: the load-bearing primitive is a runner that asserts expected
+      vs actual and exits NON-ZERO on mismatch — the storage layout is operator
+      choice, and a `run.mjs` is one of two sanctioned shapes, not the only one.
+      So the fix is NOT necessarily a per-directory `run.mjs`; teaching the existing
+      canonical driver to READ the sidecar pairs would satisfy Rule 9 equally and
+      would additionally close the drift channel, because the harness and the
+      fixtures would stop being independent statements of the same contract.
+      Precedent for either shape is abundant — ten sibling fixture dirs already ship
+      a `run.mjs` (`scan-synced-disclosure`, `validate-emit`, `proximity-band-budget`,
+      `allowlist-paths-coverage`, `signing-model-key-separation`, and others).
+      ONE PRECONDITION ANY RUNNER MUST CARRY, and getting it wrong is how this whole
+      thread started: the `block` dispositions presume coordination ON. A runner that
+      drives these fixtures at a coordination-OFF cwd will observe `{"continue":true}`
+      / exit 0 for 03 and 06 and report a fail-open THAT DOES NOT EXIST. The
+      `03/expected.txt` `stays_block:` note is a second such tripwire — it records that
+      loom#1323 downgraded the §4.2 branch (fixture 01) to halt-and-report while THIS
+      branch must remain `severity: block` / exit 2, and explicitly locks against a
+      "consistency fix" aligning them. A runner author reading only the two files
+      would plausibly make exactly that change.
+      DELIBERATELY NOT PATCHED LOCALLY, on the #79 precedent rather than the #78 one.
+      `audit-fixtures/**` is in the `cc` tier (`sync-manifest.yaml`), so anything
+      authored here is Class-A and rebuilt away by the next `/sync-to-use`. #78 earned
+      a stopgap because that was a DELETION OF WRONG LINES; this would be an
+      INVENTION OF CANONICAL CONTENT in a synced tier — and inventing it on a
+      SECURITY fixture, where a wrong precondition manufactures false fail-open
+      alarms, is precisely the risk this entry documents. The durable surface is this
+      proposal.
+    diff_lines: "unknown — depends whether Gate-1 takes the per-dir run.mjs shape or teaches the existing canonical driver to read the sidecar pairs (the latter also closes the harness/fixture drift channel)"
+
 status: pending_review
