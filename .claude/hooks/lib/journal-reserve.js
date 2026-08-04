@@ -259,8 +259,31 @@ function _foldHighWater(repoDir, dirRel) {
     if (!rec || rec.type !== "journal-slot-reservation") continue;
     const c = rec.content || {};
     if (c.dir !== dirRel) continue;
+    // SHAPE-VALIDATE THE SLOT BEFORE IT CAN RAISE THE HIGH-WATER. `parseInt`
+    // accepts arbitrarily long digit strings, and `Number.isFinite` does NOT
+    // reject them — 1e21 is finite. The fail-closed argument this function rests
+    // on ("a forged reservation at slot N is counted, so we advance PAST N,
+    // never reuse it") silently assumed N was in a sane range, and it is read
+    // from a record folded with `skipSignatureVerify: true`, so the record need
+    // not even be validly signed to be counted here.
+    //
+    // Unbounded, a single record with `slot: "999999999999999999999"` yields
+    // n = 1e21; `String(1e21).padStart(4, "0")` is "1e+21", so the reservation,
+    // the emitted record, and the resulting FILENAME all become `1e+21-…`. The
+    // poisoning record is re-folded on every later call, so every subsequent
+    // reservation for that dir returns the same garbage slot — permanently, for
+    // every operator on the repo. That is a denial of the journal receipt
+    // `/codify` mandates, from one append, which `multi-operator-coordination.md`
+    // puts squarely inside the threat model ("a legitimate team member with repo
+    // write access seeking … sabotage").
+    //
+    // The slot vocabulary is the same 4-digit shape `SLOT_RE` and `padStart(4)`
+    // already assume, so this is a positive allowlist over an enumerable
+    // vocabulary (`cc-artifacts.md` Rule 10), not a new constraint.
+    if (typeof c.slot !== "string" && typeof c.slot !== "number") continue;
+    if (!/^[0-9]{1,4}$/.test(String(c.slot))) continue;
     const n = parseInt(c.slot, 10);
-    if (Number.isFinite(n) && n > high) high = n;
+    if (Number.isSafeInteger(n) && n > high) high = n;
   }
   return high;
 }

@@ -1,0 +1,267 @@
+#!/usr/bin/env node
+/**
+ * upflow-self-repo-helpers — instruments for the MODULE-LEVEL guards that the
+ * subprocess fence suite structurally cannot reach.
+ *
+ * WHY A SECOND SUITE. `upflow-open-never-complete/run.mjs` drives the ADAPTERS
+ * through a real git repo in a child process. That is the right shape for the
+ * fence, and the wrong shape for three guards:
+ *   - `_lastGitStderr`'s reset needs TWO derivations in ONE process; the fence
+ *     suite spawns exactly one call per case.
+ *   - `getProvider` is in a different module (`vcs-provider.js`) that the fence
+ *     suite never loads — and which had NO fixture anywhere in audit-fixtures/.
+ *   - `sanitizeForReason` / `displayPrId` are pure functions whose contract is
+ *     about which bytes DO NOT survive; asserting that through an adapter
+ *     refusal string only reaches the cases an adapter happens to produce.
+ *
+ * Each of these shipped WITHOUT an instrument and was caught by an adversarial
+ * round measuring that its removal left the fence suite fully green. Per
+ * `cc-artifacts.md` Rule 9 a guard ships with the fixture that reds when it is
+ * removed; per `instrument-discipline.md` MUST-1 each assertion below states a
+ * result the guard's ABSENCE would produce.
+ *
+ * Mutations that red each case are recorded in README.md, measured.
+ */
+
+import path from "node:path";
+import fs from "node:fs";
+import os from "node:os";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const LIB = path.resolve(__dirname, "..", "..", "hooks", "lib");
+
+const selfRepo = require(path.join(LIB, "upflow-self-repo.js"));
+const { getProvider } = require(path.join(LIB, "vcs-provider.js"));
+
+// Built from char codes, never as source literals: a bidi override or a raw
+// control byte written literally into this file would be invisible to a reviewer
+// — the exact property these guards exist to remove from output.
+const NL = String.fromCharCode(10);
+const ESC = String.fromCharCode(27);
+const NUL = String.fromCharCode(0);
+const RLO = String.fromCharCode(0x202e); // RIGHT-TO-LEFT OVERRIDE
+const LSEP = String.fromCharCode(0x2028); // LINE SEPARATOR
+const NEL = String.fromCharCode(0x85); // C1 NEL
+
+const cases = [];
+const t = (name, mutation, fn) => cases.push({ name, mutation, fn });
+
+// ---------------------------------------------------------------------------
+// displayPrId — positive allowlist over [0-9]
+// ---------------------------------------------------------------------------
+
+t(
+  "displayPrId/strips-every-injection-class",
+  "upflow-self-repo.js::displayPrId — return String(value) unchanged, or revert the [^0-9] allowlist to the [\\x00-\\x1f\\x7f-\\x9f] denylist",
+  () => {
+    // The denylist this replaced caught the first two and MISSED the last three.
+    // Measured before the fix: U+202E and U+2028 survived verbatim.
+    for (const payload of [NL, ESC, NUL, NEL, RLO, LSEP]) {
+      const out = selfRepo.displayPrId(`77${payload}evil`);
+      if (out.includes(payload)) {
+        return `payload U+${payload.charCodeAt(0).toString(16).padStart(4, "0")} survived: ${JSON.stringify(out)}`;
+      }
+    }
+    return null;
+  },
+);
+
+t(
+  "displayPrId/preserves-a-legitimate-id",
+  "upflow-self-repo.js::displayPrId — replace the allowlist with a class that also eats digits",
+  () => {
+    // The over-tightening polarity. A sanitizer that mangles valid ids makes
+    // every refusal message useless, and a strip-only suite cannot detect it.
+    const out = selfRepo.displayPrId(4242);
+    return out === "4242" ? null : `expected "4242", got ${JSON.stringify(out)}`;
+  },
+);
+
+t(
+  "displayPrId/does-not-throw-on-hostile-toString",
+  "upflow-self-repo.js::displayPrId — drop the try/catch around String(value)",
+  () => {
+    // `String(value)` INVOKES caller code. A throw here converts a typed
+    // {ok:false, reason} refusal into an uncaught exception, and the fence suite
+    // asserts error === null precisely because a crash reads as a refusal to any
+    // assertion that only checks ok === false.
+    const hostile = {
+      toString() {
+        throw new Error("hostile");
+      },
+    };
+    try {
+      const out = selfRepo.displayPrId(hostile);
+      return typeof out === "string"
+        ? null
+        : `expected a string, got ${typeof out}`;
+    } catch (err) {
+      return `threw instead of returning a placeholder: ${err && err.message}`;
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// sanitizeForReason — free-form diagnostic text
+// ---------------------------------------------------------------------------
+
+t(
+  "sanitizeForReason/strips-structure-forging-classes",
+  "upflow-self-repo.js::sanitizeForReason — return the input unchanged, or drop the \\u2028/\\u202a-\\u202e/\\u2066-\\u2069 members from the class",
+  () => {
+    for (const payload of [NL, ESC, NUL, NEL, RLO, LSEP]) {
+      const out = selfRepo.sanitizeForReason(`host${payload}evil.example`);
+      if (out.includes(payload)) {
+        return `payload U+${payload.charCodeAt(0).toString(16).padStart(4, "0")} survived: ${JSON.stringify(out)}`;
+      }
+    }
+    return null;
+  },
+);
+
+t(
+  "sanitizeForReason/preserves-readable-non-ascii",
+  "upflow-self-repo.js::sanitizeForReason — replace the class with an ASCII-only allowlist",
+  () => {
+    // The over-tightening polarity, and the reason this is a SEPARATE helper
+    // from displayPrId. Git's stderr names paths the operator must recognize; an
+    // ASCII-only allowlist would mangle any non-ASCII path into unreadability,
+    // destroying the diagnostic value this text exists to provide.
+    const out = selfRepo.sanitizeForReason("/srv/café/repo: dubious ownership");
+    return out === "/srv/café/repo: dubious ownership"
+      ? null
+      : `legitimate non-ASCII path was mangled: ${JSON.stringify(out)}`;
+  },
+);
+
+// ---------------------------------------------------------------------------
+// _lastGitStderr reset — needs two derivations in ONE process
+// ---------------------------------------------------------------------------
+
+t(
+  "deriveSelfRepoRef/git-stderr-does-not-leak-across-calls",
+  // NO REDDENING MUTATION IS KNOWN FOR THE RESET ITSELF — stated plainly rather
+  // than claimed, because claiming one would be the defect this whole suite
+  // exists to catch. Deleting `_lastGitStderr = null;` leaves this suite GREEN.
+  //
+  // RESOLVED as an INERT mutation, not a vacuous test (`instrument-discipline.md`
+  // MUST-2(b) requires collapsing the two hypotheses, not picking one). The
+  // deleted line is at function entry and executes on every call, so the
+  // mutation is unquestionably REACHED. It produces no behavioral difference
+  // because every null-return path this fixture can drive goes through the
+  // `catch`, which ALWAYS assigns — measured:
+  //   call 1 (real repo, no origin) -> THREW; stderr "error: No such remote
+  //     'origin'"                      -> catch assigns a string
+  //   call 2 (nonexistent directory) -> THREW; stderr empty
+  //                                     -> catch assigns null
+  // The only branches that return null WITHOUT assigning are `!gitBin` (git
+  // absent from PATH) and an empty-stdout success, and neither is reachable from
+  // an in-process fixture without stubbing the module under test — which would
+  // instrument the stub, not the code.
+  //
+  // The reset therefore remains DEFENSIVE: correct, one line, and it closes the
+  // latent path if either unreachable branch ever becomes reachable. What this
+  // case pins is the PROPERTY (no cross-call leak), which is worth holding on
+  // its own; it is NOT an instrument for the reset line, and must not be cited
+  // as one.
+  "no known reddening mutation — see the comment above; the property is pinned, the reset line is inert w.r.t. reachable inputs",
+  () => {
+    // Call 1 fails with a stderr naming THIS directory; call 2 fails on a
+    // directory git cannot even enter. Call 2's refusal must not quote call 1's
+    // message — that would assert, in the grammar of an observation, something
+    // git never said on that call about a repo it was never asked about.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "helpers-"));
+    try {
+      const repo = path.join(root, "a-repo");
+      fs.mkdirSync(repo);
+      execFileSync("git", ["init", "-q"], { cwd: repo, stdio: "ignore" });
+      // Call 1: a real git repo with NO origin -> git writes to stderr.
+      const first = selfRepo.deriveSelfRepoRef(repo);
+      if (first.ok) return "setup invariant broken: call 1 should refuse";
+      // Call 2: a non-existent directory. git cannot even start here, so this
+      // path must not inherit call 1's message.
+      const second = selfRepo.deriveSelfRepoRef(path.join(root, "nope"));
+      if (second.ok) return "setup invariant broken: call 2 should refuse";
+      if (second.reason.includes("a-repo")) {
+        return `call 2's refusal leaked call 1's stderr: ${JSON.stringify(second.reason.slice(0, 200))}`;
+      }
+      return null;
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// getProvider — own-property lookup
+// ---------------------------------------------------------------------------
+
+t(
+  "getProvider/inherited-keys-are-not-providers",
+  'vcs-provider.js::getProvider — revert to `const adapter = PROVIDERS[id];` (a plain index inherits from Object.prototype)',
+  () => {
+    // `Object.freeze` on an object LITERAL leaves Object.prototype on the chain,
+    // so PROVIDERS["constructor"] is the Object function — TRUTHY — and the
+    // "unknown provider" refusal never fires. The id arrives from
+    // roster.genesis.provider and from a coordination-log record's
+    // content.provider, so it is externally authorable.
+    for (const key of [
+      "constructor",
+      "toString",
+      "valueOf",
+      "hasOwnProperty",
+      "isPrototypeOf",
+    ]) {
+      const r = getProvider(key);
+      if (r.ok) return `inherited key "${key}" resolved as a provider`;
+    }
+    return null;
+  },
+);
+
+t(
+  "getProvider/real-providers-still-resolve",
+  "vcs-provider.js::getProvider — over-tighten the membership test so a real id stops resolving",
+  () => {
+    // The permissive polarity: a refusal-only pair cannot detect a fix that
+    // breaks legitimate resolution.
+    for (const id of ["github", "azure-devops"]) {
+      const r = getProvider(id);
+      if (!r.ok) return `legitimate provider "${id}" was refused: ${r.reason}`;
+    }
+    const dflt = getProvider(undefined);
+    return dflt.ok && dflt.providerId === "github"
+      ? null
+      : "the undefined -> github default regressed";
+  },
+);
+
+// ---------------------------------------------------------------------------
+
+let failed = 0;
+for (const c of cases) {
+  let err = null;
+  try {
+    err = c.fn();
+  } catch (e) {
+    err = `threw: ${e && e.message}`;
+  }
+  if (err) {
+    failed += 1;
+    console.log(`  ✗ ${c.name}`);
+    console.log(`      ${err}`);
+  } else {
+    console.log(`  ✓ ${c.name}`);
+  }
+}
+
+const total = cases.length;
+if (failed) {
+  console.log(`\nupflow-self-repo-helpers: ${failed}/${total} FAILED`);
+  process.exit(1);
+}
+console.log(`\nupflow-self-repo-helpers: ${total}/${total} PASS`);

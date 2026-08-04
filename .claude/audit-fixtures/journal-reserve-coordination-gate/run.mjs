@@ -63,6 +63,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 const LIB = path.join(REPO_ROOT, ".claude", "hooks", "lib");
+// Slot values a hostile or malformed record can carry. `parseInt` accepts an
+// arbitrarily long digit string and `Number.isFinite` does NOT reject the
+// result — 1e21 is finite — so without a shape check the high-water is
+// permanently poisoned and every later reservation returns a garbage slot.
+const POISON_SLOTS = ["999999999999999999999", "1e5", "0004junk", " 12"];
 const JOURNAL_RESERVE = path.join(LIB, "journal-reserve.js");
 
 function git(cwd, args) {
@@ -121,6 +126,29 @@ function makeRepo({ coordinationOn, withWorktree }) {
 // passes when the gate resolves OFF and is refused when it resolves ON.
 const UNSIGNED_IDENTITY = { display_id: "fixture-op" };
 
+/**
+ * Write a `journal-slot-reservation` record into the coordination log the
+ * high-water fold reads. `COC_TEST_SKIP_SIGN=1` makes the fold count RAW
+ * records, which is the same posture the module already documents for that env
+ * var — so the record does not need a valid signature to be counted. That is
+ * not a shortcut for the fixture: `_foldHighWater` folds with
+ * `skipSignatureVerify: true` on the normal path too, which is precisely why an
+ * unvalidated `content.slot` is reachable.
+ */
+function writeSlotRecord(repoDir, slot) {
+  const { resolveLogPath } = require(path.join(LIB, "state-io.js"));
+  const logPath = resolveLogPath(repoDir);
+  fs.mkdirSync(path.dirname(logPath), { recursive: true });
+  fs.appendFileSync(
+    logPath,
+    JSON.stringify({
+      type: "journal-slot-reservation",
+      content: { dir: "journal", slot },
+    }) + "\n",
+    "utf8",
+  );
+}
+
 function reserve(repoDir) {
   delete require.cache[require.resolve(JOURNAL_RESERVE)];
   const { reserveJournalSlotSigned } = require(JOURNAL_RESERVE);
@@ -178,12 +206,74 @@ const cases = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Slot-shape validation in the high-water fold
+// ---------------------------------------------------------------------------
+
+cases.push({
+  // THE INSTRUMENT FOR THE SLOT SHAPE CHECK. `_foldHighWater` folds with
+  // `skipSignatureVerify: true` — stated and justified in the module — so a
+  // record's `content.slot` is attacker-reachable without a valid signature,
+  // and `multi-operator-coordination.md` puts a write-capable team member
+  // squarely inside the threat model.
+  //
+  // Unbounded, `slot: "999999999999999999999"` yields n = 1e21, and
+  // `String(1e21).padStart(4, "0")` is "1e+21" — so the reservation, the emitted
+  // record, and the FILENAME all become `1e+21-…`. The poisoning record is
+  // re-folded on every later call, so the damage is PERMANENT for every operator
+  // on the repo: a denial of the journal receipt `/codify` mandates, from a
+  // single append.
+  //
+  // Each poison value targets a different way the old check failed: an
+  // overflowing digit run (finite, so `Number.isFinite` passed), exponent
+  // notation, a digits-then-junk prefix `parseInt` happily truncates, and a
+  // leading-space form.
+  // WHAT THIS CASE DOES AND DOES NOT REACH — measured, and load-bearing.
+  // It FORCES `COC_TEST_SKIP_SIGN=1`, and that is not a convenience: with the
+  // default fold path this case stays GREEN EVEN UNDER ITS OWN MUTATION,
+  // because the synthetic records a fixture can write are rejected by the fold's
+  // OTHER rules (chain continuity / emitter registration) before they ever reach
+  // the slot loop. A case that cannot red is not an instrument, so the env var
+  // is set deterministically here rather than left to the caller — otherwise
+  // this file would ship a green that means nothing on the default path.
+  //
+  // The honest consequence: this instruments the shape check against records the
+  // fold ADMITS, and the population that can produce such a record on the
+  // default path is a ROSTERED operator emitting a properly-chained record whose
+  // `content.slot` is arbitrary — `content` is not validated by the fold. That
+  // is exactly `multi-operator-coordination.md`'s stated adversary (a legitimate
+  // team member with write access seeking sabotage), so the guard is not
+  // theatre; but constructing that record needs real signing infrastructure this
+  // fixture deliberately does not stand up. Stated rather than papered over.
+  name: "slot-shape/poisoned-high-water-cannot-escape-4-digits",
+  mutation:
+    "journal-reserve.js::_foldHighWater — drop the `/^[0-9]{1,4}$/` shape check and restore `Number.isFinite(n)` (reds ONLY with COC_TEST_SKIP_SIGN=1, which this case sets)",
+  setup: { coordinationOn: false, withWorktree: false },
+  poison: POISON_SLOTS,
+  forceSkipSign: true,
+  expect: (r) =>
+    r.ok === true && /^[0-9]{4}$/.test(r.reservation && r.reservation.slot),
+  describe:
+    "ok === true AND the slot is still a 4-digit string (no 1e+21 filename)",
+});
+
 let failed = 0;
 for (const c of cases) {
   let made = null;
   try {
     made = makeRepo(c.setup);
-    const r = reserve(made.repoDir);
+    if (c.poison) for (const s of c.poison) writeSlotRecord(made.repoDir, s);
+    const prevSkipSign = process.env.COC_TEST_SKIP_SIGN;
+    if (c.forceSkipSign) process.env.COC_TEST_SKIP_SIGN = "1";
+    let r;
+    try {
+      r = reserve(made.repoDir);
+    } finally {
+      if (c.forceSkipSign) {
+        if (prevSkipSign === undefined) delete process.env.COC_TEST_SKIP_SIGN;
+        else process.env.COC_TEST_SKIP_SIGN = prevSkipSign;
+      }
+    }
     if (c.expect(r)) {
       console.log(`  ✓ ${c.name}`);
     } else {

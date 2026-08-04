@@ -36,6 +36,36 @@ never mutated.
 | replace `isCoordinationEnabled(resolveMainCheckout(repoDir) \|\| repoDir)` with `isCoordinationEnabled(repoDir)` | exactly 1 — `coordination-on/worktree/resolves-main-not-worktree` |
 | `requireSigningIdentity: false` (drop the gate open)                                                             | 2 — both `coordination-on/*` cases                                |
 | `requireSigningIdentity: true` (revert the #76 fix)                                                              | exactly 1 — `coordination-off/main/unsigned-identity-accepted`    |
+| `_foldHighWater` — drop the `/^[0-9]{1,4}$/` slot shape check, restore `Number.isFinite` | exactly 1 — `slot-shape/poisoned-high-water-cannot-escape-4-digits` |
+
+## The slot-shape case and what it actually reaches
+
+`_foldHighWater` folds with `skipSignatureVerify: true`, so `content.slot` is
+read off records whose signatures were not checked. Unbounded, `parseInt`
+accepts an arbitrarily long digit run and `Number.isFinite` does **not** reject
+the result (1e21 is finite), so `slot: "999999999999999999999"` makes
+`String(1e21).padStart(4, "0")` yield `"1e+21"` — the reservation, the emitted
+record, and the resulting **filename** all become `1e+21-…`. The poisoning
+record is re-folded on every later call, so the breakage is **permanent for
+every operator on the repo**: a denial of the journal receipt `/codify`
+mandates, from one append.
+
+**The case FORCES `COC_TEST_SKIP_SIGN=1`, and that is load-bearing, not
+convenience.** Measured: on the default fold path this case stays GREEN *even
+under its own mutation*, because the synthetic records a fixture can write are
+rejected by the fold's other rules (chain continuity / emitter registration)
+before reaching the slot loop. A case that cannot red is not an instrument, so
+the env var is set deterministically inside the case rather than left to the
+caller.
+
+**Honest bound.** This instruments the shape check against records the fold
+ADMITS. The population that can produce such a record on the default path is a
+**rostered operator** emitting a properly-chained record with an arbitrary
+`content.slot` — `content` is not validated by the fold. That is precisely
+`multi-operator-coordination.md`'s stated adversary (a legitimate team member
+with write access seeking sabotage), so the guard is not theatre; but building
+that record needs real signing infrastructure this fixture deliberately does not
+stand up. Stated rather than papered over.
 
 Every case is redded by at least one mutation, and the suite is **bipolar** — it
 carries both a refusal polarity (coordination ON must refuse an unsigned

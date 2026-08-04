@@ -122,12 +122,18 @@ function git(cwd, args) {
  *
  * @returns {{root:string, repo:string}} `root` is what the caller removes.
  */
-function makeRepo({ dirName, remote, version }) {
+function makeRepo({ dirName, remote, pushRemote, version }) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "upflow-fence-"));
   const repo = path.join(root, dirName);
   fs.mkdirSync(repo);
   git(repo, ["init", "-q"]);
   if (remote) git(repo, ["remote", "add", "origin", remote]);
+  // `pushRemote` configures git's TRIANGULAR workflow — origin fetches from one
+  // repo and pushes to another. Without it no case could exercise the
+  // fetch-vs-push identity disagreement, and the derivation reads only the fetch
+  // url, so the triangular guard had no instrument.
+  if (pushRemote)
+    git(repo, ["remote", "set-url", "--push", "origin", pushRemote]);
   if (version) {
     fs.mkdirSync(path.join(repo, ".claude"), { recursive: true });
     fs.writeFileSync(
@@ -655,6 +661,112 @@ const cases = [
       prId: 42,
     },
     expect: { ok: false, fired: false },
+    // BRANCH PIN. Without it this case can pass via a DIFFERENT refusal branch
+    // than its `mutation:` names, at which point the recorded mutation is inert
+    // and the case is decoration — the failure the header cites
+    // `gh/bare-path-remote-refuses` for. Its absence also falsified this file's
+    // own stated `expectReason`-count equality (28 vs 29) the round it landed.
+    expectReason: "does not parse to an owner/name pair",
+  },
+  {
+    // THE HOST ASCII GUARD'S ONLY INSTRUMENT. The guard rejects a non-ASCII
+    // authority BEFORE `.toLowerCase()`, because U+212A KELVIN SIGN lowercases
+    // to ASCII "k" — so on a deployment whose appliance host contains a "k"
+    // (`github.k8s.corp`, the GHES host `vcs-github-adapter.js` explicitly
+    // schedules), `github.<U+212A>8s.corp` would lowercase INTO the host set
+    // while git and ssh resolve a different IDN host.
+    //
+    // Until this case existed the guard had NO instrument: every host in this
+    // suite is pure ASCII, so deleting the guard line changed no value any case
+    // read and the suite stayed fully green. The one non-ASCII byte in the
+    // corpus sits in a PATH segment, which exercises `normalizeComponent`'s
+    // guard instead — a different line.
+    //
+    // Uses U+212A in the AUTHORITY. Unmutated: the guard refuses at derivation.
+    // With the guard removed: the authority lowercases to `github.k8s.corp`,
+    // which is not in GITHUB_HOSTS either — so the naive assertion `ok===false`
+    // would NOT discriminate. The branch pin is what makes it red: the refusal
+    // moves from "underivable" to "non-GitHub self-identity".
+    name: "gh/non-ascii-authority-refuses-at-derivation",
+    mutation:
+      "upflow-self-repo.js::_splitRemoteUrl — delete the `if (!/^[\\x00-\\x7f]*$/.test(authority)) return null;` guard",
+    repo: {
+      dirName: "kailash-coc-rs",
+      remote: "https://github.K8s.corp/terrene-foundation/kailash-coc-rs.git",
+    },
+    adapter: GH,
+    prRef: { repoRef: GH_SELF, prId: 77 },
+    expect: { ok: false, fired: false },
+    expectReason: "does not parse to an owner/name pair",
+  },
+  {
+    // THE ONLY INSTRUMENT FOR `displayPrId`, and it needs the NEGATIVE
+    // assertion: a sanitizer's contract is that something does NOT appear, so
+    // every positive check in this harness is blind to it. Collapsing
+    // `displayPrId` to `String(value)` left the suite fully green, because no
+    // case carried a control byte in `prId` at all — every id in the corpus is
+    // `77`, `42`, or a traversal string of plain ASCII.
+    //
+    // The newline is injected into a refusal that fires BEFORE `PR_NUMBER_RE`
+    // (the identity checks run first by design), which is exactly why the id
+    // reaches a refusal string unvalidated. The refusal `reason` is logged and
+    // `/codify` Step-7c may embed it in a PR body — so a raw newline there is a
+    // forged log line in text a human reads as this tool's output.
+    name: "gh/control-byte-pr-id-neutralized-in-refusal",
+    mutation:
+      "upflow-self-repo.js::displayPrId — return `String(value)` unchanged (drop the [^0-9] allowlist)",
+    repo: { dirName: "kailash-coc-rs", remote: GH_SELF_REMOTE },
+    adapter: GH,
+    prRef: { repoRef: GH_UPSTREAM, prId: "77\nFORGED-LOG-LINE: merged" },
+    expect: { ok: false, fired: false },
+    expectReason: "cross-repo completion refused",
+    // The payload MUST NOT survive into the refusal blob.
+    expectReasonAbsent: "\nFORGED-LOG-LINE",
+  },
+  {
+    // THE TRIANGULAR-REMOTE GUARD'S INSTRUMENT. `git clone <upstream> &&
+    // git remote set-url --push origin <fork>` is git's DOCUMENTED triangular
+    // workflow, and it leaves `remote.origin.url` pointing at the upstream — so
+    // a fence deriving from the fetch url alone derived the UPSTREAM and
+    // authorized a merge on it from a downstream contributor's tree. No attacker
+    // and no unusual setup: that is the ordinary configuration for the exact
+    // population MUST-4 exists to stop.
+    //
+    // Shape: fetch = the upstream, push = this consumer's fork, target = the
+    // upstream. Before the guard this case AUTHORIZED (fetch-derived identity
+    // matched the target). With it, the disagreement refuses.
+    name: "gh/triangular-remote-refuses-when-fetch-and-push-disagree",
+    mutation:
+      "upflow-self-repo.js::deriveSelfRepoRef — delete the `_readPushRemote` triangular-disagreement block",
+    repo: {
+      dirName: "kailash-coc-rs",
+      remote:
+        "https://github.com/terrene-foundation/kailash-coc-claude-py.git",
+      pushRemote: "https://github.com/some-consumer/kailash-coc-rs.git",
+    },
+    adapter: GH,
+    prRef: { repoRef: GH_UPSTREAM, prId: 77 },
+    expect: { ok: false, fired: false },
+    expectReason: "triangular remote",
+  },
+  {
+    // THE PERMISSIVE POLARITY of the case above, and NOT optional: a
+    // refusal-only pair cannot detect OVER-tightening, and this guard's obvious
+    // failure mode is refusing a legitimate maintainer. A push url that differs
+    // only in TRANSPORT (ssh vs https) names the SAME repo, so it must still
+    // authorize. Reds if the comparison is ever changed from derived identity to
+    // raw URL string.
+    name: "gh/triangular-same-identity-different-transport-allows",
+    mutation:
+      "upflow-self-repo.js::deriveSelfRepoRef — compare the raw pushUrl string against `url` instead of comparing derived slugs",
+    repo: {
+      dirName: "kailash-coc-rs",
+      remote: GH_SELF_REMOTE,
+      pushRemote: "git@github.com:terrene-foundation/kailash-coc-rs.git",
+    },
+    adapter: GH,
+    prRef: { repoRef: GH_SELF, prId: 77 },
+    expect: { ok: true, fired: true },
   },
   {
     // THE `gitEnv()` ROUTING'S ONLY INSTRUMENT. `git-subprocess-env.js` exists
@@ -1208,11 +1320,22 @@ for (const c of cases) {
         : c.expectEndpoint instanceof RegExp
           ? c.expectEndpoint.test(String(out.endpoint || ""))
           : String(out.endpoint || "").includes(c.expectEndpoint);
+    // `expectReasonAbsent` is the NEGATIVE assertion, and it is the only shape
+    // that can instrument a SANITIZER. A sanitizer's job is that something does
+    // NOT appear in the output, so every positive assertion in this harness is
+    // blind to it: `displayPrId` could be collapsed to `String(value)` and every
+    // ok/fired/reason-contains check would still pass. Asserting the raw payload
+    // is ABSENT from the refusal blob is what reds when the guard is removed.
+    const reasonAbsentOk =
+      c.expectReasonAbsent === undefined
+        ? true
+        : !blob.includes(c.expectReasonAbsent);
     const pass =
       out.ok === c.expect.ok &&
       out.fired === c.expect.fired &&
       out.error === null &&
       reasonOk &&
+      reasonAbsentOk &&
       endpointOk;
     if (pass) {
       console.log(`  ✓ ${c.name}`);

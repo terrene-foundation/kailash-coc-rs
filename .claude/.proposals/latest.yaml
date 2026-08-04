@@ -1776,8 +1776,16 @@ changes:
   #    Recorded rather than silently corrected, since this cluster's whole
   #    subject is false claims about instruments.)
   #
-  #    The `diff_lines: "+433 -0"` on the upflow-self-repo.js entry describes a
-  #    file measured at 751 lines.
+  #    The `diff_lines: "+433 -0"` on the upflow-self-repo.js entry no longer
+  #    describes the file. Do not trust a number written here — re-derive it:
+  #
+  #      git diff --numstat <merge-base>...HEAD -- .claude/hooks/lib/upflow-self-repo.js
+  #
+  #    (This line has now carried TWO stale counts: "~700 lines", then "measured
+  #    at 751 lines" — which was already wrong when written, because the very
+  #    commit that wrote it grew the file past 751. A bare count decays the
+  #    moment the artifact beside it changes, which is the whole subject of this
+  #    marker. Replaced with the command instead of a third number.)
   #
   #    Ingesting as-is would distribute the DEFECTIVE fence to every sibling
   #    template via /sync-to-use — including a HIGH, live, fetchable bypass —

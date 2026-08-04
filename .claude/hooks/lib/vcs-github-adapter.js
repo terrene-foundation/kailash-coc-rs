@@ -649,7 +649,7 @@ function completeUpflowPR(transport, prRef) {
     return _fail(
       "completeUpflowPR: non-GitHub self-identity refused",
       `refusing to merge ${repoRef.owner}/${repoRef.name}#${selfRepo.displayPrId(prRef && prRef.prId)} — ` +
-        `this working tree's origin remote is on host ${d.self.host}, which this ` +
+        `this working tree's origin remote is on host ${selfRepo.sanitizeForReason(d.self.host)}, which this ` +
         `adapter does not serve (recognized: ${[...GITHUB_HOSTS].join(", ")}; a ` +
         `GitHub Enterprise appliance host is NOT configured in this repo, so it is ` +
         `NOT accepted). An owner/name pair derived from another host does not ` +

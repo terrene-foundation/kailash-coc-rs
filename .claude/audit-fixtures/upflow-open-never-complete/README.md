@@ -519,6 +519,29 @@ dilution. Three isolate to exactly one case.
 | `ado/descriptor-identity-seams-are-ignored`                | `vcs-azure-adapter.js` restore `deriveSelfRepoRef((prRef && prRef.cwd) \|\| process.cwd())` | exactly 1 — itself |
 | `ado/exact-segment-count-rejects-all-clean-extra-segments` | `_parseAdo` the PAIR: `!== 3`→`< 3` AND `!== 2`→`< 2`                                       | exactly 1 — itself |
 
+**Four more added after an adversarial round measured that three guards shipped
+with NO instrument** — deleting any of them left the suite fully green, because
+every host in the corpus was pure ASCII, every `prId` was plain digits or a
+plain-ASCII traversal string, and no case configured a push url:
+
+| Case                                                        | Predicate mutated                                                           | Cases redded       |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------ |
+| `gh/non-ascii-authority-refuses-at-derivation`              | `_splitRemoteUrl` delete the `[\x00-\x7f]` authority guard                  | exactly 1 — itself |
+| `gh/control-byte-pr-id-neutralized-in-refusal`              | `displayPrId` → `String(value)` (drop the `[^0-9]` allowlist)               | exactly 1 — itself |
+| `gh/triangular-remote-refuses-when-fetch-and-push-disagree` | `deriveSelfRepoRef` delete the `_readPushRemote` disagreement block         | exactly 1 — itself |
+| `gh/triangular-same-identity-different-transport-allows`    | `deriveSelfRepoRef` compare the raw pushUrl string instead of derived slugs | exactly 1 — itself |
+
+The last is the **permissive polarity** of the triangular guard and is not
+optional: that guard's obvious failure mode is locking out a legitimate
+maintainer whose push url differs only in transport (ssh vs https), and a
+refusal-only pair cannot detect over-tightening.
+
+`gh/control-byte-pr-id-neutralized-in-refusal` required a new assertion form,
+`expectReasonAbsent`. A sanitizer's contract is that something does NOT appear in
+the output, so every positive assertion in this harness was blind to it —
+`displayPrId` could be collapsed to `String(value)` and every ok/fired/
+reason-contains check still passed.
+
 Both closed measured gaps, not theoretical ones. Before the first, the ADO
 adapter's caller-authored `cwd` seam could be restored with the suite fully
 green while the adapter merged on the upstream. Before the second, the ADO

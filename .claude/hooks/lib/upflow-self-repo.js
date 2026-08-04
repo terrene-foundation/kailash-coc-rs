@@ -73,7 +73,12 @@ function normalizeComponent(v) {
   //   github-login.js:33 GITHUB_LOGIN_RE   /^[a-zA-Z0-9][a-zA-Z0-9-]{0,38}$/
   //   github-login.js:37 GITHUB_REPO_RE    /^[a-zA-Z0-9._-]{1,100}$/
   //   ado-login.js:52    ADO_ORG_RE        /^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/
-  //   ado-login.js:61-62 ADO_PROJECT_RE / ADO_REPO_RE  /^[A-Za-z0-9._-]{1,64}$/
+  //   ado-login.js       ADO_PROJECT_RE / ADO_REPO_RE  /^[A-Za-z0-9._-]{1,64}$/
+  // (Line numbers are given only where they have held; the ADO_PROJECT_RE /
+  // ADO_REPO_RE citation said `ado-login.js:61-62`, correct when written and
+  // shifted +10 by a later edit to that file, so it pointed at prose. The
+  // constant NAMES are stable and greppable, the line numbers are not; the
+  // pattern bodies above are what this comment actually asserts.)
   // Note ADO_ORG_RE admits NEITHER dots NOR underscores and caps at 63 — it is
   // materially tighter than the project/repo pattern, so no VALIDATOR-GATED org
   // can carry a `.git` suffix for the strip below to act on. Stated with that
@@ -244,6 +249,45 @@ function _readOriginRemote(cwd) {
 let _lastGitStderr = null;
 
 /**
+ * Read origin's PUSH url. Returns null when git cannot answer.
+ *
+ * `git remote get-url --push origin` returns the FETCH url when no distinct
+ * `pushurl` is configured, so on an ordinary single-identity remote this returns
+ * the same string as `_readOriginRemote` and the caller's comparison is a no-op.
+ * It differs only in git's triangular workflow, which is precisely the case the
+ * caller refuses.
+ *
+ * Deliberately does NOT touch `_lastGitStderr`: that variable carries the
+ * diagnostic for the FETCH read, which is the one whose failure denies the
+ * identity. A failure here is not itself fatal — the caller treats a null as
+ * "no distinct push url to disagree with", which is the same disposition as an
+ * ordinary remote. That is the safe direction: this check can only ADD a
+ * refusal, never remove one, so being unable to run it cannot authorize
+ * anything the fetch-derived identity did not already authorize.
+ */
+function _readPushRemote(cwd) {
+  const gitBin = resolveGitBinary();
+  if (!gitBin) return null;
+  try {
+    const out = execFileSync(
+      gitBin,
+      ["remote", "get-url", "--push", "origin"],
+      {
+        cwd,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: 3000,
+        env: gitEnv(),
+      },
+    );
+    const s = typeof out === "string" ? out.trim() : "";
+    return s || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Split a remote URL into `{host, segments}`. Handles `scheme://host/path` and
  * scp-style `git@host:path`.
  *
@@ -342,11 +386,17 @@ function _splitRemoteUrl(url) {
   // split on purpose: userinfo is discarded and may legitimately be non-ASCII,
   // so guarding the whole authority would refuse remotes that are fine.
   //
-  // NOT A LIVE BYPASS TODAY, and this is not claimed as one. The only code
-  // points whose `.toLowerCase()` yields a pure-ASCII letter are U+212A KELVIN
-  // SIGN → "k" and U+212B ANGSTROM SIGN → "å" (itself non-ASCII); U+0130 yields
-  // "i"+U+0307, two code units, so it cannot forge "i". No member of the current
-  // host sets contains a "k", so nothing is forgeable at this commit.
+  // NOT A LIVE BYPASS TODAY, and this is not claimed as one. Exhaustively
+  // scanned U+0080–U+10FFFF (skipping surrogates) for code points whose
+  // `.toLowerCase()` is a pure-ASCII letter: the result is EXACTLY ONE,
+  // U+212A KELVIN SIGN → "k". U+0130 yields "i"+U+0307 (two code units), so it
+  // cannot forge "i". No member of the current host sets contains a "k", so
+  // nothing is forgeable at this commit.
+  //
+  // (An earlier revision of this sentence named U+212B ANGSTROM SIGN as a second
+  // member and then parenthetically noted its lowercase "å" is non-ASCII —
+  // contradicting, in the same breath, the set it was enumerating. The scan
+  // above replaces the enumeration with its measured result.)
   //
   // It is closed anyway because THIS FILE'S OWN STANDARD, stated at the IPv6
   // comment below, is that "safe-by-accident becomes a bypass the moment a
@@ -728,7 +778,9 @@ function deriveSelfRepoRef(cwd) {
       reason:
         "`git remote get-url origin` yielded no remote for this working tree " +
         `(no origin, not a git repo, dubious ownership, or git unavailable${
-          _lastGitStderr ? ` — git said: ${_lastGitStderr}` : ""
+          _lastGitStderr
+            ? ` — git said: ${sanitizeForReason(_lastGitStderr)}`
+            : ""
         }); the live remote is the ` +
         "only authoritative self-identity and there is deliberately no directory-name " +
         "fallback, so a completion cannot be authorized",
@@ -740,7 +792,9 @@ function deriveSelfRepoRef(cwd) {
     // The raw URL is NOT echoed — it may carry credentials in userinfo
     // (`security.md` § "No secrets in logs").
     const split = _splitRemoteUrl(url);
-    const where = split ? `host ${split.host}` : "no parseable host";
+    const where = split
+      ? `host ${sanitizeForReason(split.host)}`
+      : "no parseable host";
     return {
       ok: false,
       reason:
@@ -750,6 +804,45 @@ function deriveSelfRepoRef(cwd) {
   }
 
   const slug = `${parsed.owner}/${parsed.name}`;
+
+  // TRIANGULAR-REMOTE REFUSAL. The derivation above reads the FETCH url, and
+  // `git remote get-url --push origin` returns the fetch url UNLESS a distinct
+  // `pushurl` is configured. In git's documented triangular workflow —
+  // `git clone <upstream> && git remote set-url --push origin <fork>` —
+  // `remote.origin.url` IS the upstream, so this fence derived the UPSTREAM and
+  // authorized a merge on it from a downstream contributor's tree. No attacker
+  // and no unusual setup is required, and that population is EXACTLY the one
+  // MUST-4 exists to stop.
+  //
+  // The module's literal claim stayed true throughout ("refuses any completion
+  // whose target does not match the identity derived from the working tree") —
+  // what failed was the INFERENCE from that identity to "the repo you ARE".
+  //
+  // Compared on DERIVED IDENTITY, not raw URL, so the common benign case where
+  // pushurl differs only in transport (`git@github.com:o/r.git` vs
+  // `https://github.com/o/r.git`) resolves to the same slug and does NOT refuse.
+  // Only a genuine identity disagreement refuses, and refusing is the fail-closed
+  // direction: when fetch and push name different repos, "the repo you are" has
+  // no single answer, so no completion can be authorized on either.
+  const pushUrl = _readPushRemote(cwd);
+  if (pushUrl && pushUrl !== url) {
+    const pushParsed = _parseRemoteUrl(pushUrl);
+    const pushSlug = pushParsed
+      ? `${pushParsed.owner}/${pushParsed.name}`
+      : null;
+    if (pushSlug !== slug) {
+      return {
+        ok: false,
+        reason:
+          `this working tree has a triangular remote — origin fetches from ${slug} ` +
+          `but pushes to ${pushSlug ? pushSlug : "an unparseable url"}; ` +
+          "the two disagree about which repo this tree IS, so a completion " +
+          "cannot be authorized on either (configure a single-identity remote, " +
+          "or complete the PR from a clone of the repo you are merging on)",
+      };
+    }
+  }
+
   const declared = _declaredSlug(cwd);
   if (declared && declared !== slug) {
     return {
@@ -820,12 +913,85 @@ function isSelfRepoAdo(repoRef, selfAdo) {
  */
 function displayPrId(value) {
   if (value === undefined || value === null) return "<none>";
-  const s = String(value);
-  // Control bytes (C0, DEL, C1) become a visible placeholder rather than being
-  // dropped, so a stripped payload cannot silently close up into a plausible id.
+  // `String(value)` INVOKES a caller-authored `toString`, which may throw — and
+  // this runs inside the refusal path, so a throw here converts a typed
+  // `{ok:false, reason}` refusal into an uncaught exception. The suite already
+  // distrusts that shape: it asserts `error === null` precisely because "a crash
+  // reads as a refusal to any assertion that only checks ok === false".
+  let s;
+  try {
+    s = String(value);
+  } catch {
+    return "<unstringifiable>";
+  }
+  // POSITIVE ALLOWLIST, not a denylist. A PR id's legitimate vocabulary is
+  // `[0-9]` — `PR_NUMBER_RE` / `ADO_PR_ID_RE` accept nothing else — so anything
+  // else is replaced with a visible `?` rather than dropped, and a stripped
+  // payload cannot silently close up into a plausible id.
+  //
+  // THE FIRST CUT WAS A DENYLIST (`[\x00-\x1f\x7f-\x9f]`) and it was INCOMPLETE
+  // against its OWN stated threat. Measured: U+202E RIGHT-TO-LEFT OVERRIDE and
+  // U+2028 LINE SEPARATOR both SURVIVED it, so a caller could still visually
+  // reorder — or line-break — the refusal text a human reads as this tool's
+  // output. (The C1 half was correct: JS strings are UTF-16 code units, so
+  // U+0085 is the single unit 0x85 and was matched.) The denylist would have had
+  // to enumerate every future dangerous code point; the allowlist closes the
+  // class and cannot be outrun — `cc-artifacts.md` Rule 10, and the identical
+  // reasoning `normalizeComponent` states above for exactly this reason.
+  const cleaned = s.replace(/[^0-9]/g, "?");
+  // Slice on code POINTS, not UTF-16 units, so truncation cannot leave a lone
+  // surrogate at the boundary. (Post-allowlist every retained char is ASCII, so
+  // this is belt-and-braces against a future relaxation of the class above.)
+  const points = Array.from(cleaned);
+  return points.length > 32 ? `${points.slice(0, 32).join("")}…` : cleaned;
+}
+
+/**
+ * Neutralize the log-injection classes in FREE-FORM diagnostic text bound for a
+ * refusal `reason` — a derived host, git's stderr. Display only, never an
+ * operand.
+ *
+ * WHY A SECOND HELPER RATHER THAN `displayPrId`. A PR id has an enumerable
+ * vocabulary (`[0-9]`) so it gets a positive allowlist. A host or a git error
+ * message does not — the whole value of surfacing git's stderr is that it names
+ * a path the operator recognizes, and an ASCII-only allowlist would mangle any
+ * non-ASCII path into unreadability, defeating the diagnostic this exists to
+ * provide. So this removes the classes that can FORGE STRUCTURE in a log or
+ * terminal and preserves everything else.
+ *
+ * WHY IT IS NEEDED AT ALL: these two operands sit in the SAME template literals
+ * `displayPrId` already sanitizes, and were left raw. `trim()` strips only
+ * LEADING/TRAILING whitespace, so an INTERIOR newline survives — measured:
+ * `"gitlab\ninternal.example".trim()` retains the `\n`. A remote whose authority
+ * carries one derives a `host` containing it, the host fails the provider check,
+ * and the refusal `reason` — which `/codify` Step-7c may embed in a PR body or
+ * journal — carries a forged second line. Sanitizing `prId` while leaving its
+ * neighbours raw is an enforcement-surface asymmetry (`security.md`
+ * § Enforcement-Surface Parity): the argument for one is the argument for all.
+ *
+ * Classes removed (replaced with a visible `?`, never dropped):
+ *   C0 + DEL + C1   — newline/CR forge a log line; ESC starts a terminal escape
+ *   U+2028 / U+2029 — LINE / PARAGRAPH SEPARATOR (line breaks that are not \n)
+ *   U+202A–U+202E   — bidi embeddings + overrides (Trojan-Source visual reorder)
+ *   U+2066–U+2069   — bidi isolates (same class)
+ */
+function sanitizeForReason(text) {
+  if (text === undefined || text === null) return "";
+  let s;
+  try {
+    s = String(text);
+  } catch {
+    return "<unstringifiable>";
+  }
+  // Written as explicit \u escapes, NOT literal characters. The literals are
+  // invisible or direction-changing in an editor, so a source-level copy of
+  // this class would be the very payload it defends against — a reviewer
+  // could not see what the character class contains.
   // eslint-disable-next-line no-control-regex
-  const cleaned = s.replace(/[\x00-\x1f\x7f-\x9f]/g, "?");
-  return cleaned.length > 32 ? `${cleaned.slice(0, 32)}…` : cleaned;
+  return s.replace(
+    /[\x00-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g,
+    "?",
+  );
 }
 
 module.exports = {
@@ -834,4 +1000,5 @@ module.exports = {
   isSelfRepoAdo,
   normalizeComponent,
   displayPrId,
+  sanitizeForReason,
 };
