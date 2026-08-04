@@ -1813,6 +1813,23 @@ changes:
   #    `diff_lines` against the real diff. Until then this cluster is BLOCKED at
   #    Gate-1. Recorded here rather than only in session notes because THIS file
   #    is the durable surface loom reads; session notes are not synced.
+  #
+  #    ✅ DONE 2026-08-04 — SEE CLUSTER 52-66 AT THE END OF `changes:`.
+  #    That cluster SUPERSEDES these entries for every file they share, with
+  #    every `diff_lines` re-derived at 3292bd3. THIS CLUSTER (33-39) IS STILL
+  #    STALE AND IS LEFT IN PLACE ONLY BECAUSE `artifact-flow.md` § Proposal
+  #    Lifecycle FORBIDS OVERWRITING UNPROCESSED ENTRIES — do not read its
+  #    survival as a second opinion. Where 33-39 and 52-66 describe the same
+  #    file, 52-66 WINS; where they disagree, 33-39 is the wrong one.
+  #
+  #    52-66 also covers NINE FILES THAT HAD NO ENTRY ANYWHERE — vcs-provider.js,
+  #    ado-login.js, differential-resolver-parity.mjs, and four entire instrument
+  #    suites. Those were not stale, they were SILENT: hooks/lib/** and
+  #    audit-fixtures/** are synced globs, so an entry-less file is Class-A
+  #    non-durable and the next /sync-to-use rebuilds it away. Twelve commits
+  #    landed after this marker was written, three of them fixing defects newer
+  #    than the marker itself (the C0/DEL host guard, the unbounded parse-failure
+  #    host, and the ADO triple→quad collection widening).
   # ===================================================================
   - file: .claude/rules/self-referential-codify.md
     action: modify
@@ -2460,5 +2477,495 @@ changes:
       ingest admin-merged an inbox PR autonomously under exactly the MUST-3
       authority this entry names. Two independent surfaces, one class; recommend
       loom classify them as a set.
+
+  # ===================================================================
+  # CLUSTER 52-66 — SUPERSEDES THE STALE 33-39 FENCE ENTRIES.
+  # origin: use-template. Appended 2026-08-04 per artifact-flow.md § Proposal
+  # Lifecycle ("Append, Never Overwrite Unprocessed Proposals") — entries 33-39
+  # are LEFT IN PLACE and are still STALE; this cluster is what Gate-1 should
+  # ingest for the upflow fence. Where a file appears in BOTH, THIS ENTRY WINS.
+  #
+  # WHY THIS CLUSTER EXISTS. The 33-39 marker said "NEXT SESSION'S FIRST TASK:
+  # append entries carrying these, then re-verify diff_lines against the real
+  # diff." That is what this is. Since 33-39 were written the fence took twelve
+  # more commits across seven adversarial rounds, and NINE FILES had NO ENTRY AT
+  # ALL — five of them entire instrument suites. An entry-less file does not
+  # cascade: hooks/lib/** and audit-fixtures/** are SYNCED globs, so the local
+  # copies are Class-A non-durable (artifact-flow.md § Distribution-Durability
+  # Invariants) and the next /sync-to-use rebuilds them away. For those nine the
+  # proposal was not merely stale, it was silent.
+  #
+  # EVERY diff_lines BELOW WAS RE-DERIVED, not carried forward:
+  #   git diff --numstat 93551cb...HEAD -- .claude/hooks/lib/ .claude/audit-fixtures/
+  # measured at 3292bd3. The 33-39 marker's own warning applies to this block
+  # too — a bare count decays the moment the artifact beside it changes, so a
+  # Gate-1 reviewer should re-run that command rather than trust these numbers.
+  # They are recorded to show the 33-39 counts are wrong, not to be trusted in
+  # turn: "+433 -0" for upflow-self-repo.js is now +1428 -0.
+  #
+  # COVERAGE, MEASURED — the nine files that had NO entry before this cluster:
+  #   vcs-provider.js, ado-login.js, differential-resolver-parity.mjs,
+  #   upflow-self-repo-helpers/{run.mjs,README.md},
+  #   upflow-refusal-operand-sanitization/{run.mjs,README.md},
+  #   journal-reserve-coordination-gate/{run.mjs,README.md}
+  # Verify with: for each file in the numstat above,
+  #   grep -c "^  - file: <path>$" .claude/.proposals/latest.yaml
+  # 0 = it had no entry. Re-run it against THIS file and every one returns >= 1.
+  #
+  # DEPENDENT SET. These entries plus 33-39's rule/prose halves are ONE fix at
+  # several layers. The instrument suites are not optional companions to the
+  # code: each guard here reds exactly one case, and shipping the code without
+  # the fixture distributes a fence whose guards nothing exercises.
+  # ===================================================================
+  - file: .claude/hooks/lib/upflow-self-repo.js
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    supersedes: "the 33-39 cluster entry for this file (diff_lines '+433 -0')"
+    dedup_evidence: >-
+      NOT already solved. The file does not exist at merge-base 93551cb (2.24.0)
+      — `git show 93551cb:.claude/hooks/lib/upflow-self-repo.js` exits non-zero.
+      It is a new module, so no upstream version can already carry these fixes.
+    reason: >-
+      THE SELF-IDENTITY DERIVER THE upstream-issue-hygiene.md MUST-4 FENCE RESTS
+      ON. `completeUpflowPR` in both adapters refuses any completion whose target
+      does not match the identity DERIVED from the working tree the process runs
+      in; this module is that derivation. It takes no identity, cwd, or deriver
+      value off the caller's descriptor — the live git remote is the sole
+      authoritative source and `.claude/VERSION::repo` is a refuse-only
+      cross-check, so a forged VERSION file is powerless.
+      THE 33-39 ENTRY DESCRIBED THIS FILE AS OF 916813d AND IS UNSAFE TO INGEST.
+      Twelve later commits fixed defects no 33-39 entry reflects, including a
+      HIGH live bypass: the `#`/`?` cut was applied to ssh authorities, which
+      split at the LAST `@`, so `ssh -G` connected to an attacker host while the
+      fence read the legitimate one — on a FETCHABLE remote. Also since 916813d:
+      the URL scheme is anchored so a path-embedded `://` cannot supply the host;
+      normalizeComponent moved from a denylist to a positive allowlist; segment
+      counts are EXACT (a fragment/query previously injected extra path segments
+      and the last-two rule took the trailing pair); the legacy ADO collection
+      form that the exactness fix regressed was restored; ADO segments are
+      validated BEFORE any is dropped (an unvalidated collection slot let
+      `.../realproj#/proj2/_git/repo2` derive proj2/repo2, measured); git's
+      stderr is surfaced on a derivation failure, truncated to 200 chars because
+      userinfo may hold a PAT.
+      THREE FIXES ARE NEWER THAN EVERY 33-39 ENTRY AND NEWER THAN THE MARKER:
+      (1) the host ASCII guard admitted C0/DEL, so
+      `https://x<LF>.visualstudio.com/...` normalized to the SAME ADO org as the
+      legitimate host — measured ok:true fired:true before the fix, a
+      refuse→authorize flip; narrowed to `[\x20-\x7e]`. (2) the parse-failure
+      host was unbounded, producing a measured 50139-char refusal reason that is
+      logged and may be embedded in a PR body; it now routes through the shared
+      bound. (3) the ADO identity was widened from a TRIPLE to a QUAD: the
+      collection segment was discarded entirely, so two legacy TFS/VSTS
+      collections — different namespaces, different repositories — derived an
+      identical {org, project, repo} and the fence authorized a completion
+      ACROSS them. Absent matches only absent; absent-vs-present refuses.
+      This module also now owns the shared refusal-operand bound+scrub
+      (`reasonText` / `reasonOperand` / `reasonFromError` over `sanitizeForReason`)
+      that both adapters consume — see the adapter entries below.
+    diff_lines: "+1428 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/hooks/lib/vcs-github-adapter.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    supersedes: "the 33-39 cluster entry for this file (diff_lines '+152 -1')"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0 — `git show 93551cb:.claude/hooks/lib/vcs-github-adapter.js
+      | grep -c 'reasonOperand\|completeUpflowPR'` returns 0 for the sanitization
+      helpers; the MUST-4 fence and the operand sweep are both absent upstream.
+    reason: >-
+      CARRIES THE MUST-4 OWN-REPO-ONLY FENCE PLUS THE REFUSAL-OPERAND
+      SANITIZATION SWEEP. The fence half is 33-39's; the sweep is new and no
+      33-39 entry reflects it.
+      THE SWEEP FINISHES AN ARGUMENT THE FENCE PR STARTED AT TWO OPERANDS. That
+      PR sanitized `prId` and the derived host and stopped, which the module's
+      own docstring names as the defect: "the argument for one is the argument
+      for all" (security.md § Enforcement-Surface Parity). Refusal reasons are
+      logged and /codify Step-7c may embed them in a PR body or journal.
+      `JSON.stringify` was doing the escaping at most sites and is NOT a
+      sanitizer for this class — per ECMA-262 QuoteJSONString it escapes only
+      `"`, `\`, and code units below 0x20, so DEL, the whole C1 range INCLUDING
+      U+009B 8-bit CSI (an ANSI control sequence containing no ESC, which passes
+      every ESC-based check), U+2028/29 and bidi controls all passed verbatim.
+      GREP-MEASURED, THE ORIGINAL ISSUE UNDER-COUNTED EVERY CLASS: 45
+      `JSON.stringify` escape sites across both adapters (not ~20), 23
+      remote-controlled response-body operands (not ~17), 17 transport
+      `err.message` operands (not ~15); 123 operand sites are now accounted for —
+      routed, or exempt with a stated reason (REST path constructions are exempt
+      because sanitizing corrupts the request).
+      TWO CREDENTIAL FINDINGS FIXED WITH IT: transport `err.message` was
+      interpolated unbounded and unscrubbed, so an ADO transport on a PAT-in-URL
+      remote could embed `https://user:<PAT>@...` in a refusal (security.md §
+      "No secrets in logs" — the deriver already refuses to echo that URL for
+      exactly this reason); and response bodies were unbounded, yielding a
+      measured 200057-char reason from a 200KB body. The bound+scrub helper is
+      consumed from upflow-self-repo.js, NOT copied — it briefly existed once per
+      adapter and was consolidated, because the duplicated bound value was live
+      drift risk. It cannot live in vcs-provider.js, which requires both adapters
+      at load; verified after the move that both providers still resolve
+      populated rather than the empty object a cycle would leave.
+    diff_lines: "+269 -43 (vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/hooks/lib/vcs-azure-adapter.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    supersedes: "the 33-39 cluster entry for this file (diff_lines '+93 -1')"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0 — same grep as the GitHub adapter returns 0
+      for both the fence and the sanitization helpers.
+    reason: >-
+      THE ADO HALF OF THE SAME FENCE AND THE SAME OPERAND SWEEP. It lands
+      TOGETHER with the GitHub adapter by rule, not by convenience: security.md §
+      Enforcement-Surface Parity — an un-fenced provider IS the bypass, so a
+      one-provider fence is not a partial fix but a relocated hole.
+      BEYOND 33-39, this adapter also carries the ADO identity widening. Its
+      `repoRef` gains an optional `collection`, validated with the project shape.
+      Widening `_parseAdo`'s return WITHOUT widening the repoRef was the tempting
+      half-fix and is the defect class this suite already documents three times —
+      the "leg that can never fail": with no field on repoRef the collection
+      comparison could only always-pass (bypass) or always-fail (lockout).
+      THIS IS A CONTRACT CHANGE, STATED PLAINLY FOR GATE-1: a caller on a legacy
+      TFS/VSTS collection remote that completed with a bare {org, project, repo}
+      must now name the collection. The refusal names both sides (absence renders
+      `<no-collection>`), so it is a one-field fix, and `completeUpflowPR` has no
+      callers outside the two adapters — verified by grep across js/mjs/md/json,
+      the only non-adapter mention being a comment in ado-login.js.
+      UNRESOLVED, CARRIED FORWARD RATHER THAN HIDDEN: the ADO request path has no
+      collection slot — every path is `{org}/{project}/_apis/...`, so a
+      completion authorized on a non-default collection is still ADDRESSED
+      collection-free. The identity fix makes caller and working tree agree on
+      WHICH repo is meant; it does not give the request a way to SAY so.
+      Guessing at `{org}/{collection}/{project}/_apis/` would be an unverifiable
+      claim about legacy ADO REST routing, and acting on an incomplete
+      enumeration of ADO URL forms is exactly what produced the collection-form
+      lockout regression already on this branch. Recorded in-code at
+      `completeUpflowPR`.
+    diff_lines: "+341 -44 (vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/hooks/lib/vcs-provider.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      — `grep -c "^  - file: .claude/hooks/lib/vcs-provider.js$"` against the
+      pre-append file returns 0.
+    reason: >-
+      THE PROVIDER RESOLVER, WHICH THE 33-39 CLUSTER OMITTED ENTIRELY. Two fixes.
+      (1) `getProvider` used a plain index, so an INHERITED Object.prototype key
+      resolved as a provider; it now tests own-membership. (2) Its refusal reason
+      interpolated the caller-supplied `id` RAW and UNBOUNDED into text that is
+      logged — the sharpest instance of the enforcement-surface asymmetry, since
+      `id` arrives from `roster.genesis.provider` and from a coordination-log
+      record's `content.provider`, and this module sits one require away from the
+      same sanitization helper the adapters use. Now
+      `sanitizeForReason(String(id).slice(0, 64))`.
+      Both are instrumented in upflow-self-repo-helpers (see that entry) — this
+      module is in a DIFFERENT file from the adapters, so the subprocess fence
+      suite never loads it and it had no fixture anywhere under audit-fixtures/
+      before this cycle.
+    diff_lines: "+23 -2 (vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/hooks/lib/ado-login.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      (grep of the pre-append file returns 0).
+    reason: >-
+      A SCOPE CORRECTION TO GUIDANCE THAT WOULD OTHERWISE GUARANTEE A FALSE
+      REFUSAL. The module's GUID guidance holds for the ADO REST endpoints and
+      does NOT hold for `vcs-azure-adapter.js::completeUpflowPR`: that fence
+      compares the caller's ref against an identity derived from the origin
+      remote URL, and the URL carries the project/repository NAME, never the
+      GUID — so a caller who follows the guidance and passes a GUID is
+      GUARANTEED a mismatch. Also records that a spaced project is
+      percent-encoded in its clone URL (`Contoso%20Web`), which the derivation
+      rejects outright, so the fence is simply UNAVAILABLE for such a project by
+      either route — fail-closed, and named rather than left for a maintainer to
+      rediscover from a confusing refusal.
+    diff_lines: "+10 -0 (vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/hooks/lib/journal-reserve.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    supersedes: "the two earlier entries for this file (diff_lines '+8 -1' and '+31 -9')"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0 — `git show 93551cb:.claude/hooks/lib/journal-reserve.js
+      | grep -c 'ENOENT'` returns 0; the roster read there is a bare
+      `catch { roster = null; }`.
+    reason: >-
+      AN UNREADABLE ROSTER IS AN UNKNOWN ROSTER, NOT AN ABSENT ONE. `_foldHighWater`
+      read the roster inside a bare catch. A null roster is not inert:
+      `_resolveRosterPerson` returns null for it, so rule 1 rejects EVERY record
+      as "signer verified_id not in roster keys" — the membership gate is
+      explicitly RETAINED under `skipSignatureVerify`, which is the mode this
+      folds in. `folded.accepted` empties, the high-water collapses to 0, and a
+      slot a sibling operator already reserved is handed out again.
+      THAT IS THE EXACT OUTCOME THE LOG READ ONE LINE ABOVE THROWS TO PREVENT,
+      and its docstring says so: "a 0 on an unreadable log would hand out an
+      already-reserved slot." Same failure, one read over. ENOENT now means
+      "legitimately absent" (coordination is opt-in, so a solo repo has no roster
+      and must still get a slot); every other failure refuses. This also aligns
+      the module with `coordination-mode.js`, which ALREADY fails a corrupt
+      roster CLOSED — the two disagreed about the same bytes.
+      THE SIBLING SILENT-SKIP IS DELIBERATELY KEPT and the asymmetry is now
+      recorded in-code: a bad roster is GLOBAL and destroys information about
+      real reservations, while a malformed `content.slot` is LOCAL and names no
+      real slot. Refusing on shape would let one appended `slot: "9999999999"`
+      permanently deny every reservation for every operator — the same denial the
+      shape check exists to prevent, reached through the guard instead of around
+      it, at lower cost to the same adversary.
+      Supersedes two earlier entries whose counts (+8 -1, +31 -9) predate this fix.
+    diff_lines: "+183 -15 (vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/upflow-open-never-complete/run.mjs
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    supersedes: "the 33-39 cluster entry for this file (diff_lines '+585 -0')"
+    dedup_evidence: >-
+      NOT already solved — the path does not exist at merge-base 93551cb.
+    reason: >-
+      THE INSTRUMENT FOR THE MUST-4 FENCE, NOW 53 CASES (was 47 when 33-39 was
+      written, and 585 lines against 1735 today). Ships WITH the guards per
+      cc-artifacts.md Rule 9.
+      IT DRIVES REAL TEMP REPOS THROUGH A SUBPROCESS, deliberately: the fence
+      derives its identity from `process.cwd()` and takes nothing off the
+      descriptor, so the PROCESS boundary is the only place cwd can be set. An
+      earlier cut drove a `_deriveSelfFn` seam and was therefore exercising an
+      INJECTION POINT rather than the fence — the caller-authored operand was
+      MOVED TWICE before it was removed.
+      EVERY CASE ASSERTS `fired === false` ON REFUSAL PATHS, because a fence that
+      merged and then returned ok:false would satisfy a naive `ok === false`
+      assertion; and every case asserts `error === null`, because deleting a
+      fail-closed guard usually makes the next line throw and a bare ok-false
+      check accepts that crash as a refusal.
+      NEW SINCE 33-39: control-byte-authority refusal (payload built with
+      String.fromCharCode — a raw control byte in source is invisible to a
+      reviewer, and a shell round-trip strips a literal newline); and five ADO
+      collection cases covering both polarities of the triple→quad widening,
+      including the two asymmetric wildcard cases a nullable comparison needs.
+      Its README carries the per-case mutation table, measured.
+    diff_lines: "+1735 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/upflow-open-never-complete/README.md
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    supersedes: "the 33-39 cluster entry for this file (diff_lines '+215 -0')"
+    dedup_evidence: >-
+      NOT already solved — the path does not exist at merge-base 93551cb.
+    reason: >-
+      THE SUITE'S MUTATION-VALIDITY RECORD, and it is load-bearing rather than
+      decorative. Per instrument-discipline.md MUST-2(b) a mutation that does NOT
+      red the suite leaves TWO live hypotheses — vacuous test OR inert mutation —
+      so every case's reddening mutation is recorded here, measured, with the
+      cases it reds.
+      IT ALSO STATES WHAT A GREEN DOES NOT PROVE, which is why it is worth
+      cascading: the fence is NOT an identity boundary against a caller that can
+      choose its own working directory, and it cannot be — `process.cwd()` is
+      selected by whoever launches the process, and a caller able to run
+      arbitrary in-process code can replace the module outright. What it DOES do
+      is refuse any completion whose target does not match the identity derived
+      from the working tree the process runs in, which CLOSES the accident class
+      (an agent following stale prose is refused before the transport fires — the
+      originating incident) and RAISES THE COST of a deliberate act. Asserting
+      seam-freedom without that paragraph reads as a stronger control than exists.
+      It further records a mutation verdict that was WRONG and was corrected —
+      a case previously resolved "inert, not vacuous" on a reachability argument
+      that was asserted but never tested, and which an adversarial round refuted
+      with a driveable input. Recorded rather than quietly fixed, because
+      unfalsified claims about instruments are this suite's whole subject.
+    diff_lines: "+795 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/upflow-open-never-complete/differential-resolver-parity.mjs
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      (grep of the pre-append file returns 0). The path does not exist at 93551cb.
+    reason: >-
+      A DIFFERENTIAL ORACLE THAT SCORES THE DERIVED HOST AGAINST WHAT `ssh` AND
+      `curl` ACTUALLY RESOLVE, rather than against the parser's own expectations.
+      It exists because the parser's agreement with itself is not evidence: the
+      HIGH ssh-authority bypass on this branch was a case where the fence read
+      one host and `ssh -G` connected to another, which no self-consistent test
+      could have surfaced.
+      ITS FIRST CUT WAS ITSELF DEFECTIVE AND THAT IS THE POINT OF SHIPPING IT
+      WITH THIS HISTORY: the oracle scored a REFUSE-EVERYTHING parser as clean,
+      because it only checked that accepted hosts matched and never that
+      legitimate hosts were accepted. A one-polarity oracle cannot distinguish a
+      correct parser from one that refuses all input — the same trap that later
+      forced every refusal case in the sibling suite to ship with a permissive
+      twin. Fixed, and recorded.
+      This file is why the 33-39 cluster could not simply be re-numbered: it is a
+      NEW instrument with no entry anywhere, and shipping the fence without it
+      distributes a parser whose agreement with the real resolvers nothing checks.
+    diff_lines: "+199 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/upflow-self-repo-helpers/run.mjs
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      (grep of the pre-append file returns 0). The path does not exist at 93551cb.
+    reason: >-
+      INSTRUMENTS FOR THE MODULE-LEVEL GUARDS THE SUBPROCESS FENCE SUITE
+      STRUCTURALLY CANNOT REACH — 11 cases. EACH OF THESE GUARDS SHIPPED WITHOUT
+      AN INSTRUMENT and was caught by an adversarial round measuring that its
+      removal left the fence suite FULLY GREEN; that is the gap this file closes,
+      and it is the reason it must cascade with the code.
+      Three shapes the fence suite cannot express: `_lastGitStderr`'s reset needs
+      TWO derivations in ONE process while the fence suite spawns one call per
+      case; `getProvider` lives in vcs-provider.js which that suite never loads;
+      and `sanitizeForReason`/`displayPrId` are pure functions whose contract is
+      about which bytes DO NOT survive, which through an adapter refusal reaches
+      only the cases an adapter happens to produce.
+      BOTH POLARITIES THROUGHOUT. `sanitizeForReason` must strip the
+      structure-forging classes AND PRESERVE readable non-ASCII — an ASCII-only
+      allowlist would mangle any non-ASCII path into unreadability, destroying
+      the diagnostic the text exists to provide. `displayPrId`'s first cut was a
+      DENYLIST and was incomplete against its own stated threat: U+202E and
+      U+2028 both survived it, measured; the positive `[0-9]` allowlist closes
+      the class and cannot be outrun.
+      Newest cases: a bipolar pair over the refusal-operand bound — removing it
+      reds only the size case (at a measured 50139-char reason), over-tightening
+      it reds only the case asserting a real host stays identifiable.
+    diff_lines: "+395 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/upflow-self-repo-helpers/README.md
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      (grep of the pre-append file returns 0). The path does not exist at 93551cb.
+    reason: >-
+      THE MEASURED MUTATION TABLE FOR THE HELPER SUITE, plus two records worth
+      cascading on their own. FIRST, it carries a corrected verdict: a case here
+      was previously recorded as having NO reddening mutation and resolved
+      "INERT, not vacuous" — and that verdict was WRONG. The reasoning rested on
+      an unreachability claim that an adversarial round refuted with an ordinary
+      repo and no stubbing (`git config remote.origin.url " "` returns exit 0 with
+      whitespace stdout, which trims to empty and returns through the SUCCESS
+      branch). Collapsing two hypotheses toward "inert" requires the reachability
+      argument to be TESTED, not merely asserted — which is the general lesson.
+      SECOND, it records the source-literal discipline the suites follow: payload
+      characters are built with `String.fromCharCode`, never written as source
+      literals, because a bidi override or raw control byte written literally
+      into a fixture is invisible to a reviewer — precisely the property these
+      guards exist to remove from output.
+      It also states honestly which changes have NO reddening mutation and are
+      therefore recorded as un-instrumented rather than claimed proven.
+    diff_lines: "+113 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/upflow-refusal-operand-sanitization/run.mjs
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      (grep of the pre-append file returns 0). The path does not exist at 93551cb.
+    reason: >-
+      THE INSTRUMENT FOR THE 123-SITE OPERAND SWEEP — 36 cases, written FIRST and
+      observed RED at 29/35 before the fix, including a verbatim credential leak
+      and a crash on a circular response body.
+      IT COVERS THE CLASSES `JSON.stringify` MISSES, which is the whole point:
+      DEL, the C1 range including U+009B 8-bit CSI, U+2028/29, and bidi controls.
+      A suite that only drove `\n` would have scored the pre-fix code as clean.
+      BOTH POLARITIES, AND THE PRESERVATION HALF IS NOT DECORATIVE: six cases
+      exist to catch OVER-TIGHTENING introduced by the fix, because a sanitizer
+      that destroys every operand passes a hostile-input-only suite. Each of
+      those six has its own measured reddening mutation.
+      13 MUTATIONS, ALL CONFIRMED TO EXECUTE AND ALL REDDENING, covering every
+      one of the 36 cases so none is carried on an untested claim — including a
+      cross-adapter parity case that reds when the two bounds drift, which is the
+      instrument that made the later helper consolidation safe.
+      RESIDUALS ARE RECORDED IN THE README RATHER THAN CLAIMED CLOSED: the scrub
+      covers URL userinfo only, so an `Authorization: Basic` header echoed into
+      an error string is bounded and class-sanitized but unmasked; and "every
+      site routed" rests on the grep-and-account sweep, not on the suite — a
+      newly added raw interpolation would redden nothing.
+    diff_lines: "+966 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/upflow-refusal-operand-sanitization/README.md
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      (grep of the pre-append file returns 0). The path does not exist at 93551cb.
+    reason: >-
+      THE SANITIZATION SUITE'S MUTATION TABLE AND ITS EXPLICIT "WHAT A GREEN DOES
+      NOT PROVE" SECTION. The second is the part worth cascading: the suite drives
+      the sites it NAMES, so the claim that every operand site is routed rests on
+      a grep-and-account sweep recorded in prose, NOT on the suite — a newly added
+      raw `${x}` site would red nothing here. Stating that is what keeps a future
+      reader from mistaking a green for a completeness proof.
+      It also records the quadratic-scrub finding: a naive userinfo regex over a
+      200KB operand hung the suite past 120s, fixed with bounded quantifiers and
+      a scrub window, with the residual (userinfo longer than the window has no
+      terminating `@` inside it and will not match) stated rather than relied on.
+    diff_lines: "+177 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/journal-reserve-coordination-gate/run.mjs
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      (grep of the pre-append file returns 0). The path does not exist at 93551cb.
+    reason: >-
+      THE INSTRUMENT FOR THE JOURNAL-SLOT COORDINATION GATE — 9 cases driving
+      real repos. Ships with the journal-reserve.js fix per cc-artifacts.md Rule 9.
+      THE ROSTER CASE WAS OBSERVED RED FIRST AND THE FAILURE OUTPUT IS THE DEFECT
+      ITSELF: `ok:true, slot:"0001"` — a slot handed out over an unreadable
+      roster. Three mutations were each confirmed to reach the code and redden.
+      IT RUNS ON THE FOLD PATH DELIBERATELY, and the reasoning is recorded because
+      it is the difference between an instrument and a decoration:
+      `COC_TEST_SKIP_SIGN=1` sets accepted = records and bypasses the fold
+      entirely, so on the raw path a null roster costs nothing and the high-water
+      survives. The damage exists ONLY on the fold path, so the instrument lives
+      there — while the sibling slot-shape cases force the raw path for the
+      opposite, equally deliberate reason.
+      TWO CASES ARE GREEN BEFORE THE FIX AS WELL AS AFTER and are labelled as
+      such in the code, the README, and here: they are over-tightening guards that
+      distinguish the fix from a refuse-everything implementation, NOT evidence
+      for the fix.
+      It also fixes a latent fixture defect the new case exposed — `readChainHead`
+      was stubbed with the wrong shape, so `lastSeq + 1` was NaN; latent because
+      no prior case reached the emitter.
+    diff_lines: "+480 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/journal-reserve-coordination-gate/README.md
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      (grep of the pre-append file returns 0). The path does not exist at 93551cb.
+    reason: >-
+      THE COORDINATION-GATE SUITE'S MUTATION TABLE, and the record of a
+      cross-module inconsistency worth cascading: `coordination-mode.js` fails a
+      corrupt roster CLOSED while `_foldHighWater`, one module over, treated the
+      same bytes as ABSENCE. The suite had to use a signed identity with a stubbed
+      signer specifically so the coordination gate could not MASK the defect under
+      test — a case that fails for the wrong reason is not an instrument for the
+      right one.
+      It also records an UNRESOLVED residual rather than closing it silently: the
+      malformed-slot skip is UNOBSERVABLE — a poisoning record is dropped with no
+      counter and no WARN, so an operator cannot distinguish a clean log from one
+      being probed. `_foldHighWater` has no logger surface and sits on a guard
+      path where throwing is BLOCKED (zero-tolerance.md Rule 3), so closing it is
+      a separate change, named here rather than left for rediscovery.
+    diff_lines: "+175 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
 
 status: pending_review
