@@ -692,6 +692,26 @@ function completeUpflowPR(transport, prRef) {
         `upstream maintainer's act on the upstream's OWN repo. (${d && d.reason})`,
     );
   }
+  // ON-PREM AZURE DEVOPS SERVER IS OUT OF SCOPE, and this branch is where it
+  // lands. `upflow-self-repo.js::_parseAdo` recognizes exactly four hosted
+  // shapes — `dev.azure.com`, `ssh.dev.azure.com`, `vs-ssh.visualstudio.com`,
+  // and `<org>.visualstudio.com`. An on-prem collection URL
+  // (`https://<server>/tfs/<collection>/<project>/_git/<repo>`) is on none of
+  // them, so no ADO identity is derived and `completeUpflowPR` is UNAVAILABLE
+  // for such a deployment.
+  //
+  // PRE-EXISTING, not introduced by the exact-segment-count fix — stated
+  // precisely because the two look alike and the wrong attribution would send
+  // the next reader hunting a regression that is not there. Measured both ways:
+  // before that fix an on-prem URL's four segments were reduced by the
+  // last-two rule to a plain owner/name pair with `ado: null`, which reached
+  // THIS branch and refused; after it, the segment count refuses one step
+  // earlier in the derivation. Different branch, same outcome, in both cases a
+  // refusal.
+  //
+  // Fail-closed and correct — a server this adapter cannot recognize is one it
+  // cannot prove identity against — but recorded rather than left for an
+  // on-prem operator to discover as an unexplained refusal.
   const selfAdo = d.self.ado;
   if (!selfAdo) {
     return _fail(
