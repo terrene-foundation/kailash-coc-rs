@@ -12,11 +12,13 @@
  * outside a codify session, and the exception was unsatisfiable in exactly the
  * sessions (normal downstream work) where it is needed.
  *
- * The receipt lives at `.claude/cross-repo-authz/<date>-<slug>.md` — NOT under
- * `journal/`, NOT under the integrity-guarded `.claude/learning/`. It is a
- * working-tree file, greppable within the hook's mtime window; ENFORCEMENT never
- * consults git, so an uncommitted receipt clears `repo-scope-discipline.md`
- * condition 4 identically to a committed one.
+ * The receipt lives at `.claude/cross-repo-authz/<date>-<slug>-<digest>.md` — NOT
+ * under `journal/`, NOT under the integrity-guarded `.claude/learning/`. It is a
+ * working-tree file, greppable while it is INSIDE the guard's authorization
+ * window (derived from the receipt's own `timestamp:` frontmatter, NOT from file
+ * mtime and NOT from the filename's date — see `readReaderWindows` below);
+ * ENFORCEMENT never consults git, so an uncommitted receipt clears
+ * `repo-scope-discipline.md` condition 4 identically to a committed one.
  *
  * WHETHER to commit it is REPO-CLASS-dependent (2026-08-03, the LOCALITY axis —
  * see `readRepoClass` / `shouldCommitReceipt` below). At loom (`coc-source`) the
@@ -56,6 +58,12 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import { execFileSync } from "child_process";
+import { fileURLToPath } from "url";
+
+// This tool's own directory (`.claude/bin`). The guard whose window it must agree
+// with is its SIBLING (`.claude/hooks/lib`) — they ship as one artifact set — so
+// tool-relative resolution is the reliable way to reach it, independent of cwd.
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 const TARGET_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const MODES = new Set(["read", "write"]);
@@ -101,8 +109,16 @@ function repoToplevel(startDir) {
 }
 
 // Deterministic date + slug — this is a normal node CLI (NOT a workflow
-// script), so Date is available; the receipt filename is timestamped for
-// human ordering, but the hook matches on file mtime, not the filename date.
+// script), so Date is available. The filename's date is for HUMAN ORDERING and
+// (with the digest) for collision discrimination ONLY; it carries NO
+// authorization weight. The guard derives a receipt's age from the receipt's own
+// `timestamp:` frontmatter — not the filename, not file mtime (git rewrites
+// mtime on checkout/worktree-add/clone). See `readReaderWindows`.
+//
+// The two granularities DIFFER — filename is per-DAY, authorization is per-WINDOW
+// (6h at time of writing) — and that mismatch is load-bearing: a same-UTC-day
+// re-authorization after the window has expired needs a NEW receipt at a NEW
+// path. `writeReceiptImmutable` is what reconciles them.
 function isoDateUTC(d) {
   return d.toISOString().slice(0, 10);
 }
@@ -128,12 +144,27 @@ function slugify(s) {
 // The digest is taken over the FULL, UNTRUNCATED (target, action, mode) triple,
 // so it discriminates precisely where the slug stops. Consequences, both wanted:
 //   - distinct actions  -> distinct digests -> both receipts survive;
-//   - an identical re-run -> identical digest -> same path -> the `wx` write
-//     refuses, which is correct (the existing receipt already authorizes it and
-//     overwriting would destroy an audit record).
+//   - an identical re-run while the prior receipt is still LIVE -> identical
+//     digest -> same path -> refused, which is correct (that receipt really does
+//     still authorize the action, and overwriting would destroy an audit record);
+//   - an identical re-run after that receipt has EXPIRED -> a fresh receipt at a
+//     NEW path, because the expired one authorizes nothing (`writeReceiptImmutable`).
 // `mode` is in the triple because a read receipt and a write receipt for the
 // same action are DISTINCT authorizations at different tiers (a read receipt
 // must never clear a write), so they must never collide onto one filename.
+//
+// SCOPE — the digest discriminates FILENAMES by action. It does NOT scope
+// AUTHORITY by action, and nothing here does. The guard builds its marker regex
+// from (target, mode) ONLY (`violation-patterns.js::hasCrossRepoAuthorizationReceipt`,
+// ~L183-186); the action text never enters the authorization decision. So ONE
+// live receipt for (target, write) clears ANY cross-repo write against that
+// target for the whole window, whatever action it names.
+// `repo-scope-discipline.md` § User-Authorized Exception condition 5 ("only the
+// named action against only the named repo") is therefore ATTESTED in every
+// receipt and STRUCTURALLY UNENFORCED. Closing that is a reader-side change
+// (the marker would have to carry an action digest the guard also computes from
+// the intercepted command) and is deliberately NOT attempted here — do not read
+// this digest as if it already did it.
 //
 // 8 hex chars (32 bits) is sized for human-scannable filenames, not collision
 // resistance: this discriminates a handful of same-day receipts in one
@@ -145,6 +176,205 @@ function actionDigest(target, action, mode) {
     .update(`${target}\n${action}\n${mode}`, "utf8")
     .digest("hex")
     .slice(0, 8);
+}
+
+/**
+ * The guard's authorization window + clock-skew tolerance, read from the ONE
+ * place they are declared: `violation-patterns.js`. That module is CommonJS and
+ * does NOT export either constant, so this parses the declaration site rather
+ * than re-declaring the numbers here. Re-declaring is the drift class this repo
+ * has been bitten by repeatedly: the writer and the reader would then each own a
+ * copy of one invariant, and the failure mode of drift between them is exactly
+ * the deadlock this function exists to prevent.
+ *
+ * Only sum-of-products of integer literals is accepted (`6 * 60 * 60 * 1000`);
+ * anything else yields null. No eval — the character class is checked first, then
+ * the terms are multiplied and added arithmetically.
+ *
+ * Returns null when EITHER constant cannot be read. Every caller treats null as
+ * "cannot prove an existing receipt is live" and therefore writes a FRESH one.
+ * That is the safe polarity: the cost of a wrong "write a fresh receipt" is one
+ * extra file, while the cost of a wrong "an existing receipt covers you" is an
+ * unauthorized cross-repo action taken in the belief that it was authorized.
+ */
+function readReaderWindows(root) {
+  // Tool-relative FIRST (the guard is this file's shipped sibling), repo-root
+  // second (an unusual deployment where the tool runs from outside the tree).
+  const candidates = [
+    path.resolve(HERE, "..", "hooks", "lib", "violation-patterns.js"),
+    path.join(root, ".claude", "hooks", "lib", "violation-patterns.js"),
+  ];
+  const num = (src, name) => {
+    const m = src.match(new RegExp(`^const ${name}\\s*=\\s*([0-9 *+]+);`, "m"));
+    if (!m) return null;
+    const v = m[1]
+      .split("+")
+      .reduce(
+        (sum, term) =>
+          sum + term.split("*").reduce((p, f) => p * Number(f.trim()), 1),
+        0,
+      );
+    return Number.isFinite(v) && v > 0 ? v : null;
+  };
+  for (const f of candidates) {
+    let src;
+    try {
+      src = fs.readFileSync(f, "utf8");
+    } catch {
+      continue;
+    }
+    const windowMs = num(src, "CROSS_REPO_RECEIPT_WINDOW_MS");
+    const skewMs = num(src, "CROSS_REPO_RECEIPT_SKEW_MS");
+    if (windowMs !== null && skewMs !== null) return { windowMs, skewMs };
+  }
+  return null;
+}
+
+// Mirror of `violation-patterns.js::_receiptTimestampMs`, INCLUDING the `date:`
+// fallback: this predicate must answer the same question the guard answers, so a
+// receipt the guard would reject as stale must not be reported here as live.
+function receiptTimestampMs(content) {
+  let m = content.match(/^timestamp:\s*(\S+)\s*$/m);
+  if (!m) m = content.match(/^date:\s*(\S+)\s*$/m);
+  if (!m) return null;
+  const t = Date.parse(m[1]);
+  return Number.isNaN(t) ? null : t;
+}
+
+function markerRegex(target, mode) {
+  const esc = target.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(
+    `^cross-repo-authorized:[ \\t]+${esc}[ \\t]+${mode}[ \\t]*$`,
+    "m",
+  );
+}
+
+/**
+ * Would the GUARD honour this on-disk receipt right now? Three ways to be dead,
+ * and the EEXIST branch must distinguish all three from "live" before it can
+ * tell a caller their action is already authorized:
+ *   - unreadable / truncated (a partial write, or a hand-edited file);
+ *   - no marker line for this (target, mode) — so the guard's grep misses it;
+ *   - `timestamp:` outside the guard's window (stale) or beyond skew (future).
+ * Returns the parsed timestamp on success so the refusal can cite it.
+ */
+function receiptLiveness(filePath, target, mode, nowMs, windows) {
+  if (!windows) return null;
+  let content;
+  try {
+    content = fs.readFileSync(filePath, "utf8");
+  } catch {
+    return null;
+  }
+  if (!markerRegex(target, mode).test(content)) return null;
+  const ts = receiptTimestampMs(content);
+  if (ts === null) return null;
+  if (nowMs - ts > windows.windowMs) return null;
+  if (ts - nowMs > windows.skewMs) return null;
+  return { ts };
+}
+
+/**
+ * Create a file that did not exist, and NEVER leave a truncated one behind.
+ *
+ * `wx` is O_CREAT|O_EXCL: the open either creates the file or fails EEXIST. The
+ * two phases are separated deliberately — a failure at OPEN created nothing, so
+ * there is nothing to clean up (and unlinking would risk removing a file another
+ * process just created), whereas a failure at WRITE (ENOSPC, EIO) leaves an
+ * empty-or-truncated file that this path's own `wx` will then refuse forever.
+ * That truncated file carries no marker, so the guard correctly refuses to honour
+ * it — permanently poisoning the path for every retry. Unlink on the write path
+ * only. Returns true = created, false = already existed.
+ */
+function tryCreateExclusive(filePath, body) {
+  let fd;
+  try {
+    fd = fs.openSync(filePath, "wx", 0o644);
+  } catch (e) {
+    if (e && e.code === "EEXIST") return false;
+    throw e; // nothing was created — nothing to remove
+  }
+  try {
+    fs.writeFileSync(fd, body, "utf8");
+    fs.closeSync(fd);
+  } catch (e) {
+    try {
+      fs.closeSync(fd);
+    } catch {
+      /* already closed */
+    }
+    try {
+      fs.unlinkSync(filePath);
+    } catch {
+      /* nothing to remove */
+    }
+    throw e;
+  }
+  return true;
+}
+
+/**
+ * Write the receipt, holding BOTH invariants at once.
+ *
+ * Immutability: an existing receipt is never opened for writing, truncated, or
+ * removed. It is the sole distinguisher between an authorized cross-repo action
+ * and an unauthorized one (`repo-scope-discipline.md` § User-Authorized Exception
+ * condition 4), and the directory is gitignored outside loom — a clobbered
+ * receipt has no reflog to recover from.
+ *
+ * Refreshability: the filename is DATE-granular while authorization is
+ * WINDOW-granular (6h). Refusing every same-day re-run therefore deadlocked the
+ * ceremony for up to 18h per (target, action, mode) per UTC day: the guard had
+ * already expired the receipt, the operator re-ran the ceremony, and the tool
+ * refused with "already authorizes this action" — which was FALSE, because the
+ * EEXIST branch never opened the file it was making claims about. The guard is
+ * `halt-and-report`, not `block`, so the agent could then proceed on the tool's
+ * own false assurance: an unauthorized cross-repo action believed to be
+ * authorized.
+ *
+ * Note the trap in the history. BEFORE `wx`, the colliding write destroyed the
+ * audit record but incidentally REFRESHED its timestamp, so authorization kept
+ * working; `wx` protects the record and creates the deadlock. Both halves are
+ * needed, and they stop being in tension once the FILENAME carries more than day
+ * granularity — which is the whole content of the suffix below. Do NOT "fix" a
+ * recurrence by widening the guard's window or by dropping `wx`.
+ *
+ * So: refuse ONLY against a receipt read from disk and confirmed LIVE; otherwise
+ * write a fresh one at a non-colliding path.
+ */
+function writeReceiptImmutable(dir, baseName, body, ctx) {
+  const canonical = path.join(dir, `${baseName}.md`);
+  if (tryCreateExclusive(canonical, body)) return { path: canonical };
+
+  // Something already occupies the canonical path. Scan the whole family for
+  // this (date, target, action, mode) — the canonical name plus any time-suffixed
+  // siblings from earlier expiries today — and refuse only if one is still live.
+  const esc = baseName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const familyRe = new RegExp(`^${esc}(?:-[0-9]+(?:-[0-9]+)?)?\\.md$`);
+  let entries = [];
+  try {
+    entries = fs.readdirSync(dir).sort();
+  } catch {
+    /* unreadable dir — fall through to the fresh-write attempt, which will fail loudly */
+  }
+  for (const f of entries) {
+    if (!familyRe.test(f)) continue;
+    const fp = path.join(dir, f);
+    const live = receiptLiveness(fp, ctx.target, ctx.mode, ctx.nowMs, ctx.windows);
+    if (live) return { refused: true, path: fp, ts: live.ts };
+  }
+
+  // Nothing on disk authorizes this action right now. Add a time component so the
+  // new receipt lands beside the dead ones instead of colliding with them.
+  const hhmmss = ctx.iso.slice(11, 19).replace(/:/g, "");
+  for (let n = 1; n <= 32; n++) {
+    const cand = path.join(
+      dir,
+      `${baseName}-${hhmmss}${n === 1 ? "" : `-${n}`}.md`,
+    );
+    if (tryCreateExclusive(cand, body)) return { path: cand };
+  }
+  return { exhausted: true };
 }
 
 /**
@@ -235,18 +465,28 @@ function main() {
   if (mode === "write" && (!instruction || instruction === true))
     fail('a WRITE receipt MUST carry --instruction "<verbatim user instruction>" (condition 1)');
 
-  // Reject marker-injection: a newline or the literal `cross-repo-authorized:`
-  // in any free-text field could forge a SECOND authorization line (a receipt
-  // for target X that also clears target Y). The hook matches the marker
-  // anchored per-line, so a smuggled `\ncross-repo-authorized: victim/repo write`
-  // would otherwise authorize an unrelated target. Reject at the source.
+  // Reject marker-injection: a line terminator or the literal
+  // `cross-repo-authorized:` in any free-text field could forge a SECOND
+  // authorization line (a receipt for target X that also clears target Y). The
+  // hook matches the marker anchored per-line, so a smuggled
+  // `\ncross-repo-authorized: victim/repo write` would otherwise authorize an
+  // unrelated target. Reject at the source.
+  //
+  // U+2028 / U+2029 are in the class because ECMAScript counts them as
+  // LineTerminators: an `m`-flagged `^`/`$` — which is what BOTH the guard's
+  // marker regex and this file's `receiptTimestampMs` use — genuinely breaks on
+  // them, while `\r\n` alone does not match them. Today they are unexploitable
+  // for the marker itself (the literal is blocked case-insensitively on its own),
+  // but the freshness check added above now reads an ANCHORED `^timestamp:` line
+  // back out of a receipt, so a smuggled line terminator in `action:` is one edit
+  // away from forging the field that decides whether a receipt is still live.
   for (const [name, val] of [
     ["action", action],
     ["instruction", instruction],
     ["requester", requester],
   ]) {
-    if (typeof val === "string" && (/[\r\n]/.test(val) || /cross-repo-authorized:/i.test(val)))
-      fail(`--${name} MUST NOT contain a newline or the literal "cross-repo-authorized:" (marker-injection guard)`);
+    if (typeof val === "string" && (/[\r\n\u2028\u2029]/.test(val) || /cross-repo-authorized:/i.test(val)))
+      fail(`--${name} MUST NOT contain a line terminator or the literal "cross-repo-authorized:" (marker-injection guard)`);
   }
 
   const root = repoToplevel(args["repo-root"] || process.cwd());
@@ -264,8 +504,7 @@ function main() {
   const ts = now.toISOString();
   const slug = slugify(`${target}-${action}`) || "cross-repo";
   const digest = actionDigest(target, action, mode);
-  const fileName = `${date}-${slug}-${digest}.md`;
-  const filePath = path.join(dir, fileName);
+  const baseName = `${date}-${slug}-${digest}`;
 
   // The marker line MUST match violation-patterns.js::
   // hasCrossRepoAuthorizationReceipt exactly: `cross-repo-authorized: <slug> <mode>`.
@@ -357,32 +596,49 @@ ${conditionsBlock.map((l) => `- ${l}`).join("\n")}
   .claude/bin/cross-repo-authorize.mjs AFTER the user confirmed the restated
   action+target in chat, and BEFORE the action runs. The hook
   (violation-patterns.js::hasCrossRepoAuthorizationReceipt) greps this file's
-  marker line in the WORKING TREE within its mtime window — not in git — so
-  enforcement does not depend on whether this file is committed.
+  marker line in the WORKING TREE — not in git — so enforcement does not depend
+  on whether this file is committed. Authorization EXPIRES: the guard bounds a
+  receipt's age by the "timestamp:" field above (not file mtime, not the
+  filename's date), so it stops clearing anything once that window elapses. Re-run
+  the ceremony for a fresh one; it will not overwrite this record.
 
   ${localityNote}
 -->
 `;
 
-  // `wx` — create-or-fail. A receipt is an IMMUTABLE audit record: it is the sole
-  // distinguisher between an authorized cross-repo action and an unauthorized one
-  // (`repo-scope-discipline.md` § User-Authorized Exception condition 4). Silently
-  // overwriting one destroys the evidence for the action it authorized, so the
-  // write MUST fail closed rather than clobber. Reaching this path now means the
-  // SAME (date, target, action, mode) was already authorized — the existing
-  // receipt already covers the action, so refusing costs the caller nothing.
-  try {
-    fs.writeFileSync(filePath, body, { mode: 0o644, flag: "wx" });
-  } catch (e) {
-    if (e && e.code === "EEXIST") {
-      fail(
-        `a receipt for this exact (date, target, action, mode) already exists: ${path.relative(root, filePath)}\n` +
-          `       It is immutable and already authorizes this action — re-run not needed.\n` +
-          `       For a DIFFERENT action, pass a different --action (the filename discriminates on the full action text).`,
-      );
-    }
-    throw e;
+  // Immutable, but refreshable — see `writeReceiptImmutable`. An existing receipt
+  // is never clobbered; a re-run is refused ONLY when a receipt read from disk is
+  // confirmed still LIVE (marker present for this target+mode, `timestamp:` inside
+  // the guard's window). Otherwise a fresh receipt lands at a new path, because a
+  // receipt the guard has already expired authorizes nothing and telling the
+  // caller otherwise is how an unauthorized action gets taken believing it was
+  // authorized.
+  const windows = readReaderWindows(root);
+  const written = writeReceiptImmutable(dir, baseName, body, {
+    target,
+    mode,
+    nowMs: now.getTime(),
+    iso: ts,
+    windows,
+  });
+
+  if (written.refused) {
+    const hrs = windows ? windows.windowMs / 3600000 : null;
+    fail(
+      `a LIVE receipt for this exact (date, target, action, mode) already exists: ${path.relative(root, written.path)}\n` +
+        `       Authorized at ${new Date(written.ts).toISOString()}${hrs ? `, still inside the ${hrs}h authorization window` : ""}\n` +
+        `       the guard enforces, so it DOES authorize this action right now — re-run not needed.\n` +
+        `       (Once it expires, re-running the ceremony writes a NEW receipt; it does not deadlock.)\n` +
+        `       For a genuinely DIFFERENT action, pass a different --action (the filename discriminates\n` +
+        `       on the full action text — but note authority itself is scoped to target+mode, not action).`,
+    );
   }
+  if (written.exhausted) {
+    fail(
+      `could not find a free receipt filename under ${path.relative(root, dir)} for ${baseName} — 33 candidates all exist and none is live. Investigate before proceeding; do NOT delete receipts to make room.`,
+    );
+  }
+  const filePath = written.path;
 
   const rel = path.relative(root, filePath);
   const result = {
@@ -413,9 +669,9 @@ ${conditionsBlock.map((l) => `- ${l}`).join("\n")}
       : [
           `  1. DO NOT COMMIT this receipt — leave it on disk (this repo is type: ${repoClass || "unknown"}, not coc-source).`,
           `       loom's sync gitignores .claude/cross-repo-authz/ here; the guard greps the`,
-          `       WORKING TREE within an mtime window, so enforcement is unaffected. Committing`,
-          `       would put the requester's display_id in this repo's history, which none of`,
-          `       loom's three distribution fences covers.`,
+          `       WORKING TREE (bounding age by the receipt's own timestamp:), so enforcement`,
+          `       is unaffected. Committing would put the requester's display_id in this`,
+          `       repo's history, which none of loom's three distribution fences covers.`,
         ];
     process.stdout.write(
       [
