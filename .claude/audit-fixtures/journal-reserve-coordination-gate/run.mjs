@@ -287,7 +287,7 @@ cases.push({
   // fixture deliberately does not stand up. Stated rather than papered over.
   name: "slot-shape/poisoned-high-water-cannot-escape-4-digits",
   mutation:
-    "journal-reserve.js::_foldHighWater — drop the `/^[0-9]{1,4}$/` shape check and restore `Number.isFinite(n)` (reds ONLY with COC_TEST_SKIP_SIGN=1, which this case sets)",
+    "journal-reserve.js::_foldHighWater — drop the `/^[0-9]{1,9}$/` shape check and restore `Number.isFinite(n)` (reds ONLY with COC_TEST_SKIP_SIGN=1, which this case sets)",
   setup: { coordinationOn: false, withWorktree: false },
   poison: POISON_SLOTS,
   forceSkipSign: true,
@@ -577,16 +577,52 @@ cases.push({
     "ok === true (an ordinary multi-record chain on a VALID roster must not deny the receipt)",
 });
 
+cases.push({
+  // THE WORKTREE ASYMMETRY. `_foldHighWater` reads the LOG through
+  // `resolveLogPath` -> `resolveStateDir` -> the MAIN checkout, but read the
+  // ROSTER with a bare `path.join(repoDir, ...)`, i.e. the WORKTREE. The roster
+  // is a TRACKED file, so a worktree on a branch that predates or omits it read
+  // ENOENT, the presence gate resolved false, and the guard was SKIPPED — while
+  // the reservations it protects were read from main, where they exist.
+  //
+  // That made a `git checkout` of the wrong branch equivalent to deleting the
+  // roster, without deleting anything: the documented bypass, reachable by an
+  // ordinary and entirely innocent action. Two reads that disagree about WHICH
+  // TREE they describe cannot guard each other.
+  //
+  // Drives a worktree whose branch has no roster, with a degenerate `{}` roster
+  // committed on main and a reservation record in the shared log. Correct
+  // behavior is to refuse — main's roster governs.
+  name: "roster/worktree-reads-the-main-checkout-roster-not-its-own",
+  mutation:
+    "journal-reserve.js::_foldHighWater — resolve the roster with `path.join(repoDir, ...)` again instead of `resolveMainCheckout(repoDir)`, so a worktree lacking the tracked roster silently skips the guard",
+  setup: { coordinationOn: false, withWorktree: true },
+  seedSlots: ["0007"],
+  roster: "{}",
+  rosterOnMain: true,
+  expect: (r) => r.ok === false && r.step === "fold-high-water",
+  describe:
+    'ok === false AND step === "fold-high-water" (main\'s degenerate roster governs a worktree that has none of its own)',
+});
+
 let failed = 0;
 for (const c of cases) {
   let made = null;
   try {
     made = makeRepo(c.setup);
-    // `roster` seeds `.claude/operators.roster.json` — the file `_foldHighWater`
-    // reads. Written verbatim, so a case can seed unparseable bytes.
+    // `roster` seeds the roster file `_foldHighWater` reads. Written verbatim, so
+    // a case can seed unparseable bytes.
+    //
+    // `rosterOnMain` writes it to the MAIN checkout instead of `repoDir`, which
+    // is the only way to express the worktree asymmetry: the roster is a TRACKED
+    // file, so a worktree on a branch that omits it must still be governed by
+    // main's copy — the same tree the coordination log is read from.
     if (c.roster !== undefined) {
+      const rosterRoot = c.rosterOnMain
+        ? path.join(made.root, "main")
+        : made.repoDir;
       const rosterPath = path.join(
-        made.repoDir,
+        rosterRoot,
         ".claude",
         "operators.roster.json",
       );

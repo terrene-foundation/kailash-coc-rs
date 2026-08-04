@@ -92,10 +92,19 @@ to any OTHER consumer. It was observed RED against that intermediate state
 
 `instrument-discipline.md` MUST-2(b): a mutation that does NOT red leaves TWO
 live hypotheses — vacuous test OR inert mutation — so an un-run `mutation:`
-field is a claim, not evidence. **All 13 mutations below were EXECUTED** against
+field is a claim, not evidence. **All 16 mutations below were EXECUTED** against
 the LIVE tree (apply → run the suite → revert, one at a time, scripted so no
-mutation could be left behind). All 13 redded, so no "inert vs vacuous"
-ambiguity arose and no case is recorded on an untested reachability argument.
+mutation could be left behind).
+
+M1–M13 all redded on the original pass. Of the three added later, M14–M16 redded;
+**one earlier attempt at M14 came back INERT and was resolved rather than read as
+a verdict** — it targeted `return _scrubAndBound(s);`, which does not match
+`reasonFromError`'s call shape (`_scrubAndBound(typeof s === "string" ? …)`), so
+the mutation never reached the path under test and the case stayed green for a
+reason unrelated to the property. Per MUST-2(b) that left two live hypotheses
+(vacuous case vs inert mutation); re-targeting the mutation correctly redded the
+case, which resolves it as INERT. Recorded because reading that first green as
+"the case is vacuous" would have retired a working instrument.
 
 | #   | Mutation                                                                     | Cases redded                                                     |
 | --- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -113,8 +122,36 @@ ambiguity arose and no case is recorded on an untested reachability argument.
 | M12 | misapplication: route a SUCCESS-path return value through the helper         | 1 — `gh+ado/successful-calls-are-unaffected`                     |
 | M13 | `validateRepoRef` → interpolate `${o.reason}` / `${p.reason}` raw again      | 1 — `exported-validateRepoRef-reason-is-sanitized-at-source`     |
 
-Every one of the 36 cases appears in at least one row, so no case is carried
-without a measured mutation.
+| M14 | text path (`reasonText`/`reasonFromError`) → the JSON pattern `[^\s"]` | 1 — `…-covers-a-credential-containing-a-double-quote` |
+| M15 | JSON path (`reasonOperand`) → the text pattern `[^\s]` | 1 — `…-does-not-span-json-field-boundaries` |
+| M16 | make the terminating `@` optional (`@?`) | 3 — `…-leaves-an-at-free-url-untouched` + 2 userinfo-scrub cases |
+
+**The count was WRONG here for four revisions and is corrected rather than
+quietly updated.** This section read "Every one of the 36 cases appears in at
+least one row" while the suite grew to 43 — a false claim about coverage, in the
+file whose entire subject is that claims about instruments must be measured. The
+seven cases the M1–M13 table never covered are the userinfo-scrub cases added
+across the adversarial rounds; M14–M16 above close three of them, and the
+remaining four are covered by the RED-before-fix measurements recorded in
+§ "RED before" (each was observed failing against the unfixed code, which is the
+same evidence a mutation provides — the pre-fix source IS the mutation).
+
+**Two cases are NOT mutation-validated and are recorded as such:**
+`…-still-masks-a-credential-inside-a-json-field` (the paired polarity for M15) and
+`…-masks-a-credential-in-double-encoded-json` (the nested-escape case). Both were
+verified to PASS against the shipped code, and neither has had its own reddening
+mutation executed. Per `instrument-discipline.md` MUST-2(b) that is stated, not
+implied — each is a plausible instrument, not a measured one, until someone points
+`reasonOperand` at a pattern that lets a JSON-embedded credential through and
+observes it red.
+
+So: **44 cases** — 42 with measured evidence (the M1–M13 set + M14–M16 + four
+RED-before-fix observations), 2 declared un-measured.
+
+This count has now been wrong twice, in both directions, and both times the fix
+for one round's stale number went stale inside the same session as new cases
+landed. Re-derive it rather than trusting this line:
+`node .claude/audit-fixtures/upflow-refusal-operand-sanitization/run.mjs | tail -1`.
 
 **Provenance:** all 13 passes ran in the LIVE working tree (not a `cp -R`
 sandbox), because the only files mutated are the two adapters this change owns;

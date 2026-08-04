@@ -34,15 +34,44 @@ answer to that finding.
 Each mutation was applied in an isolated `cp -R` sandbox; the working tree was
 never mutated.
 
-| Mutation                                                                                                         | Cases redded                                                                                                     |
-| ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| replace `isCoordinationEnabled(resolveMainCheckout(repoDir) \|\| repoDir)` with `isCoordinationEnabled(repoDir)` | exactly 1 — `coordination-on/worktree/resolves-main-not-worktree`                                                |
-| `requireSigningIdentity: false` (drop the gate open)                                                             | 2 — both `coordination-on/*` cases                                                                               |
-| `requireSigningIdentity: true` (revert the #76 fix)                                                              | exactly 1 — `coordination-off/main/unsigned-identity-accepted`                                                   |
-| `_foldHighWater` — drop the `/^[0-9]{1,4}$/` slot shape check, restore `Number.isFinite`                         | exactly 1 — `slot-shape/poisoned-high-water-cannot-escape-4-digits`                                              |
-| `_foldHighWater` — restore the bare `catch { roster = null; }` (revert the #84 fix)                              | exactly 1 — `roster/corrupt-roster-refuses-rather-than-restarting-high-water`                                    |
-| `_foldHighWater` — drop the `err.code === "ENOENT"` arm (refuse on every roster read failure)                    | 3 — `roster/absent-roster-proceeds` + both `slot-shape/*` fold cases (all three seed log records with no roster) |
-| `_foldHighWater` — throw unconditionally after a successful roster parse                                         | exactly 1 — `roster/valid-roster-proceeds`                                                                       |
+| Mutation                                                                                                         | Cases redded                                                                                                                                                                                               |
+| ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| replace `isCoordinationEnabled(resolveMainCheckout(repoDir) \|\| repoDir)` with `isCoordinationEnabled(repoDir)` | exactly 1 — `coordination-on/worktree/resolves-main-not-worktree`                                                                                                                                          |
+| `requireSigningIdentity: false` (drop the gate open)                                                             | 2 — both `coordination-on/*` cases                                                                                                                                                                         |
+| `requireSigningIdentity: true` (revert the #76 fix)                                                              | exactly 1 — `coordination-off/main/unsigned-identity-accepted`                                                                                                                                             |
+| `_foldHighWater` — drop the `/^[0-9]{1,9}$/` slot shape check, restore `Number.isFinite`                         | exactly 1 — `slot-shape/poisoned-high-water-cannot-escape-4-digits`                                                                                                                                        |
+| `_foldHighWater` — restore the bare `catch { roster = null; }` (revert the #84 fix)                              | exactly 1 — `roster/corrupt-roster-refuses-rather-than-restarting-high-water`                                                                                                                              |
+| `_foldHighWater` — drop the `err.code === "ENOENT"` arm (refuse on every roster read failure)                    | 3 — `roster/absent-roster-proceeds` + both `slot-shape/*` fold cases (all three seed log records with no roster)                                                                                           |
+| `_foldHighWater` — throw unconditionally after a successful roster parse                                         | exactly 1 — `roster/valid-roster-proceeds`                                                                                                                                                                 |
+| `_foldHighWater` — disable the fold-rejection guard entirely (`if (false)`)                                      | 5 — the four loop-generated `roster/{null,empty-object,null-persons,empty-persons}-roster-refuses-rather-than-restarting-high-water` cases, plus `roster/targeted-erasure-of-the-reserving-signer-refuses` |
+| `_foldHighWater` — widen the rejection filter to ANY rule (drop `entry.rule !== "rule-1"`)                       | exactly 1 — `roster/ordinary-chain-continuation-does-not-deny-the-receipt`                                                                                                                                 |
+| `_foldHighWater` — resolve the roster with `path.join(repoDir, …)` instead of `resolveMainCheckout(repoDir)`     | exactly 1 — `roster/worktree-reads-the-main-checkout-roster-not-its-own`                                                                                                                                   |
+
+**The stale `{1,4}` citation above was wrong for several revisions** — the shipped
+check is `/^[0-9]{1,9}$/` (`journal-reserve.js:517`). The sibling mutation string
+in `run.mjs` that says "pin the fold check BACK to `/^[0-9]{1,4}$/`" is correct as
+written, because pinning it back to four IS the mutation; the row above was
+describing the shipped check and named the mutated value.
+
+**The last three rows are the two POLARITY PAIRS this suite gained after the
+guard oscillated twice.** Rows 8 and 9 are one axis and must both hold: disabling
+the guard reds the erasure cases, widening it reds the availability case. Neither
+alone constrains the filter — the widening shipped precisely because only the
+erasure polarity existed. Row 10 pins the tree the roster is read from.
+
+**Coverage, stated precisely rather than as a blanket claim.** 16 cases. Twelve
+are named literally in a row above. Four are covered by GLOB shorthand rather than
+by literal name — `coordination-on/main/unsigned-identity-refused` (via the
+"both `coordination-on/*` cases" row), `slot-shape/high-water-does-not-collapse-past-9999`
+and `slot-shape/disk-scan-sees-five-digit-journal-files` (via the
+"both `slot-shape/*` fold cases" row), and the four loop-generated roster cases
+(named as a set in the disable-the-guard row).
+
+The first draft of this line claimed "every one named in at least one row" and
+that was FALSE by four — caught by grepping each case name against this file
+rather than by reading it. Recorded because this README's own subject is that
+coverage claims must be measured, and the claim about the coverage table was the
+one nobody was measuring.
 
 ## The roster read (issue #84)
 

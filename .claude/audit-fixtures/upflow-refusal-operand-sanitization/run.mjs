@@ -970,6 +970,36 @@ t(
 );
 
 t(
+  "gh+ado/userinfo-scrub-masks-a-credential-in-double-encoded-json",
+  "upflow-self-repo.js — point `reasonOperand` at the TEXT pattern, or narrow the JSON run further so an escaped `\\\\\\\"` ends it before the credential's `@`",
+  () => {
+    // THE NESTED CASE, which the `"` bound could plausibly have broken. A remote
+    // body often carries a stringified body inside it, so the inner quotes
+    // arrive ESCAPED (`\\"`). The question is whether the run stops at the
+    // backslash-quote pair before reaching the credential's `@`.
+    //
+    // It does not, and the reason is worth pinning rather than reasoning about:
+    // the run meets the BACKSLASH first, and `\\` is not in the excluded set, so
+    // it crosses into the escape and the following `"` terminates only the
+    // OUTER field — after the credential. Verified rather than assumed, because
+    // "the quote bound might eat the escape" is exactly the kind of plausible
+    // mechanism that has been wrong four times in this file's history.
+    const inner = JSON.stringify({
+      url: "https://oauth2:s3cr3t@dev.azure.com/acme/core/_git/widget",
+    });
+    const res = gh.fetchRepoOwner(failing({ body: inner }, 403), GH_REPO);
+    const e = typedRefusal(res, "gh double-encoded json credential");
+    if (e) return e;
+    if (res.reason.includes("s3cr3t")) {
+      return `credential in double-encoded JSON survived: ${JSON.stringify(res.reason.slice(0, 240))}`;
+    }
+    return res.reason.includes("***@")
+      ? null
+      : `expected the ***@ mask inside the nested JSON; got ${JSON.stringify(res.reason.slice(0, 240))}`;
+  },
+);
+
+t(
   "gh+ado/transport-error-refusals-are-bounded",
   "vcs-github-adapter.js / vcs-azure-adapter.js — drop the length bound from the transport-error reason helper",
   () => {

@@ -270,7 +270,26 @@ function _foldHighWater(repoDir, dirRel) {
   //
   // `fs.existsSync` is deliberately gone: the ENOENT arm of the read covers it
   // without the check-then-use gap, and it matches the log read byte for byte.
-  const rosterPath = path.join(repoDir, ".claude", "operators.roster.json");
+  // RESOLVED FROM THE MAIN CHECKOUT, THE SAME TREE THE LOG IS READ FROM. The log
+  // above goes through `resolveLogPath` -> `resolveStateDir` -> the main
+  // checkout; this read was `path.join(repoDir, ...)`, i.e. the WORKTREE. That
+  // asymmetry silently disabled the guard: the roster is a TRACKED file, so a
+  // worktree on a branch that predates or omits it reads ENOENT, the presence
+  // gate resolves false, and the guard is skipped — while the reservations it
+  // exists to protect are read from main, where they do exist. A `git checkout`
+  // of the wrong branch achieved what deleting the roster achieves, without
+  // deleting anything.
+  //
+  // The two reads have to agree about WHICH REPOSITORY they describe, or the
+  // guard answers a question about a different tree than the one whose slots it
+  // is handing out. `resolveMainCheckout` is the same resolution the coordination
+  // predicate already uses further down in this module.
+  const { resolveMainCheckout } = require("./state-resolver.js");
+  const rosterPath = path.join(
+    resolveMainCheckout(repoDir) || repoDir,
+    ".claude",
+    "operators.roster.json",
+  );
   let roster = null;
   let rosterRaw;
   try {
