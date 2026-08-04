@@ -2560,7 +2560,15 @@ changes:
       collection segment was discarded entirely, so two legacy TFS/VSTS
       collections — different namespaces, different repositories — derived an
       identical {org, project, repo} and the fence authorized a completion
-      ACROSS them. Absent matches only absent; absent-vs-present refuses.
+      ACROSS them. An absent collection IS the org's DEFAULT collection, so it
+      normalizes to `defaultcollection` and is COMPARED; a NON-default collection
+      still differs from an absent side in both directions, so cross-collection
+      stays closed. CORRECTED: an earlier revision of this entry said "absent
+      matches only absent; absent-vs-present refuses". That rule shipped a
+      MAINTAINER LOCKOUT — only the legacy 3-segment form carries a collection,
+      so an ordinary ADO clone mid-URL-migration (legacy https fetch, modern ssh
+      push, ONE repository) compared present-vs-absent and refused itself. Caught
+      by an adversarial round and fixed before this proposal was finalized.
       This module also now owns the shared refusal-operand bound+scrub
       (`reasonText` / `reasonOperand` / `reasonFromError` over `sanitizeForReason`)
       that both adapters consume — see the adapter entries below.
@@ -2630,7 +2638,7 @@ changes:
       THIS IS A CONTRACT CHANGE, STATED PLAINLY FOR GATE-1: a caller on a legacy
       TFS/VSTS collection remote that completed with a bare {org, project, repo}
       must now name the collection. The refusal names both sides (absence renders
-      `<no-collection>`), so it is a one-field fix, and `completeUpflowPR` has no
+      `<default-collection>`), so it is a one-field fix, and `completeUpflowPR` has no
       callers outside the two adapters — verified by grep across js/mjs/md/json,
       the only non-adapter mention being a comment in ado-login.js.
       UNRESOLVED, CARRIED FORWARD RATHER THAN HIDDEN: the ADO request path has no

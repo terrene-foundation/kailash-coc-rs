@@ -784,59 +784,91 @@ t(
 );
 
 t(
-  "gh+ado/userinfo-scrub-preserves-the-host-when-a-port-is-present",
-  "upflow-self-repo.js::_URL_USERINFO_RE — let the post-colon run cross `/` unrestricted, so a port plus a path `@` swallows the host",
+  "gh+ado/userinfo-scrub-covers-a-password-beginning-with-digits-and-a-slash",
+  "upflow-self-repo.js::_URL_USERINFO_RE — reintroduce a port-vs-password lookahead such as `(?!\\d+[/\\s]|\\d+$)`, which declines to match exactly this shape",
   () => {
-    // THE HOST-PRESERVATION INVARIANT, which the scrub states twice as
-    // load-bearing ("the HOST is deliberately preserved — the message must stay
-    // diagnostic", and `observability.md` § 6.2's `scheme://***@host[:port]/path`
-    // form) and which no case pinned when a PORT is present.
+    // THE SHAPE THAT REOPENED THE LEAK, and the reason the scrub no longer tries
+    // to tell a port from a password. A lookahead was added to protect the host
+    // by declining to match `<digits>` followed by `/` — and a PASSWORD may
+    // begin with digits and a slash, so it declined to match those too and the
+    // credential survived verbatim. Measured before this correction:
+    //   https://build:12/AbCdEf@dev.azure.com/acme/core/_git/widget
+    // came back unchanged in a logged reason.
     //
-    // The two pre-existing host-survival cases drive PORT-LESS URLs, so neither
-    // can red on this; a `host:port` URL whose PATH also carries an `@` supplies
-    // the colon the userinfo match anchors on, and an unrestricted post-colon
-    // run would consume straight through the host to that path `@`, masking
-    // `https://host:8443/a/b@c` down to `https://***@c`.
-    const res = gh.fetchRepoOwner(
-      throwing(
-        "fatal: unable to access 'https://github.com:8443/acme/widget/tree@v2': 404",
-      ),
-      GH_REPO,
-    );
-    const e = typedRefusal(res, "gh host-with-port");
-    if (e) return e;
-    return res.reason.includes("github.com")
-      ? null
-      : `the scrub ate the host on a ported URL, breaking the stated diagnostic invariant: ${JSON.stringify(res.reason.slice(0, 240))}`;
+    // Not exotic: a base64 key begins `^\d+/` roughly 1 in 350 times, and any
+    // token of the form `<digits>/<rest>` hits it deterministically.
+    //
+    // The four sibling polarity cases all use a letter-initial password, which
+    // is exactly why none of them could see this — the same one-polarity
+    // blindness that hid the original slash miss and then the bare-token
+    // regression. Three strikes on one regex is why it is now greedy.
+    const SECRET = "12/AbCdEf+ghi=";
+    for (const [label, res] of [
+      [
+        "gh",
+        gh.fetchRepoOwner(
+          throwing(
+            `fatal: unable to access 'https://build:${SECRET}@github.com/acme/widget.git/': 403`,
+          ),
+          GH_REPO,
+        ),
+      ],
+      [
+        "ado",
+        ado.createUpflowPR(
+          throwing(
+            `request failed for https://build:${SECRET}@dev.azure.com/acme/core/_git/widget`,
+          ),
+          { repoRef: ADO_REPO, head: "feat/x", title: "t" },
+        ),
+      ],
+    ]) {
+      const e = typedRefusal(res, `${label} digit-slash credential`);
+      if (e) return e;
+      if (res.reason.includes(SECRET)) {
+        return `${label}: digit-initial slash-bearing credential survived verbatim: ${JSON.stringify(res.reason.slice(0, 240))}`;
+      }
+      if (!res.reason.includes("***@")) {
+        return `${label}: expected the canonical ***@ mask; got ${JSON.stringify(res.reason.slice(0, 240))}`;
+      }
+    }
+    return null;
   },
 );
 
 t(
-  "gh+ado/userinfo-scrub-leaves-a-path-at-sign-alone",
-  "upflow-self-repo.js::_URL_USERINFO_RE — widen the userinfo class to `[^\\s@]` (dropping the `:` anchor), so an `@` in a PATH is masked as if it were userinfo",
+  "gh+ado/userinfo-scrub-leaves-an-at-free-url-untouched",
+  "upflow-self-repo.js::_URL_USERINFO_RE — drop the terminating `@` requirement (e.g. make it optional), so every scheme-bearing URL is masked whether or not it carries userinfo",
   () => {
-    // THE OVER-SCRUB POLARITY, and the constraint that makes the fix above a
-    // fix rather than a trade. Widening the class to simply allow `/` would
-    // also swallow `https://host/a/b@c` — an `@` in a path, no credential — and
-    // destroy the path in a diagnostic. Requiring a `:` inside the run keeps
-    // that case untouched, because a bare path segment has none.
+    // THE OVER-MASK BOUND. The scrub is deliberately GREEDY to the last `@`,
+    // because a slash-bearing password and a `host:port/path@frag` URL are the
+    // same shape and two attempts to tell them apart each leaked a credential.
+    // Greediness needs a floor or "mask everything after any scheme" would pass
+    // every credential case: this is that floor.
     //
-    // Without this case, "allow `/` in userinfo" and "mask everything up to any
-    // `@`" are indistinguishable: both make the slash case pass.
+    // A URL with NO `@` is not touched at all — host, port and path survive
+    // intact — and that is the overwhelming majority of transport errors, which
+    // is what keeps the accepted over-mask cheap in practice.
+    //
+    // The previous case here asserted that an `@` in a PATH was left alone.
+    // That assertion was traded away deliberately, not lost: holding it required
+    // distinguishing a path `@` from a slash-bearing password, which is not
+    // decidable from the string. `https://github.com/acme/tree@v2` now masks to
+    // `https://***@v2`. Recorded in `_URL_USERINFO_RE`'s comment as the cost.
     const res = gh.fetchRepoOwner(
       throwing(
-        "fatal: unable to access 'https://github.com/acme/widget/tree@v2': 404",
+        "fatal: unable to access 'https://github.com:8443/acme/widget.git': 404",
       ),
       GH_REPO,
     );
-    const e = typedRefusal(res, "gh path-at-sign");
+    const e = typedRefusal(res, "gh at-free url");
     if (e) return e;
     if (res.reason.includes("***@")) {
-      return `an @ in a PATH was masked as userinfo, destroying the diagnostic: ${JSON.stringify(res.reason.slice(0, 240))}`;
+      return `an @-free URL was masked, so the scrub no longer requires userinfo: ${JSON.stringify(res.reason.slice(0, 240))}`;
     }
-    return res.reason.includes("acme/widget/tree@v2")
+    return res.reason.includes("github.com:8443/acme/widget.git")
       ? null
-      : `the path did not survive intact: ${JSON.stringify(res.reason.slice(0, 240))}`;
+      : `the @-free URL did not survive intact: ${JSON.stringify(res.reason.slice(0, 240))}`;
   },
 );
 

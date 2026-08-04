@@ -223,11 +223,11 @@ caller-authored value on a path otherwise sourced entirely from the derivation.
 These mutations move a case to a DIFFERENT refusal branch rather than breaking the
 refusal outright:
 
-| #   | Mutation                                            | Applied-check | Verdict | Cases reddened                                   |
-| --- | --------------------------------------------------- | ------------- | ------- | ------------------------------------------------ |
-| 22  | `_parseAdo` always returns null                     | 1→0           | RED     | 3 ADO cross-repo cases + `ado/non-numeric-pr-id` |
-| 23  | `_parseRemoteUrl` `parts.length < 2` → `< 3`        | 1→0 / 0→1     | RED     | `ado/non-ado-remote-refuses`                     |
-| 24  | `_readOriginRemote` catch returns a placeholder URL | 0→1           | RED     | `ado/no-origin-remote-refuses-typed-not-throws`  |
+| #   | Mutation                                            | Applied-check | Verdict | Cases reddened                                           |
+| --- | --------------------------------------------------- | ------------- | ------- | -------------------------------------------------------- |
+| 22  | `_parseAdo` always returns null                     | 1→0           | RED     | 3 ADO cross-repo cases + `ado/non-numeric-pr-id-refuses` |
+| 23  | `_parseRemoteUrl` `parts.length < 2` → `< 3`        | 1→0 / 0→1     | RED     | `ado/non-ado-remote-refuses`                             |
+| 24  | `_readOriginRemote` catch returns a placeholder URL | 0→1           | RED     | `ado/no-origin-remote-refuses-typed-not-throws`          |
 
 The load-bearing detail: on rows 22-24 every failure printed
 `actual ok=false fired=false error=null`. **Every pre-existing assertion MATCHED
@@ -575,20 +575,24 @@ entirely, so the fix retains the collection through the parse and widens the
 identity to `{org, collection, project, repo}`. `collection` is `null` on the
 three collection-less forms (`dev.azure.com`, `ssh.dev.azure.com:v3`, the
 2-segment `<org>.visualstudio.com`) and set only on the legacy 3-segment form;
-null matches ONLY null, which is what leaves every modern-form case unaffected.
+an absent collection normalizes to the org's DEFAULT collection and is then
+COMPARED, which leaves every modern-form case unaffected (all compare
+default-to-default) while keeping a NON-default collection distinct in both
+directions. An earlier revision of this line said "null matches ONLY null"; that
+rule shipped a maintainer lockout and was reverted — see § "CORRECTED" below.
 
 **All five new cases were observed RED against the unfixed source first**, and
 all five failed the same way — `ok=true fired=true`, i.e. the completion was
 AUTHORIZED and the transport FIRED. That is the reported defect measured, not
 inferred.
 
-| #   | Mutation                                                                                   | Applied-check | Verdict | Cases reddened                                                                                                                                                                                                                                   |
-| --- | ------------------------------------------------------------------------------------------ | ------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 31  | `_parseAdo` — drop the collection CAPTURE (exactly the pre-fix behavior: quad → triple)    | 1 → 0         | RED     | `ado/allow-own-repo-legacy-collection-form`, `ado/triangular-cross-collection-same-org-project-repo-refuses`, `ado/unstated-collection-does-not-match-a-collection-form`                                                                         |
-| 32  | `isSelfRepoAdo` — delete the collection comparison entirely                                | 1 → 0         | RED     | `ado/triangular-cross-collection-same-org-project-repo-refuses`, `ado/cross-collection-same-org-project-repo-refuses`, `ado/unstated-collection-does-not-match-a-collection-form`, `ado/stated-collection-does-not-match-a-collection-free-form` |
-| 33  | `isSelfRepoAdo` — an ABSENT `repoRef.collection` matches any derived one (caller wildcard) | 1 → 0         | RED     | `ado/unstated-collection-does-not-match-a-collection-form`                                                                                                                                                                                       |
-| 34  | `isSelfRepoAdo` — an ABSENT derived collection matches any stated one (derived wildcard)   | 1 → 0         | RED     | `ado/stated-collection-does-not-match-a-collection-free-form`                                                                                                                                                                                    |
-| 35  | `vcs-azure-adapter::validateRepoRef` — delete the `ref.collection` validation branch       | 1 → 0         | RED     | `ado/invalid-collection-in-repo-ref-refuses`                                                                                                                                                                                                     |
+| #   | Mutation                                                                                                                                                            | Applied-check | Verdict | Cases reddened                                                                                                                                                                                                                                                         |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 31  | `_parseAdo` — drop the collection CAPTURE (exactly the pre-fix behavior: quad → triple)                                                                             | 1 → 0         | RED     | `ado/allow-own-repo-legacy-collection-form`, `ado/triangular-cross-collection-same-org-project-repo-refuses`, `ado/unstated-collection-does-not-match-a-nondefault-collection-form`                                                                                    |
+| 32  | `isSelfRepoAdo` — delete the collection comparison entirely                                                                                                         | 1 → 0         | RED     | `ado/triangular-cross-collection-same-org-project-repo-refuses`, `ado/cross-collection-same-org-project-repo-refuses`, `ado/unstated-collection-does-not-match-a-nondefault-collection-form`, `ado/stated-nondefault-collection-does-not-match-a-collection-free-form` |
+| 33  | `isSelfRepoAdo` — an ABSENT `repoRef.collection` matches ANY derived one (caller wildcard — distinct from normalizing it to the default, which is the shipped rule) | 1 → 0         | RED     | `ado/unstated-collection-does-not-match-a-nondefault-collection-form`                                                                                                                                                                                                  |
+| 34  | `isSelfRepoAdo` — an ABSENT derived collection matches ANY stated one (derived wildcard — distinct from normalizing it to the default, which is the shipped rule)   | 1 → 0         | RED     | `ado/stated-nondefault-collection-does-not-match-a-collection-free-form`                                                                                                                                                                                               |
+| 35  | `vcs-azure-adapter::validateRepoRef` — delete the `ref.collection` validation branch                                                                                | 1 → 0         | RED     | `ado/invalid-collection-in-repo-ref-refuses`                                                                                                                                                                                                                           |
 
 Rows 33 and 34 are a deliberate PAIR. A nullable comparison is asymmetric by
 construction — one side can be made a wildcard without the other — so a single
@@ -638,9 +642,9 @@ against it (the same reason the U+212A case above was re-measured after being
 made normalization-proof), so its own recorded mutation was re-run rather than
 assumed to still hold:
 
-| #   | Mutation                                           | Applied-check | Verdict | Cases reddened                                                                                                                                                                                                                 |
-| --- | -------------------------------------------------- | ------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 38  | `_parseAdo` — subdomain `!== 2 && !== 3` → `!== 2` | 1 → 0         | RED     | `ado/allow-own-repo-legacy-collection-form`, `ado/triangular-cross-collection-same-org-project-repo-refuses`, `ado/cross-collection-same-org-project-repo-refuses`, `ado/unstated-collection-does-not-match-a-collection-form` |
+| #   | Mutation                                           | Applied-check | Verdict | Cases reddened                                                                                                                                                                                                                            |
+| --- | -------------------------------------------------- | ------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 38  | `_parseAdo` — subdomain `!== 2 && !== 3` → `!== 2` | 1 → 0         | RED     | `ado/allow-own-repo-legacy-collection-form`, `ado/triangular-cross-collection-same-org-project-repo-refuses`, `ado/cross-collection-same-org-project-repo-refuses`, `ado/unstated-collection-does-not-match-a-nondefault-collection-form` |
 
 Still a valid instrument. It now co-reds three siblings because all four drive
 the 3-segment form; the § "Two cases added after the above" table's
@@ -754,10 +758,10 @@ crash as the fence working.
 
 ### Case shapes chosen so a mutation cannot go inert
 
-- **`gh/dot-git-suffix`** — the remote deliberately carries **no** `.git` while
+- **`gh/dot-git-suffix-own-repo-still-allowed`** — the remote deliberately carries **no** `.git` while
   the target does. Had both sides carried it, row 4 would mangle them identically
   and the case would stay green: an inert mutation, not a passing test.
-- **`gh/no-origin-remote`** — the temp directory is named after the target repo
+- **`gh/no-origin-remote-refuses`** — the temp directory is named after the target repo
   _and_ a forged `.claude/VERSION` declares it. That is the original exploit
   reconstructed. Precisely: a last-two-path-segments dirname fallback DOES reach
   the predicate here, but resolves `owner` to the `mkdtemp` parent, so

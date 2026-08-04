@@ -1384,7 +1384,7 @@ const cases = [
     // and no comparison could see it. Stating it is what keeps this case
     // PERMISSIVE under the quad: an unstated collection no longer matches a
     // present one (that polarity is the sibling case
-    // `ado/unstated-collection-does-not-match-a-collection-form`).
+    // `ado/unstated-collection-does-not-match-a-nondefault-collection-form`).
     name: "ado/allow-own-repo-legacy-collection-form",
     mutation:
       "upflow-self-repo.js::_parseAdo — require the org-subdomain form to be exactly 2 segments (drop the optional collection)",

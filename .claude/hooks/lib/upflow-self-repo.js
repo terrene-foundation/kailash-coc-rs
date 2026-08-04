@@ -1402,45 +1402,58 @@ const REASON_OPERAND_MAX = 256; // code points, per operand
 // The first run excludes `:` so the two runs are disjoint and the match stays
 // linear; both are bounded, and the whole scan is capped by `_SCRUB_WINDOW`.
 //
-// THE COLON IS OPTIONAL, AND MAKING IT MANDATORY WAS A REGRESSION. The first
-// attempt at the slash fix REQUIRED a `user:pass` colon, which silently stopped
-// masking `https://<TOKEN>@host` — the DOCUMENTED PAT-clone form on BOTH
-// providers this module gates (GitHub `https://<token>@github.com/o/r.git`,
-// Azure DevOps `https://<PAT>@dev.azure.com/org/proj/_git/repo`), and a form the
-// ORIGINAL regex handled. Measured before this correction: a bare `ghp_…` PAT
-// came back verbatim in a logged reason. It was invisible because every case in
-// the suite drove a colon-bearing userinfo — the same blindness the slash miss
-// had, one polarity over. THERE ARE THREE USERINFO SHAPES and all three are now
-// pinned: bare token, `user:pass`, and `user:pass-containing-a-slash`.
+// FAIL-SAFE BY CONSTRUCTION, AFTER TWO CLEVERER VERSIONS EACH LEAKED. Mask
+// everything between `scheme://` and the LAST `@` in the whitespace-free run.
+// No attempt is made to tell userinfo from a path — because the string cannot
+// tell them apart, and both previous attempts to try leaked a credential.
 //
-// A COLON-LESS USERINFO MAY NOT CROSS `/`; only the post-colon run may. That is
-// what keeps `https://h/a@b` (an `@` in a PATH) out: from `h` the run stops at
-// `/`, and neither a `:` nor an `@` follows.
+// THE AMBIGUITY IS IRREDUCIBLE, which is the whole reason this is greedy.
+//     https://build:12/AbCdEf@host   <- userinfo whose PASSWORD contains `/`
+//     https://host:8443/path@frag    <- host:PORT, `@` in the PATH
+// These are the same shape: `<word>:<digits>/<more>@<rest>`. RFC 3986 requires a
+// `/` in userinfo to be percent-encoded, so the first is malformed — but this
+// function reads TRANSPORT ERROR TEXT, where a user's raw-configured password
+// arrives exactly that way. Nothing in the string distinguishes them.
 //
-// THE PORT LOOKAHEAD PRESERVES THE HOST. Without it, `https://host:8443/a/b@c`
-// supplies a colon and the post-colon run would consume straight through the
-// host to the path's `@`, masking the whole thing to `https://***@c` — breaking
-// the invariant this module states twice as load-bearing (the HOST is preserved
-// so the message stays diagnostic; `observability.md` § 6.2's
-// `scheme://***@host[:port]/path` form). A PORT is digits followed by `/` or
-// whitespace or end-of-string; a PASSWORD is not, so the negative lookahead
-// separates them. `https://user:1234@host` still masks — `1234@` is neither
-// `\d+[/\s]` nor `\d+$`.
+// THE TWO FAILED ATTEMPTS, recorded because each looked correct and each shipped:
+//   1. `[^\s/@]{0,4096}@` — a run that cannot cross `/`. Kept paths out, and
+//      MISSED every password containing `/`. The base64 alphabet is A-Za-z0-9+/=,
+//      so base64 service credentials and Azure storage keys landed in the miss.
+//      Measured: `https://user:abc/def@host` returned verbatim.
+//   2. `[^\s@:/]{0,512}(?::(?!\d+[/\s]|\d+$)[^\s@]{0,4096})?@` — a lookahead
+//      meant to separate a PORT from a PASSWORD. It leaked any password matching
+//      `^\d+/` (measured: `https://build:12/AbCdEf@dev.azure.com/...` verbatim;
+//      ~1 in 350 base64 keys, and deterministic for `<digits>/<rest>` tokens),
+//      AND still destroyed the host it was added to protect on IPv6 literals
+//      (`https://[::1]:8443/a/b@c` -> `https://***@c`) and on any port terminated
+//      by something other than `/` or whitespace.
 //
-// Linearity, stated precisely because an earlier draft of this comment got the
-// reason wrong: the two runs are NOT disjoint (`[^\s@:/]` is a subset of
-// `[^\s@]`). What bounds the work is that each quantifier has an unambiguous
-// terminator it cannot itself contain — the first cannot contain `:` or `/`, the
-// second cannot contain `@` — so neither has a boundary to backtrack across.
-// Both are bounded and the whole scan is capped by `_SCRUB_WINDOW`.
+// SO THE DIRECTION IS CHOSEN, NOT DERIVED: over-mask a diagnostic rather than
+// leak a credential (`security.md` § "No secrets in logs"). Every credential
+// shape masks — bare token, `user:pass`, slash-bearing, digit-slash, IPv6 host.
 //
-// Four polarities are pinned, and each reds alone:
-// `…-covers-a-bare-token-with-no-colon` (mandatory colon),
-// `…-covers-credentials-containing-a-slash` (post-colon run stops at `/`),
-// `…-leaves-a-path-at-sign-alone` (colon-less run allowed to cross `/`),
-// `…-preserves-the-host-when-a-port-is-present` (port lookahead dropped).
-const _URL_USERINFO_RE =
-  /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)[^\s@:/]{0,512}(?::(?!\d+[/\s]|\d+$)[^\s@]{0,4096})?@/g;
+// THE COST, STATED PLAINLY: a URL containing an `@` IN ITS PATH loses its host
+// (`https://github.com/acme/tree@v2` -> `https://***@v2`). That weakens the
+// host-preservation intent of `observability.md` § 6.2's
+// `scheme://***@host[:port]/path` form for that input class, and the intent is
+// only PARTIALLY held now — deliberately, and only in the direction that cannot
+// leak. What keeps the practical cost small is that a URL with NO `@` is not
+// touched at all, and that is the overwhelming majority of transport errors:
+// `https://github.com:8443/acme/widget.git 404` passes through with host, port
+// and path intact. Whitespace also still bounds the run, so
+// `fatal: https://host:8443 — contact admin@example.com` is left alone.
+//
+// Linearity: one bounded greedy run over a class that excludes whitespace,
+// terminated by a literal `@`. No nesting, no ambiguous adjacency, so no
+// backtracking blowup; the whole scan is additionally capped by `_SCRUB_WINDOW`.
+// The bound is `_SCRUB_WINDOW`-sized so the run cannot be the limiting factor
+// inside the window.
+//
+// Five polarities are pinned, each redding alone: bare token, `user:pass`,
+// slash-bearing password, DIGIT-slash password (the case that reopened the leak),
+// and no-`@`-means-untouched (the over-mask bound — without it, "mask
+// everything" would pass).
+const _URL_USERINFO_RE = /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)[^\s]{0,8192}@/g;
 
 // UTF-16 units the scrub examines. Two reasons it is a WINDOW, not the whole
 // string. (1) COST: with an UNBOUNDED scheme run the replace was quadratic in
