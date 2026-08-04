@@ -380,13 +380,47 @@ function _parseAdo(host, segments) {
     // caught by widening the legitimate-form check, not by review; the
     // enumeration this fix was written against listed four forms and this was
     // not among them.
+    //
+    // KNOWN AMBIGUITY IN THE 2-SEGMENT CASE, measured and recorded because it
+    // cannot be resolved from the URL alone. ADO permits OMITTING the project
+    // segment when the project and repository names match, so a 2-segment
+    // subdomain path is genuinely ambiguous:
+    //   <org>.visualstudio.com/<project>/_git/<repo>     -> [project, repo]
+    //   <org>.visualstudio.com/<collection>/_git/<repo>  -> [collection, repo]
+    // Both filter to two segments and nothing in the string distinguishes them.
+    // This code takes the first reading, so a project-omitted URL DERIVES THE
+    // COLLECTION AS THE PROJECT — measured:
+    //   .../DefaultCollection/_git/repo -> {project: "defaultcollection", ...}
+    // which is wrong.
+    //
+    // PRE-EXISTING, not introduced by the collection allowance above: the old
+    // last-two rule produced the identical pair. It is FAIL-CLOSED in effect —
+    // the wrong project is then compared against the caller's `repoRef.project`
+    // and mismatches, so the completion is refused rather than misdirected —
+    // but it is a wrong derivation, not a correct refusal, and the distinction
+    // matters to anyone reading a refusal reason that names a project they
+    // never used. Resolving it needs a signal outside the URL (an API lookup),
+    // which this module deliberately does not do.
     if (segs.length !== 2 && segs.length !== 3) return null;
     if (segs.length === 3) segs = segs.slice(1); // drop the collection
   } else {
+    // NOT INDEPENDENTLY LOAD-BEARING, and measured to be so rather than
+    // assumed. Relaxing this line alone to `< 3` reds NOTHING — the suite stays
+    // 35/35 — because everything it then admits is refused by the
+    // `segs.length !== 2` gate below: that gate demands `n - 1 === 2`, i.e.
+    // `n === 3`, which is what this line already enforces. So this is a
+    // defensive restatement, not a tested guard, and a reader must not cite a
+    // green suite under a mutation here as evidence the ADO count is
+    // instrumented. Per `instrument-discipline.md` MUST-2(b) a non-reddening
+    // mutation leaves two live hypotheses — vacuous test OR inert mutation —
+    // and this one is resolved as INERT by the arithmetic above. The honest
+    // mutation for ADO exactness is the PAIR (this line AND the gate below),
+    // which is how the originating exploit was actually closed.
     if (segs.length !== 3) return null; // exactly org + project + repo
     org = segs[0];
     segs = segs.slice(1);
   }
+  // THIS is the load-bearing ADO count gate (see the note above).
   if (segs.length !== 2) return null;
 
   const ado = {
