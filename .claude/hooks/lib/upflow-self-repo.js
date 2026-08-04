@@ -1372,36 +1372,16 @@ function sanitizeForReason(text) {
 // reason. The adapters' catch blocks had neither guard, and a transport built on
 // a PAT-in-URL remote throws an `Error` embedding `https://user:<PAT>@host/...`.
 // The mask is the canonical `scheme://***@host` form of `observability.md` § 6.2,
-// so a `***@` grep finds every masked site, and the HOST is deliberately
-// preserved — the message must stay diagnostic. SCOPE, stated rather than
+// so a `***@` grep finds every masked site. The HOST is preserved on the shapes
+// that matter most — any URL with NO `@` is untouched entirely — but that intent
+// is only PARTIALLY held: see `_URL_USERINFO_RE`, where masking greedily to the
+// last `@` is chosen over leaking, and an `@` in a PATH therefore costs the host.
+// The `***@` grep-auditability the rule turns on is unaffected. SCOPE, stated rather than
 // implied: this scrubs URL userinfo ONLY. A credential a transport surfaces some
 // other way (an `Authorization: Basic <b64>` header echoed into an error string)
 // is NOT covered by this regex.
 const REASON_OPERAND_MAX = 256; // code points, per operand
 
-// Scheme-anchored, and anchored on the `:` THAT SEPARATES USER FROM PASSWORD.
-//
-// THE FIRST CUT WAS `[^\s/@]{0,4096}@` — a class that cannot cross a `/` — so
-// that `https://h/a@b` (an `@` in a PATH, not userinfo) would not match. It was
-// right about the path case and WRONG about the credentials it exists to catch:
-// a secret CONTAINING a `/` never reaches the terminating `@`, the whole match
-// fails, and the credential survives VERBATIM into a reason that is logged and
-// may be embedded in a PR body. Measured before this fix:
-//     https://user:abc/def@dev.azure.com/o/p   -> unchanged, credential intact
-//     https://user:abcdef@dev.azure.com/o/p    -> https://***@dev.azure.com/o/p
-// The no-slash control masking correctly is exactly why the original cases could
-// not see the miss.
-//
-// THAT IS THE COMMON SHAPE, NOT AN EXOTIC ONE: the base64 alphabet is
-// A-Za-z0-9+/= — `+` and `=` passed the old class and `/` did not — so
-// base64-encoded service credentials, Azure storage keys, and any password
-// configured un-percent-encoded in a remote URL all landed in the miss.
-//
-// Anchoring on the `:` keeps the path case out (a bare path segment such as
-// `h/a` has no `:` before the `@`) while letting the userinfo run contain `/`.
-// The first run excludes `:` so the two runs are disjoint and the match stays
-// linear; both are bounded, and the whole scan is capped by `_SCRUB_WINDOW`.
-//
 // FAIL-SAFE BY CONSTRUCTION, AFTER TWO CLEVERER VERSIONS EACH LEAKED. Mask
 // everything between `scheme://` and the LAST `@` in the whitespace-free run.
 // No attempt is made to tell userinfo from a path — because the string cannot
@@ -1453,7 +1433,21 @@ const REASON_OPERAND_MAX = 256; // code points, per operand
 // slash-bearing password, DIGIT-slash password (the case that reopened the leak),
 // and no-`@`-means-untouched (the over-mask bound — without it, "mask
 // everything" would pass).
-const _URL_USERINFO_RE = /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)[^\s]{0,8192}@/g;
+// The run also stops at `"`, not only whitespace. Whitespace alone was the
+// stated containment, and it does NOT hold on the `reasonOperand` path:
+// `JSON.stringify` emits no inter-token whitespace, so a whole API error body is
+// one whitespace-free run and the greedy match crossed FIELD BOUNDARIES.
+// Measured: `{"url":"https://dev.azure.com/acme/core/_git/widget","user":"build@acme.com"}`
+// collapsed to `{"url":"https://***@acme.com"}` — which is worse than losing a
+// diagnostic, because the result is valid-looking JSON that falsely reads as
+// though the repo host were `acme.com`. A fabricated plausible diagnostic is the
+// failure mode this module's evidence discipline exists to prevent.
+//
+// A `"` cannot appear unescaped inside a JSON string value, so bounding on it
+// stops the run at the field it started in while still masking a credential that
+// lives INSIDE that field (`{"url":"https://u:p@h/a"}` masks correctly). Plain
+// text is unaffected: git wraps URLs in single quotes, not double.
+const _URL_USERINFO_RE = /([A-Za-z][A-Za-z0-9+.-]{0,15}:\/\/)[^\s"]{0,8192}@/g;
 
 // UTF-16 units the scrub examines. Two reasons it is a WINDOW, not the whole
 // string. (1) COST: with an UNBOUNDED scheme run the replace was quadratic in

@@ -673,7 +673,7 @@ t(
 
 t(
   "gh+ado/userinfo-scrub-covers-credentials-containing-a-slash",
-  "upflow-self-repo.js::_URL_USERINFO_RE — restore the `[^\\s/@]` userinfo class (which cannot cross a `/`) instead of the `:`-anchored class that can",
+  "upflow-self-repo.js::_URL_USERINFO_RE — restore the `[^\\s/@]{0,4096}@` userinfo class, whose run cannot cross a `/`",
   () => {
     // THE SCRUB'S FIRST CUT MISSED THE MOST LIKELY CREDENTIAL SHAPE. The class
     // was `[^\s/@]`, chosen so that `https://h/a@b` — an `@` in a PATH, not
@@ -691,9 +691,10 @@ t(
     // verbatim, while the no-slash control `user:abcdef` masked correctly —
     // which is exactly why the original cases could not see it.
     //
-    // The fix anchors on the `:` that separates user from password instead of
-    // forbidding `/`, so the path case still does not match (no `:` in `h/a`)
-    // and the credential case does.
+    // The scrub no longer tries to tell userinfo from a path at all — two
+    // attempts to do so each leaked (see `_URL_USERINFO_RE`). It masks greedily
+    // to the last `@`, so this credential masks; the cost is that an `@` in a
+    // PATH masks too, which is pinned as an accepted trade by the @-free case.
     const SECRET = "abc/def+ghi=";
     for (const [label, res] of [
       [
@@ -730,7 +731,7 @@ t(
 
 t(
   "gh+ado/userinfo-scrub-covers-a-bare-token-with-no-colon",
-  "upflow-self-repo.js::_URL_USERINFO_RE — make the `:` MANDATORY again (drop the `(?::…)?` optional group), which stops masking a colon-less userinfo",
+  "upflow-self-repo.js::_URL_USERINFO_RE — require a `user:pass` colon, e.g. `[^\\s@:/]{0,512}:[^\\s@]{0,4096}@`, which stops masking a colon-less userinfo",
   () => {
     // THE THIRD POLARITY, AND ITS ABSENCE ALREADY COST A REGRESSION. The fix for
     // the slash-bearing credential anchored the match on the `user:pass` colon
@@ -869,6 +870,41 @@ t(
     return res.reason.includes("github.com:8443/acme/widget.git")
       ? null
       : `the @-free URL did not survive intact: ${JSON.stringify(res.reason.slice(0, 240))}`;
+  },
+);
+
+t(
+  "gh+ado/userinfo-scrub-does-not-span-json-field-boundaries",
+  "upflow-self-repo.js::_URL_USERINFO_RE — drop `\"` from the run's excluded set (leaving `[^\\s]`), so the greedy match crosses JSON field boundaries",
+  () => {
+    // THE OVER-MASK CONTAINMENT ON THE `reasonOperand` PATH. The greedy scrub is
+    // bounded by whitespace — but `JSON.stringify` emits NO inter-token
+    // whitespace, so a remote API error body is one whitespace-free run and the
+    // match ran from the URL's scheme straight through to an unrelated `@` in a
+    // later field. Measured before this bound:
+    //   {"url":"https://dev.azure.com/acme/core/_git/widget","user":"build@acme.com"}
+    // became {"url":"https://***@acme.com"} — valid-looking JSON that falsely
+    // reads as though the repo host were `acme.com`. FABRICATING a plausible
+    // diagnostic is worse than losing one.
+    //
+    // Neither existing over-mask case could see it: the @-free case drives a URL
+    // with no `@` at all, and the ordinary-transport-error case drives text with
+    // no `://`. This is the only shape the greedy change actually altered.
+    const res = gh.fetchRepoOwner(
+      failing(
+        {
+          url: "https://dev.azure.com/acme/core/_git/widget",
+          user: "build@acme.com",
+        },
+        403,
+      ),
+      GH_REPO,
+    );
+    const e = typedRefusal(res, "gh json body");
+    if (e) return e;
+    return res.reason.includes("dev.azure.com/acme/core/_git/widget")
+      ? null
+      : `the scrub spanned a JSON field boundary and destroyed the repo URL: ${JSON.stringify(res.reason.slice(0, 240))}`;
   },
 );
 

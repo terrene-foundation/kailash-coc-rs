@@ -490,8 +490,17 @@ for (const [label, body] of [
     setup: { coordinationOn: false, withWorktree: false },
     seedSlots: ["0007"],
     roster: body,
-    expect: (r) => r.ok === false,
-    describe: `ok === false (a roster of \`${body}\` parses but resolves no signer, which collapses the fold high-water to 0)`,
+    // ASSERTS THE STEP, NOT JUST `ok === false` — the lesson this suite's own
+    // header already records for the coordination cases, which my roster cases
+    // initially failed to apply. Measured: with the entire guard replaced by
+    // `if (false)`, `roster/null-…` STAYED GREEN, because the reservation is
+    // refused further downstream for an unrelated reason and both refusals are
+    // `ok:false`. A case that passes with the guard deleted is not an instrument
+    // for the guard (`instrument-discipline.md` MUST-1: the result was
+    // consistent with both branches of the hypothesis). `step` is what
+    // discriminates: the fold guard refuses at "fold-high-water".
+    expect: (r) => r.ok === false && r.step === "fold-high-water",
+    describe: `ok === false AND step === "fold-high-water" (a roster of \`${body}\` parses but resolves no signer, so the fold rejects the reservation records)`,
   });
 }
 
@@ -525,9 +534,9 @@ cases.push({
       },
     },
   }),
-  expect: (r) => r.ok === false,
+  expect: (r) => r.ok === false && r.step === "fold-high-water",
   describe:
-    "ok === false (a populated roster that does not resolve the RESERVING signer loses that signer's slots)",
+    'ok === false AND step === "fold-high-water" (a populated roster that does not resolve the RESERVING signer loses that signer\'s slots)',
 });
 
 let failed = 0;

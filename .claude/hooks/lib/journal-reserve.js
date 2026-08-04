@@ -365,10 +365,35 @@ function _foldHighWater(repoDir, dirRel) {
   // failure class re-opened through a new input. A roster that EXISTS was
   // written by someone, so records it fails to resolve are records whose
   // reservations we can no longer see.
-  if (roster !== null && process.env.COC_TEST_SKIP_SIGN !== "1") {
+  // GATED ON THE FILE BEING PRESENT, NOT ON THE PARSED VALUE. The first cut
+  // tested `roster !== null`, and `JSON.parse("null")` RETURNS null — so a
+  // roster file containing the four bytes `null` parsed cleanly, produced the
+  // same value as the absent-roster sentinel, and SKIPPED this guard entirely.
+  // `null` is the first of the four erasure shapes the comment above enumerates
+  // as covered, so the guard was defeated by the cheapest input it named. Worse,
+  // the fixture case for it was VACUOUS: measured, `roster/null-roster-refuses`
+  // stayed green with this whole block replaced by `if (false)`, because the
+  // reservation was refused further downstream for an unrelated reason. A case
+  // that passes with the guard deleted is not an instrument for the guard
+  // (`instrument-discipline.md` MUST-2). `rosterRaw !== undefined` is the
+  // presence question the surrounding prose always meant to ask.
+  if (rosterRaw !== undefined && process.env.COC_TEST_SKIP_SIGN !== "1") {
     const rejected = (folded && folded.rejected) || [];
     const lost = rejected.filter((entry) => {
-      if (!entry || entry.rule !== "rule-1") return false;
+      // ANY rejection rule, not just rule-1. The first cut filtered
+      // `rule === "rule-1"` (roster membership), but `foldLog` emits at least
+      // seven rejection labels — `shape`, `rule-2` (chain), `rule-3` (fork /
+      // equivocation), `rule-4`, `rule-5`, `presence-proof`, `dispatch` — and
+      // EVERY one drops the record from `accepted` with identical consequence:
+      // the reservation stops raising the high-water and its slot is re-issued.
+      // Two are squarely in the substrate's threat model: rule-3 is the named
+      // equivocation condition and is evaluated BEFORE rule-1, and a
+      // dispatch-rejected record rule-2-poisons that emitter's entire subsequent
+      // chain (documented in this file's own header). The load-bearing question
+      // is "was a reservation for this dir lost", not "was it lost for THIS
+      // reason", so the rule predicate is gone and the type + dir scoping —
+      // which is what keeps unrelated record types out — carries the filter.
+      if (!entry) return false;
       const rec = entry.record;
       if (!rec || rec.type !== "journal-slot-reservation") return false;
       return ((rec.content || {}).dir || null) === dirRel;
@@ -376,8 +401,9 @@ function _foldHighWater(repoDir, dirRel) {
     if (lost.length > 0) {
       const first = lost[0];
       throw new Error(
-        `${lost.length} journal-slot reservation record(s) for "${dirRel}" were rejected at roster membership ` +
-          `(first: ${first.reason || "rule 1"}); refusing to hand out a possibly-reserved slot. ` +
+        `${lost.length} journal-slot reservation record(s) for "${dirRel}" were REJECTED by the fold ` +
+          `(first: ${first.rule || "?"} — ${first.reason || "no reason given"}); ` +
+          "refusing to hand out a possibly-reserved slot. " +
           `The roster at ${rosterPath} does not resolve the signer(s) that reserved them — ` +
           "restore it (e.g. `git show HEAD:.claude/operators.roster.json`) before reserving.",
       );
