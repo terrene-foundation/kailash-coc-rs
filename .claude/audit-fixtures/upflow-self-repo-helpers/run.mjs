@@ -46,6 +46,16 @@ const NUL = String.fromCharCode(0);
 const RLO = String.fromCharCode(0x202e); // RIGHT-TO-LEFT OVERRIDE
 const LSEP = String.fromCharCode(0x2028); // LINE SEPARATOR
 const NEL = String.fromCharCode(0x85); // C1 NEL
+// Added after an adversarial round found the class incomplete against the
+// Trojan-Source threat it DECLARES: the directional MARKS are invisible
+// strong-direction characters that reorder adjacent neutrals, same class as the
+// overrides, and were surviving. Zero-widths hide content / split tokens.
+const ALM = String.fromCharCode(0x061c); // ARABIC LETTER MARK
+const LRM = String.fromCharCode(0x200e); // LEFT-TO-RIGHT MARK
+const RLM = String.fromCharCode(0x200f); // RIGHT-TO-LEFT MARK
+const ZWSP = String.fromCharCode(0x200b); // ZERO WIDTH SPACE
+const BOM = String.fromCharCode(0xfeff); // ZERO WIDTH NO-BREAK SPACE
+const CSI8 = String.fromCharCode(0x9b); // C1 8-bit CSI (ANSI without ESC)
 
 const cases = [];
 const t = (name, mutation, fn) => cases.push({ name, mutation, fn });
@@ -113,7 +123,9 @@ t(
   "sanitizeForReason/strips-structure-forging-classes",
   "upflow-self-repo.js::sanitizeForReason — return the input unchanged, or drop the \\u2028/\\u202a-\\u202e/\\u2066-\\u2069 members from the class",
   () => {
-    for (const payload of [NL, ESC, NUL, NEL, RLO, LSEP]) {
+    for (const payload of [
+      NL, ESC, NUL, NEL, CSI8, RLO, LSEP, ALM, LRM, RLM, ZWSP, BOM,
+    ]) {
       const out = selfRepo.sanitizeForReason(`host${payload}evil.example`);
       if (out.includes(payload)) {
         return `payload U+${payload.charCodeAt(0).toString(16).padStart(4, "0")} survived: ${JSON.stringify(out)}`;
@@ -220,6 +232,26 @@ t(
       if (r.ok) return `inherited key "${key}" resolved as a provider`;
     }
     return null;
+  },
+);
+
+t(
+  "getProvider/refusal-reason-is-sanitized-and-bounded",
+  "vcs-provider.js::getProvider — interpolate `id` raw into the refusal reason again",
+  () => {
+    // `id` arrives from `roster.genesis.provider` and from a coordination-log
+    // record's `content.provider` — the module's own comment says so — and it
+    // was interpolated raw and unbounded into a reason that is logged. This was
+    // the sharpest instance of the enforcement-surface asymmetry: two operands
+    // in the adapters were sanitized while this one, in a sibling module one
+    // require away from the same helper, was not.
+    const r = getProvider(`evil${NL}FORGED: ok`);
+    if (r.ok) return "a forged provider id resolved";
+    if (r.reason.includes(NL)) return `newline survived: ${JSON.stringify(r.reason)}`;
+    const long = getProvider("z".repeat(500));
+    return long.reason.length < 300
+      ? null
+      : `unbounded id produced a ${long.reason.length}-char reason`;
   },
 );
 

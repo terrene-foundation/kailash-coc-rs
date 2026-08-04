@@ -299,8 +299,25 @@ than assuming the earlier clean result still held.
 Current state, measured by codepoint census rather than by grep (a `grep` for the
 byte sequence returned empty on a file that was NOT pure ASCII, which is exactly
 the non-discriminating instrument this suite exists to reject): **zero raw
-U+212A**; the remaining non-ASCII are U+2014, U+2192, U+00A7 and the runner's
-✓/✗ glyphs — prose and output formatting, none of it test input.
+U+212A**. Do not trust that sentence — re-derive it, because it has already been
+falsified once:
+
+```bash
+python3 -c "import collections; \
+print(collections.Counter(hex(ord(c)) for c in open('run.mjs',encoding='utf-8').read() if ord(c)>127))"
+# 0x212a must be ABSENT. Everything else is prose/formatting, not test input.
+```
+
+**This claim was false for one commit, and the falsifying line was added by the
+commit that left it standing.** A new case drove a U+212A authority written as a
+RAW byte (`run.mjs`, the non-ASCII-authority case) while this paragraph still
+asserted zero. Worse, it was the precise fragility the paragraph above warns
+about: any normalizing pass folding that byte to ASCII `K` would have turned the
+case into a no-op. Measured at the time, it would have redded loudly on
+`expectReason` rather than passing silently — but the case is now written with a
+`K` ESCAPE, which restores the claim, removes the fragility, and was
+re-verified to still red when the ASCII guard is deleted. Escapes, not raw
+bytes, for every non-ASCII test input in this file.
 
 ### Eighth pass — the last two guards that had no instrument
 
@@ -530,6 +547,9 @@ plain-ASCII traversal string, and no case configured a push url:
 | `gh/control-byte-pr-id-neutralized-in-refusal`              | `displayPrId` → `String(value)` (drop the `[^0-9]` allowlist)               | exactly 1 — itself |
 | `gh/triangular-remote-refuses-when-fetch-and-push-disagree` | `deriveSelfRepoRef` delete the `_readPushRemote` disagreement block         | exactly 1 — itself |
 | `gh/triangular-same-identity-different-transport-allows`    | `deriveSelfRepoRef` compare the raw pushUrl string instead of derived slugs | exactly 1 — itself |
+| `gh/triangular-same-slug-different-host-refuses` | `_sameDerivedIdentity` drop the host equality test | exactly 1 — itself |
+| `ado/triangular-cross-org-same-project-repo-refuses` | `_sameDerivedIdentity` compare the owner/name slug instead of routing ADO through `isSelfRepoAdo` | exactly 1 — itself |
+| `gh/triangular-push-default-remote-refuses` | `_readPushRemote` resolve only origin's own pushurl | exactly 1 — itself |
 
 The last is the **permissive polarity** of the triangular guard and is not
 optional: that guard's obvious failure mode is locking out a legitimate

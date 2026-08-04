@@ -268,23 +268,77 @@ let _lastGitStderr = null;
 function _readPushRemote(cwd) {
   const gitBin = resolveGitBinary();
   if (!gitBin) return null;
-  try {
-    const out = execFileSync(
-      gitBin,
-      ["remote", "get-url", "--push", "origin"],
-      {
+  const run = (args) => {
+    try {
+      const out = execFileSync(gitBin, args, {
         cwd,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
         timeout: 3000,
         env: gitEnv(),
-      },
-    );
-    const s = typeof out === "string" ? out.trim() : "";
-    return s || null;
-  } catch {
-    return null;
+      });
+      const s = typeof out === "string" ? out.trim() : "";
+      return s || null;
+    } catch {
+      return null;
+    }
+  };
+
+  // RESOLVE THE EFFECTIVE PUSH REMOTE, not origin's own pushurl. An earlier cut
+  // asked only `git remote get-url --push origin`, which answers exactly one
+  // question — "does origin carry a distinct pushurl?" — and git has THREE
+  // documented triangular configurations. Measured, with `remote.pushDefault`
+  // set to a different remote:
+  //     fetch       : <upstream>
+  //     push@origin : <upstream>      <-- unchanged, so the old check saw nothing
+  //     pushDefault : fork
+  // i.e. pushes went to the fork while the check reported agreement, and the
+  // fence then derived the upstream and authorized a merge on it — the exact
+  // pre-guard behavior, for two of the three forms.
+  //
+  // Precedence is git's own: branch.<current>.pushRemote, then
+  // remote.pushDefault, then `origin`.
+  let remoteName = null;
+  const branch = run(["rev-parse", "--abbrev-ref", "HEAD"]);
+  if (branch && branch !== "HEAD") {
+    remoteName = run(["config", "--get", `branch.${branch}.pushRemote`]);
   }
+  if (!remoteName) remoteName = run(["config", "--get", "remote.pushDefault"]);
+  if (!remoteName) remoteName = "origin";
+
+  return run(["remote", "get-url", "--push", remoteName]);
+}
+
+/**
+ * Do two parsed remotes name the SAME repository?
+ *
+ * Compares the FULL derived identity, and each component is load-bearing:
+ *   - HOST, because an owner/name pair alone does not say WHERE the repo lives
+ *     (`vcs-github-adapter.js` states this for its own host check). Fetch
+ *     `github.com/o/r` against push `internal-mirror.example/o/r` is a real
+ *     triangular setup whose slugs are identical.
+ *   - The ADO ORG, because for an ADO remote `_parseRemoteUrl` sets
+ *     `owner = ado.project` and `name = ado.repo` — the org rides ONLY on
+ *     `.ado.org`. A slug comparison therefore drops it entirely, so
+ *     `dev.azure.com/upstream-org/Proj/_git/Repo` and
+ *     `dev.azure.com/my-org/Proj/_git/Repo` both reduce to `proj/repo` and
+ *     compare EQUAL.
+ *
+ * The first cut of the triangular check compared `${owner}/${name}` and shipped
+ * exactly that hole — re-instancing, inside the new guard, the defect this
+ * module's own header raises against `version-utils.js::normalizeRemoteIdentity`
+ * ("structurally loses `<org>`, so an ADO fence built on it could never compare
+ * org at all"). Reuses the same predicates the fence itself uses rather than
+ * hand-rolling a fourth comparison path, which is how the components were lost.
+ */
+function _sameDerivedIdentity(a, b) {
+  if (!a || !b) return false;
+  if (normalizeComponent(a.host) !== normalizeComponent(b.host)) return false;
+  // ADO-ness must match: an ADO identity and a non-ADO one are never the same
+  // repo even if their owner/name happen to coincide.
+  if (!!a.ado !== !!b.ado) return false;
+  if (a.ado) return isSelfRepoAdo(a.ado, b.ado);
+  return isSelfRepo({ owner: a.owner, name: a.name }, b);
 }
 
 /**
@@ -827,15 +881,27 @@ function deriveSelfRepoRef(cwd) {
   const pushUrl = _readPushRemote(cwd);
   if (pushUrl && pushUrl !== url) {
     const pushParsed = _parseRemoteUrl(pushUrl);
-    const pushSlug = pushParsed
-      ? `${pushParsed.owner}/${pushParsed.name}`
-      : null;
-    if (pushSlug !== slug) {
+    // FULL derived identity, not the owner/name slug — see
+    // `_sameDerivedIdentity` for why host and the ADO org are each load-bearing
+    // and what the slug comparison silently admitted.
+    if (!_sameDerivedIdentity(parsed, pushParsed)) {
+      const pushWhere = pushParsed
+        ? sanitizeForReason(
+            pushParsed.ado
+              ? `${pushParsed.host} ${pushParsed.ado.org}/${pushParsed.ado.project}/${pushParsed.ado.repo}`
+              : `${pushParsed.host} ${pushParsed.owner}/${pushParsed.name}`,
+          )
+        : "an unparseable url";
+      const selfWhere = sanitizeForReason(
+        parsed.ado
+          ? `${parsed.host} ${parsed.ado.org}/${parsed.ado.project}/${parsed.ado.repo}`
+          : `${parsed.host} ${slug}`,
+      );
       return {
         ok: false,
         reason:
-          `this working tree has a triangular remote — origin fetches from ${slug} ` +
-          `but pushes to ${pushSlug ? pushSlug : "an unparseable url"}; ` +
+          `this working tree has a triangular remote — it fetches from ${selfWhere} ` +
+          `but pushes to ${pushWhere}; ` +
           "the two disagree about which repo this tree IS, so a completion " +
           "cannot be authorized on either (configure a single-identity remote, " +
           "or complete the PR from a clone of the repo you are merging on)",
@@ -989,7 +1055,13 @@ function sanitizeForReason(text) {
   // could not see what the character class contains.
   // eslint-disable-next-line no-control-regex
   return s.replace(
-    /[\x00-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g,
+    // Directional MARKS (U+061C ALM, U+200E LRM, U+200F RLM) are in the same
+    // Trojan-Source class as the embeddings/overrides and were missing: they
+    // are invisible strong-direction characters that reorder adjacent
+    // neutrals. Zero-widths (U+200B-U+200D) and U+FEFF hide content and split
+    // tokens rather than reorder, which is the same forge-structure-in-a-log
+    // outcome, so they go too.
+    /[\x00-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufeff]/g,
     "?",
   );
 }

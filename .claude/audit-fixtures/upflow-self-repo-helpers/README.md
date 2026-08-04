@@ -1,7 +1,18 @@
 # upflow-self-repo-helpers
 
-Instruments for the MODULE-LEVEL guards that the subprocess fence suite
-(`../upflow-open-never-complete/`) structurally cannot reach.
+Instruments for MODULE-LEVEL guards, three of which the subprocess fence suite
+(`../upflow-open-never-complete/`) structurally cannot reach:
+`sanitizeForReason`, `getProvider`, and the `_lastGitStderr` reset.
+
+**`displayPrId` is NOT in that set, and an earlier revision of this sentence
+wrongly said the whole file was.** The fence suite DOES reach it — its
+`gh/control-byte-pr-id-neutralized-in-refusal` case supplies a control-byte
+`prId` directly on `prRef`, and the same `displayPrId → String(value)` mutation
+reds in BOTH suites (measured: `1/45 FAILED` there, `1/8 FAILED` here). The
+overlap is deliberate — the fence suite proves the sanitizer holds on the path an
+adapter actually builds, this suite proves it against payload classes no adapter
+happens to produce — but "structurally cannot reach" was false for that row, and
+two READMEs landing in the same commit contradicted each other about it.
 
 Run: `node .claude/audit-fixtures/upflow-self-repo-helpers/run.mjs`
 (exit 0 = pass). No CI runner invokes it — like its siblings, this tier is
@@ -13,26 +24,28 @@ than described as blocking.
 The fence suite drives the ADAPTERS through a real git repo in a child process.
 That is right for the fence and wrong for these:
 
-| Guard                  | Why the fence suite cannot instrument it                                                                                  |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `displayPrId`          | contract is which bytes do NOT survive; the fence suite only reaches ids an adapter happens to produce                    |
-| `sanitizeForReason`    | same, plus it must PRESERVE readable non-ASCII, which no adapter case exercises                                           |
-| `_lastGitStderr` reset | needs two derivations in ONE process; the fence suite spawns one call per case                                            |
-| `getProvider`          | lives in `vcs-provider.js`, which the fence suite never loads — and which had NO fixture anywhere under `audit-fixtures/` |
+| Guard                  | Why the fence suite cannot instrument it                                                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `displayPrId`          | **NOT unreachable — deliberate overlap.** The fence suite reaches it and reds on the same mutation; this suite adds payload classes no adapter produces |
+| `sanitizeForReason`    | same, plus it must PRESERVE readable non-ASCII, which no adapter case exercises                                                                         |
+| `_lastGitStderr` reset | needs two derivations in ONE process; the fence suite spawns one call per case                                                                          |
+| `getProvider`          | lives in `vcs-provider.js`, which the fence suite never loads — and which had NO fixture anywhere under `audit-fixtures/`                               |
 
 Every one of these shipped **without** an instrument and was caught by an
 adversarial round measuring that its removal left the fence suite fully green.
 
 ## Mutation results — measured in `cp -R` sandboxes
 
-| Mutation                                                      | Cases redded                                             |
-| ------------------------------------------------------------- | -------------------------------------------------------- |
-| `displayPrId` → `String(value)` (drop the `[^0-9]` allowlist) | 1 — `displayPrId/strips-every-injection-class`           |
-| `displayPrId` → drop the `try/catch` around `String(value)`   | 1 — `displayPrId/does-not-throw-on-hostile-toString`     |
-| `sanitizeForReason` → return input unchanged                  | 1 — `sanitizeForReason/strips-structure-forging-classes` |
-| `sanitizeForReason` → ASCII-only class (over-tighten)         | 1 — `sanitizeForReason/preserves-readable-non-ascii`     |
-| `getProvider` → `PROVIDERS[id]` (plain index)                 | 1 — `getProvider/inherited-keys-are-not-providers`       |
-| `_readOriginRemote` → delete `_lastGitStderr = null;`         | **0 — see below**                                        |
+| Mutation                                                                         | Cases redded                                              |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `displayPrId` → `String(value)` (drop the `[^0-9]` allowlist)                    | 1 — `displayPrId/strips-every-injection-class`            |
+| `displayPrId` → drop the `try/catch` around `String(value)`                      | 1 — `displayPrId/does-not-throw-on-hostile-toString`      |
+| `sanitizeForReason` → return input unchanged                                     | 1 — `sanitizeForReason/strips-structure-forging-classes`  |
+| `sanitizeForReason` → ASCII-only class (over-tighten)                            | 1 — `sanitizeForReason/preserves-readable-non-ascii`      |
+| `getProvider` → `PROVIDERS[id]` (plain index)                                    | 1 — `getProvider/inherited-keys-are-not-providers`        |
+| `sanitizeForReason` → narrow the class back (drop U+061C / U+200B-200F / U+FEFF) | 1 — `sanitizeForReason/strips-structure-forging-classes`  |
+| `getProvider` → interpolate `id` raw into the refusal reason                     | 1 — `getProvider/refusal-reason-is-sanitized-and-bounded` |
+| `_readOriginRemote` → delete `_lastGitStderr = null;`                            | **0 — see below**                                         |
 
 Each suite is **bipolar**: alongside every strip/refuse case there is a
 preserve/allow case, because a refusal-only suite cannot detect over-tightening.

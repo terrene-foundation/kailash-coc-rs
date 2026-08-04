@@ -122,7 +122,7 @@ function git(cwd, args) {
  *
  * @returns {{root:string, repo:string}} `root` is what the caller removes.
  */
-function makeRepo({ dirName, remote, pushRemote, version }) {
+function makeRepo({ dirName, remote, pushRemote, pushDefaultRemote, version }) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "upflow-fence-"));
   const repo = path.join(root, dirName);
   fs.mkdirSync(repo);
@@ -134,6 +134,15 @@ function makeRepo({ dirName, remote, pushRemote, version }) {
   // url, so the triangular guard had no instrument.
   if (pushRemote)
     git(repo, ["remote", "set-url", "--push", "origin", pushRemote]);
+  // `pushDefaultRemote` configures git's OTHER triangular form: a second remote
+  // plus `remote.pushDefault`. This one is invisible to `get-url --push origin`
+  // — measured: origin's push url stays the FETCH url — so a check that asks
+  // only about origin's own pushurl reports agreement while pushes go
+  // elsewhere. Without this option no case could drive that form.
+  if (pushDefaultRemote) {
+    git(repo, ["remote", "add", "fork", pushDefaultRemote]);
+    git(repo, ["config", "remote.pushDefault", "fork"]);
+  }
   if (version) {
     fs.mkdirSync(path.join(repo, ".claude"), { recursive: true });
     fs.writeFileSync(
@@ -692,7 +701,7 @@ const cases = [
       "upflow-self-repo.js::_splitRemoteUrl — delete the `if (!/^[\\x00-\\x7f]*$/.test(authority)) return null;` guard",
     repo: {
       dirName: "kailash-coc-rs",
-      remote: "https://github.K8s.corp/terrene-foundation/kailash-coc-rs.git",
+      remote: "https://github.\u212A8s.corp/terrene-foundation/kailash-coc-rs.git",
     },
     adapter: GH,
     prRef: { repoRef: GH_SELF, prId: 77 },
@@ -767,6 +776,73 @@ const cases = [
     adapter: GH,
     prRef: { repoRef: GH_SELF, prId: 77 },
     expect: { ok: true, fired: true },
+  },
+  {
+    // THE HOST ARM of the triangular comparison. The first cut compared the
+    // `owner/name` SLUG, so a push url on a DIFFERENT HOST with the same path
+    // compared EQUAL and no refusal fired — while `vcs-github-adapter.js` states
+    // for its own host check that "an owner/name pair alone does not say WHERE
+    // the repo lives". An internal mirror is, in that file's words, an ordinary
+    // thing to have. Reds if the comparison is narrowed back to the slug.
+    name: "gh/triangular-same-slug-different-host-refuses",
+    mutation:
+      "upflow-self-repo.js::_sameDerivedIdentity — drop the host equality test (compare owner/name only)",
+    repo: {
+      dirName: "kailash-coc-rs",
+      remote: GH_SELF_REMOTE,
+      pushRemote:
+        "https://internal-mirror.example/terrene-foundation/kailash-coc-rs.git",
+    },
+    adapter: GH,
+    prRef: { repoRef: GH_SELF, prId: 77 },
+    expect: { ok: false, fired: false },
+    expectReason: "triangular remote",
+  },
+  {
+    // THE ADO ORG ARM, and the sharpest of the three: for an ADO remote
+    // `_parseRemoteUrl` sets owner = ado.project and name = ado.repo, so the ORG
+    // rides only on `.ado.org` and a slug comparison drops it ENTIRELY. Both
+    // urls below reduce to the SAME project-and-repo pair, compare equal, and
+    // the fence then
+    // authorized a completion on the UPSTREAM org — the originating failure mode
+    // of this whole change, reached through the one component `_parseAdo` exists
+    // to preserve. No attacker and no unusual setup: an ordinary cross-org
+    // triangular clone.
+    name: "ado/triangular-cross-org-same-project-repo-refuses",
+    mutation:
+      "upflow-self-repo.js::_sameDerivedIdentity — compare `${owner}/${name}` instead of routing ADO through isSelfRepoAdo",
+    repo: {
+      dirName: "coc-rs",
+      remote: "https://dev.azure.com/upstream-org/platform/_git/coc-rs",
+      pushRemote: "https://dev.azure.com/my-org/platform/_git/coc-rs",
+    },
+    adapter: ADO,
+    prRef: {
+      repoRef: { org: "upstream-org", project: "platform", repo: "coc-rs" },
+      prId: 42,
+    },
+    expect: { ok: false, fired: false },
+    expectReason: "triangular remote",
+  },
+  {
+    // THE `remote.pushDefault` FORM. Measured: with pushDefault set to another
+    // remote, `git remote get-url --push origin` still returns the FETCH url —
+    // so the first cut, which asked only that question, saw agreement while
+    // pushes went to the fork. Two of git's three documented triangular
+    // configurations were invisible to it. Reds if `_readPushRemote` is
+    // narrowed back to `["remote","get-url","--push","origin"]`.
+    name: "gh/triangular-push-default-remote-refuses",
+    mutation:
+      "upflow-self-repo.js::_readPushRemote — resolve only origin's own pushurl, ignoring branch.<n>.pushRemote and remote.pushDefault",
+    repo: {
+      dirName: "kailash-coc-rs",
+      remote: GH_SELF_REMOTE,
+      pushDefaultRemote: "https://github.com/some-consumer/kailash-coc-rs.git",
+    },
+    adapter: GH,
+    prRef: { repoRef: GH_SELF, prId: 77 },
+    expect: { ok: false, fired: false },
+    expectReason: "triangular remote",
   },
   {
     // THE `gitEnv()` ROUTING'S ONLY INSTRUMENT. `git-subprocess-env.js` exists

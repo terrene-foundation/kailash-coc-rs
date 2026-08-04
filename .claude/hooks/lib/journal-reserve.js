@@ -60,7 +60,17 @@ const VALID_TYPES = new Set([
 // Match the canonical journal command's filename regex: NNNN- (4 digits),
 // then anything up to .md. We also support the new shape
 // NNNN-<display_id>-TYPE-slug.md and tolerate the legacy NNNN-TYPE-slug.md.
-const SLOT_RE = /^(\d{4})-/;
+// FOUR-OR-MORE digits, not exactly four. `padStart(4, "0")` PADS but never
+// TRUNCATES, so slot 10000 renders "10000" — and an exactly-4 pattern does not
+// match "10000-alice-DECISION-x.md" (index 4 is "0", not "-"), making every
+// 5-digit journal file INVISIBLE to the disk high-water scan. Paired with the
+// same widening in the fold's shape check, so the three width surfaces —
+// this regex, that check, and `padStart` — agree. They did not: an exactly-4
+// fold check plus an exactly-4 disk regex plus a non-truncating padStart put a
+// hard ceiling at 9999 that BOTH high-water surfaces were blind to, so one
+// record at slot 9999 (or simply a journal that legitimately reaches 9999)
+// pinned every later reservation at 10000 forever.
+const SLOT_RE = /^(\d{4,})-/;
 
 function _slugify(s) {
   return (
@@ -277,11 +287,22 @@ function _foldHighWater(repoDir, dirRel) {
     // puts squarely inside the threat model ("a legitimate team member with repo
     // write access seeking … sabotage").
     //
-    // The slot vocabulary is the same 4-digit shape `SLOT_RE` and `padStart(4)`
-    // already assume, so this is a positive allowlist over an enumerable
-    // vocabulary (`cc-artifacts.md` Rule 10), not a new constraint.
+    // BOUNDED, BUT NOT PINNED AT FOUR. The first cut of this check used
+    // `/^[0-9]{1,4}$/`, which fixed the overflow and introduced a PERMANENT
+    // CEILING: `padStart(4)` does not truncate, so slot 10000 renders "10000",
+    // which this check then REJECTED — and the exactly-4 `SLOT_RE` did not match
+    // its filename either. Both high-water surfaces went blind past 9999, so one
+    // record at slot 9999 (or a journal that legitimately reaches 9999) pinned
+    // every later reservation at 10000, forever, for every operator. That is the
+    // same permanence as the 1e21 poison it replaced, with a smaller magnitude.
+    //
+    // Nine digits is far above any real journal and far below the precision
+    // boundary where `String(n)` switches to exponent form (1e21), which is what
+    // produced the "1e+21" filename. `Number.isSafeInteger` is retained because
+    // the digit bound alone would still admit a value past 2^53 if the bound
+    // were ever widened again.
     if (typeof c.slot !== "string" && typeof c.slot !== "number") continue;
-    if (!/^[0-9]{1,4}$/.test(String(c.slot))) continue;
+    if (!/^[0-9]{1,9}$/.test(String(c.slot))) continue;
     const n = parseInt(c.slot, 10);
     if (Number.isSafeInteger(n) && n > high) high = n;
   }

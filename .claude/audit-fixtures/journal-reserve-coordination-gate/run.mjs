@@ -251,10 +251,57 @@ cases.push({
   setup: { coordinationOn: false, withWorktree: false },
   poison: POISON_SLOTS,
   forceSkipSign: true,
+  // `{4,}` not `{4}`: the shape check is bounded, NOT pinned at four. Pinning it
+  // here would red on the very widening that fixed the 9999 ceiling, i.e. the
+  // assertion would defend the bug.
   expect: (r) =>
-    r.ok === true && /^[0-9]{4}$/.test(r.reservation && r.reservation.slot),
+    r.ok === true && /^[0-9]{4,}$/.test(r.reservation && r.reservation.slot),
   describe:
-    "ok === true AND the slot is still a 4-digit string (no 1e+21 filename)",
+    "ok === true AND the slot is a plain digit string (no 1e+21 filename)",
+});
+
+cases.push({
+  // THE 9999 CEILING, which the FIRST cut of the shape check created while
+  // fixing the overflow. `padStart(4)` pads but never truncates, so slot 10000
+  // renders "10000" — which an exactly-4 fold check REJECTS and an exactly-4
+  // `SLOT_RE` does not match on disk. Both high-water surfaces went blind past
+  // 9999, so a single record at slot 9999 pinned every later reservation at
+  // 10000 permanently, for every operator: the same permanence as the 1e21
+  // poison it replaced, at a smaller magnitude. It also fires with no attacker
+  // at all, the moment a journal legitimately reaches 9999 entries.
+  //
+  // Drives it directly: seed 9999 AND 10000. A width-blind implementation drops
+  // the 10000 record, computes high=9999, and hands back 10000 — a slot already
+  // taken. A width-agnostic one computes high=10000 and returns 10001.
+  name: "slot-shape/high-water-does-not-collapse-past-9999",
+  mutation:
+    "journal-reserve.js — pin the fold check back to /^[0-9]{1,4}$/ (or SLOT_RE back to /^(\\d{4})-/)",
+  setup: { coordinationOn: false, withWorktree: false },
+  poison: ["9999", "10000"],
+  forceSkipSign: true,
+  expect: (r) => r.ok === true && r.reservation && r.reservation.slot === "10001",
+  describe: 'slot === "10001" (monotonic past 9999, not pinned at 10000)',
+});
+
+cases.push({
+  // THE DISK half of the same ceiling, and a SEPARATE surface from the case
+  // above: `_scanHighWater` reads filenames through `SLOT_RE`, and an exactly-4
+  // pattern does not match "10000-…" because index 4 is "0", not "-". So a
+  // 5-digit journal file already on disk is invisible to the scan and its slot
+  // is handed out again.
+  //
+  // Needed because the fold-side case CANNOT reach this: with no numbered file
+  // on disk, pinning SLOT_RE back to exactly-4 reds nothing there — an inert
+  // mutation, not a vacuous test. Both width surfaces must be driven, or the
+  // widening is only half instrumented.
+  name: "slot-shape/disk-scan-sees-five-digit-journal-files",
+  mutation:
+    "journal-reserve.js — pin SLOT_RE back to /^(\\d{4})-/ (the disk scan then cannot see 5-digit files)",
+  setup: { coordinationOn: false, withWorktree: false },
+  journalFiles: ["10000-someone-DECISION-prior-entry.md"],
+  expect: (r) => r.ok === true && r.reservation && r.reservation.slot === "10001",
+  describe:
+    'slot === "10001" (the on-disk 10000 was seen, not skipped back to 0001)',
 });
 
 let failed = 0;
@@ -262,6 +309,14 @@ for (const c of cases) {
   let made = null;
   try {
     made = makeRepo(c.setup);
+    // `journalFiles` drives the DISK high-water (`_scanHighWater` + `SLOT_RE`),
+    // which is a SEPARATE width surface from the coordination-log fold. Without
+    // a real numbered file on disk, pinning `SLOT_RE` back to exactly-4 reds
+    // nothing — the scan never sees a 5-digit name, so the mutation is inert
+    // rather than the test being vacuous. This is what makes it discriminate.
+    if (c.journalFiles)
+      for (const fname of c.journalFiles)
+        fs.writeFileSync(path.join(made.repoDir, "journal", fname), "x\n");
     if (c.poison) for (const s of c.poison) writeSlotRecord(made.repoDir, s);
     const prevSkipSign = process.env.COC_TEST_SKIP_SIGN;
     if (c.forceSkipSign) process.env.COC_TEST_SKIP_SIGN = "1";
