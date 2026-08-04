@@ -1,0 +1,76 @@
+# Step-7c downstream upflow offer.
+# NO source_repo — hop-level-only provenance: the downstream consumer is deliberately
+# NOT identified in the schema (the scenario-8/9 disclosure fence). At relay the
+# template stamps `via: <template-slug>`, never the consumer.
+origin: downstream
+codify_date: 2026-08-04
+codify_session: "codify(rules): generated-artifact divergence — the source is the edit surface"
+template_slug: kailash-coc-rs
+template_version: "2.23.22"
+loom_sha: "22fff0a"
+
+# ONE governance proposal: a net-new rule. Authored against template 2.23.22, which is
+# the version this consumer last synced; the template has since moved to 2.24.0, so the
+# base_version below records what the draft was written against, not the current head.
+changes:
+  - file: .claude/rules/generated-artifact-divergence.md
+    action: created
+    base_version: "2.23.22"
+    reason: >
+      A durable deliverable built from a source (a word-processor or PDF file from markdown,
+      OpenAPI from code, a lockfile from a manifest, a generated client, a rendered diagram)
+      is frequently reviewed and hand-edited in the GENERATED copy, because that is the
+      readable one. Those edits are invisible to the build and are silently reverted by the
+      next rebuild: no conflict, no error, no failing test. What is lost is a reviewer's
+      corrections — the highest-value edits in the artifact — and the deliverable ships the
+      pre-edit state.
+
+      Proposed as three MUST clauses. (1) The source is the only edit surface, with an
+      explicit carve-out that a human's markup of the readable copy is an expected INPUT
+      requiring backport, never a prohibited act — reviewers read the built document, and a
+      rule that forbids that would be refused or ignored. (2) A hand-edited artifact is
+      backported with a convergence proof carrying two lines: a structural count with an
+      enumerated, justified residual, plus an explicit check that any changed VERDICT,
+      capability claim, or commitment survived, since a rebuild can hold heading counts
+      constant while reverting the words inside a heading. (3) Before any build that would
+      overwrite a checked-in artifact, it is rebuilt to a SCRATCH path and compared
+      structurally; that is the only test answering whether the committed copy holds content
+      the source cannot reproduce, and it answers it BEFORE the destructive step.
+
+      Recorded because it may save the reviewer the same work: an earlier draft used an
+      artifact-vs-source COMMIT RATIO as its central mechanical test. Adversarial review
+      established the ratio cannot detect divergence at all. Where the artifact lives inside
+      its source directory its commits are a strict SUBSET of the directory's, so the test is
+      arithmetically incapable of firing — it returned a clean verdict on the very incident it
+      was written from. Scoped file-to-file it fires permanently and benignly instead, because
+      clause 1 mandates committing source and artifact together. It also reads CLEANEST
+      immediately after a remediation, which is anti-correlated with risk. Timestamp
+      comparison and a source-tree hash were both considered and rejected for the same class
+      of reason: neither distinguishes a benign rebuild-only commit from a hand-edit, and a
+      source hash is unchanged by a mutation of the artifact. The ratio was cut rather than
+      repaired; an unsound mechanical check is worse than none, because it issues a confident
+      all-clear at the destructive step.
+
+      Two properties relevant to a global-vs-variant call: the discipline is language-neutral
+      and CLI-neutral, firing on any repo that holds a checked-in build output; and every
+      ecosystem already accepts clause 1 for lockfiles, where hand-editing is universally
+      understood to be wrong because the tooling rewrites the file wholesale. That precedent
+      makes the rule land by analogy rather than by argument.
+
+      Drafted path-scoped (priority 10) rather than baseline: the trigger is a conditional
+      per-project build relationship, not an always-present surface, so most sessions in most
+      repos would load it for nothing. A known limitation is recorded in the draft body rather
+      than papered over — clause 3 fires on a rebuild ACTION, which no paths glob can trigger,
+      so its enforcement surface is the reviewer gate rather than rule-load. Widening the globs
+      to reach it would make the rule baseline-by-glob.
+
+      Origin: a document built from markdown sources was reviewed and hand-edited in the
+      generated word-processor file and never written back. The artifact had accumulated
+      substantially more commits than its sources, several of which changed reviewed verdicts,
+      so any rebuild would have silently reverted reviewed corrections and shipped superseded
+      claims. Caught before delivery; the backport converged only after an explicit structural
+      diff with the residual enumerated. Counts are stated qualitatively on purpose — see the
+      cut-heuristic note above.
+    diff_lines: "+229 -0"
+
+status: pending_review
