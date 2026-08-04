@@ -189,16 +189,46 @@ function _readOriginRemote(cwd) {
     const out = execFileSync(gitBin, ["remote", "get-url", "origin"], {
       cwd,
       encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
+      // stderr is CAPTURED, not discarded. It was `"ignore"`, which collapsed
+      // every git failure into one reason string naming three causes — and the
+      // most common real cause in a container or on a shared machine is a
+      // FOURTH the message never named: `detected dubious ownership`
+      // (safe.directory). A maintainer hitting that was sent looking for a
+      // missing remote they actually have. The bytes are surfaced by the caller,
+      // truncated; see `_readOriginRemote`'s return contract below.
+      stdio: ["ignore", "pipe", "pipe"],
       timeout: 3000,
       env: gitEnv(),
     });
     const s = typeof out === "string" ? out.trim() : "";
     return s || null;
-  } catch {
+  } catch (err) {
+    // Return the FIRST stderr line so the refusal can name what git said.
+    // Bounded to 200 chars and newline-free: this string reaches a refusal
+    // `reason` that is logged, and an unbounded echo of subprocess output is a
+    // log-injection surface. It carries no remote URL — git's ownership and
+    // not-a-repo errors name a PATH, and the URL-bearing errors are not on this
+    // failure path — but it IS operator-environment text, so it is truncated
+    // rather than trusted (`security.md` § "No secrets in logs" is about
+    // credentials; this is the adjacent hygiene).
+    const raw =
+      err && typeof err.stderr === "string"
+        ? err.stderr
+        : err && err.stderr
+          ? String(err.stderr)
+          : "";
+    const first = raw.split("\n").find((l) => l.trim());
+    _lastGitStderr = first ? first.trim().slice(0, 200) : null;
     return null;
   }
 }
+
+// Set by `_readOriginRemote` on failure; read once by `deriveSelfRepoRef` to
+// enrich its refusal. Module-scope because the failure and the message are two
+// frames apart and threading a second return value would change the helper's
+// contract for every caller. Deliberately NOT part of any security decision —
+// it is diagnostic text only, never an operand.
+let _lastGitStderr = null;
 
 /**
  * Split a remote URL into `{host, segments}`. Handles `scheme://host/path` and
@@ -360,6 +390,31 @@ function _parseAdo(host, segments) {
   let segs = segments.slice();
   if (segs[0] && segs[0].toLowerCase() === "v3") segs = segs.slice(1);
   segs = segs.filter((p) => p.toLowerCase() !== "_git");
+
+  // KNOWN DEFECT, NOT FIXED — recorded because the obvious fix is wrong and I
+  // could not establish the right one. Only `_git` is filtered, so ADO's OTHER
+  // routing segment `_ssh` is treated as a NAME. Measured:
+  //   ssh://acct@vs-ssh.visualstudio.com:22/Proj/_ssh/Repo
+  //     -> {org: "proj", project: "_ssh", repo: "repo"}     <- MIS-DERIVED
+  // The 4-segment collection variant refuses on the count, so only the
+  // 3-segment form mis-derives.
+  //
+  // Filtering `_ssh` alongside `_git` does NOT fix it — traced, and it trades
+  // one wrong answer for another: the 3-segment form then refuses (correct),
+  // but the 4-segment form becomes ["Collection","Proj","Repo"] and derives
+  // org=Collection, which is wrong in a new way. A correct parse needs to know
+  // where the org lives in the `_ssh` form, and that is ADO ground truth this
+  // repo cannot check.
+  //
+  // FAIL-CLOSED in effect: the bogus project `_ssh` (or a wrong org) is
+  // compared against the caller's `repoRef` and mismatches, so a completion is
+  // refused rather than misdirected. Left as a wrong DERIVATION that refuses,
+  // which is not the same as a correct refusal — the distinction this file
+  // already draws for the 2-segment ambiguity below.
+  //
+  // Deliberately not guessed at: acting on an incomplete enumeration of ADO
+  // URL forms is precisely what caused the collection-form regression this file
+  // records above. Settling it needs a real ADO org emitting `_ssh` clone URLs.
 
   // VALIDATE EVERY SEGMENT BEFORE ANY IS DROPPED. The collection slot below is
   // discarded by `slice(1)`, and until this line it was the ONE position in the
@@ -615,7 +670,9 @@ function deriveSelfRepoRef(cwd) {
       ok: false,
       reason:
         "`git remote get-url origin` yielded no remote for this working tree " +
-        "(no origin, not a git repo, or git unavailable); the live remote is the " +
+        `(no origin, not a git repo, dubious ownership, or git unavailable${
+          _lastGitStderr ? ` — git said: ${_lastGitStderr}` : ""
+        }); the live remote is the ` +
         "only authoritative self-identity and there is deliberately no directory-name " +
         "fallback, so a completion cannot be authorized",
     };
