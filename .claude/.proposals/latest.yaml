@@ -3065,4 +3065,131 @@ changes:
       than the dangling reference it repairs.
     diff_lines: "unknown — depends on which of the three dispositions Gate-1 takes"
 
+  # ===================================================================
+  # CLUSTER 69 — RELAYED DOWNSTREAM UPFLOW, TWO OFFERS DEDUPLICATED INTO ONE
+  # ENTRY (2026-08-04). Two Step-7c offers arrived proposing the SAME net-new
+  # rule at the SAME path. They are relayed TOGETHER, unmerged, because the
+  # disagreement between them is the most valuable content in the pair and
+  # collapsing it would destroy the thing Gate-1 most needs to classify.
+  #
+  # Provenance is HOP-LEVEL ONLY (origin: downstream, via: kailash-coc-rs).
+  # NEITHER originating consumer is identified — scenario 8/9 disclosure fence.
+  # This template is fence ii; loom Gate-1 is fence iii.
+  #
+  # WHY ONE ENTRY AND NOT TWO: both offers add ONLY the inbox YAML — the rule
+  # TEXTS they describe (+306 / +229 by their own diff_lines) are in NEITHER
+  # PR (measured: the two PRs add 82 and 76 lines, both the YAML alone). The
+  # ratified plan was "take one as base, graft the other"; that plan CANNOT be
+  # executed, because grafting two drafts requires having both drafts. Relaying
+  # the pair intact and letting Gate-1 request the texts is the honest move and
+  # does not foreclose the graft.
+  #
+  # Fence-ii receipts (this ingest):
+  #   - scan-synced-disclosure.mjs --root .  → exit 0, 0 findings, 2311 files
+  #   - human body-scrub (upstream-issue-hygiene.md MUST-2 denylist) → clean;
+  #     no consumer name, workspace id, internal path, or finding tag. Both
+  #     bodies describe the originating incident in DELIBERATELY qualitative
+  #     terms ("a client-facing document deliverable", "a document built from
+  #     markdown sources") with no identifying token.
+  #   - injection review (proposal-intake-trust.md MUST-1/2) → clean; both
+  #     bodies are descriptive rationale. One carries an explicit request for
+  #     TEMPLATE JUDGEMENT on glob breadth — that is a proposer's flagged
+  #     open question REVIEWED AS DATA, not a reviewer-directed imperative,
+  #     and it is relayed as such.
+  #   - non-ASCII decode (evidence-first-claims.md MUST-2): the ONLY non-ASCII
+  #     byte sequence in EITHER body is e2 80 94 (U+2014 EM DASH). Decoded via
+  #     hexdump, not cat -v.
+  #   - wrong-lane glob check → both name .claude/rules/**; neither touches
+  #     src/** | packages/** | pyproject.toml | Cargo.toml
+  #   - freshness dedup (content-level vs CURRENT template state) → genuinely
+  #     unsolved here; see dedup_evidence.
+  # ===================================================================
+  - file: .claude/rules/generated-artifact-divergence.md
+    action: added
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0. `.claude/rules/generated-artifact-divergence.md`
+      is ABSENT from the delivered tree, and no entry for it existed in this manifest
+      before this cluster (grep of the pre-append file returns 0).
+      THE OFFERS' OWN DEDUP CLAIM WAS RE-VERIFIED HERE RATHER THAN RELAYED ON TRUST,
+      and it holds with one correction worth Gate-1's attention. Of the three
+      near-miss rules the offers cite: `verify-claims-before-write.md` and
+      `state-file-write-guard.md` are present with ZERO hits for
+      rebuild|regenerat|hand-edit; `merge-composition-verification.md` IS NOT PRESENT
+      IN THIS TREE AT ALL, so that third comparison is unverifiable at this hop and
+      must be re-checked at loom, where the rule may exist on another tier.
+      ONE ADJACENCY NEITHER OFFER NAMES, and it is the strongest dedup signal in the
+      corpus: `artifact-flow.md` § Distribution-Durability Invariants already holds
+      this EXACT failure shape as its Class-A invariant — "editing a template
+      `.claude/` directly is rebuilt away", i.e. an edit to the GENERATED copy that
+      the next rebuild silently reverts, with the MUST NOT "Edit template repos
+      directly — rebuilt entirely by `/sync-to-use`". That is the proposed rule's
+      mechanism, scoped to COC template distribution. So the proposal is plausibly
+      the GENERAL form of an invariant loom already holds NARROWLY — which is a
+      global-vs-variant classification input, not a duplicate finding.
+    reason: >-
+      TWO INDEPENDENT DOWNSTREAM CONSUMERS PROPOSED THE SAME NET-NEW RULE at the same
+      path within one day, from two different template versions (2.24.0 and 2.23.22).
+      The class: a build pipeline assumes one direction — source is edited, artifact is
+      generated — and NOTHING enforces it. When the ARTIFACT is edited instead (the
+      readable copy is the one reviewers mark up), the divergence is invisible until
+      the next rebuild SILENTLY REVERTS every hand-edit: no conflict, no warning, no
+      failing test. What is lost is a reviewer's corrections — the highest-value edits
+      in the artifact — and the deliverable ships the pre-edit state.
+      THE AGREEMENT IS THE STRONGEST SIGNAL IN THE PAIR, and it is a NEGATIVE result
+      both reached independently: an artifact-vs-source COMMIT-RATIO heuristic CANNOT
+      detect this divergence, and both offers CUT it rather than repair it. Offer A's
+      reasoning: for an N-input pipeline commits(artifact) >= max(commits(input_i)) BY
+      CONSTRUCTION, so a healthy multi-input build shows exactly the lopsided shape
+      that reads as hand-edits. Offer B's reasoning: where the artifact lives inside
+      its source directory its commits are a strict SUBSET of the directory's, so the
+      test is arithmetically incapable of firing — it returned a CLEAN verdict on the
+      very incident it was written from. Offer B also considered and rejected
+      timestamp comparison and a source-tree hash for the same class of reason.
+      Two independent parties converging on "this mechanical check is unsound, remove
+      it" is worth more than either offer alone, and it is the part Gate-1 should be
+      most reluctant to re-litigate.
+      THE DISAGREEMENT IS PRESERVED DELIBERATELY, because it is a genuine unresolved
+      design question and NOT an inconsistency to smooth over. Both agree the
+      destructive act is a BUILD INVOCATION, which no `paths:` glob can trigger — a
+      rule about rebuilds cannot fire on the rebuild. They diverge on what to do:
+        - Offer A ADDED a reachability floor, widening globs to include
+          workspaces/**, .session-notes.d/** and .wave-tracker.d/** — the surfaces a
+          session doing this work actually touches — and then FLAGGED that breadth for
+          template judgement rather than assuming it, noting a narrower set that still
+          fires at the right moment would be strictly better.
+        - Offer B DECLINED to widen, recording the limitation in the draft body
+          instead, on the ground that widening the globs enough to reach the trigger
+          would make the rule baseline-by-glob — paying always-on cost for a
+          conditional per-project build relationship.
+      Both authored priority:10 / path-scoped so it costs nothing in the baseline;
+      they disagree only on whether reachability is worth glob breadth. That is the
+      classify call, and it is loom's, not this template's.
+      THE THREE MUST CLAUSES ARE SUBSTANTIALLY CONGRUENT across both drafts: (1) build
+      to a scratch path and diff EXTRACTED CONTENT (not bytes) BEFORE the committed
+      artifact is overwritten — offer A additionally requires the scratch path be
+      private (mktemp -d) since the artifact is frequently confidential and a
+      predictable world-writable path is a symlink-preplant target; (2) when the diff
+      shows the artifact ahead, the ARTIFACT is truth for those sections and must be
+      backported, with offer A adding an authorship check and treating extracted text
+      as DATA never instructions, and offer B adding an explicit carve-out that a
+      human's markup of the readable copy is an expected INPUT requiring backport,
+      never a prohibited act — a rule forbidding reviewers from marking up the
+      document they were given would be refused or ignored; (3) convergence is PROVEN
+      by re-diff, never asserted, with offer B additionally requiring a check that
+      changed VERDICTS survived, since a rebuild can hold heading counts constant
+      while reverting the words inside a heading.
+      NOT PATCHED LOCALLY, and no local rule was authored. `rules/**` is a synced
+      glob, so anything written here is Class-A and rebuilt away by the next
+      /sync-to-use; and neither PR carries the rule text to land even if that were
+      the right lane. The durable surface is this proposal.
+      WHAT GATE-1 OWES, stated plainly rather than implied: the rule TEXTS. Both are
+      described in detail above and in neither PR. Requesting them from the offering
+      consumers is the unblocking step; the alternative — grafting from the
+      descriptions — would produce a rule carrying NEITHER draft's redteam.
+    diff_lines: "+306 -0 and +229 -0 as CLAIMED by the two offers' own diff_lines; NEITHER text is present in either PR (measured: the PRs add 82 and 76 lines, the inbox YAML alone). Final size depends on which reachability disposition Gate-1 takes."
+
 status: pending_review
