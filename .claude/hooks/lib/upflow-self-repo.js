@@ -701,6 +701,27 @@ function _parseAdo(host, segments) {
     // which this module deliberately does not do.
     if (segs.length !== 2 && segs.length !== 3) return null;
     if (segs.length === 3) segs = segs.slice(1); // drop the collection
+    // KNOWN GAP, RECORDED NOT FIXED — ADO CROSS-COLLECTION IS NOT DISCRIMINATED.
+    // Dropping the collection here means it is absent from the identity model
+    // ENTIRELY: `_parseAdo` discards it, the ADO `repoRef` has no field for it,
+    // and `isSelfRepoAdo` compares org/project/repo only. In legacy TFS/VSTS
+    // different collections are different namespaces — two different repos —
+    // so this pair derives an IDENTICAL triple and compares equal:
+    //   https://<org>.visualstudio.com/DefaultCollection/<proj>/_git/<repo>
+    //   https://<org>.visualstudio.com/EvilCollection/<proj>/_git/<repo>
+    // Measured: ALLOWED, both sides {org, project, repo} identical.
+    //
+    // NOT fixable by any comparison key over the current triple — no arrangement
+    // of fields that do not include the collection can separate them. Closing it
+    // means retaining the collection through the parse and widening the ADO
+    // identity from a triple to a quad, which also changes `isSelfRepoAdo` and
+    // both adapters' `repoRef` shape. That is a deliberate design change, not a
+    // guard tweak, and it is left for one — recorded here, at the line that
+    // drops the value, so the next reader finds it where the loss happens.
+    //
+    // Scope: PRE-EXISTING and orthogonal to the triangular guard — this pair
+    // compared equal before that guard existed too, and the guard neither
+    // introduced nor widened it.
   } else {
     // NOT INDEPENDENTLY LOAD-BEARING, and measured to be so rather than
     // assumed. Relaxing this line alone to `< 3` reds NOTHING — the suite stays
@@ -927,34 +948,40 @@ function deriveSelfRepoRef(cwd) {
   // direction: when fetch and push name different repos, "the repo you are" has
   // no single answer, so no completion can be authorized on either.
   const pushUrl = _readPushRemote(cwd);
-  if (pushUrl && pushUrl !== url) {
-    const pushParsed = _parseRemoteUrl(pushUrl);
-    // FULL derived identity, not the owner/name slug — see
-    // `_sameDerivedIdentity` for why host and the ADO org are each load-bearing
-    // and what the slug comparison silently admitted.
-    if (!_sameDerivedIdentity(parsed, pushParsed)) {
-      const pushWhere = pushParsed
-        ? sanitizeForReason(
-            pushParsed.ado
-              ? `${pushParsed.host} ${pushParsed.ado.org}/${pushParsed.ado.project}/${pushParsed.ado.repo}`
-              : `${pushParsed.host} ${pushParsed.owner}/${pushParsed.name}`,
-          )
-        : "an unparseable url";
-      const selfWhere = sanitizeForReason(
-        parsed.ado
-          ? `${parsed.host} ${parsed.ado.org}/${parsed.ado.project}/${parsed.ado.repo}`
-          : `${parsed.host} ${slug}`,
+  const pushParsed =
+    pushUrl && pushUrl !== url ? _parseRemoteUrl(pushUrl) : null;
+  // AN UNPARSEABLE PUSH URL IS NOT EVIDENCE OF DISAGREEMENT — it is the ABSENCE
+  // of evidence, and refusing on it shipped a LOCKOUT on a legitimate remote.
+  // The legacy VSTS SSH clone form
+  //   ssh://<org>@vs-ssh.visualstudio.com:22/<org>/<proj>/_ssh/<repo>
+  // does not parse, because `_parseAdo` filters only `_git` and so the 4-segment
+  // `_ssh` shape misses the segment-count gate. That parse gap is PRE-EXISTING
+  // and separately recorded as a known defect; what this guard added was turning
+  // it into a refusal, since before the guard a push url was never parsed at all.
+  //
+  // Skipping cannot widen anything. The FETCH url is the SOLE authoritative
+  // identity (§ WHAT IS AUTHORITATIVE above), and this block is a cross-check
+  // that can only ever ADD a refusal — the same disposition `_declaredSlug`
+  // takes, where a read failure returns null and skips rather than refusing. So
+  // an unparseable push url restores exactly the pre-guard behaviour, inside the
+  // bound this module already discloses, instead of inventing a refusal against
+  // a repo the maintainer legitimately owns.
+  if (pushParsed && !_sameDerivedIdentity(parsed, pushParsed)) {
+    const describe = (d) =>
+      sanitizeForReason(
+        d.ado
+          ? `${d.host} ${d.ado.org}/${d.ado.project}/${d.ado.repo}`
+          : `${d.host} ${d.owner}/${d.name}`,
       );
-      return {
-        ok: false,
-        reason:
-          `this working tree has a triangular remote — it fetches from ${selfWhere} ` +
-          `but pushes to ${pushWhere}; ` +
-          "the two disagree about which repo this tree IS, so a completion " +
-          "cannot be authorized on either (configure a single-identity remote, " +
-          "or complete the PR from a clone of the repo you are merging on)",
-      };
-    }
+    return {
+      ok: false,
+      reason:
+        `this working tree has a triangular remote — it fetches from ${describe(parsed)} ` +
+        `but pushes to ${describe(pushParsed)}; ` +
+        "the two disagree about which repo this tree IS, so a completion " +
+        "cannot be authorized on either (configure a single-identity remote, " +
+        "or complete the PR from a clone of the repo you are merging on)",
+    };
   }
 
   const declared = _declaredSlug(cwd);

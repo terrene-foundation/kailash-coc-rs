@@ -859,6 +859,35 @@ const cases = [
     expect: { ok: true, fired: true },
   },
   {
+    // THE LEGACY VSTS SSH CLONE FORM AS A PUSH URL — a lockout vector the
+    // triangular guard newly created out of a pre-existing parse gap.
+    // `_parseAdo` filters only `_git`, so the 4-segment `_ssh` shape
+    //   ssh://<org>@vs-ssh.visualstudio.com:22/<org>/<proj>/_ssh/<repo>
+    // misses the segment-count gate and does not parse. Before this guard
+    // existed no push url was ever parsed, so the gap was inert; the guard
+    // turned it into "pushes to an unparseable url" and refused a maintainer on
+    // a real, documented clone url.
+    //
+    // The disposition is that an unparseable push url is the ABSENCE of evidence
+    // of disagreement, not evidence of it — so the check skips rather than
+    // refuses. Reds if the guard ever refuses on a null `pushParsed` again.
+    // NOTE this case does NOT assert the `_ssh` form parses; it asserts that
+    // failing to parse a PUSH url does not deny a completion. The parse gap
+    // itself is recorded separately as a known defect.
+    name: "ado/unparseable-legacy-ssh-push-url-does-not-lock-out",
+    mutation:
+      "upflow-self-repo.js::deriveSelfRepoRef — refuse when `pushParsed` is null (treat an unparseable push url as disagreement)",
+    repo: {
+      dirName: "coc-rs",
+      remote: ADO_SELF_REMOTE,
+      pushRemote:
+        "ssh://contoso@vs-ssh.visualstudio.com:22/contoso/platform/_ssh/coc-rs",
+    },
+    adapter: ADO,
+    prRef: { repoRef: ADO_SELF, prId: 42 },
+    expect: { ok: true, fired: true },
+  },
+  {
     name: "gh/triangular-push-default-remote-refuses",
     mutation:
       "upflow-self-repo.js::_readPushRemote — resolve only origin's own pushurl, ignoring branch.<n>.pushRemote and remote.pushDefault",
