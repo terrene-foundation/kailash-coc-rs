@@ -1760,12 +1760,24 @@ changes:
   # landed locally at 8ece215 (Class-A non-durable here — the proposal is durable).
   #
   # ⛔ DO NOT INGEST ENTRIES 33-39 AS WRITTEN — THEY ARE STALE AND CARRY KNOWN
-  #    SECURITY DEFECTS. Entries 33-39 describe the fence as of 916813d. FIVE
-  #    later commits fixed defects found by four adversarial rounds, and NONE of
-  #    them are reflected below (grep this file: `isSchemeForm`, `scp`, `IPv6`,
-  #    `collection`, `differential`, `discarded` all return zero). The
-  #    `diff_lines: "+433 -0"` on the upflow-self-repo.js entry describes a file
-  #    that is now ~700 lines.
+  #    SECURITY DEFECTS. Entries 33-39 describe the fence as of 916813d. Later
+  #    commits across FIVE adversarial rounds fixed defects that NONE of the
+  #    entries below reflect. Verify by grepping the ENTRY BODIES ONLY —
+  #    excluding this comment block, which necessarily contains every token:
+  #
+  #      grep -v '^\s*#' .claude/.proposals/latest.yaml \
+  #        | grep -cE 'isSchemeForm|scp|IPv6|collection|differential|discarded'
+  #      # 0 = the entries are stale, as claimed.
+  #
+  #    (An earlier revision of this line said "grep this file: … all return
+  #    zero". That was TRUE when measured against the parent blob and FALSE the
+  #    instant it was written, because the marker's own text supplies all six
+  #    tokens — an instrument that refutes the claim it was offered to prove.
+  #    Recorded rather than silently corrected, since this cluster's whole
+  #    subject is false claims about instruments.)
+  #
+  #    The `diff_lines: "+433 -0"` on the upflow-self-repo.js entry describes a
+  #    file measured at 751 lines.
   #
   #    Ingesting as-is would distribute the DEFECTIVE fence to every sibling
   #    template via /sync-to-use — including a HIGH, live, fetchable bypass —

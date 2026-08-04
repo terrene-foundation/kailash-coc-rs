@@ -648,7 +648,7 @@ function completeUpflowPR(transport, prRef) {
   if (!GITHUB_HOSTS.has(d.self.host)) {
     return _fail(
       "completeUpflowPR: non-GitHub self-identity refused",
-      `refusing to merge ${repoRef.owner}/${repoRef.name}#${prRef && prRef.prId} — ` +
+      `refusing to merge ${repoRef.owner}/${repoRef.name}#${selfRepo.displayPrId(prRef && prRef.prId)} — ` +
         `this working tree's origin remote is on host ${d.self.host}, which this ` +
         `adapter does not serve (recognized: ${[...GITHUB_HOSTS].join(", ")}; a ` +
         `GitHub Enterprise appliance host is NOT configured in this repo, so it is ` +
@@ -669,7 +669,7 @@ function completeUpflowPR(transport, prRef) {
   if (d.self.ado !== null) {
     return _fail(
       "completeUpflowPR: Azure DevOps self-identity refused",
-      `refusing to merge ${repoRef.owner}/${repoRef.name}#${prRef && prRef.prId} — ` +
+      `refusing to merge ${repoRef.owner}/${repoRef.name}#${selfRepo.displayPrId(prRef && prRef.prId)} — ` +
         `this working tree's origin remote is an Azure DevOps remote ` +
         `(${d.self.ado.org}/${d.self.ado.project}/${d.self.ado.repo}), so it cannot ` +
         `establish a GitHub identity. upstream-issue-hygiene.md MUST-4 ` +
@@ -680,7 +680,7 @@ function completeUpflowPR(transport, prRef) {
   if (!selfRepo.isSelfRepo(repoRef, d.self)) {
     return _fail(
       "completeUpflowPR: cross-repo completion refused",
-      `refusing to merge ${repoRef.owner}/${repoRef.name}#${prRef && prRef.prId} — ` +
+      `refusing to merge ${repoRef.owner}/${repoRef.name}#${selfRepo.displayPrId(prRef && prRef.prId)} — ` +
         `this repo derives as ${d.self.owner}/${d.self.name}. A PR may only be ` +
         `completed on the repo you ARE. upstream-issue-hygiene.md MUST-4 ` +
         `(Open, Never Complete) — the downstream upflow lane opens a PR against its ` +

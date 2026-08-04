@@ -470,9 +470,62 @@ inferences, first verifying that neutering each assertion alone reds nothing
 
 Every "this assertion is load-bearing" claim in this file is now a measurement.
 
-With all eleven passes, every case in the suite is reddened by at least one
-recorded mutation, so no case is currently known to be vacuous. Re-derive the
-count rather than trusting this sentence: `grep -c '^    name: "' run.mjs`.
+**Coverage is stated as an EQUALITY, not a count** — the remedy this file
+prescribes for itself at § "enumeration decay", applied here after the previous
+revision of this sentence was found false.
+
+> Every case name in `run.mjs` appears in at least one recorded mutation result
+> in this file.
+
+Re-derive it; do not trust the sentence:
+
+```bash
+comm -23 \
+  <(grep -oE '^    name: "[^"]+"' run.mjs | sed -E 's/.*"(.*)"/\1/' | sort -u) \
+  <(grep -oE '\b(gh|ado)/[a-z0-9-]+' README.md | sort -u)
+# empty output = the equality holds. Any line = a case with no recorded mutation.
+```
+
+**What the previous revision got wrong, recorded rather than overwritten.** It
+claimed "every case in the suite is reddened by at least one recorded mutation,
+so no case is currently known to be vacuous." That was false **at the commit
+that wrote it** — the same commit added two cases it did not table — and three
+later commits each added cases without extending the tables. Six cases were
+uncovered. They carried only a bare `mutation:` field, which this file rules out
+as evidence at § "an un-run `mutation:` field is a claim, not evidence" — so the
+universal claim rested on exactly the thing the file says is not evidence. This
+is the third instance of the enumeration-decay class documented here; the
+equality above has no number in it to decay.
+
+The six were then measured rather than assumed. **All six are sound — none
+vacuous**; they were UNDOCUMENTED, not uncovered:
+
+| Case                                                    | Predicate mutated                                                    | Cases redded        |
+| ------------------------------------------------------- | -------------------------------------------------------------------- | ------------------- |
+| `ado/allow-own-repo-legacy-collection-form`             | `_parseAdo` subdomain `!==2 && !==3` → `!==2`                        | exactly 1 — itself  |
+| `ado/discarded-collection-slot-rejects-dirty-segment`   | `_parseAdo` validate-before-drop `segs.some(...)` deleted            | exactly 1 — itself  |
+| `gh/scp-userinfo-fragment-spoof-refuses`                | `_splitRemoteUrl` drop the `isSchemeForm` guard on the authority cut | exactly 1 — itself  |
+| `ado/collection-form-does-not-admit-fragment-injection` | `normalizeComponent` allowlist removed                               | 3, including itself |
+| `ado/path-terminator-byte-in-remote-refuses`            | allowlist reverted to a `?`/`#` denylist                             | 3, including itself |
+| `gh/fragment-injected-path-segments-refuse`             | `_parseRemoteUrl` `parts.length !== 2` → `< 2` + last-two            | 4, including itself |
+
+Cases that co-red siblings share a predicate with them; that is expected, not
+dilution. Three isolate to exactly one case.
+
+**Two cases added after the above, each measured the same way:**
+
+| Case                                                       | Predicate mutated                                                                           | Cases redded       |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------ |
+| `ado/descriptor-identity-seams-are-ignored`                | `vcs-azure-adapter.js` restore `deriveSelfRepoRef((prRef && prRef.cwd) \|\| process.cwd())` | exactly 1 — itself |
+| `ado/exact-segment-count-rejects-all-clean-extra-segments` | `_parseAdo` the PAIR: `!== 3`→`< 3` AND `!== 2`→`< 2`                                       | exactly 1 — itself |
+
+Both closed measured gaps, not theoretical ones. Before the first, the ADO
+adapter's caller-authored `cwd` seam could be restored with the suite fully
+green while the adapter merged on the upstream. Before the second, the ADO
+exact-count pair redded nothing and was VACUOUS — while the source comment
+claimed the pair was the tested mutation. Each gate ALONE remains inert
+(measured: `!== 3` → `< 3` alone leaves the suite green), so the pair is the
+honest mutation and is now the recorded one.
 
 **Known un-collapsed hypotheses** (`instrument-discipline.md` MUST-2(b)): the
 individual `.`, `/`, and `\` legs of the path-shape rejection each leave the

@@ -727,7 +727,7 @@ function completeUpflowPR(transport, prRef) {
     return _fail(
       "completeUpflowPR: cross-repo completion refused",
       `refusing to complete ${repoRef.org}/${repoRef.project}/${repoRef.repo}` +
-        `!${prRef && prRef.prId} — this repo derives as ${selfAdo.org}/` +
+        `!${selfRepo.displayPrId(prRef && prRef.prId)} — this repo derives as ${selfAdo.org}/` +
         `${selfAdo.project}/${selfAdo.repo}. A PR may only be completed on the repo ` +
         `you ARE. upstream-issue-hygiene.md MUST-4 (Open, Never Complete) — the ` +
         `downstream upflow lane opens a PR against its upstream and stops there.`,

@@ -800,9 +800,38 @@ function isSelfRepoAdo(repoRef, selfAdo) {
   return true;
 }
 
+/**
+ * Render a caller-supplied PR id for INCLUSION IN A REFUSAL STRING. Display
+ * only — never an operand, and never a substitute for `PR_NUMBER_RE`, which
+ * still gates the value that reaches a request path.
+ *
+ * WHY THIS EXISTS. Both adapters interpolate `prRef.prId` into refusal `reason`
+ * strings that fire BEFORE the `PR_NUMBER_RE` validation — the identity checks
+ * come first by design, so an unvalidated id reaches three GitHub refusals and
+ * one ADO refusal. Those reasons are logged and may be embedded in a PR body or
+ * journal by `/codify` Step-7c, so a `prId` carrying newlines or terminal
+ * control bytes is a log-injection surface: a forged second log line, or an
+ * escape sequence, in text a human reads as the tool's own output. Bounded by
+ * the module's disclosed in-process caller-trust bound, hence display-hardening
+ * rather than a new gate.
+ *
+ * ONE SHARED HELPER, both adapters, per `security.md` § Enforcement-Surface
+ * Parity — the same reason `normalizeComponent` is shared rather than copied.
+ */
+function displayPrId(value) {
+  if (value === undefined || value === null) return "<none>";
+  const s = String(value);
+  // Control bytes (C0, DEL, C1) become a visible placeholder rather than being
+  // dropped, so a stripped payload cannot silently close up into a plausible id.
+  // eslint-disable-next-line no-control-regex
+  const cleaned = s.replace(/[\x00-\x1f\x7f-\x9f]/g, "?");
+  return cleaned.length > 32 ? `${cleaned.slice(0, 32)}…` : cleaned;
+}
+
 module.exports = {
   deriveSelfRepoRef,
   isSelfRepo,
   isSelfRepoAdo,
   normalizeComponent,
+  displayPrId,
 };
