@@ -1758,6 +1758,41 @@ changes:
   # without the adapters is unenforced prose; the adapters without the prose leave
   # the surface that misled the agent still advertising the merge. Reference impl
   # landed locally at 8ece215 (Class-A non-durable here — the proposal is durable).
+  #
+  # ⛔ DO NOT INGEST ENTRIES 33-39 AS WRITTEN — THEY ARE STALE AND CARRY KNOWN
+  #    SECURITY DEFECTS. Entries 33-39 describe the fence as of 916813d. FIVE
+  #    later commits fixed defects found by four adversarial rounds, and NONE of
+  #    them are reflected below (grep this file: `isSchemeForm`, `scp`, `IPv6`,
+  #    `collection`, `differential`, `discarded` all return zero). The
+  #    `diff_lines: "+433 -0"` on the upflow-self-repo.js entry describes a file
+  #    that is now ~700 lines.
+  #
+  #    Ingesting as-is would distribute the DEFECTIVE fence to every sibling
+  #    template via /sync-to-use — including a HIGH, live, fetchable bypass —
+  #    and would rebuild away the fixes, because hooks/lib/** is a SYNCED glob
+  #    (sync-manifest.yaml) so the local files are Class-A non-durable.
+  #
+  #    The fixes, in order (all on chore/sync-from-downstream-2026-08-03):
+  #      0c95695  anchor the URL scheme — a path-embedded `://` supplied the host
+  #      e704014  scope the `#`/`?` cut to the scheme branch (ssh splits at the
+  #               LAST `@`) — HIGH: measured `ssh -G` connects to the attacker
+  #               while the fence reads the legitimate host, on a FETCHABLE
+  #               remote; plus normalizeComponent denylist -> positive allowlist
+  #      229ab37  bracketed IPv6; adds differential-resolver-parity.mjs (NEW FILE,
+  #               not in any entry below)
+  #      1a25ee1  that oracle scored a refuse-everything parser as clean — fixed
+  #      d76f797  EXACT segment count — fragment/query injected extra PATH
+  #               segments and the last-two rule took the trailing pair
+  #      6cf74fa  restore the legacy ADO collection form d76f797 regressed
+  #      3ce96c6  validate ADO segments BEFORE dropping the collection (refutes a
+  #               false security claim that shipped in the code comment)
+  #      07ad4f0  surface git's stderr on a derivation failure
+  #      491d551 / fe33268 / 0c0fbcb  four documented residuals + doc-vs-code fixes
+  #
+  #    NEXT SESSION'S FIRST TASK: append entries carrying these, then re-verify
+  #    `diff_lines` against the real diff. Until then this cluster is BLOCKED at
+  #    Gate-1. Recorded here rather than only in session notes because THIS file
+  #    is the durable surface loom reads; session notes are not synced.
   # ===================================================================
   - file: .claude/rules/self-referential-codify.md
     action: modify
