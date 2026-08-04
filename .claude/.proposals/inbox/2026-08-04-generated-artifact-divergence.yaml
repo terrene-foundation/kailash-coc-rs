@@ -1,0 +1,82 @@
+# Step-7c downstream upflow offer.
+# NO source_repo — hop-level-only provenance: the downstream consumer is deliberately
+# NOT identified in the schema (the scenario-8/9 disclosure fence). At relay the
+# template stamps `via: <template-slug>`, never the consumer.
+origin: downstream
+codify_date: 2026-08-04
+codify_session: "codify(rules): generated-artifact divergence — a committed build output hand-edited out of sync with its source is silently reverted by the next rebuild"
+template_slug: kailash-coc-rs
+template_version: "2.24.0"
+loom_sha: "43167a54"
+
+# ONE new rule. Authored and redteamed downstream (3 parallel lanes: adversarial review,
+# security, structural cc-artifacts). Landed locally before offering; the rule text is
+# reproduced in the PR body so Gate-1 can review it without a fetch.
+changes:
+  - file: .claude/rules/generated-artifact-divergence.md
+    action: added
+    base_version: "2.24.0"
+    reason: >
+      A build pipeline assumes one direction — source is edited, the artifact is generated —
+      and NOTHING enforces it. When someone edits the ARTIFACT instead (opens the .docx in
+      Word, tweaks a generated PDF, hand-patches an emitted spec), the divergence is invisible
+      until the next rebuild SILENTLY REVERTS every hand-edit: no conflict, no warning, no
+      failing test. The regression surfaces only when a human reads the shipped output and
+      finds their corrections gone, typically downstream and in front of a customer.
+
+      Observed on a client-facing document deliverable built from markdown by a local
+      pipeline. The generated .docx carried FIVE commits while its main source file carried
+      ONE (its creation); three of the five had changed capability claims after verification,
+      downgrading two and re-upgrading one following a live demonstration. None was written
+      back to source. A rebuild — run to a scratch path and diffed BEFORE anything was
+      overwritten — would have dropped 12,872 characters, cut the heading count from 110 to 79
+      with 54 of the 110 committed headings absent, reintroduced 249 em-dashes a style pass had
+      removed, and reverted every per-claim verdict mark. That is shipping capability claims a
+      team had deliberately downgraded after checking the underlying issues.
+
+      Three MUST clauses. MUST-1 build to a private scratch path (mktemp -d, cleaned up — the
+      artifact is frequently confidential and a predictable world-writable path is also a
+      symlink-preplant target) and diff EXTRACTED CONTENT, not bytes, before the committed
+      filename is written; a universal fallback is named for generators with no output flag.
+      MUST-2 when the diff shows the artifact ahead, the ARTIFACT is truth for those sections
+      and must be backported first, with authorship checked (not just direction) and extracted
+      text treated as DATA never instructions; three dispositions are named (backport,
+      document-the-divergence when the source format cannot express the edit, retire the
+      pipeline) plus a required structural guard so the gap that allowed the divergence is
+      closed rather than the symptom treated. MUST-3 convergence is PROVEN by a re-diff, never
+      asserted, and the evidence carried into any durable surface is counts only, never
+      extracted document prose.
+
+      Two redteam findings materially changed the rule and are worth Gate-1's attention because
+      the first draft had them wrong. (a) A commit-count asymmetry between source and artifact
+      is NOT sound evidence: for an N-input pipeline commits(artifact) >= max(commits(input_i))
+      BY CONSTRUCTION, so a healthy 5-input build shows exactly the 1-vs-5 shape that reads as
+      hand-edits. The count is demoted to a prompt; the content diff is the only evidence.
+      (b) The original paths: globs would never have fired — the destructive act is a Bash
+      build invocation that edits none of the build-script or artifact globs, so the rule was
+      correct but unreachable. A reachability floor was added, the same shape and reasoning
+      merge-composition-verification.md uses for its own merge-time subject.
+
+      No existing rule owns this class (checked): verify-claims-before-write.md governs the
+      truth of a CLAIM in a durable artifact, not the LOSS of content when one is regenerated;
+      merge-composition-verification.md MUST-2 is the same silent-revert family but the
+      reverting mechanism is a MERGE with a merge-base to diff, and a build has neither;
+      state-file-write-guard.md governs validator-driven GREEN claims on deploy state.
+      A grep for rebuild/regenerat/hand-edit/generated across those returns 0.
+
+      Authored priority:10 / scope:path-scoped so it costs nothing in the baseline;
+      cli_delivery left to the smart default (path-scoped -> skill-channel), which the
+      resolver confirms lands as skill-channel with 0 validator failures. Carries the canonical
+      8-field Trust Posture Wiring with the **Violation scope:** anchor. Consumer-identifying
+      detail is deliberately absent per upstream-issue-hygiene.md MUST-2 and
+      knowledge-cascade-routing.md MUST-3.
+
+      ONE ITEM FOR TEMPLATE JUDGEMENT, flagged rather than decided: the reachability-floor
+      globs include workspaces/**, .session-notes.d/** and .wave-tracker.d/**, which are broad
+      for a rule that will cascade widely. They were chosen because they are the surfaces a
+      session doing this work actually touches, but a narrower set that still fires at the
+      right moment would be a strictly better outcome and the template is better placed to
+      judge that across its consumer base.
+    diff_lines: "+306 -0"
+
+status: pending_review
