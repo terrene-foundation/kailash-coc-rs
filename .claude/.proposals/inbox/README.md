@@ -13,6 +13,15 @@ Routing — the Step-7c upflow path).
   fields, artifact-only (no `sdk_version`/`sdk_packages`).
 - **Offered via a human-gated PR** adding the single YAML file (per
   `upstream-issue-hygiene.md` MUST-1). No auto-submission.
+- **OPEN the PR — never merge it** (`upstream-issue-hygiene.md` MUST-4, "Open,
+  Never Complete"). Your `/codify` Step 7c is COMPLETE when the PR is open; the
+  PR URL is the handoff. Merging, completing, admin-merging, enabling
+  auto-merge, or pushing directly to this repo is BLOCKED — with no exception.
+  The human gate on your side authorizes **submitting** the offer, never
+  **completing** it. This template merges it after `/sync-from-downstream` has
+  scrubbed it, reviewed it as untrusted data, deduped it, and lane-checked it;
+  a self-merged offer skips all four while still producing an
+  `ingest_disposition` receipt that reads as though they ran.
 - **Never edit another proposer's entry** — add your own file only.
 
 ## Ingest

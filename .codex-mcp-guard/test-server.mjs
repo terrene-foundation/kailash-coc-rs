@@ -25,6 +25,50 @@ import { createRequire } from "node:module";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/**
+ * A git repo with multi-operator coordination FORCED ON, for the degraded-mode
+ * signing-guard lanes.
+ *
+ * WHY THIS EXISTS (issue #74). `signing-mutation-guard.js` gates its
+ * degraded-mode block behind `isCoordinationEnabled()` (the MO-OPT W1-c opt-in
+ * gate): coordination is OPT-IN / OFF BY DEFAULT, and on a solo or un-enrolled
+ * repo an absent signing key means "un-enrolled", NOT "degraded" — blocking
+ * every tracked-path Edit because no GPG key is configured would be the real
+ * disruption. So on a coordination-OFF repo the guard passes through BEFORE the
+ * degraded block is ever evaluated, and that is CORRECT.
+ *
+ * These two lanes previously ran with `cwd: process.cwd()`, which is
+ * coordination-OFF, so they asserted a block on a path the guard deliberately
+ * does not gate — reporting a fail-OPEN that does not exist. The guard was
+ * never wrong; the PRECONDITION was missing. Driving them against a
+ * coordination-ON fixture tests the contract the fixtures actually specify
+ * (`.claude/audit-fixtures/signing-mutation-guard/03-block-degraded-mode-mutation/`).
+ *
+ * Tier-2 local override (`{enabled:true}`) is used deliberately: forcing ON is
+ * always honored, whereas forcing OFF is refused on an enrolled repo
+ * (`coordination-mode.js` ASYMMETRIC PRECEDENCE) — so this cannot be repurposed
+ * to weaken a real repo.
+ */
+function makeCoordinationEnabledRepo() {
+  const { execFileSync } = createRequire(import.meta.url)("node:child_process");
+  const os = createRequire(import.meta.url)("node:os");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "coc-guard-coord-"));
+  const git = (...a) =>
+    execFileSync("git", ["-C", dir, ...a], { stdio: "pipe" });
+  git("init", "-q");
+  // README.md is the path V4A_PATCH targets; it MUST be tracked here or the
+  // guard's working-tree-mutation predicate correctly finds nothing to gate.
+  fs.writeFileSync(path.join(dir, "README.md"), "old line\n");
+  git("add", "-f", "README.md");
+  git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init");
+  fs.mkdirSync(path.join(dir, ".claude", "learning"), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, ".claude", "learning", "coordination-mode.json"),
+    JSON.stringify({ enabled: true }),
+  );
+  return dir;
+}
+
 // Layout detection (same shape as server.js::resolveCocRoot — fixtures
 // live under <coc-root>/audit-fixtures/codex-mcp-guard/). At loom dev
 // this resolves to <repo>/.claude; at multi-CLI USE templates / coc-
@@ -312,9 +356,16 @@ const V4A_PATCH = {
   // hook's documented test override; the spawned hook inherits process.env.
   const prev = process.env.COC_SIGNING_MUTATION_GUARD_FORCE_DEGRADED;
   process.env.COC_SIGNING_MUTATION_GUARD_FORCE_DEGRADED = "1";
+  // Coordination ON is the PRECONDITION of the degraded-mode block (see
+  // makeCoordinationEnabledRepo above / issue #74).
+  const coordRepo = makeCoordinationEnabledRepo();
   let r;
   try {
-    r = server.evaluatePolicies({ tool: "apply_patch", input: V4A_PATCH, cwd: process.cwd() });
+    r = server.evaluatePolicies({
+      tool: "apply_patch",
+      input: V4A_PATCH,
+      cwd: coordRepo,
+    });
   } finally {
     if (prev === undefined) delete process.env.COC_SIGNING_MUTATION_GUARD_FORCE_DEGRADED;
     else process.env.COC_SIGNING_MUTATION_GUARD_FORCE_DEGRADED = prev;
@@ -383,17 +434,19 @@ const V4A_PATCH = {
 {
   const prev = process.env.COC_SIGNING_MUTATION_GUARD_FORCE_DEGRADED;
   process.env.COC_SIGNING_MUTATION_GUARD_FORCE_DEGRADED = "1";
+  // Coordination ON is the PRECONDITION of the degraded-mode block (issue #74).
+  const coordRepo = makeCoordinationEnabledRepo();
   let rMut, rRead;
   try {
     rMut = server.evaluatePolicies({
       tool: "shell",
       input: { command: "git commit -m wip" },
-      cwd: process.cwd(),
+      cwd: coordRepo,
     });
     rRead = server.evaluatePolicies({
       tool: "shell",
       input: { command: "ls -la" },
-      cwd: process.cwd(),
+      cwd: coordRepo,
     });
   } finally {
     if (prev === undefined) delete process.env.COC_SIGNING_MUTATION_GUARD_FORCE_DEGRADED;

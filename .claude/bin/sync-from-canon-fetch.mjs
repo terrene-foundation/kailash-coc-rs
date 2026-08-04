@@ -64,7 +64,26 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { getUpstreamCanon } from "./lib/ecosystem-config.mjs";
-import { resolveRemote } from "./lib/loom-links.mjs";
+
+// `lib/loom-links.mjs` is FENCED `loom_only` and actively PURGED from every
+// distributed lane (`sync-manifest.yaml` — "fenced loom_only; purge the stale
+// BUILD-lane copy"), so it is ABSENT AT EVERY CONSUMER AND TEMPLATE BY DESIGN.
+// A static top-level import therefore kills this module at LOAD with
+// ERR_MODULE_NOT_FOUND before a single line runs — including the `canon-root`
+// no-op path that never needed the resolver at all.
+//
+// This is the ONE intended degrade path (the catch → null stub), documented per
+// `zero-tolerance.md` Rule 3 — it is NOT silent error hiding: absence collapses
+// into the PRE-EXISTING typed `unresolved-canon-remote` error below, which names
+// the actionable fix. Same shape as `bin/loom-doctor.mjs`'s guarded loader.
+let _resolveRemote;
+try {
+  ({ resolveRemote: _resolveRemote } = await import("./lib/loom-links.mjs"));
+} catch {
+  _resolveRemote = null; // fenced/absent at a consumer — degrade, do not crash
+}
+/** Resolver, or a null-returning stub when the fenced module is absent. */
+const resolveRemote = _resolveRemote || (() => null);
 
 // ────────────────────────────────────────────────────────────────
 // Typed error (mirrors loom-links LinkError / ecosystem EcosystemConfigError)
@@ -377,7 +396,13 @@ export function resolveCanonTip(opts = {}) {
       "sync-from-canon: ecosystem.upstream_canon names a canon but no fetchable " +
         "URL resolved (neither upstream_canon.url nor resolveRemote('loom').url). " +
         "Declare the canon loom remote in ecosystem.json (remote_links.loom or " +
-        "ecosystem.upstream_canon.url) before pulling.",
+        "ecosystem.upstream_canon.url) before pulling." +
+        (_resolveRemote
+          ? ""
+          : " NOTE: the loom-links resolver is ABSENT here (lib/loom-links.mjs is " +
+            "fenced loom_only and not distributed), so the remote_links.loom " +
+            "fallback could not be consulted — declare upstream_canon.url " +
+            "explicitly, which does not require the resolver."),
     );
   }
 

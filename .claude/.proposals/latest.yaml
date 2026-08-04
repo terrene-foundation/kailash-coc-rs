@@ -1405,4 +1405,1575 @@ changes:
       - "Check for siblings before fixing point-wise: any other distributed command or hook that imports a loom_only lib will fail the same way. A grep across distributed commands/hooks for imports of loom_only-fenced paths would establish whether this is one instance or a class."
       - "The fix must not simply broaden the catch to always emit N/A — that would silence a genuine orchestration-root resolver fault, trading this false-positive for a false-negative at the one repo where Sweep 9 actually does work."
 
+  # ===================================================================
+  # RELAYED FROM THE DOWNSTREAM UPFLOW INBOX — /sync-from-downstream
+  # 2026-08-03, inbox file 2026-08-02-obsoleted-purge-reference-sweep.yaml
+  # (offered as human-gated PR #77, merged at 7763a60).
+  # Provenance is HOP-LEVEL ONLY (origin: downstream, via: kailash-coc-rs);
+  # the originating consumer is deliberately not identified.
+  # Entries 23-28 are SYMPTOMS of one root cause; entry 29 is the
+  # STRUCTURAL FIX. Every factual claim below was RE-VERIFIED at this
+  # template before relay — the ingest treats the inbox as untrusted data,
+  # so no claim is forwarded on the proposer's say-so.
+  # ===================================================================
+  - file: .claude/.coc-obsoleted
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved here. `grep -c coc-obsoleted latest.yaml` returned 0
+      before this relay — no prior entry touches the obsoleted manifest.
+    reason: >-
+      THE OBSOLETED MANIFEST AND THE SHIPPED TREE INTERSECT ON 5 PATHS, SO A
+      CONSUMER THAT APPLIES THE MANIFEST FAITHFULLY DELETES FILES THE SAME SYNC
+      JUST DELIVERED. `/sync-from-template` step 2.6 calls the manifest "the
+      ONLY mechanism by which downstream consumers purge stale orphan
+      directories", so a consumer is INSTRUCTED to act on it. VERIFIED AT THIS
+      TEMPLATE (2.24.0) — each path checked for BOTH manifest membership
+      (`grep -cxF`) and on-disk presence; all five returned listed=1 ships=YES:
+      hooks/lib/o1-citation-check.js, hooks/coc-drift-warn.js,
+      hooks/coc-telemetry-autocommit.js, bin/emit-dev-container.mjs,
+      bin/repin-targets.local.example.json. Two are hook libraries and two are
+      bin tools. The originating filing observed this live on a 2.23.22 ->
+      2.24.0 downstream sync: the new-file copy wrote two bin tools, the purge
+      step then removed them along with three hooks, and they were restored by
+      hand mid-run. The failure is silent in BOTH directions — a consumer who
+      does not notice simply ends up missing shipped artifacts with no error,
+      because nothing references some of them yet. SUGGESTED FIX: emit the
+      manifest as (planned-purge MINUS shipped-set) and assert the empty
+      intersection at emission, which makes the class unrepresentable rather
+      than merely corrected at this cut.
+    diff_lines: "+0 -5 (manifest content; the durable fix is at the emitter)"
+  - file: .claude/rules/repo-scope-discipline.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved here. latest.yaml carries 16 `cross-repo` hits, but
+      ALL of them concern the `/cross-repo-authorize` RECEIPT-gitignore finding
+      (entry at .claude/rules/repo-scope-discipline.md, lines 978-1055) — a
+      different defect on the same file. NONE concerns `rules/cross-repo.md`
+      failing to ship. Verified by reading every hit's context.
+    reason: >-
+      A priority-0 BASELINE RULE CITES AN AUTHORITY THAT NEVER SHIPS, SO EVERY
+      CONSUMER LOADS A RULE WHOSE CITED CONTRACT IS ABSENT — EVERY SESSION.
+      VERIFIED AT THIS TEMPLATE: `.claude/rules/cross-repo.md` does not exist
+      (`ls` -> No such file), AND it carries NO `.coc-obsoleted` entry
+      (`grep -c cross-repo .claude/.coc-obsoleted` = 0). This is therefore a
+      MISSING DISTRIBUTION, not a purge artifact — distinct from entries
+      24-28, which are purge-without-reference-sweep. Blast radius is the
+      highest of this batch because `repo-scope-discipline.md` is
+      `priority: 0` / `scope: baseline` (verified in its frontmatter), so it
+      loads in every session at every consumer rather than path-scoped. Its
+      MUST-NOT block defers the authoritative resolver contract outward —
+      "on disagreement the resolver is authoritative" — and the rule holding
+      that contract is the one that is absent. So the specific guidance a
+      consumer most needs (hardcoded `~/repos/...` paths are wrong; the
+      operator's `loom-links.local.json` wins) is exactly what goes missing.
+      Four shipped commands cite the same absent file: worktree.md, sweep.md,
+      enroll.md, migrate.md (verified by grep — 5 citing artifacts total).
+      COMPOUNDING: the resolver MODULE (`bin/lib/loom-links.mjs`) is on the
+      obsoleted manifest and the resolver CONTRACT is undistributed, so both
+      halves of one mechanism are absent while five shipped artifacts point at
+      them. SUGGESTED FIX (loom decides): ship `rules/cross-repo.md` on the
+      consumer lane — which the normative dependency implies — or repoint the
+      five citations at the shipped surface carrying the contract and record
+      the exclusion in the manifest so it is auditable rather than implicit.
+    diff_lines: "+0 -0 (the fix is a distribution decision, not a rule edit)"
+  - file: .claude/commands/sync-from-template.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT the same finding as the existing sync-from-template.md entry
+      (lines 1056-1176), which is the merge-vs-replace contract contradiction.
+      This entry is the § 2 template-RESOLUTION citation pointing at an
+      obsoleted module. Same file, disjoint defects — both should land.
+    reason: >-
+      SELF-REFERENTIAL BREAKAGE: THE COMMAND THAT TELLS A CONSUMER HOW TO SYNC
+      IS BROKEN BY THE SYNC IT DESCRIBES. Section 2 (Locate template),
+      resolution step 4, instructs consumers to resolve the template via
+      `bin/lib/loom-links.mjs` — a module on the obsoleted manifest that does
+      not ship, so the documented resolution path names a file the same release
+      deletes. This is the DOC-surface sibling of the already-filed RUNTIME
+      static-import instance on the same module (entry 32 below); fixing the
+      import does not fix this citation, and vice versa. They must be swept
+      together or the class recurs at the surface that was not fixed.
+    diff_lines: "+2 -2 (resolution-step citation)"
+  - file: .claude/rules/git.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved here. No prior entry touches rules/git.md or the
+      guides/rule-extracts depth-pointer class.
+    reason: >-
+      THE RULE'S DOCUMENTED DEPTH CONTRACT RESOLVES TO NOTHING AT EVERY
+      CONSUMER. The header depth-pointer (line 8) and the Origin footer both
+      direct readers to `guides/rule-extracts/git.md` for the extended bash
+      examples, the full BLOCKED-rationalization lists, the repository
+      protection table and the post-mortems — while that extract is on the
+      obsoleted manifest and does not ship. This is worse than an ordinary
+      dangling reference: the rule's NEUTRAL BODY WAS DELIBERATELY TRIMMED on
+      the assumption the extract exists (the paired-extraction pattern
+      `rule-authoring.md` Rule 10 mandates), so the content is not merely
+      unreachable — it was removed from the body BECAUSE it was supposed to be
+      reachable. Consumers get the trimmed rule and none of the depth.
+      GATE-1 NOTE: this generalizes. `.claude/guides/rule-extracts/**` is the
+      declared depth home for many allowlisted rules per
+      `self-referential-codify.md`; if the tree is obsoleted wholesale, every
+      rule that trimmed its body against an extract has the same hole. Loom
+      should establish whether git.md is one instance or the whole tree.
+    diff_lines: "+0 -0 (distribution decision)"
+  - file: .claude/commands/doctor.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved here. No prior entry touches commands/doctor.md.
+    reason: >-
+      Line 65 cites `bin/loom-doctor.test.mjs`, which is on the obsoleted
+      manifest and does not ship. Same purge-without-reference-sweep class as
+      entries 25-26; lowest blast radius of the batch (a single doc pointer in
+      one command, no normative dependency rests on it), relayed for
+      completeness so the class is fixed as a set rather than point-wise.
+    diff_lines: "+1 -1"
+  - file: .claude/commands/ecosystem-init.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved here. No prior entry touches commands/ecosystem-init.md.
+    reason: >-
+      Cites `.claude/bin/ecosystem.json` at four sites (lines 34, 52, 69, 87)
+      and `bin/lib/loom-links.mjs` at line 115; neither ships. DISPOSITION
+      QUESTION FOR GATE-1 (the proposer flagged this honestly rather than
+      asserting a defect): if these are ILLUSTRATIVE paths rather than live
+      targets, the backtick form makes them indistinguishable from real targets
+      to `validate-xref-integrity` — which is exactly the "pin intent" advice
+      the validator itself emits for slash-less directory tokens. So the fix is
+      either to correct real citations or to mark illustrative ones so the
+      validator can tell them apart. Both are cheap; the wrong one is to leave
+      them ambiguous, because that is what keeps the validator noisy and
+      therefore ignorable — the precondition for entry 29's gate to be
+      politically unadoptable.
+    diff_lines: "+5 -5"
+  - file: .claude/rules/sync-completeness.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved here. `grep -c sync-completeness latest.yaml` returned
+      0 before this relay, and no prior entry proposes an emission-time xref
+      gate.
+    reason: >-
+      THE STRUCTURAL FIX FOR ENTRIES 23-28: MAKE `validate-xref-integrity` A
+      RELEASE GATE OVER THE EMITTED TREE, SO A PURGE OR FENCE THAT ORPHANS A
+      REFERENCE CANNOT SHIP. The validator ALREADY EXISTS and ALREADY DETECTS
+      every finding above — it is simply not run at emission. RE-VERIFIED AT
+      THIS TEMPLATE on an unmodified 2.24.0 checkout, with the true exit code
+      captured (not a piped tail's): `node .claude/bin/validate-xref-integrity.mjs`
+      exits 1, reporting "scanned 759 files, 2709 xref tokens; 355 dangling".
+      That is the shipped state of the template — 355 dangling references
+      before any consumer edit. The root cause shared by every entry in this
+      batch is that the distribution engine removes or fences an artifact
+      WITHOUT sweeping the references to it. Without the gate the class recurs
+      at every cut and each of 30+ consumers rediscovers it independently at
+      sync time, paying the diagnosis cost N times over — which is precisely
+      what this batch is. Conceptually this is `orphan-detection.md` Rule 4c
+      (a removal must sweep its dependents in the same change) applied at the
+      DISTRIBUTION boundary rather than the source tree.
+    diff_lines: "+14 -0 (new MUST clause + wiring)"
+    template_ingest_note: >-
+      ADOPTION SEQUENCING FOR GATE-1 — the honest obstacle. Turning the gate on
+      today would BLOCK EVERY EMISSION, because the tree ships at 355 dangling.
+      So the gate cannot land alone; it needs either (a) a burn-down of the 355
+      first, or (b) a ratchet (fail only on refs NEWLY dangling versus the
+      prior cut) so the gate bites immediately without a flag day. (b) is
+      recommended — it closes the class at once and converts the 355 into
+      tracked debt rather than a merge blocker, and it is the shape that
+      survives a partial burn-down. Stating this because a gate proposed
+      without its adoption path is the kind that gets approved and then
+      permanently deferred.
+  # ===================================================================
+  # ROUTE-A ORIGINATIONS — issues filed against THIS template.
+  # origin: use-template (deliberately NO `origin: downstream` / `via:` —
+  # these were observed AT the template, not relayed from a consumer).
+  # Per CLAUDE.md § "GitHub Issue Triage -> Upflow Routing", a COC-artifact
+  # issue filed here is consolidated into this Step-7b manifest.
+  # ===================================================================
+  - file: .claude/hooks/signing-mutation-guard.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    source_issue: "kailash-coc-rs#74"
+    dedup_evidence: >-
+      NOT already solved here. `grep -c signing-mutation-guard latest.yaml`
+      returned 0 before this relay.
+    reason: >-
+      A SECURITY GUARD ALLOWS WHERE ITS OWN COMMITTED FIXTURE SPECIFIES BLOCK —
+      FAIL-OPEN ON THE DEGRADED (NO-SIGNING-KEY) PATH, WHICH IS PRECISELY THE
+      UNTRUSTED-OPERATOR CASE THE GUARD EXISTS TO GATE. REPRODUCED AT THIS
+      TEMPLATE with the true exit code captured: `npm test` in `.codex-mcp-guard`
+      exits 1 with exactly two failures, verbatim:
+        "✗ apply_patch degraded: expected DENY (gate bites), got allow=true"
+        "✗ shell degraded git-mut: expected DENY by signing-mutation-guard.js,
+           got allow=true denier=(none)"
+      The fixture `03-block-degraded-mode-mutation/expected.txt` specifies
+      `severity: block` / `exit_code: 2` / `continue: false` / `[BLOCK]`, and
+      the fixture README documents the same disposition for 03 and 06. Both
+      expected files are BYTE-IDENTICAL before and after the 2026-08-02 Gate-2
+      sync (`123870f`, loom `43167a54`), so the INTENDED behavior did not
+      change — only the hook's actual behavior can have. `.codex-mcp-guard/test-server.mjs`
+      last changed 2026-07-19 and was untouched by that sync. Confirmed NOT
+      caused by the concurrent dependency bump (#43 / PR #73): reverted to the
+      pre-bump lockfile, `npm ci`, both failures reproduced identically.
+      TWO INDEPENDENT SURFACES AGREE (the codex-mcp-guard suite and the
+      fixture's own documented expectation), which is why this is filed as a
+      confirmed regression and not a suspicion.
+      SECONDARY GAP (`cc-artifacts.md` Rule 9): there is NO canonical runner
+      for the `signing-mutation-guard/` fixture directory, unlike the sibling
+      `signing-model-key-separation/` which ships a `run.mjs`. So the fixtures
+      cannot be executed as fixtures at all — they are inert documentation.
+      That absence is why the drift went undetected AND why the first triage
+      step must be to establish the canonical invocation.
+    diff_lines: "unknown until root-caused (hook fix + run.mjs)"
+    template_ingest_note: >-
+      HIGHEST SEVERITY OF THIS BATCH — a fail-open security guard. Recommend
+      Gate-1 treat this as BUG (fix-now) per `product-completion-first.md`
+      MUST-1, not as an incremental. The missing `run.mjs` should land WITH the
+      fix per `cc-artifacts.md` Rule 9, so the regression becomes mechanically
+      detectable rather than rediscovered by a downstream npm test.
+  - file: .claude/bin/sync-from-canon-fetch.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    source_issue: "kailash-coc-rs#75"
+    dedup_evidence: >-
+      NOT already solved here. `grep -c sync-from-canon-fetch latest.yaml`
+      returned 0. The EXISTING sweep.md entry (line 1329) is the SIBLING
+      instance of the same class on a different artifact — that entry's own
+      `review_recommendations` explicitly asked for this sweep ("any other
+      distributed command or hook that imports a loom_only lib will fail the
+      same way"). This entry is that sweep's result, not a duplicate.
+    reason: >-
+      A DISTRIBUTED ARTIFACT STATICALLY IMPORTS A `loom_only`-FENCED MODULE, SO
+      IT DIES AT LOAD BEFORE EXECUTING A LINE AT EVERY CONSUMER. VERIFIED AT
+      THIS TEMPLATE: `node -e 'import("./.claude/bin/sync-from-canon-fetch.mjs")'`
+      throws `ERR_MODULE_NOT_FOUND` for `.claude/bin/lib/loom-links.mjs`. The
+      module is not merely absent from distributed lanes, it is ACTIVELY PURGED
+      from them (`sync-manifest.yaml:3144` — "fenced loom_only; purge the stale
+      BUILD-lane copy"), while this file ships and imports it unconditionally
+      at top level.
+      THE CORRECT PATTERN ALREADY EXISTS IN-TREE: `bin/loom-doctor.mjs:57`
+      imports the same module inside a `try { await import(...) } catch { return null }`,
+      annotated "the ONE intended degrade path ... documented per
+      zero-tolerance Rule 3 — it is NOT silent error hiding". The fix is to
+      adopt that shape here.
+      REACHABILITY IS BOUNDED, NOT ZERO — stated honestly rather than inflated:
+      this template is canon, not a fork, so `/sync-from-canon` is a no-op path
+      here. But inert-by-non-invocation is not correct-by-construction. An
+      operator who runs it gets a module-not-found stack trace instead of a
+      clean "not a fork ecosystem" message, and a FORK consumer — the intended
+      user of this exact command — hits it on the path that is supposed to work.
+      THE SWEEP IS COMPLETE: three importers of the fenced module exist —
+      sweep.md (filed, entry 22), this file (filed here), and loom-doctor.mjs
+      (correctly guarded, the reference pattern). No fourth.
+    diff_lines: "+6 -2 (static import -> guarded dynamic import)"
+  - file: .claude/hooks/lib/journal-reserve.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    source_issue: "kailash-coc-rs#76"
+    dedup_evidence: >-
+      NOT already solved here. `grep -c journal-reserve latest.yaml` returned 0.
+    reason: >-
+      TWO COORDINATION PRIMITIVES INVOKED BY THE SAME `/codify` RUN DISAGREE
+      ABOUT WHETHER COORDINATION IS REQUIRED — THE LEASE DEGRADES CORRECTLY,
+      THE JOURNAL RESERVATION HARD-FAILS — SO `/codify`'s MANDATORY JOURNAL
+      GATE IS UNSATISFIABLE ON A COORDINATION-OFF REPO. `reserveJournalSlotSigned`
+      returns `{ok: false, reason: "reserveJournalSlot: opts.identity must carry
+      non-empty verified_id, person_id, display_id"}` because `resolveIdentity()`
+      yields a live `verified_id` and `display_id` but `person_id: null` — a
+      signing key is configured, but there is no roster (`operators.roster.json`
+      is gitignored at `.gitignore:145` and tracked nowhere). `commands/codify.md`
+      instructs: "On {ok: false} surface error + reason verbatim and STOP — do
+      not write the entry unreserved." So DECISION/DISCOVERY entries cannot be
+      written at all.
+      THE ASYMMETRY IS THE DEFECT. `multi-operator-coordination.md` establishes
+      coordination as OPT-IN, OFF BY DEFAULT — "a solo / un-enrolled repo pays
+      nothing". The sibling primitive honors that: `codify-lease.js` gates
+      record emission on `isCoordinationEnabled`, which is why the lease
+      acquires and releases cleanly here with
+      `record_emit.reason: "coordination-disabled"`. VERIFIED MECHANICALLY AT
+      THIS TEMPLATE: `grep -cE 'isCoordinationEnabled|coordination-mode|coordinationEnabled'`
+      returns 4 in `codify-lease.js` and 0 in `journal-reserve.js`; roster
+      present = NO. The identity precondition throws unconditionally.
+      WHY ENROLLING IS NOT THE FIX: `/whoami --register` APPENDS a person_id to
+      an EXISTING roster, and there is none here, so the applicable path would
+      be first-owner genesis bootstrap — which this repo's session notes have
+      recorded as blocked on an upstream enrollment gap since 2026-06-24, and
+      `.claude/ecosystem.json` is absent (this template is not an ecosystem
+      root). Forcing enrollment to satisfy a journal gate would stand up
+      multi-operator trust machinery in a repo that deliberately opted out.
+      EXPECTED: when `isCoordinationEnabled(repoDir)` is false, degrade to the
+      unsigned local high-water slot computation (the pure `reserveJournalSlot`
+      path) rather than throwing on a null `person_id`. The signed-reservation
+      requirement is CORRECT when coordination is ON and must stay unchanged.
+    diff_lines: "+8 -1"
+    template_ingest_note: >-
+      SAME CLASS AS #66 (Validator 15 applying a loom-side precondition to a
+      repo the precondition does not describe): a gate that is correct in its
+      home context and unsatisfiable by construction outside it. Gate-1 may
+      want to sweep for further coordination primitives missing the
+      `isCoordinationEnabled` early-return, since two instances now exist and
+      the opt-in contract is stated once but enforced per-primitive. MEDIUM
+      severity — no data loss, no security impact — but it silently removes
+      `/codify`'s journal receipt on every coordination-off repo, which is
+      exactly where its provenance is supposed to land. This cycle's provenance
+      fell back to PR bodies and commit messages.
+
+  # ===================================================================
+  # 2026-08-03 /codify — UPFLOW OPEN-NEVER-COMPLETE cluster (entries 33-39)
+  # origin: use-template. Co-owner-directed: a downstream /codify cascade MERGED
+  # its upflow PR into its upstream template's main. Entries 33-39 are ONE fix at
+  # four layers and are a DEPENDENT SET — classify and land TOGETHER. The rule
+  # without the adapters is unenforced prose; the adapters without the prose leave
+  # the surface that misled the agent still advertising the merge. Reference impl
+  # landed locally at 8ece215 (Class-A non-durable here — the proposal is durable).
+  #
+  # ⛔ DO NOT INGEST ENTRIES 33-39 AS WRITTEN — THEY ARE STALE AND CARRY KNOWN
+  #    SECURITY DEFECTS. Entries 33-39 describe the fence as of 916813d. Later
+  #    commits across FIVE adversarial rounds fixed defects that NONE of the
+  #    entries below reflect. Verify by grepping the ENTRY BODIES ONLY —
+  #    excluding this comment block, which necessarily contains every token:
+  #
+  #      grep -v '^\s*#' .claude/.proposals/latest.yaml \
+  #        | grep -cE 'isSchemeForm|scp|IPv6|collection|differential|discarded'
+  #      # 0 = the entries are stale, as claimed.
+  #
+  #    (An earlier revision of this line said "grep this file: … all return
+  #    zero". That was TRUE when measured against the parent blob and FALSE the
+  #    instant it was written, because the marker's own text supplies all six
+  #    tokens — an instrument that refutes the claim it was offered to prove.
+  #    Recorded rather than silently corrected, since this cluster's whole
+  #    subject is false claims about instruments.)
+  #
+  #    The `diff_lines: "+433 -0"` on the upflow-self-repo.js entry no longer
+  #    describes the file. Do not trust a number written here — re-derive it:
+  #
+  #      git diff --numstat <merge-base>...HEAD -- .claude/hooks/lib/upflow-self-repo.js
+  #
+  #    (This line has now carried TWO stale counts: "~700 lines", then "measured
+  #    at 751 lines" — which was already wrong when written, because the very
+  #    commit that wrote it grew the file past 751. A bare count decays the
+  #    moment the artifact beside it changes, which is the whole subject of this
+  #    marker. Replaced with the command instead of a third number.)
+  #
+  #    Ingesting as-is would distribute the DEFECTIVE fence to every sibling
+  #    template via /sync-to-use — including a HIGH, live, fetchable bypass —
+  #    and would rebuild away the fixes, because hooks/lib/** is a SYNCED glob
+  #    (sync-manifest.yaml) so the local files are Class-A non-durable.
+  #
+  #    The fixes, in order (all on chore/sync-from-downstream-2026-08-03):
+  #      0c95695  anchor the URL scheme — a path-embedded `://` supplied the host
+  #      e704014  scope the `#`/`?` cut to the scheme branch (ssh splits at the
+  #               LAST `@`) — HIGH: measured `ssh -G` connects to the attacker
+  #               while the fence reads the legitimate host, on a FETCHABLE
+  #               remote; plus normalizeComponent denylist -> positive allowlist
+  #      229ab37  bracketed IPv6; adds differential-resolver-parity.mjs (NEW FILE,
+  #               not in any entry below)
+  #      1a25ee1  that oracle scored a refuse-everything parser as clean — fixed
+  #      d76f797  EXACT segment count — fragment/query injected extra PATH
+  #               segments and the last-two rule took the trailing pair
+  #      6cf74fa  restore the legacy ADO collection form d76f797 regressed
+  #      3ce96c6  validate ADO segments BEFORE dropping the collection (refutes a
+  #               false security claim that shipped in the code comment)
+  #      07ad4f0  surface git's stderr on a derivation failure
+  #      491d551 / fe33268 / 0c0fbcb  four documented residuals + doc-vs-code fixes
+  #
+  #    NEXT SESSION'S FIRST TASK: append entries carrying these, then re-verify
+  #    `diff_lines` against the real diff. Until then this cluster is BLOCKED at
+  #    Gate-1. Recorded here rather than only in session notes because THIS file
+  #    is the durable surface loom reads; session notes are not synced.
+  #
+  #    ✅ DONE 2026-08-04 — SEE CLUSTER 52-66 AT THE END OF `changes:`.
+  #    That cluster SUPERSEDES these entries for every file they share, with
+  #    every `diff_lines` re-derived at 3292bd3. THIS CLUSTER (33-39) IS STILL
+  #    STALE AND IS LEFT IN PLACE ONLY BECAUSE `artifact-flow.md` § Proposal
+  #    Lifecycle FORBIDS OVERWRITING UNPROCESSED ENTRIES — do not read its
+  #    survival as a second opinion. Where 33-39 and 52-66 describe the same
+  #    file, 52-66 WINS; where they disagree, 33-39 is the wrong one.
+  #
+  #    52-66 also covers NINE FILES THAT HAD NO ENTRY ANYWHERE — vcs-provider.js,
+  #    ado-login.js, differential-resolver-parity.mjs, and four entire instrument
+  #    suites. Those were not stale, they were SILENT: hooks/lib/** and
+  #    audit-fixtures/** are synced globs, so an entry-less file is Class-A
+  #    non-durable and the next /sync-to-use rebuilds it away. Twelve commits
+  #    landed after this marker was written, three of them fixing defects newer
+  #    than the marker itself (the C0/DEL host guard, the unbounded parse-failure
+  #    host, and the ADO triple→quad collection widening).
+  # ===================================================================
+  - file: .claude/rules/self-referential-codify.md
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: "NOT already solved — `grep -c upstream-issue-hygiene .claude/rules/self-referential-codify.md` returns 0 at 2.24.0; the rule is absent from the Rule-2 allowlist."
+    reason: >-
+      THE GATE THAT PROTECTS MUST-4 DID NOT COVER THE RULE THAT DEFINES IT.
+      MUST-4 governs the Step-7c completion stop-point every downstream `/codify`
+      upflow passes through, which is the same codify-governing predicate that
+      admitted `issue-triage-routing.md` and `knowledge-cascade-routing.md` — but
+      `upstream-issue-hygiene.md` was not on the Rule-2 allowlist. The Tier-1
+      redteam this cycle fired only INCIDENTALLY, because the fence code happens
+      to touch `.claude/hooks/lib/**` and `.claude/audit-fixtures/**`; a
+      prose-only edit to MUST-4 alone would have tripped no entry at all.
+      NAMED BECAUSE THE VALIDATOR CANNOT CATCH THIS CLASS: `allowlist-paths-
+      coverage` (#443) checks `paths:` ⊇ allowlist, NOT whether an EDITED rule is
+      ON the allowlist — the same gap `sync-completeness.md`'s own entry records.
+      So the omission is invisible to `/sync` and had to be found by review.
+      THIS ENTRY EXISTS FOR DURABILITY, and its absence was itself a finding: the
+      allowlist edit is a local change to a SYNCED rule, which
+      `artifact-flow.md` § Distribution-Durability Invariants classes as
+      Class-A NON-DURABLE — rebuilt away by the next `/sync-to-use`. Without a
+      proposal entry loom never gains the allowlist row, and the entry's own text
+      ("Added in the same codify that lands MUST-4 per Rule 2's same-codify
+      obligation") would be FALSE at loom. The durable surface is the proposal.
+    diff_lines: "+2 -1 (vs merge-base 93551cb = 2.24.0)"
+  - file: .claude/rules/upstream-issue-hygiene.md
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved. `grep -rn "never merge\|MUST NOT merge\|not merge"`
+      across `.claude/rules/`, `.claude/commands/`, `sync-flow.md` and the inbox
+      README at 2.24.0 returns exactly ONE hit — `commands/sweep.md:57` "never
+      merge red [CI]" — unrelated. NO clause in the corpus prohibits a downstream
+      from merging into its upstream.
+    reason: >-
+      ADDS MUST-4 "OPEN, NEVER COMPLETE" — A DOWNSTREAM UPFLOW OPENS A PR AND
+      STOPS. THE CAUSE WAS AN ABSENCE, NOT A BAD INSTRUCTION: MUST-1 gates
+      `gh issue create` / `gh pr create` — SUBMISSION — and is SILENT on
+      COMPLETION, so the one act needing a fence was the one act no clause named.
+      Submission and completion are different acts with different owners: the
+      consumer proposes, the upstream maintainer disposes.
+      WHY IT MATTERS BEYOND TIDINESS: the upstream's ingest is the ONLY place the
+      offer is scrubbed against the upstream's denylist, reviewed as untrusted
+      data, deduped against work already relayed, and lane-checked. A self-merged
+      offer skips ALL FOUR while still producing an `ingest_disposition` receipt
+      that reads as though they ran — an unreviewed change wearing a reviewed
+      change's provenance, cascading to every sibling consumer that pulls. Worse
+      than an unmerged PR, not merely untidy.
+      The clause carries an explicit NO-EXCEPTION / no-human-gate-unlocks-it
+      statement because every plausible rationalization here sounds responsible
+      ("I opened it so I own it" / "the human already approved the filing" / "the
+      maintainer is slow" / "CI is green so review is a formality" / "I have admin
+      so I am a maintainer" / "--auto isn't merging"). It states the invariant both
+      halves reduce to: YOU MAY ONLY COMPLETE A PR ON THE REPO YOU ARE. Ships
+      canonical 8-field Wiring, clause-scoped.
+    diff_lines: "+62 -1 (vs merge-base 93551cb = 2.24.0)"
+    template_ingest_note: >-
+      SEVERITY ROUTING IS DELIBERATE — worth Gate-1 attention. Regression-within-
+      grace routes to the PRE-EXISTING `critical` trigger (cross-repo write
+      outside scope → L1), NOT the generic 1-step `regression_within_grace`. A
+      downstream merging into an upstream's main IS a cross-repo write, and
+      `repo-scope-discipline.md` already classes that critical; routing it softer
+      would make this clause WEAKER than the rule it composes with. No new key is
+      minted — the existing trigger describes the act exactly.
+  - file: .claude/hooks/lib/vcs-github-adapter.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved. At 2.24.0 `completeUpflowPR` has NO repo-identity guard
+      and NO callers anywhere (`grep -rn completeUpflowPR .claude/` returns only
+      the two adapter definitions and one sync-flow.md prose line).
+    reason: >-
+      THE STRUCTURAL HALF OF MUST-4 — A FAIL-CLOSED OWN-REPO FENCE. At 2.24.0
+      this primitive was DEFINED, EXPORTED, AND CALLER-LESS: a documented merge
+      capability (`PUT repos/{o}/{r}/pulls/{n}/merge`) sitting on the upflow lane
+      with nothing gating it and nothing using it. Prose alone is not load-bearing
+      against that.
+      THE FENCE — THE IDENTITY IS DERIVED, NEVER ACCEPTED. `completeUpflowPR`
+      derives this repo's own identity from `process.cwd()` via the new
+      `hooks/lib/upflow-self-repo.js::deriveSelfRepoRef`, and refuses BEFORE the
+      transport fires when the derived identity is not the target. It reduces to
+      "you may only complete a PR on the repo you ARE", permitting the legitimate
+      maintainer use (`/sync-from-downstream` merging its OWN inbox PR) while
+      refusing the downstream case before the transport fires.
+      NO IDENTITY VALUE IS TAKEN OFF THE CALLER'S DESCRIPTOR — no `selfRepoRef`
+      field, no deriver-injection seam, no `cwd` field. (`deriveSelfRepoRef` does
+      take a `cwd` ARGUMENT, which both adapters hardcode to `process.cwd()`;
+      what was removed is the caller's ability to SUPPLY one. An earlier draft
+      here said "no `cwd` argument", which contradicted this same file 66 lines
+      later.) The caller-authored operand was
+      MOVED TWICE before it was removed (`selfRepoRef` -> `_deriveSelfFn` ->
+      `cwd`), and a Tier-1 redteam defeated each shape in turn; removing the
+      descriptor field eliminated a trivially-forgeable operand.
+      THE HONEST BOUND, because four rounds of this change over-claimed exactly
+      here: removing the PARAMETER did NOT make the operand unauthorable. The
+      identity derives from `process.cwd()`, which is selected by whoever
+      launches the process — a scratch tree with `origin` pointed at the upstream
+      derives that upstream and clears the fence. So this CLOSES the ACCIDENT
+      class (an agent following the stale prose is refused — and that accident IS
+      the originating incident) and RAISES THE COST of a deliberate act. It is
+      NOT a boundary against a caller that can choose its own working directory,
+      and it cannot be: a caller able to run arbitrary code in-process can
+      replace the module outright. Anything stronger would fail
+      `instrument-discipline.md` MUST-1, which an earlier draft of THIS BLOCK
+      cited as authority for the opposite claim.
+      WHAT IS AUTHORITATIVE: the live git remote, SOLELY. There is deliberately NO
+      directory-name fallback — that fallback was the exploit path (it yielded a
+      null slug, letting a forged declaration supply the identity).
+      `.claude/VERSION::repo` is a CROSS-CHECK ONLY: it can REFUSE on disagreement
+      but can NEVER SUPPLY the identity, so a forged VERSION file is powerless.
+      HONEST BOUND, stated not papered over: this fences the ADAPTER path. An agent
+      typing `gh pr merge --repo <upstream>` at the CLI bypasses it entirely; that
+      residual, and the sibling cross-repo write primitives that carry no own-repo
+      check, are enumerated in the Wiring's Detection field, with a
+      `validate-bash-command.js` tripwire as the Phase-2 target.
+    diff_lines: "+152 -1 (vs merge-base 93551cb = 2.24.0)"
+  - file: .claude/hooks/lib/vcs-azure-adapter.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: "NOT already solved — same as the GitHub sibling: no repo-identity guard at 2.24.0."
+    reason: >-
+      PROVIDER-PARITY TWIN OF ENTRY 34 — the identical own-repo-only fence on the
+      ADO adapter, adapted to its `{org, project, repo}` repoRef shape. Landed in
+      the SAME change per `security.md` § Enforcement-Surface Parity: a new
+      fail-closed dimension MUST land at EVERY independent surface in the same PR
+      or the un-fenced provider simply becomes the bypass — self-inflicted here,
+      since both adapters are reachable from one `getRepoProvider` dispatch.
+      ALL THREE ADO COMPONENTS COME FROM THE DERIVATION. The shared deriver parses
+      the ADO remote forms (`dev.azure.com/<org>/<project>/_git/<repo>`, the
+      `visualstudio.com` subdomain form, and the ssh `v3` form) and returns
+      `self.ado = {org, project, repo}`, so `org` is compared like the other two.
+      An earlier cut read `org` off `repoRef` when the derivation did not supply
+      one — a leg that compared a value against ITSELF and could therefore never
+      fail. A non-ADO origin remote now yields `self.ado === null` and REFUSES: a
+      repo whose remote is not an ADO remote cannot prove an ADO identity. This
+      CLOSES the cross-org residual rather than documenting it.
+    diff_lines: "+93 -1 (vs merge-base 93551cb = 2.24.0)"
+  - file: .claude/hooks/lib/upflow-self-repo.js
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: "NEW module — no self-identity derivation helper exists at 2.24.0; the 2.24.0 fence took a caller-supplied identity instead."
+    reason: >-
+      THE DERIVATION THE FENCE TURNS ON — an operand no DESCRIPTOR FIELD can
+      supply. It is still selected by the caller's working directory; the
+      covered-vs-uncovered bound is stated once in `upstream-issue-hygiene.md`
+      MUST-4 and deliberately NOT restated here (`specs-authority.md` Rule 9 —
+      the restated copies are what drifted across four rounds).
+      Extracted as ONE shared module rather than duplicated per adapter, per
+      `security.md` § Credential-Decode-Helpers: both VCS adapters route through
+      it, so the two providers cannot normalize differently — the drift shape
+      `security.md` § Enforcement-Surface Parity blocks.
+      `deriveSelfRepoRef(cwd)` takes exactly ONE parameter and has NO injection
+      seam. It reads the live `git remote get-url origin` as the SOLE
+      authoritative identity, deliberately WITHOUT a directory-name fallback (the
+      fallback was the exploit path). `.claude/VERSION::repo` is consulted only as
+      a refuse-only cross-check — present-and-disagreeing REFUSES, but it can
+      never SUPPLY the identity.
+      It also parses ADO remote forms to yield `{org, project, repo}`, which
+      `version-utils.js::normalizeRemoteIdentity` structurally cannot (it keeps
+      only the last two path segments and drops `_git`, losing `<org>`). That is
+      why the ADO parse lives here rather than reusing it, and it is what lets the
+      ADO fence compare `org` against a DERIVED value instead of against itself.
+      One shared `normalizeComponent` (lowercase, strip a trailing `.git`, drop
+      `_git`) is applied to BOTH sides of every comparison so the derivation
+      source and the comparator cannot drift.
+    diff_lines: "+433 -0 (new file, vs merge-base 93551cb = 2.24.0)"
+  - file: .claude/audit-fixtures/upflow-open-never-complete/README.md
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: "NEW file — the 2.24.0 fixture directory shipped a runner with no README and no recorded mutation-validity evidence."
+    reason: >-
+      THE MUTATION-VALIDITY RECORD `instrument-discipline.md` MUST-2(b) REQUIRES.
+      An un-run `mutation:` field is a CLAIM, not evidence: a mutation that does
+      not red leaves two live hypotheses (vacuous test OR inert mutation), so the
+      obligation is to EXECUTE each one and record what it reddened.
+      This README carries those tables — per-row mutation, the predicate it
+      removes, the verdict, and the exact cases reddened. (An earlier draft here
+      also claimed the README carried a "vacuity probe … reds every
+      refusal-asserting case". BOTH halves were wrong: the README has no such
+      section, and a GitHub-fence-block deletion CANNOT red the ADO refusal
+      cases, which run through the Azure adapter's own fence. The sibling
+      `run.mjs` entry states the probe correctly and is the one to read; this
+      entry does not restate it — `specs-authority.md` Rule 9, since two copies
+      of the same claim in one proposal are exactly what drifted here.)
+      It DISCLOSES, rather than smooths over, that one pass was measured in the
+      live tree and a second in a byte-copy sandbox (sibling agents were editing
+      the adapters concurrently), because the method changes what the result
+      means. It also records the mutations that did NOT produce a verdict —
+      non-applying (INERT) and reached-but-ineffective — rather than recording
+      them as proof of vacuity, which is the exact MUST-2(b) error the section
+      exists to prevent.
+    diff_lines: "+215 -0 (new file; line count — untracked at measurement time)"
+  - file: .claude/audit-fixtures/upflow-open-never-complete/run.mjs
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: "NOT already solved — the 2.24.0 cut drove the fence through an injection seam; no real-repo coverage existed."
+    reason: >-
+      FIXTURES THAT PROVE THE FENCE BITES (`cc-artifacts.md` Rule 9), REWRITTEN to
+      stop injecting an identity. The prior cut drove the fence through the
+      `_deriveSelfFn` seam, which meant the suite exercised an INJECTION POINT
+      rather than the fence — it would have stayed green against a build with no
+      fence at all on the real path.
+      HOW IT DRIVES THE FENCE NOW: each case builds a REAL throwaway git repo
+      (`mkdtemp` + `git init` + the origin remote that case needs, optionally a
+      `.claude/VERSION`) and spawns a CHILD `node` with `cwd` set to it. Since the
+      adapter hardcodes `process.cwd()`, the process boundary is the only place
+      `cwd` can be set — so the fixture reaches the fence exactly as a real
+      session does. Coverage spans both providers: cross-repo refusal, fail-closed
+      on an underivable identity, the permitted own-repo path, case / `.git`
+      normalization, a forged `VERSION`, a no-origin-remote repo deliberately
+      NAMED after its target (so a restored dirname fallback would be caught), and
+      the ADO remote forms including a cross-ORG same-project-and-repo case.
+      THE TRANSPORT SPY IS THE LOAD-BEARING DESIGN CHOICE: each case asserts the
+      transport NEVER FIRED, not merely that `ok === false`. "Did the network call
+      happen?" is the discriminating question — a fence returning `ok:false` AFTER
+      merging would pass a naive assertion. Each case additionally asserts
+      `error === null`, because deleting a fail-closed guard typically makes the
+      next line THROW, and a bare `ok === false` assertion accepts that crash as a
+      refusal.
+      Every case records the MUTATION that reds it per `instrument-discipline.md`
+      MUST-2(b), and those mutations were EXECUTED — see the companion README's
+      mutation-validity tables, which record per-row verdicts, the reddened cases,
+      and (honestly disclosed) which rows were measured in the live tree versus a
+      byte-copy sandbox. A vacuity probe deleting the entire GitHub fence block
+      reds the five GitHub refusal-asserting cases (measured 11/16 at the time);
+      it CANNOT red the ADO refusal cases, which run through the Azure adapter's
+      own fence — those are covered by separate ADO-adapter mutations. Note the
+      probe proves the fence BLOCK is load-bearing, NOT that each comparison leg
+      within it discriminates: a later exhaustive predicate sweep found three
+      legs (ADO `org`, GitHub `owner`, ADO `project`) plus the host check that no
+      case could distinguish, each needing its own case. "No case passes
+      vacuously" is a claim per-leg, not per-block.
+    diff_lines: "+585 -0 (new since 2.24.0, vs merge-base 93551cb)"
+  - file: .claude/skills/30-claude-code-patterns/sync-flow.md
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved. The Step-7c § at 2.24.0 has no stop-point statement and
+      its provider-dispatch bullet actively advertises the merge primitive.
+    reason: >-
+      FIXES THE PROSE SURFACE THAT ACTUALLY MISLED THE AGENT. At 2.24.0 line 233
+      listed all THREE methods in ONE sentence — `createUpflowPR`,
+      `createUpflowIssue`, and "maintainer-side completion → `completeUpflowPR`" —
+      closing with "the agent-followed CLI equivalents are `gh pr create` /
+      `gh issue create` / `gh pr merge`". A downstream agent reading its OWN upflow
+      procedure sees `gh pr merge` presented as an agent-followed equivalent,
+      qualified only by "maintainer-side" — which a consumer that JUST OPENED THE
+      PR can plausibly read as itself.
+      THE FIX: the consumer lane is restated as EXACTLY TWO methods with "There is
+      NO third consumer-lane method: the upflow OPENS and STOPS";
+      `completeUpflowPR` is explicitly relocated OFF the lane; the ADO bullet's
+      "the SAME three methods" is corrected to two; and a new § "The Step-7c
+      stop-point (MUST)" states the PR URL IS the deliverable and names the BLOCKED
+      reasoning "the cascade hasn't happened until it's merged" — the cascade is
+      the upstream's ingest → Gate-1 → `/sync-to-use`, not the merge.
+    diff_lines: "+9 -7 (vs merge-base 93551cb = 2.24.0; the -7 includes a 4-line prettier re-flow of the Gate-2 reconcile table, which is formatting only and changes no claim)"
+  - file: .claude/commands/codify.md
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved. Step 7c(5) at 2.24.0 ends at "no auto-submission, no
+      standing approval" with no stop-point.
+    reason: >-
+      THE COMMAND SURFACE'S OWN STOP-POINT — the highest-reachability surface for
+      this failure. Step 7c(5) gains "OPEN ONLY — Step 7c STOPS at an open PR", the
+      MUST-4 citation, the reason (MUST-1 authorizes SUBMISSION never COMPLETION),
+      and a pointer to the structural fence. A downstream agent running `/codify`
+      reads Step 7c(5) directly, whereas `sync-flow.md` is the depth file it may or
+      may not open. `commands/codify.md` is on the `self-referential-codify.md`
+      allowlist, so this edit is itself self-referential and gated accordingly.
+    diff_lines: "+1 -1"
+  - file: .claude/.proposals/inbox/README.md
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved. The § Contract at 2.24.0 states the human gate and the
+      never-edit-another-proposer rule, but nothing about merging.
+    reason: >-
+      THE SURFACE DOWNSTREAM AUTHORS ACTUALLY READ — the ACCOUNTABILITY +
+      TRANSPARENCY half of the directive. Adds an "OPEN the PR — never merge it"
+      bullet in the consumer's own terms: your Step 7c is COMPLETE when the PR is
+      open; the PR URL is the handoff; your human gate authorizes SUBMITTING the
+      offer, never COMPLETING it; and the four things the upstream's ingest does
+      that a self-merge skips. The rule and adapters make the wrong act impossible;
+      this file is where a downstream author learns WHY the boundary exists before
+      hitting it.
+    diff_lines: "+9 -0"
+  # ===================================================================
+  # 2026-08-03 /codify — issue resolutions + one backlog-surfaced finding
+  # ===================================================================
+  - file: .claude/bin/sync-from-canon-fetch.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    source_issue: "kailash-coc-rs#75"
+    dedup_evidence: >-
+      Entry 31 FILED this defect; this entry carries its FIX. Entry 22
+      (`commands/sweep.md`) is the sibling instance on a different artifact.
+    reason: >-
+      FIXES THE STATIC `loom_only` IMPORT (the fix for filed entry 31). The
+      top-level `import { resolveRemote } from "./lib/loom-links.mjs"` killed the
+      module at LOAD with ERR_MODULE_NOT_FOUND at every consumer and template —
+      including the `canon-root` no-op path that never needed the resolver at all.
+      Replaced with the guarded dynamic-import shape already proven in-tree at
+      `bin/loom-doctor.mjs:57` (top-level `await import` in try/catch → null stub),
+      preserving the synchronous `resolveCanonTip` signature.
+      THE DEGRADE IS NOT SILENT ERROR HIDING (`zero-tolerance.md` Rule 3): absence
+      collapses into the PRE-EXISTING typed `unresolved-canon-remote` error, which
+      now additionally names the actionable fix that does NOT require the resolver
+      ("declare upstream_canon.url explicitly"). VERIFIED: the module imports
+      cleanly, and a sweep confirms NO remaining distributed artifact statically
+      imports a fenced module — closing the class, not the instance.
+    diff_lines: "+22 -2"
+  - file: .claude/hooks/lib/journal-reserve.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    source_issue: "kailash-coc-rs#76"
+    dedup_evidence: "Entry 32 FILED this defect; this entry carries its FIX."
+    reason: >-
+      FIXES THE COORDINATION-GATE ASYMMETRY (the fix for filed entry 32).
+      `reserveJournalSlot` gains `requireSigningIdentity` (DEFAULT TRUE — the
+      signed path is byte-unchanged), and `reserveJournalSlotSigned` now reads
+      `isCoordinationEnabled(repoDir)` and passes it through, returning
+      `record_emit: {emitted:false, reason:"coordination-disabled"}` — the SAME
+      shape `codify-lease.js` already returns, so both primitives finally report
+      identically on the same repo.
+      THE SCOPING ARGUMENT: when coordination is OFF only `display_id` is
+      load-bearing, because it is the ONLY identity field the reserved FILENAME
+      embeds; `verified_id` and `person_id` exist to stamp the SIGNED coordination
+      record such a repo never emits. The relaxation is exactly as wide as the
+      thing that stops existing — not a blanket bypass.
+      VERIFIED all three ACs: reservation now succeeds on this coordination-off
+      repo, `record_emit` matches the lease's shape, and the signed path STILL
+      rejects an incomplete identity.
+    diff_lines: "+31 -9"
+  - file: .codex-mcp-guard/test-server.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    source_issue: "kailash-coc-rs#74"
+    dedup_evidence: >-
+      NOT already filed. Entry 30 filed #74 as a CONFIRMED fail-open; that
+      classification is RETRACTED here. No prior entry concerns the precondition.
+    reason: >-
+      ⚠ RETRACTS AND CORRECTS ENTRY 30. `signing-mutation-guard.js` IS NOT
+      FAIL-OPEN. The guard is CORRECT and needs no change; THE DEFECT IS A STALE
+      TEST PRECONDITION.
+      WHAT ACTUALLY HAPPENS: the guard gates its entire substrate — both the §4.2
+      sibling-porcelain check AND the degraded-mode block — behind
+      `isCoordinationEnabled()` (the MO-OPT W1-c opt-in gate), passing through
+      BEFORE either predicate is evaluated when coordination is OFF. That
+      passthrough is DELIBERATE and documented in the hook: coordination is opt-in
+      / OFF by default, and on a solo or un-enrolled repo an absent signing key
+      means "un-enrolled", NOT "degraded" — blocking every tracked-path Edit
+      because no GPG key is configured would be the real disruption. The harness
+      drove both degraded lanes with `cwd: process.cwd()` (coordination-OFF),
+      asserting a block on a lane the guard does not gate.
+      THE DISCRIMINATING TEST: driving the guard against a temp repo with the
+      tier-2 override `{enabled:true}` produces exit 2 + `permissionDecision:
+      "deny"` + `[BLOCK]` — EXACTLY what `03-block-degraded-mode-mutation/
+      expected.txt` specifies. The `npm test` exit 1 was REAL; the fail-open
+      DIAGNOSIS was not.
+      FIX: a `makeCoordinationEnabledRepo()` helper builds a coordination-ON temp
+      repo (tracking `README.md`, the path `V4A_PATCH` targets) and both degraded
+      lanes drive against it; `npm test` now exits 0 with both lanes DENYING.
+      Tier-2 force-ON is deliberate — `coordination-mode.js` ASYMMETRIC PRECEDENCE
+      always honors `enabled:true` but REFUSES `enabled:false` on an enrolled repo,
+      so the precondition cannot be repurposed to weaken a real repo.
+      PROCESS NOTE FOR GATE-1: the originating filing explicitly caveated "filed as
+      a finding to verify, not an established regression — my direct invocation may
+      not reproduce the harness's exact preconditions." That caveat was CORRECT and
+      was overridden by the ingesting session, which reproduced the exit-1 and
+      inferred fail-open from it. Reproducing a SYMPTOM is not confirming a
+      DIAGNOSIS (`evidence-first-claims.md` MUST-4).
+    diff_lines: "+45 -6"
+  - file: .claude/audit-fixtures/signing-mutation-guard/README.md
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    source_issue: "kailash-coc-rs#74"
+    dedup_evidence: >-
+      NOT already solved. The README at 2.24.0 tabulates the six fixtures and their
+      dispositions but states NO coordination precondition.
+    reason: >-
+      DOCUMENTS THE PRECONDITION SO THE MISDIAGNOSIS CANNOT RECUR; closes #74's
+      AC-1 (canonical fixture invocation established). The README now LEADS with
+      "PRECONDITION — coordination MUST be ON (read this before triaging a
+      'fail-open')", stating that every `block` disposition presumes an enrolled
+      repo, that a coordination-OFF passthrough is CORRECT and not a regression,
+      and that #74 was filed from exactly this shape. It carries a copy-pasteable
+      canonical invocation reproducing the documented exit-2 block by hand.
+      WHY THIS IS THE DURABLE HALF: the harness fix (entry 42) makes the suite
+      green, but ANY future reader driving these fixtures BY HAND — which is what
+      the filer did — hits the same passthrough and can re-derive the same wrong
+      conclusion. A fixture directory whose expected dispositions are unreachable
+      without an undocumented precondition is a trap.
+    diff_lines: "+41 -0"
+  - file: .codex-mcp-guard/server.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already filed anywhere. Surfaced by THIS cycle's anchored
+      `codify-backlog.mjs` run — invisible to session memory, which is the point of
+      the anchored enumerator.
+    reason: >-
+      THE GUARD TEST SUITE POLLUTES THE REAL TRUST-SUBSTRATE LEDGER. Running
+      `npm test` in `.codex-mcp-guard/` writes SYNTHETIC fail-closed records into
+      the live `.claude/learning/violations.jsonl` — records naming fixture paths
+      like `__nonexistent_b1_hook__.js`, `__nonexistent_820_hook__.js`, and tmpdir
+      `load-crash.js` files.
+      MEASURED, not inferred: `wc -l` before a run = 67, after = 77 — A DELTA OF 10
+      SYNTHETIC RECORDS PER RUN. Across this session's runs they accumulated to 55
+      of the 87 items (63%) in this cycle's codify backlog.
+      THREE CONSEQUENCES: (a) the `/codify` backlog is swamped by test noise,
+      degrading the anchored enumerator that exists precisely to be trustworthy;
+      (b) the records carry NO `rule_id` and NO `severity`, so they are
+      STRUCTURALLY UNADDRESSABLE — Step 6b cannot set `addressed_by` on a record
+      with no rule to address, so they never drain and will inflate every future
+      backlog; (c) `violations.jsonl` is the input to `trust-posture.md` MUST-4
+      cumulative-window math, so a ledger any test run can append to is a
+      posture-integrity surface, not merely noise.
+      SUGGESTED FIX: route the guard's violation sink through an env-overridable
+      path (the shape `LOOM_ECOSYSTEM_CONFIG` already uses) and point the harness
+      at a tmpdir, so the suite exercises the real code path against a throwaway
+      ledger. Loom decides the mechanism; the invariant is that a test run MUST NOT
+      append to the live trust-substrate ledger.
+    diff_lines: "unknown until loom picks the sink mechanism"
+    template_ingest_note: >-
+      Filed against `server.js` as the likely sink owner, but the precise write
+      site was NOT pinned this cycle — stated so Gate-1 re-derives it rather than
+      trusting the path. The MEASUREMENT (67 → 77 per run) is the load-bearing
+      evidence and reproduces in one command.
+
+  # ===================================================================
+  # RELAYED FROM THE DOWNSTREAM UPFLOW INBOX — /sync-from-downstream
+  # 2026-08-03, inbox file 2026-08-03-template-integrity-gaps.yaml (PR #81).
+  # Hop-level provenance ONLY (origin: downstream, via: kailash-coc-rs).
+  # Offer carried FIVE entries; FOUR relayed. Entry 3 (sync-from-canon-fetch
+  # static loom_only import) is NOT relayed — ALREADY SOLVED at this template
+  # THIS SESSION (commit 8ece215, manifest entry 40); the offer was authored
+  # against 2.24.0 before that fix existed. Recorded here rather than dropped
+  # silently so Gate-1 can see the offer was 5/5 accurate, not 4/5.
+  # Every claim RE-VERIFIED mechanically here; all four held.
+  # ===================================================================
+  - file: .claude/.coc-obsoleted
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      ENRICHES entry 23 (same file, same release) — NOT a duplicate. Entry 23
+      established obsoleted ∩ shipped = 5 paths. This adds THREE facts entry 23
+      does not carry: (a) three of them are still TRACKED IN GIT (`git ls-files`
+      confirms, not merely present on disk); (b) TWO have LIVE INBOUND IMPORTERS
+      in shipped tooling; (c) the purge/restore LOOP — step 2.6 purge and step 5
+      template-wins overlay fight, overlay wins, so the same paths are re-reported
+      every cycle. Land TOGETHER with entry 23.
+    reason: >-
+      THE MANIFEST AND THE SHIPPED TREE CONTRADICT EACH OTHER IN A WAY THAT CANNOT
+      SETTLE — THE PURGE IS STRUCTURALLY UN-COMPLETABLE, AND IT REPEATS EVERY
+      CYCLE. RE-VERIFIED at this template: `.claude/hooks/lib/o1-citation-check.js`,
+      `.claude/bin/emit-dev-container.mjs`, `.claude/bin/repin-targets.local.example.json`
+      are each `listed=1` in `.coc-obsoleted` AND `tracked=YES` in the git index.
+      TWO HAVE LIVE INBOUND REFERENCES from shipped tooling (verified by grep):
+      `.claude/bin/validate-emit.mjs` imports `o1-citation-check`, and
+      `.claude/bin/loom-links.local.example.json` references `repin-targets`. So a
+      consumer honoring the documented purge deletes files its OWN shipped
+      validator then fails to resolve.
+      THE LOOP IS THE PART ENTRY 23 MISSES: `/sync-from-template` step 2.6 (purge)
+      and step 5 (template-wins overlay) fight on exactly these paths, and the
+      overlay wins every run — so the same three are reported purged by one cycle
+      and present again at the next pull, indefinitely, with each cycle's receipt
+      recording a purge that did not persist. That makes every sync receipt on
+      this surface false, not merely noisy.
+      PROPOSED DISPOSITION — reconcile in ONE direction: drop the three entries
+      from `.coc-obsoleted` (their live inbound references suggest they ARE live),
+      OR untrack them from the template AND re-point the two importers. Shipping
+      both states cannot converge.
+    diff_lines: "-3 (or untrack 3 + re-point 2 importers)"
+  - file: .claude/bin/reconcile-settings-hooks.mjs
+    action: create
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved. No prior entry concerns `reconcile-settings-hooks.mjs`
+      or `hook-event-selection.md`'s detector reachability.
+    reason: >-
+      A RULE SHIPPED IN 2.24.0 NAMES A STRUCTURAL DETECTOR THAT CANNOT RUN AT ANY
+      CONSUMER — THE EXACT OVER-CLAIMED-ENFORCEMENT FAILURE THAT RULE ITSELF
+      BLOCKS. `rules/hook-event-selection.md` designates
+      `validate-emit.mjs::checkHookEventDeclaration` (check id
+      `hook-event-declaration`) as its LIVE BLOCKING arm, and that check imports
+      `enumerateRegistrations` + `normalizeMatcher` from
+      `./reconcile-settings-hooks.mjs` — deliberately reusing the shared recognizer
+      per that rule's own Wiring and `security.md` § Enforcement-Surface Parity.
+      RE-VERIFIED HERE: `validate-emit.mjs` references `reconcile-settings-hooks`
+      (3 sites), while `reconcile-settings-hooks.mjs` is ABSENT ON DISK **and
+      UNTRACKED** (`git ls-files` → no match) — yet `validate-emit.mjs` IS
+      distributed. So the rule's Wiring advertises a mechanical arm that silently
+      cannot fire downstream, leaving only its gate-review arm. The rule's own
+      words: "an over-claimed hook is worse than a named gap."
+      THE PROPOSER MARKED ONE INFERENCE AS INFERENCE, correctly, and it is carried
+      forward as such: the rule documents that its lazy seam "discriminates on
+      WHICH specifier is missing so a nested-dependency failure re-throws instead
+      of degrading to SKIP"; here the MISSING specifier is the TOP-LEVEL one, so
+      the consumer path PRESUMABLY degrades to SKIP rather than throwing — stated
+      as inference, NOT measurement (the validator is loom-side and not runnable
+      from a consumer). Gate-1 should measure it rather than inherit the guess.
+      PROPOSED DISPOSITION: distribute `reconcile-settings-hooks.mjs` alongside
+      `validate-emit.mjs`, OR amend the rule's Detection mechanism to declare the
+      structural arm loom-only and the consumer arm gate-review-only. Shipping the
+      rule with an unrunnable detector claim is the failure mode.
+    diff_lines: "+1 file distributed (or ~+3 Wiring correction)"
+  - file: .claude/hooks/lib/codify-lease.js
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved. No prior entry concerns MANDATORY_SCOPE or the
+      lease-vs-journal-gate interaction.
+    reason: >-
+      `/codify` TRIPS ITS OWN INTEGRITY GUARD ON ITS OWN MANDATED STEP — the lease
+      scope the command tells the caller to acquire does not cover a write the
+      command later REQUIRES. RE-VERIFIED at this template, all three:
+      (a) `codify-lease.js` defines MANDATORY_SCOPE as EXACTLY TWO entries —
+      `.claude/learning/learning-codified.json` and `.claude/.proposals/latest.yaml`
+      — with no journal path; (b) `commands/codify.md` Step 0 tells the caller only
+      that the helper "unions [those two] into the scope automatically", never that
+      a journal path must be added; (c) `commands/codify.md` § "Journal (MUST —
+      phase-complete gate)" then REQUIRES a journal entry before `/codify` may be
+      reported complete.
+      A caller following the command LITERALLY acquires a lease covering two files
+      and is then halt-and-reported by `integrity-guard.js` for the journal write
+      ("no covering codify-lease record found in the folded coordination log") — on
+      a step the SAME command mandates. The originating consumer observed this
+      twice in one cycle. The workaround (release → widen `scopeFiles` → re-acquire)
+      additionally hits `scope-dirty` if the journal file was already written,
+      forcing a remove/re-acquire/re-write dance to make the write genuinely
+      covered rather than retroactively blessed.
+      WHY THIS TEMPLATE DID NOT HIT IT (recorded so Gate-1 does not read
+      non-reproduction as refutation): coordination is DISABLED here, so
+      `integrity-guard.js` passes through before the covering-lease check is
+      evaluated. The defect is invisible on a coordination-off repo and bites every
+      coordination-ON consumer — the same opt-in-gate shape as relayed entry 32.
+      PROPOSED DISPOSITION: add the repo's journal directory to MANDATORY_SCOPE
+      (preferred — it fixes every consumer without each caller re-deriving the gap,
+      and MANDATORY_SCOPE exists precisely to close the "caller forgot a mandatory
+      file" hole `knowledge-convergence.md` MUST-3 names), OR amend Step 0 to
+      instruct callers to include their journal path. The journal directory is
+      repo-layout-dependent (workspace-scoped in some consumers, repo-root
+      `journal/` in others), so a MANDATORY_SCOPE fix MUST RESOLVE it, never
+      hardcode one layout.
+    diff_lines: "~+3 (MANDATORY_SCOPE entry + resolver) or ~+2 (commands/codify.md Step 0)"
+  - file: .claude/rules/coc-sync-landing.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    entry_class: governance-proposal
+    dedup_evidence: >-
+      NOT already solved. Entries 33-39 (this cycle) fence DOWNSTREAM→UPSTREAM
+      merging (`upstream-issue-hygiene.md` MUST-4). This is the ADJACENT,
+      UNFENCED axis: an agent self-merging to its OWN default branch. MUST-4 does
+      not touch it — it explicitly PERMITS own-repo completion.
+    reason: >-
+      GOVERNANCE PROPOSAL, NOT A DEFECT REPORT — labelled so Gate-1 does not
+      triage a genuine trade-off as a bug. THE CONTRACT MANDATES THAT AN AGENT
+      SELF-MERGE ITS OWN WORK TO ITS OWN DEFAULT BRANCH, AND THE ONLY HUMAN GATE
+      ON THAT PATH IS TOO NARROW TO CATCH THE COMMON CASE. RE-VERIFIED at this
+      template: `coc-sync-landing.md:32` MUST-3 reads "After CI green or
+      path-filter auto-skip, run `gh pr merge <N> --admin --merge --delete-branch`.
+      `REVIEW_REQUIRED` parking BLOCKED"; `commands/codify.md:35` AND
+      `knowledge-convergence.md:75` Rule 3 BOTH chain their end-of-session step to
+      it. So a consumer following the contract literally admin-merges every codify
+      PR to its own default branch WITH NO OPERATOR IN THE LOOP.
+      THE ONE HUMAN GATE IS SCOPE-LIMITED: `commands/codify.md:35`'s "For
+      MUST-clause rule changes the orchestrator additionally requires a signed
+      `[ack: <rule-id>]` from the user before merge" fires ONLY for MUST-clause
+      rule changes — so it does NOT fire for a receipts-only codify (proposal
+      manifest + journals), which is the MOST COMMON codify shape. Observed:
+      a receipts-only codify PR was admin-merged on the contract's authority when
+      the operator had asked only that the codify be performed; the operator
+      subsequently directed that codify open a PR and STOP, the operator merging.
+      CONTRACT-COMPLIANCE WAS NOT OPERATOR-AUTHORIZATION.
+      HONEST COUNTER-CASE THE PROPOSER RAISED AND ANY FIX MUST PRESERVE — MUST-3's
+      own stated Why: "without it the PR drifts open across sessions and the
+      failure mode resumes." An unmerged codify PR strands the lease branch, and
+      the rule exists because `REVIEW_REQUIRED` parking genuinely DID strand
+      deliveries. "Never merge" is NOT obviously right for every consumer; the
+      defect is that the contract offers NO operator-gated option at all and
+      hardcodes one side of a real trade-off.
+      PROPOSED DISPOSITION (either, or a config knob): (a) make the merge step
+      operator-gated BY DEFAULT with self-merge an explicit once-declared opt-in,
+      preserving MUST-3's anti-drift intent by requiring the PR be REPORTED ready
+      rather than left silent; or (b) WIDEN the `[ack:]` gate from "MUST-clause
+      rule changes" to ANY diff touching `.claude/rules/**`, `.claude/hooks/**`,
+      or `.claude/bin/**`, leaving receipts-only codifies to self-merge.
+      The proposer noted, correctly, that (b) would NOT have caught the observed
+      case (that diff was receipts-only) — recorded so the trade-off is visible
+      rather than implied.
+    diff_lines: "~+4 (MUST-3 gating clause) + ~+2 (commands/codify.md ack scope)"
+    template_ingest_note: >-
+      GATE-1 PRIORITY NOTE FROM THE INGESTING TEMPLATE. This entry is the ADJACENT
+      AXIS to this same cycle's entries 33-39, and the pair should be classified
+      together even though they are separately authored. 33-39 fence
+      downstream→upstream completion; THIS fences agent→own-main completion. Both
+      are instances of one class: AN AGENT COMPLETING A MERGE THE OPERATOR DID NOT
+      AUTHORIZE. The co-owner directive that produced 33-39 ("only opens a PR and
+      never merges") was aimed at the downstream axis, but the SAME session
+      independently reproduced the own-main axis at the template — this template's
+      ingest admin-merged an inbox PR autonomously under exactly the MUST-3
+      authority this entry names. Two independent surfaces, one class; recommend
+      loom classify them as a set.
+
+  # ===================================================================
+  # CLUSTER 52-66 — SUPERSEDES THE STALE 33-39 FENCE ENTRIES.
+  # origin: use-template. Appended 2026-08-04 per artifact-flow.md § Proposal
+  # Lifecycle ("Append, Never Overwrite Unprocessed Proposals") — entries 33-39
+  # are LEFT IN PLACE and are still STALE; this cluster is what Gate-1 should
+  # ingest for the upflow fence. Where a file appears in BOTH, THIS ENTRY WINS.
+  #
+  # WHY THIS CLUSTER EXISTS. The 33-39 marker said "NEXT SESSION'S FIRST TASK:
+  # append entries carrying these, then re-verify diff_lines against the real
+  # diff." That is what this is. Since 33-39 were written the fence took twelve
+  # more commits across seven adversarial rounds, and NINE FILES had NO ENTRY AT
+  # ALL — five of them entire instrument suites. An entry-less file does not
+  # cascade: hooks/lib/** and audit-fixtures/** are SYNCED globs, so the local
+  # copies are Class-A non-durable (artifact-flow.md § Distribution-Durability
+  # Invariants) and the next /sync-to-use rebuilds them away. For those nine the
+  # proposal was not merely stale, it was silent.
+  #
+  # EVERY diff_lines BELOW WAS RE-DERIVED, not carried forward:
+  #   git diff --numstat 93551cb...HEAD -- .claude/hooks/lib/ .claude/audit-fixtures/
+  # measured at 3292bd3. The 33-39 marker's own warning applies to this block
+  # too — a bare count decays the moment the artifact beside it changes, so a
+  # Gate-1 reviewer should re-run that command rather than trust these numbers.
+  # They are recorded to show the 33-39 counts are wrong, not to be trusted in
+  # turn: "+433 -0" for upflow-self-repo.js is now +1428 -0.
+  #
+  # COVERAGE, MEASURED — the nine files that had NO entry before this cluster:
+  #   vcs-provider.js, ado-login.js, differential-resolver-parity.mjs,
+  #   upflow-self-repo-helpers/{run.mjs,README.md},
+  #   upflow-refusal-operand-sanitization/{run.mjs,README.md},
+  #   journal-reserve-coordination-gate/{run.mjs,README.md}
+  # Verify with: for each file in the numstat above,
+  #   grep -c "^  - file: <path>$" .claude/.proposals/latest.yaml
+  # 0 = it had no entry. Re-run it against THIS file and every one returns >= 1.
+  #
+  # DEPENDENT SET. These entries plus 33-39's rule/prose halves are ONE fix at
+  # several layers. The instrument suites are not optional companions to the
+  # code: each guard here reds exactly one case, and shipping the code without
+  # the fixture distributes a fence whose guards nothing exercises.
+  # ===================================================================
+  - file: .claude/hooks/lib/upflow-self-repo.js
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    supersedes: "the 33-39 cluster entry for this file (diff_lines '+433 -0')"
+    dedup_evidence: >-
+      NOT already solved. The file does not exist at merge-base 93551cb (2.24.0)
+      — `git show 93551cb:.claude/hooks/lib/upflow-self-repo.js` exits non-zero.
+      It is a new module, so no upstream version can already carry these fixes.
+    reason: >-
+      THE SELF-IDENTITY DERIVER THE upstream-issue-hygiene.md MUST-4 FENCE RESTS
+      ON. `completeUpflowPR` in both adapters refuses any completion whose target
+      does not match the identity DERIVED from the working tree the process runs
+      in; this module is that derivation. It takes no identity, cwd, or deriver
+      value off the caller's descriptor — the live git remote is the sole
+      authoritative source and `.claude/VERSION::repo` is a refuse-only
+      cross-check, so a forged VERSION file is powerless.
+      THE 33-39 ENTRY DESCRIBED THIS FILE AS OF 916813d AND IS UNSAFE TO INGEST.
+      Twelve later commits fixed defects no 33-39 entry reflects, including a
+      HIGH live bypass: the `#`/`?` cut was applied to ssh authorities, which
+      split at the LAST `@`, so `ssh -G` connected to an attacker host while the
+      fence read the legitimate one — on a FETCHABLE remote. Also since 916813d:
+      the URL scheme is anchored so a path-embedded `://` cannot supply the host;
+      normalizeComponent moved from a denylist to a positive allowlist; segment
+      counts are EXACT (a fragment/query previously injected extra path segments
+      and the last-two rule took the trailing pair); the legacy ADO collection
+      form that the exactness fix regressed was restored; ADO segments are
+      validated BEFORE any is dropped (an unvalidated collection slot let
+      `.../realproj#/proj2/_git/repo2` derive proj2/repo2, measured); git's
+      stderr is surfaced on a derivation failure, truncated to 200 chars because
+      userinfo may hold a PAT.
+      THREE FIXES ARE NEWER THAN EVERY 33-39 ENTRY AND NEWER THAN THE MARKER:
+      (1) the host ASCII guard admitted C0/DEL, so
+      `https://x<LF>.visualstudio.com/...` normalized to the SAME ADO org as the
+      legitimate host — measured ok:true fired:true before the fix, a
+      refuse→authorize flip; narrowed to `[\x20-\x7e]`. (2) the parse-failure
+      host was unbounded, producing a measured 50139-char refusal reason that is
+      logged and may be embedded in a PR body; it now routes through the shared
+      bound. (3) the ADO identity was widened from a TRIPLE to a QUAD: the
+      collection segment was discarded entirely, so two legacy TFS/VSTS
+      collections — different namespaces, different repositories — derived an
+      identical {org, project, repo} and the fence authorized a completion
+      ACROSS them. An absent collection IS the org's DEFAULT collection, so it
+      normalizes to `defaultcollection` and is COMPARED; a NON-default collection
+      still differs from an absent side in both directions, so cross-collection
+      stays closed. CORRECTED: an earlier revision of this entry said "absent
+      matches only absent; absent-vs-present refuses". That rule shipped a
+      MAINTAINER LOCKOUT — only the legacy 3-segment form carries a collection,
+      so an ordinary ADO clone mid-URL-migration (legacy https fetch, modern ssh
+      push, ONE repository) compared present-vs-absent and refused itself. Caught
+      by an adversarial round and fixed before this proposal was finalized.
+      This module also now owns the shared refusal-operand bound+scrub
+      (`reasonText` / `reasonOperand` / `reasonFromError` over `sanitizeForReason`)
+      that both adapters consume — see the adapter entries below.
+    diff_lines: "+1428 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/hooks/lib/vcs-github-adapter.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    supersedes: "the 33-39 cluster entry for this file (diff_lines '+152 -1')"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0 — `git show 93551cb:.claude/hooks/lib/vcs-github-adapter.js
+      | grep -c 'reasonOperand\|completeUpflowPR'` returns 0 for the sanitization
+      helpers; the MUST-4 fence and the operand sweep are both absent upstream.
+    reason: >-
+      CARRIES THE MUST-4 OWN-REPO-ONLY FENCE PLUS THE REFUSAL-OPERAND
+      SANITIZATION SWEEP. The fence half is 33-39's; the sweep is new and no
+      33-39 entry reflects it.
+      THE SWEEP FINISHES AN ARGUMENT THE FENCE PR STARTED AT TWO OPERANDS. That
+      PR sanitized `prId` and the derived host and stopped, which the module's
+      own docstring names as the defect: "the argument for one is the argument
+      for all" (security.md § Enforcement-Surface Parity). Refusal reasons are
+      logged and /codify Step-7c may embed them in a PR body or journal.
+      `JSON.stringify` was doing the escaping at most sites and is NOT a
+      sanitizer for this class — per ECMA-262 QuoteJSONString it escapes only
+      `"`, `\`, and code units below 0x20, so DEL, the whole C1 range INCLUDING
+      U+009B 8-bit CSI (an ANSI control sequence containing no ESC, which passes
+      every ESC-based check), U+2028/29 and bidi controls all passed verbatim.
+      GREP-MEASURED, THE ORIGINAL ISSUE UNDER-COUNTED EVERY CLASS: 45
+      `JSON.stringify` escape sites across both adapters (not ~20), 23
+      remote-controlled response-body operands (not ~17), 17 transport
+      `err.message` operands (not ~15); 123 operand sites are now accounted for —
+      routed, or exempt with a stated reason (REST path constructions are exempt
+      because sanitizing corrupts the request).
+      TWO CREDENTIAL FINDINGS FIXED WITH IT: transport `err.message` was
+      interpolated unbounded and unscrubbed, so an ADO transport on a PAT-in-URL
+      remote could embed `https://user:<PAT>@...` in a refusal (security.md §
+      "No secrets in logs" — the deriver already refuses to echo that URL for
+      exactly this reason); and response bodies were unbounded, yielding a
+      measured 200057-char reason from a 200KB body. The bound+scrub helper is
+      consumed from upflow-self-repo.js, NOT copied — it briefly existed once per
+      adapter and was consolidated, because the duplicated bound value was live
+      drift risk. It cannot live in vcs-provider.js, which requires both adapters
+      at load; verified after the move that both providers still resolve
+      populated rather than the empty object a cycle would leave.
+    diff_lines: "+269 -43 (vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/hooks/lib/vcs-azure-adapter.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    supersedes: "the 33-39 cluster entry for this file (diff_lines '+93 -1')"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0 — same grep as the GitHub adapter returns 0
+      for both the fence and the sanitization helpers.
+    reason: >-
+      THE ADO HALF OF THE SAME FENCE AND THE SAME OPERAND SWEEP. It lands
+      TOGETHER with the GitHub adapter by rule, not by convenience: security.md §
+      Enforcement-Surface Parity — an un-fenced provider IS the bypass, so a
+      one-provider fence is not a partial fix but a relocated hole.
+      BEYOND 33-39, this adapter also carries the ADO identity widening. Its
+      `repoRef` gains an optional `collection`, validated with the project shape.
+      Widening `_parseAdo`'s return WITHOUT widening the repoRef was the tempting
+      half-fix and is the defect class this suite already documents three times —
+      the "leg that can never fail": with no field on repoRef the collection
+      comparison could only always-pass (bypass) or always-fail (lockout).
+      THIS IS A CONTRACT CHANGE, STATED PLAINLY FOR GATE-1: a caller on a legacy
+      TFS/VSTS collection remote that completed with a bare {org, project, repo}
+      must now name the collection. The refusal names both sides (absence renders
+      `<default-collection>`), so it is a one-field fix, and `completeUpflowPR` has no
+      callers outside the two adapters — verified by grep across js/mjs/md/json,
+      the only non-adapter mention being a comment in ado-login.js.
+      UNRESOLVED, CARRIED FORWARD RATHER THAN HIDDEN: the ADO request path has no
+      collection slot — every path is `{org}/{project}/_apis/...`, so a
+      completion authorized on a non-default collection is still ADDRESSED
+      collection-free. The identity fix makes caller and working tree agree on
+      WHICH repo is meant; it does not give the request a way to SAY so.
+      Guessing at `{org}/{collection}/{project}/_apis/` would be an unverifiable
+      claim about legacy ADO REST routing, and acting on an incomplete
+      enumeration of ADO URL forms is exactly what produced the collection-form
+      lockout regression already on this branch. Recorded in-code at
+      `completeUpflowPR`.
+    diff_lines: "+341 -44 (vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/hooks/lib/vcs-provider.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      — `grep -c "^  - file: .claude/hooks/lib/vcs-provider.js$"` against the
+      pre-append file returns 0.
+    reason: >-
+      THE PROVIDER RESOLVER, WHICH THE 33-39 CLUSTER OMITTED ENTIRELY. Two fixes.
+      (1) `getProvider` used a plain index, so an INHERITED Object.prototype key
+      resolved as a provider; it now tests own-membership. (2) Its refusal reason
+      interpolated the caller-supplied `id` RAW and UNBOUNDED into text that is
+      logged — the sharpest instance of the enforcement-surface asymmetry, since
+      `id` arrives from `roster.genesis.provider` and from a coordination-log
+      record's `content.provider`, and this module sits one require away from the
+      same sanitization helper the adapters use. Now
+      `sanitizeForReason(String(id).slice(0, 64))`.
+      Both are instrumented in upflow-self-repo-helpers (see that entry) — this
+      module is in a DIFFERENT file from the adapters, so the subprocess fence
+      suite never loads it and it had no fixture anywhere under audit-fixtures/
+      before this cycle.
+    diff_lines: "+23 -2 (vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/hooks/lib/ado-login.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      (grep of the pre-append file returns 0).
+    reason: >-
+      A SCOPE CORRECTION TO GUIDANCE THAT WOULD OTHERWISE GUARANTEE A FALSE
+      REFUSAL. The module's GUID guidance holds for the ADO REST endpoints and
+      does NOT hold for `vcs-azure-adapter.js::completeUpflowPR`: that fence
+      compares the caller's ref against an identity derived from the origin
+      remote URL, and the URL carries the project/repository NAME, never the
+      GUID — so a caller who follows the guidance and passes a GUID is
+      GUARANTEED a mismatch. Also records that a spaced project is
+      percent-encoded in its clone URL (`Contoso%20Web`), which the derivation
+      rejects outright, so the fence is simply UNAVAILABLE for such a project by
+      either route — fail-closed, and named rather than left for a maintainer to
+      rediscover from a confusing refusal.
+    diff_lines: "+10 -0 (vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/hooks/lib/journal-reserve.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    supersedes: "the two earlier entries for this file (diff_lines '+8 -1' and '+31 -9')"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0 — `git show 93551cb:.claude/hooks/lib/journal-reserve.js
+      | grep -c 'ENOENT'` returns 0; the roster read there is a bare
+      `catch { roster = null; }`.
+    reason: >-
+      AN UNREADABLE ROSTER IS AN UNKNOWN ROSTER, NOT AN ABSENT ONE. `_foldHighWater`
+      read the roster inside a bare catch. A null roster is not inert:
+      `_resolveRosterPerson` returns null for it, so rule 1 rejects EVERY record
+      as "signer verified_id not in roster keys" — the membership gate is
+      explicitly RETAINED under `skipSignatureVerify`, which is the mode this
+      folds in. `folded.accepted` empties, the high-water collapses to 0, and a
+      slot a sibling operator already reserved is handed out again.
+      THAT IS THE EXACT OUTCOME THE LOG READ ONE LINE ABOVE THROWS TO PREVENT,
+      and its docstring says so: "a 0 on an unreadable log would hand out an
+      already-reserved slot." Same failure, one read over. ENOENT now means
+      "legitimately absent" (coordination is opt-in, so a solo repo has no roster
+      and must still get a slot); every other failure refuses. This also aligns
+      the module with `coordination-mode.js`, which ALREADY fails a corrupt
+      roster CLOSED — the two disagreed about the same bytes.
+      THE SIBLING SILENT-SKIP IS DELIBERATELY KEPT and the asymmetry is now
+      recorded in-code: a bad roster is GLOBAL and destroys information about
+      real reservations, while a malformed `content.slot` is LOCAL and names no
+      real slot. Refusing on shape would let one appended `slot: "9999999999"`
+      permanently deny every reservation for every operator — the same denial the
+      shape check exists to prevent, reached through the guard instead of around
+      it, at lower cost to the same adversary.
+      Supersedes two earlier entries whose counts (+8 -1, +31 -9) predate this fix.
+    diff_lines: "+183 -15 (vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/upflow-open-never-complete/run.mjs
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    supersedes: "the 33-39 cluster entry for this file (diff_lines '+585 -0')"
+    dedup_evidence: >-
+      NOT already solved — the path does not exist at merge-base 93551cb.
+    reason: >-
+      THE INSTRUMENT FOR THE MUST-4 FENCE, NOW 53 CASES (was 47 when 33-39 was
+      written, and 585 lines against 1735 today). Ships WITH the guards per
+      cc-artifacts.md Rule 9.
+      IT DRIVES REAL TEMP REPOS THROUGH A SUBPROCESS, deliberately: the fence
+      derives its identity from `process.cwd()` and takes nothing off the
+      descriptor, so the PROCESS boundary is the only place cwd can be set. An
+      earlier cut drove a `_deriveSelfFn` seam and was therefore exercising an
+      INJECTION POINT rather than the fence — the caller-authored operand was
+      MOVED TWICE before it was removed.
+      EVERY CASE ASSERTS `fired === false` ON REFUSAL PATHS, because a fence that
+      merged and then returned ok:false would satisfy a naive `ok === false`
+      assertion; and every case asserts `error === null`, because deleting a
+      fail-closed guard usually makes the next line throw and a bare ok-false
+      check accepts that crash as a refusal.
+      NEW SINCE 33-39: control-byte-authority refusal (payload built with
+      String.fromCharCode — a raw control byte in source is invisible to a
+      reviewer, and a shell round-trip strips a literal newline); and five ADO
+      collection cases covering both polarities of the triple→quad widening,
+      including the two asymmetric wildcard cases a nullable comparison needs.
+      Its README carries the per-case mutation table, measured.
+    diff_lines: "+1735 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/upflow-open-never-complete/README.md
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    supersedes: "the 33-39 cluster entry for this file (diff_lines '+215 -0')"
+    dedup_evidence: >-
+      NOT already solved — the path does not exist at merge-base 93551cb.
+    reason: >-
+      THE SUITE'S MUTATION-VALIDITY RECORD, and it is load-bearing rather than
+      decorative. Per instrument-discipline.md MUST-2(b) a mutation that does NOT
+      red the suite leaves TWO live hypotheses — vacuous test OR inert mutation —
+      so every case's reddening mutation is recorded here, measured, with the
+      cases it reds.
+      IT ALSO STATES WHAT A GREEN DOES NOT PROVE, which is why it is worth
+      cascading: the fence is NOT an identity boundary against a caller that can
+      choose its own working directory, and it cannot be — `process.cwd()` is
+      selected by whoever launches the process, and a caller able to run
+      arbitrary in-process code can replace the module outright. What it DOES do
+      is refuse any completion whose target does not match the identity derived
+      from the working tree the process runs in, which CLOSES the accident class
+      (an agent following stale prose is refused before the transport fires — the
+      originating incident) and RAISES THE COST of a deliberate act. Asserting
+      seam-freedom without that paragraph reads as a stronger control than exists.
+      It further records a mutation verdict that was WRONG and was corrected —
+      a case previously resolved "inert, not vacuous" on a reachability argument
+      that was asserted but never tested, and which an adversarial round refuted
+      with a driveable input. Recorded rather than quietly fixed, because
+      unfalsified claims about instruments are this suite's whole subject.
+    diff_lines: "+795 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/upflow-open-never-complete/differential-resolver-parity.mjs
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      (grep of the pre-append file returns 0). The path does not exist at 93551cb.
+    reason: >-
+      A DIFFERENTIAL ORACLE THAT SCORES THE DERIVED HOST AGAINST WHAT `ssh` AND
+      `curl` ACTUALLY RESOLVE, rather than against the parser's own expectations.
+      It exists because the parser's agreement with itself is not evidence: the
+      HIGH ssh-authority bypass on this branch was a case where the fence read
+      one host and `ssh -G` connected to another, which no self-consistent test
+      could have surfaced.
+      ITS FIRST CUT WAS ITSELF DEFECTIVE AND THAT IS THE POINT OF SHIPPING IT
+      WITH THIS HISTORY: the oracle scored a REFUSE-EVERYTHING parser as clean,
+      because it only checked that accepted hosts matched and never that
+      legitimate hosts were accepted. A one-polarity oracle cannot distinguish a
+      correct parser from one that refuses all input — the same trap that later
+      forced every refusal case in the sibling suite to ship with a permissive
+      twin. Fixed, and recorded.
+      This file is why the 33-39 cluster could not simply be re-numbered: it is a
+      NEW instrument with no entry anywhere, and shipping the fence without it
+      distributes a parser whose agreement with the real resolvers nothing checks.
+    diff_lines: "+199 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/upflow-self-repo-helpers/run.mjs
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      (grep of the pre-append file returns 0). The path does not exist at 93551cb.
+    reason: >-
+      INSTRUMENTS FOR THE MODULE-LEVEL GUARDS THE SUBPROCESS FENCE SUITE
+      STRUCTURALLY CANNOT REACH — 11 cases. EACH OF THESE GUARDS SHIPPED WITHOUT
+      AN INSTRUMENT and was caught by an adversarial round measuring that its
+      removal left the fence suite FULLY GREEN; that is the gap this file closes,
+      and it is the reason it must cascade with the code.
+      Three shapes the fence suite cannot express: `_lastGitStderr`'s reset needs
+      TWO derivations in ONE process while the fence suite spawns one call per
+      case; `getProvider` lives in vcs-provider.js which that suite never loads;
+      and `sanitizeForReason`/`displayPrId` are pure functions whose contract is
+      about which bytes DO NOT survive, which through an adapter refusal reaches
+      only the cases an adapter happens to produce.
+      BOTH POLARITIES THROUGHOUT. `sanitizeForReason` must strip the
+      structure-forging classes AND PRESERVE readable non-ASCII — an ASCII-only
+      allowlist would mangle any non-ASCII path into unreadability, destroying
+      the diagnostic the text exists to provide. `displayPrId`'s first cut was a
+      DENYLIST and was incomplete against its own stated threat: U+202E and
+      U+2028 both survived it, measured; the positive `[0-9]` allowlist closes
+      the class and cannot be outrun.
+      Newest cases: a bipolar pair over the refusal-operand bound — removing it
+      reds only the size case (at a measured 50139-char reason), over-tightening
+      it reds only the case asserting a real host stays identifiable.
+    diff_lines: "+395 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/upflow-self-repo-helpers/README.md
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      (grep of the pre-append file returns 0). The path does not exist at 93551cb.
+    reason: >-
+      THE MEASURED MUTATION TABLE FOR THE HELPER SUITE, plus two records worth
+      cascading on their own. FIRST, it carries a corrected verdict: a case here
+      was previously recorded as having NO reddening mutation and resolved
+      "INERT, not vacuous" — and that verdict was WRONG. The reasoning rested on
+      an unreachability claim that an adversarial round refuted with an ordinary
+      repo and no stubbing (`git config remote.origin.url " "` returns exit 0 with
+      whitespace stdout, which trims to empty and returns through the SUCCESS
+      branch). Collapsing two hypotheses toward "inert" requires the reachability
+      argument to be TESTED, not merely asserted — which is the general lesson.
+      SECOND, it records the source-literal discipline the suites follow: payload
+      characters are built with `String.fromCharCode`, never written as source
+      literals, because a bidi override or raw control byte written literally
+      into a fixture is invisible to a reviewer — precisely the property these
+      guards exist to remove from output.
+      It also states honestly which changes have NO reddening mutation and are
+      therefore recorded as un-instrumented rather than claimed proven.
+    diff_lines: "+113 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/upflow-refusal-operand-sanitization/run.mjs
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      (grep of the pre-append file returns 0). The path does not exist at 93551cb.
+    reason: >-
+      THE INSTRUMENT FOR THE 123-SITE OPERAND SWEEP — 36 cases, written FIRST and
+      observed RED at 29/35 before the fix, including a verbatim credential leak
+      and a crash on a circular response body.
+      IT COVERS THE CLASSES `JSON.stringify` MISSES, which is the whole point:
+      DEL, the C1 range including U+009B 8-bit CSI, U+2028/29, and bidi controls.
+      A suite that only drove `\n` would have scored the pre-fix code as clean.
+      BOTH POLARITIES, AND THE PRESERVATION HALF IS NOT DECORATIVE: six cases
+      exist to catch OVER-TIGHTENING introduced by the fix, because a sanitizer
+      that destroys every operand passes a hostile-input-only suite. Each of
+      those six has its own measured reddening mutation.
+      13 MUTATIONS, ALL CONFIRMED TO EXECUTE AND ALL REDDENING, covering every
+      one of the 36 cases so none is carried on an untested claim — including a
+      cross-adapter parity case that reds when the two bounds drift, which is the
+      instrument that made the later helper consolidation safe.
+      RESIDUALS ARE RECORDED IN THE README RATHER THAN CLAIMED CLOSED: the scrub
+      covers URL userinfo only, so an `Authorization: Basic` header echoed into
+      an error string is bounded and class-sanitized but unmasked; and "every
+      site routed" rests on the grep-and-account sweep, not on the suite — a
+      newly added raw interpolation would redden nothing.
+    diff_lines: "+966 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/upflow-refusal-operand-sanitization/README.md
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      (grep of the pre-append file returns 0). The path does not exist at 93551cb.
+    reason: >-
+      THE SANITIZATION SUITE'S MUTATION TABLE AND ITS EXPLICIT "WHAT A GREEN DOES
+      NOT PROVE" SECTION. The second is the part worth cascading: the suite drives
+      the sites it NAMES, so the claim that every operand site is routed rests on
+      a grep-and-account sweep recorded in prose, NOT on the suite — a newly added
+      raw `${x}` site would red nothing here. Stating that is what keeps a future
+      reader from mistaking a green for a completeness proof.
+      It also records the quadratic-scrub finding: a naive userinfo regex over a
+      200KB operand hung the suite past 120s, fixed with bounded quantifiers and
+      a scrub window, with the residual (userinfo longer than the window has no
+      terminating `@` inside it and will not match) stated rather than relied on.
+    diff_lines: "+177 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/journal-reserve-coordination-gate/run.mjs
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      (grep of the pre-append file returns 0). The path does not exist at 93551cb.
+    reason: >-
+      THE INSTRUMENT FOR THE JOURNAL-SLOT COORDINATION GATE — 9 cases driving
+      real repos. Ships with the journal-reserve.js fix per cc-artifacts.md Rule 9.
+      THE ROSTER CASE WAS OBSERVED RED FIRST AND THE FAILURE OUTPUT IS THE DEFECT
+      ITSELF: `ok:true, slot:"0001"` — a slot handed out over an unreadable
+      roster. Three mutations were each confirmed to reach the code and redden.
+      IT RUNS ON THE FOLD PATH DELIBERATELY, and the reasoning is recorded because
+      it is the difference between an instrument and a decoration:
+      `COC_TEST_SKIP_SIGN=1` sets accepted = records and bypasses the fold
+      entirely, so on the raw path a null roster costs nothing and the high-water
+      survives. The damage exists ONLY on the fold path, so the instrument lives
+      there — while the sibling slot-shape cases force the raw path for the
+      opposite, equally deliberate reason.
+      TWO CASES ARE GREEN BEFORE THE FIX AS WELL AS AFTER and are labelled as
+      such in the code, the README, and here: they are over-tightening guards that
+      distinguish the fix from a refuse-everything implementation, NOT evidence
+      for the fix.
+      It also fixes a latent fixture defect the new case exposed — `readChainHead`
+      was stubbed with the wrong shape, so `lastSeq + 1` was NaN; latent because
+      no prior case reached the emitter.
+    diff_lines: "+480 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+  - file: .claude/audit-fixtures/journal-reserve-coordination-gate/README.md
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, AND NO ENTRY EXISTED FOR THIS FILE BEFORE THIS CLUSTER
+      (grep of the pre-append file returns 0). The path does not exist at 93551cb.
+    reason: >-
+      THE COORDINATION-GATE SUITE'S MUTATION TABLE, and the record of a
+      cross-module inconsistency worth cascading: `coordination-mode.js` fails a
+      corrupt roster CLOSED while `_foldHighWater`, one module over, treated the
+      same bytes as ABSENCE. The suite had to use a signed identity with a stubbed
+      signer specifically so the coordination gate could not MASK the defect under
+      test — a case that fails for the wrong reason is not an instrument for the
+      right one.
+      It also records an UNRESOLVED residual rather than closing it silently: the
+      malformed-slot skip is UNOBSERVABLE — a poisoning record is dropped with no
+      counter and no WARN, so an operator cannot distinguish a clean log from one
+      being probed. `_foldHighWater` has no logger surface and sits on a guard
+      path where throwing is BLOCKED (zero-tolerance.md Rule 3), so closing it is
+      a separate change, named here rather than left for rediscovery.
+    diff_lines: "+175 -0 (new file, vs merge-base 93551cb = 2.24.0, measured at 3292bd3)"
+
 status: pending_review

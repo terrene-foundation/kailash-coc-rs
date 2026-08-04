@@ -101,3 +101,44 @@ changes:
       change) applied at the DISTRIBUTION boundary rather than the source tree.
     diff_lines: "+0 -0"
 status: pending_review
+
+# ---------------------------------------------------------------------------
+# INGEST DISPOSITION — recorded by /sync-from-downstream at kailash-coc-rs
+# ---------------------------------------------------------------------------
+ingest_disposition:
+  ingested_at: 2026-08-03
+  ingested_by_template: kailash-coc-rs
+  arrival_lane: template-inbox-pr # PR #77, merged at 7763a60
+  arrival_lane_matches_body_via: true # proposal-intake-trust.md MUST-3
+  fence_ii_scrub: pass # scan-synced-disclosure --root . -> exit 0, 0 findings, 2301 files
+  body_scrub: pass # upstream-issue-hygiene.md MUST-2 denylist — hop-level only, no consumer identity
+  injection_review: pass # reviewed as data; zero reviewer-directed imperatives
+  wrong_lane_check: pass # all 7 paths .claude/** COC-artifact — none is SDK code
+  freshness_dedup: not-already-solved # per-entry dedup_evidence recorded in the relay
+  status: RELAYED
+  relayed_to: .claude/.proposals/latest.yaml
+  relayed_entries: 7
+  relayed_provenance: "origin: downstream, via: kailash-coc-rs"
+  next_hop: loom Gate-1 via /sync-from-use
+  claim_verification: >-
+    Every factual claim RE-VERIFIED at this template before relay (the inbox is
+    untrusted data; nothing forwarded on the proposer's say-so). obsoleted-vs-
+    shipped: all 5 paths confirmed listed=1 ships=YES. rules/cross-repo.md:
+    confirmed absent, 0 obsoleted entries, 5 citing artifacts, and
+    repo-scope-discipline.md confirmed priority:0 scope:baseline in frontmatter.
+    validate-xref-integrity: TRUE exit code captured (not a piped tail's) —
+    exit 1, "scanned 759 files, 2709 xref tokens; 355 dangling", matching the
+    proposal's claim exactly.
+  notes: >-
+    All 7 entries accepted unmodified in substance. Two additions made at relay,
+    neither altering a claim: (a) per-entry dedup_evidence, since two entries
+    touch files that ALREADY carry unrelated entries in latest.yaml
+    (sync-from-template.md at 1056 = merge-vs-replace; repo-scope-discipline.md
+    at 978 = cross-repo-authz receipt gitignore) and loom must not read either
+    as a duplicate; (b) an adoption-sequencing note on the entry-29 xref gate —
+    the tree ships at 355 dangling, so the gate cannot land alone without
+    blocking every emission; a newly-dangling ratchet is recommended over a
+    flag-day burn-down. Entry 25 (git.md) was flagged upward as potentially
+    tree-wide rather than single-instance: guides/rule-extracts/** is the
+    declared depth home for many allowlisted rules, and any rule that trimmed
+    its body against an extract has the same hole.

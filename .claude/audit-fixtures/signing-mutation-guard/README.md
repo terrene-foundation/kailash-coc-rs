@@ -4,6 +4,47 @@ Per `cc-artifacts.md` Rule 9 + `hook-output-discipline.md` MUST-4. One
 fixture per scope-restriction predicate the hook
 (`.claude/hooks/signing-mutation-guard.js`, B3a) relies on.
 
+## PRECONDITION — coordination MUST be ON (read this before triaging a "fail-open")
+
+**Every `block` disposition below presumes multi-operator coordination is
+ENABLED on the repo under test.** The hook gates its ENTIRE substrate — both the
+§4.2 sibling-porcelain check and the degraded-mode block — behind
+`isCoordinationEnabled()` (the MO-OPT W1-c opt-in gate) and passes through
+BEFORE either predicate is evaluated when coordination is OFF. That passthrough
+is CORRECT and deliberate: coordination is opt-in / OFF by default, and on a
+solo or un-enrolled repo an absent signing key means "un-enrolled", not
+"degraded" — blocking every tracked-path Edit because no GPG key is configured
+would be the real disruption.
+
+**Consequence:** driving these fixtures on a coordination-OFF repo yields
+`{"continue":true}` / exit 0 for `03` and `06`. That is NOT a fail-open, and it
+is NOT a regression in the guard — it is a MISSING PRECONDITION in the harness.
+Issue #74 was filed as a suspected fail-open from exactly this shape; the guard
+was correct and the harness was driving a lane the guard does not gate.
+
+### Canonical invocation
+
+These fixtures are driven by `.codex-mcp-guard/test-server.mjs`
+(`npm test` in `.codex-mcp-guard/`), whose `makeCoordinationEnabledRepo()`
+helper builds a temp git repo with the tier-2 local override
+(`.claude/learning/coordination-mode.json` → `{"enabled":true}`) and passes it
+as `cwd`. To drive the hook by hand, reproduce that precondition:
+
+```bash
+T=$(mktemp -d); git -C "$T" init -q
+printf 'x\n' > "$T/tracked.txt"; git -C "$T" add -f tracked.txt
+git -C "$T" -c user.email=t@t -c user.name=t commit -qm init
+mkdir -p "$T/.claude/learning"
+printf '{"enabled":true}' > "$T/.claude/learning/coordination-mode.json"
+printf '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{"file_path":"%s/tracked.txt"},"cwd":"%s"}' "$T" "$T" \
+  | COC_OPERATOR_KEY_PATH="" COC_SIGNING_MUTATION_GUARD_FORCE_DEGRADED=1 \
+    node .claude/hooks/signing-mutation-guard.js   # → exit 2, [BLOCK]
+```
+
+Tier-2 force-ON is used deliberately: `coordination-mode.js` ASYMMETRIC
+PRECEDENCE always honors `enabled:true` but REFUSES `enabled:false` on an
+enrolled repo, so this precondition cannot be repurposed to weaken a real repo.
+
 ## Predicates covered
 
 | Fixture                            | Predicate exercised                                                     | Expected disposition |
