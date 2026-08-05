@@ -3190,6 +3190,47 @@ changes:
       described in detail above and in neither PR. Requesting them from the offering
       consumers is the unblocking step; the alternative — grafting from the
       descriptions — would produce a rule carrying NEITHER draft's redteam.
+      RELAY REPAIR (appended 2026-08-04; ADDITIVE — nothing above is altered, renumbered
+      or reflowed). An audit of this entry against both offer bodies found THREE Gate-1
+      inputs the deduplicated relay dropped. They are restored here, attributed, heaviest
+      first. For traceability at loom: Offer A is PR #86 and Offer B is PR #87 on this
+      template (via: kailash-coc-rs); both were owner-filed on the consumers' behalf and
+      both bodies are consumer-anonymized, so the numbers carry no consumer identity.
+      (1) OFFER B'S TWO GLOBAL-VS-VARIANT PROPERTIES — the input aimed most directly at
+      the classify call this cluster hands Gate-1, and wholly absent from the relay above.
+      Offer B offered them explicitly as classify inputs: (a) the discipline is
+      LANGUAGE-NEUTRAL AND CLI-NEUTRAL, firing on any repo that holds a checked-in build
+      output; (b) EVERY ECOSYSTEM ALREADY ACCEPTS CLAUSE 1 FOR LOCKFILES, where
+      hand-editing is universally understood to be wrong because the tooling rewrites the
+      file wholesale — that precedent, in offer B's framing, makes the rule land by
+      ANALOGY rather than by argument. Gate-1 should note the tension it must resolve:
+      both properties argue AUDIENCE-WIDE, while both offers independently authored the
+      rule priority:10 / path-scoped, which is a LOAD-COST decision. The two are not
+      necessarily in conflict, but the classify call is where they meet.
+      (2) OFFER A'S MEASURED EVIDENCE — the relay above is qualitative throughout; offer A
+      carried a MEASUREMENT, and it is what makes the rule's case empirically rather than
+      by assertion. A rebuild run to a scratch path and diffed BEFORE anything was
+      overwritten would have moved the deliverable as follows, committed -> rebuilt-from-
+      source: characters 178,670 -> 165,798 (a loss of 12,872); headings 110 -> 79, with
+      54 of the 110 committed headings absent; em-dashes 0 -> 249 (reintroducing what a
+      style pass had removed); per-claim verdict marks present -> absent. Arithmetic note
+      offered as a reading aid, not as a defect claim: 110 - 54 = 56, not 79, so the
+      rebuilt copy also carries 23 headings the committed copy lacks — the two heading
+      figures measure different quantities and are not an inconsistency to resolve.
+      COUNTS ONLY, per (3) below: no extracted document prose is carried here, and this
+      manifest is itself a durable surface.
+      (3) OFFER A'S MUST-3 DISCLOSURE CONSTRAINT — the relay above carries the first half
+      of offer A's MUST-3 (convergence is PROVEN by re-diff, never asserted) and drops the
+      second: EVIDENCE CARRIED INTO ANY DURABLE SURFACE IS COUNTS ONLY, NEVER EXTRACTED
+      DOCUMENT PROSE. That is a disclosure-safety clause rather than a formatting
+      preference, and it is what governed how (2) above had to be recorded in this file.
+      ONE MEASURED OVER-CLAIM INSIDE OFFER A, stated neutrally as fact because Gate-1 will
+      otherwise expect a rule text that is not there: offer A's inbox YAML asserts in its
+      header comment that the rule text is reproduced in the PR body so Gate-1 can review
+      it without a fetch. It is not. Offer A's PR body is 43 lines of prose summary
+      carrying no rule text, and the PR's only added file is the 82-line inbox YAML. WHAT
+      GATE-1 OWES above already records that neither text is in either PR; what is added
+      here is that offer A's own YAML claims the opposite.
     diff_lines: "+306 -0 and +229 -0 as CLAIMED by the two offers' own diff_lines; NEITHER text is present in either PR (measured: the PRs add 82 and 76 lines, the inbox YAML alone). Final size depends on which reachability disposition Gate-1 takes."
 
   # ===================================================================
@@ -3424,5 +3465,137 @@ changes:
       from its perspective, shared artifacts. Not a defect; recorded in the tool
       header so a template-side operator does not misread a large count.
     diff_lines: "+14 net in sync-from-template.md; +~200 new bin tool; +~250 committed fixture runner + README (measured at f154548)"
+
+  # ===================================================================
+  # CLUSTER 71-72 — DECLARATION REPAIR (appended 2026-08-04). ADDITIVE:
+  # nothing in the two entries above is altered, renumbered or reflowed.
+  #
+  # The two entries above declare TWO files while their own diff_lines
+  # describe FIVE ("+14 net in sync-from-template.md; +~200 new bin tool;
+  # +~250 committed fixture runner + README"). A Gate-1 classifier
+  # iterating changes[].file — the MECHANICAL reading — would place the
+  # command edit and NOT the tool, so loom would ship a command promising
+  # a mechanical preflight with a three-valued exit and no implementation
+  # anywhere. That is the orphan shape `orphan-detection.md` exists to
+  # prevent, and entry 72's own acceptance argument DEPENDS on the tool
+  # existing. The three undeclared files are declared below.
+  #
+  # Measured before this repair (grep over the whole manifest):
+  #   file: .claude/bin/sync-preflight-local-mods.mjs        -> 0 entries
+  #   file: .claude/audit-fixtures/sync-preflight-local-mods -> 0 entries
+  #   file: .claude/audit-fixtures/cross-repo-authorize      -> 0 entries
+  # All three appeared ONLY in prose (at repair time :3378, :3425, :3453).
+  # The convention they were absent from is per-fixture-surface: a grep for
+  # `file: .claude/audit-fixtures` returns 15 entries across this manifest.
+  # ===================================================================
+  - file: .claude/bin/sync-preflight-local-mods.mjs
+    action: added
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0, and no preflight of any kind existed on this
+      lane before the change. Entry 72's own dedup_evidence measures the gap from
+      the other side: NO script backs `/sync-from-template` at 2.24.0 (the only
+      sync-adjacent bin script delivered is `sync-from-canon-fetch.mjs`, a
+      different lane), which is why the command's promised "merge" had no
+      implementation anywhere. The file is NET-NEW, so there is no prior version
+      to diff against.
+    reason: >-
+      THE MECHANICAL ACCEPTANCE CRITERION FOR ENTRY 72, declared as its own entry
+      because `changes[].file` is the manifest's mechanical reading and a Gate-1
+      classifier iterating that list would otherwise place the command edit while
+      leaving its implementation undeclared.
+      THREE-VALUED EXIT, so a gate cannot conflate outcomes: 0 = nothing at risk,
+      2 = at-risk artifacts found and a HUMAN decides, 1 = the check did NOT run
+      and MUST NEVER be read as safe. Verified structurally at the file rather
+      than taken from the prose: the at-risk-vs-clean split is a single call
+      (`process.exit(atRisk.length > 0 ? 2 : 0)`, :285) and every abort path
+      routes through a `fail()` helper exiting 1 (:116) — so exit 1 is
+      unreachable from a scan that completed, which is what makes 1 readable as
+      "did not run" rather than "ran and found nothing".
+      `--sync-subject-re` IS THE PER-REPO OVERRIDE for the sync-subject pattern
+      (:211-216), falling back to a DEFAULT_SYNC_SUBJECT_RE derived from observed
+      history (:111) rather than guessed. An unrecognized convention OVER-reports
+      (a false at-risk) and never silently misses a real loss — the correct
+      direction to fail, and the reason the override exists rather than a wider
+      default.
+      A NAMED COVERAGE RESIDUAL, recorded so Gate-1 does not have to rediscover
+      it — a real limitation, not a defect being hidden. The scan surface is FIXED
+      to SIX directories: `.claude/{agents,commands,rules,skills,guides,team-memory}`
+      (`SHARED_GLOB_DIRS`, :87-94). `.claude/bin` is NOT among them, and neither is
+      `.claude/audit-fixtures`, `.claude/hooks`, nor the `.claude/` root itself.
+      MEASURED CONSEQUENCE at this repo: the inbound sync merge reverted three
+      files this template had locally fixed — `.claude/commands/sync-from-template.md`,
+      `.claude/bin/cross-repo-authorize.mjs`, and `.claude/.coc-obsoleted` (the
+      last at the `.claude/` root, NOT the repo root). All three are present in
+      that merge's stat, and both fixes are confirmed ABSENT at the resulting HEAD:
+      a grep of `cross-repo-authorize.mjs` for the `wx` create-or-fail flag entry 71
+      adds returns 0, and the reconciled "category-based replace, NOT a per-file
+      merge" wording entry 72 adds is absent from the command. Of those three files
+      a correctly-invoked preflight would have flagged exactly ONE — the command,
+      the only path inside the six directories — and stayed SILENT on the security
+      file in `.claude/bin` and on the `.claude/`-root `.coc-obsoleted`.
+      So the tool this cluster adds does NOT cover the directory that entry 71's
+      own security fix lives in. Gate-1 may widen `SHARED_GLOB_DIRS` (weighing the
+      alert-fatigue argument entry 72 records for the local-vs-sync split), or
+      accept the residual and record it; either way it is stated, not assumed away.
+    diff_lines: "+288 -0 (measured: `wc -l` at this HEAD; net-new file, so added-lines equal file-lines. Entry 72's prose estimate for this component was '+~200')"
+  - file: .claude/audit-fixtures/sync-preflight-local-mods/
+    action: added
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0 — the tool this set exercises is itself net-new
+      (entry above), so no fixture directory for it could have pre-existed. The
+      directory is absent from the delivered tree at 2.24.0.
+    reason: >-
+      18 BEHAVIORAL CHECKS ship as a COMMITTED runner (`run.mjs` + `README.md`),
+      the README stating the contract in its own invocation header: "exit 0 = all
+      18 checks behaved as expected; 1 = a regression".
+      NO PRE-FIX BASELINE EXISTS TO RED AGAINST, and that is structural rather
+      than an omission: the tool is net-new, so `instrument-discipline.md`
+      MUST-2(a)'s move — establish the red before reading the green — is
+      unavailable by construction. There is no unfixed version to run the suite
+      against.
+      EACH PREDICATE WAS MUTATION-TESTED INSTEAD, per `instrument-discipline.md`
+      MUST-2(b): SIX mutations, each confirmed APPLIED (non-empty diff) BEFORE its
+      result was read — which is the clause's own requirement, since a mutation not
+      shown to reach the code under test leaves vacuous-test and inert-mutation
+      both live — and each redding ONLY its own predicate. The per-mutation table
+      is committed in the README alongside the re-derivation command, so the
+      discrimination claim is reproducible by a Gate-1 reader rather than asserted.
+      DECLARED AS ITS OWN ENTRY because the manifest's convention is one entry per
+      fixture surface (15 `file: .claude/audit-fixtures` entries across this
+      manifest), and a fixture set reachable only through prose is invisible to a
+      classifier iterating `changes[].file`.
+    diff_lines: "+307 -0 (measured: `wc -l` at this HEAD — run.mjs 218 + README.md 89; net-new files. Entry 72's prose estimate for this component was '+~250')"
+  - file: .claude/audit-fixtures/cross-repo-authorize/
+    action: added
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0. Entry 71's own dedup_evidence measures it: the
+      shipped `cross-repo-authorize.mjs` had NO test coverage of any kind — no
+      fixture dir, no test file referencing it. The directory is absent from the
+      delivered tree at 2.24.0.
+    reason: >-
+      17 BEHAVIORAL CHECKS ship as a COMMITTED runner (`run.mjs` + `README.md`),
+      the README stating the contract in its own invocation header: "exit 0 = all
+      17 checks behaved as expected; 1 = a regression".
+      SCORES PASS 9 / FAIL 8 AGAINST THE PRE-FIX TOOL — the README records that
+      measurement — AND THAT IS THE POINT OF THE ENTRY: eight of seventeen checks
+      RED on the unfixed tool, so the suite is a DISCRIMINATING instrument rather
+      than a green-by-construction one. Per `instrument-discipline.md` MUST-2(a) a
+      green cited without an established red is not evidence; here the red IS
+      established, so the greens on the fixed tool report on the behavior they
+      name. This is the property entry 71's security argument rests on, and it was
+      undeclared as a file.
+      DECLARED AS ITS OWN ENTRY for the same convention reason as the sibling
+      above: 15 `file: .claude/audit-fixtures` entries across this manifest, and a
+      fixture set living only in prose is invisible to the mechanical reading.
+    diff_lines: "+300 -0 (measured: `wc -l` at this HEAD — run.mjs 220 + README.md 80; net-new files. Entry 71's prose estimate for this component was '+~180')"
 
 status: pending_review
