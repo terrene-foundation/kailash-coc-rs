@@ -3598,4 +3598,159 @@ changes:
       fixture set living only in prose is invisible to the mechanical reading.
     diff_lines: "+300 -0 (measured: `wc -l` at this HEAD — run.mjs 220 + README.md 80; net-new files. Entry 71's prose estimate for this component was '+~180')"
 
+  # ===================================================================
+  # CLUSTER 76 — THE RESOLVER MODULE'S DISTRIBUTION FATE (2026-08-06).
+  #
+  # SCOPE NOTE, STATED UP FRONT SO GATE-1 DOES NOT RE-READ THIS AS A
+  # DUPLICATE: the resolver CONTRACT (`rules/cross-repo.md`) already has
+  # TWO entries — 1449 (relayed downstream, diagnosis later corrected) and
+  # 3025 (use-template, the corrected `use_exclude`-on-purpose reading with
+  # three dispositions). This cluster does NOT re-file that. It files the
+  # OTHER half, which those entries name only in passing and dispose of
+  # nowhere: the resolver MODULE (`bin/lib/loom-links.mjs`) — its own
+  # distribution fate, and the three citing artifacts no entry reaches.
+  #
+  # Provenance is HOP-LEVEL ONLY (origin: downstream, via: kailash-coc-rs).
+  # Route-A arrival (an issue filed AT this template); no consumer identity.
+  # ===================================================================
+  - file: .claude/rules/multi-operator-coordination.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved, and the near-miss is recorded here rather than left for
+      Gate-1 to rediscover. FIVE entries touch this subject matter and NONE
+      disposes of the module's distribution fate:
+      (a) entry 1449 (`repo-scope-discipline.md`, relayed downstream) names
+      `bin/lib/loom-links.mjs` in ONE clause — "COMPOUNDING: the resolver MODULE
+      is on the obsoleted manifest" — as context for the cross-repo.md finding;
+      it files no disposition for the module and its citation count (5) is stale.
+      (b) entry 3025 (`repo-scope-discipline.md`, use-template) supersedes 1449's
+      diagnosis for the CONTRACT and is correct; measured here, it does not
+      mention `loom-links` AT ALL (`sed -n '3025,3067p' | grep loom-links` → no
+      match), so the module is outside its scope by construction.
+      (c) entry 1329 (`commands/sweep.md`) fixes the module's ONE RUNTIME consumer
+      and is explicitly scoped to that gate's sentinel logic, not to whether the
+      module ships.
+      (d) entries 1487 (`sync-from-template.md`) and 1551 (`ecosystem-init.md`)
+      each fix ONE doc citation site.
+      (e) entries 1573 (`sync-completeness.md`) and 1834 (`self-referential-codify.md`)
+      mention the module incidentally on unrelated topics (a gitignore-untracking
+      class; a codify-allowlist bullet).
+      RESIDUAL, measured by mapping all 9 citers against `^  - file:` entries:
+      THREE citing artifacts have no entry of any kind — `commands/enroll.md`
+      (4 sites: 27, 56, 59, 88), `rules/artifact-flow.md` (line 45),
+      `rules/multi-operator-coordination.md` (line 115). This entry is keyed on
+      the last of those, mirroring entry 3025's convention of keying a
+      multi-citer finding on its highest-blast-radius citer.
+    reason: >-
+      AN EFFECTIVELY-ALWAYS-ON MUST-NOT MANDATES RESOLUTION THROUGH A MODULE THE
+      TIER IS DELIBERATELY PURGED OF — AND THE MODULE'S FATE IS FILED NOWHERE.
+
+      MEASURED AT THIS TEMPLATE (figures are this session's own; where they differ
+      from the filed issue's, mine are stated and the difference named):
+      `.claude/bin/lib/loom-links.mjs` does not exist (`ls` → No such file), and
+      neither does `bin/lib/loom-links.mjs`. It is absent BY DESIGN, three times
+      over: fenced `loom_only` at `sync-manifest.yaml:3299` ("Loom-platform: a
+      consumer resolves nothing cross-repo"), purged from the USE lane at
+      `sync-manifest.yaml:4013`, and listed at `.coc-obsoleted:73`. So — exactly
+      as entry 3025 established for the CONTRACT — the absence is not a missing
+      distribution to repair. THE CITATIONS ARE THE DEFECT.
+
+      CITATION COUNTS, with scope stated because the scope changes the number:
+      9 shipped artifacts cite `loom-links.mjs` under `.claude/rules` +
+      `.claude/commands` (the same scope in which cross-repo.md has 11, matching
+      entry 3025). Widening to all of `.claude/**` gives 32 and 29 respectively,
+      but that count sweeps in `.proposals/`, `sync-manifest.yaml`,
+      `.coc-obsoleted`, `team-memory/`, and the `bin/` + `hooks/` files that
+      legitimately reference the fence itself — so the 9/11 figures are the
+      load-bearing ones and the wider counts are recorded only so a future reader
+      does not re-derive a different number and read it as drift.
+
+      THE SHARPEST INSTANCE is `rules/multi-operator-coordination.md:115`, a
+      MUST-NOT clause reading: "Any hook/agent/command/helper needing another
+      repo's location MUST resolve via `bin/lib/loom-links.mjs::resolveRepo`
+      (`cross-repo.md` MUST-1); `~/repos/<name>` / `../<name>` /
+      `path.join(HOME, "repos", <name>)` is BLOCKED." Its frontmatter is
+      `priority: 10`, `scope: path-scoped`, `paths: ["**/*"]` — a glob matching
+      every file, so it is path-scoped in declaration and always-on in effect
+      (the rule's own body calls itself "the always-on agent-facing behavioral
+      contract"). A consumer agent is therefore instructed, in a clause it loads
+      on any edit, to route through a module it does not have — while the clause's
+      three named alternatives are simultaneously BLOCKED. That leaves the agent
+      no permitted path at all, which is a strictly worse failure than the
+      dangling-authority case entry 3025 covers: there the guidance was merely
+      unreachable; here the only reachable options are explicitly forbidden.
+      `rules/artifact-flow.md:45` is the same shape at lower severity (it binds
+      the four repo classes to the absent resolver's logical keys), and
+      `commands/enroll.md` is lower still (operator-setup prose whose B2
+      local-links layer is defined as the absent module).
+
+      REACHABILITY CONSEQUENCE — RECORDED BECAUSE A READER WOULD OTHERWISE HAVE
+      TO REDISCOVER IT, AND BECAUSE MY MEASUREMENT REFINES THE FILED CLAIM.
+      The issue reports that `/sweep`'s Sweep-9 gate was designed to emit N/A on
+      consumers but that the import throws before `isConfigured()` is reached,
+      making the fail-safe unreachable. The first half is confirmed and the second
+      is half-right. Running `sweep.md:141` verbatim in this repo — the exact
+      consumer condition, module absent — produces:
+        <!-- sweep-ecosystem:v1:ERROR reason=Cannot find module '<repo>/.claude/bin/lib/loom-links.mjs' -->
+      exit 0. The import is DYNAMIC with a trailing `.catch()`, so it does not
+      throw unhandled; the rejection is caught and MISCLASSIFIED. `isConfigured()`
+      is indeed never evaluated, so the N/A branch is unreachable on every
+      distributed lane — but the observable result is the ERROR sentinel, which
+      `sweep.md:144` instructs the reader to treat as "itself a finding". The
+      designed-for audience receives a permanent spurious finding instead of the
+      structural N/A, and a genuine resolver fault at the orchestration root
+      becomes indistinguishable from the expected consumer case.
+      NOTE FOR GATE-1: this consequence is ALREADY FILED, in more depth than the
+      issue states it, as entry 1329 (`commands/sweep.md`) — including the same
+      ERROR-sentinel capture and the `ERR_MODULE_NOT_FOUND` keying trap. It is
+      restated here ONLY as the reachability evidence for the module's fate, and
+      MUST NOT be actioned twice; entry 1329 owns the fix.
+
+      THREE DISPOSITIONS, SURFACED NOT DECIDED — Gate-1 classifies:
+      (1) REPOINT THE CITATIONS and record the exclusion so it is auditable.
+      Each of the 9 sites either drops the module reference or is rewritten to
+      name the loom-side surface explicitly as loom-only. The MUST-NOT at
+      `multi-operator-coordination.md:115` additionally needs a consumer-reachable
+      answer to "how DOES a consumer resolve a path?", because that clause blocks
+      the three obvious alternatives.
+      (2) LIFT THE `loom_only` FENCE and ship the module. Contradicts the stated
+      rationale at `sync-manifest.yaml:3299` and delivers resolver machinery to an
+      audience with no resolver config — the same objection entry 3025 raised
+      against shipping the contract.
+      (3) SHIP A CONSUMER STUB exporting `isConfigured()` returning false and a
+      `resolveRepo` that fails loud. Makes Sweep-9's designed N/A reachable
+      without shipping the orchestration surface — but is a third artifact to
+      keep in sync, and entry 1329's fix already reaches the N/A by keying on the
+      config instead, making the stub redundant for that consumer.
+
+      RECOMMENDED: (1) REPOINT. Reasoning, and the honest con. It is the only
+      disposition consistent with the fence being deliberate — (2) reverses a
+      decision the manifest documents in place, and (3) manufactures a second
+      surface to solve a problem entry 1329 already solves at the one runtime
+      call site, leaving the stub as pure carrying cost for the 8 doc-surface
+      citations that a repoint removes outright. (1) is also the disposition
+      entry 3025 recommends for the CONTRACT, so taking it for the MODULE keeps
+      both halves of one mechanism on one strategy rather than splitting them.
+      The con, stated plainly: (1) is the largest edit of the three — 9 files
+      versus a one-line manifest change — and one of those edits is not
+      mechanical, because `multi-operator-coordination.md:115` cannot simply drop
+      its reference without leaving its MUST-NOT with no permitted path. That
+      clause needs a real answer, not a deletion, and if Gate-1 judges that answer
+      to be "the consumer has no cross-repo resolution and the clause should not
+      reach consumers at all", then the clause's `paths: ["**/*"]` scope is itself
+      part of the finding. Recommending (1) anyway: the cost is bounded and
+      one-time, and it is the only option that leaves no artifact pointing at
+      something the tier is designed never to receive.
+      CLASSIFICATION IS GATE-1'S CALL; this entry surfaces, it does not decide.
+
+      DELIBERATELY NOT PATCHED LOCALLY. `rules/**` and `commands/**` are synced
+      globs, so any local edit is Class-A non-durable and rebuilt away by
+      `/sync-to-use` (`artifact-flow.md` § Distribution-Durability Invariants).
+      The durable surface is this proposal.
+    diff_lines: "unknown — depends on which of the three dispositions Gate-1 takes; under the recommended (1), 9 files touched, of which 8 are citation-line edits and 1 (multi-operator-coordination.md:115) requires a replacement contract, not a deletion"
+
 status: pending_review
