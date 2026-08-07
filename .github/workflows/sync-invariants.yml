@@ -37,12 +37,45 @@ name: Sync Invariants
 #
 # NOTE ON ENFORCEMENT: this workflow FAILS the check run. Whether a red check
 # actually blocks the merge depends on branch protection (required status
-# checks). Register `sync-invariants` as required, or an admin merge can still
-# proceed over the red — loudly, but proceed.
+# checks).
+#
+# The required-check context is the JOB `name:` below —
+#
+#     Sync invariants (local-fix discard + obsoleted disjointness)
+#
+# NOT the workflow filename `sync-invariants`. That filename matches no context;
+# registering it silently protects nothing, and it is why the branch-protection
+# UI picker appeared empty. It is registered correctly as of 2026-08-06.
+#
+# The gate is LOUD, not ABSOLUTE, and that is deliberate. `enforce_admins` stays
+# `false`, so `gh pr merge --admin` still merges over a red. Turning it ON would
+# lock the repo: protection also requires one approving review, and a solo
+# maintainer cannot approve their own PR, so admin-enforcement plus the review
+# requirement means nothing can ever merge. Revisit only if a second reviewer is
+# enrolled. Until then the gate depends on the operator honouring the red — and
+# a red is CLEARED (fix it, or record an `ACK-DISCARD:` line in the PR BODY,
+# never a comment), never bypassed.
 
+# EVERY pull request, whatever its base.
+#
+# This deliberately carries NO `branches:` filter. It previously read
+# `branches: [main]`, which silently gave a STACKED PR (one based on another
+# open PR's branch rather than on main) ZERO coverage from this gate — measured:
+# PR #107, based on another branch, showed one skipped check and nothing else,
+# while the identical commit reopened against main (as #108) ran both gates and
+# passed. Combined with `enforce_admins: false`, that let a stacked PR be
+# admin-merged with the required check having NEVER RUN — a quieter form of
+# merging over a red, and indistinguishable from a pass in the merge box.
+#
+# Both gates are base-branch-agnostic, so the filter bought nothing:
+#   - Gate A takes the PR's base SHA as its first argument and compares content
+#     against the MERGE BASE. Nothing in it references `main`.
+#   - Gate B runs against the checked-out merge result. It has no base concept.
+#
+# Do not re-add a `branches:` filter. Narrowing which PRs the gate runs on does
+# not narrow which PRs can merge — it only decides which ones merge unchecked.
 on:
   pull_request:
-    branches: [main]
 
 # PR-gate only. Under the admin-merge flow the merge commit's tree equals the
 # PR head's tree, so re-running on the merge-commit push is redundant
