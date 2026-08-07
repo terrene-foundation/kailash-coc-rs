@@ -3866,4 +3866,118 @@ changes:
       what makes it reviewable, and this entry is where it now lives.
     diff_lines: "1 file modified (1 line removed, ~16 added)"
 
+  # ────────────────────────────────────────────────────────────────
+  # GATE-1 READING ORDER — ONE SUPERSESSION AND ONE SCOPE GAP
+  #
+  # (A) SUPERSESSION, `.coc-obsoleted`. The EARLIEST of the four
+  # `.coc-obsoleted` / `sync-manifest.yaml` entries closes with
+  # "SUGGESTED FIX: emit the manifest as (planned-purge MINUS
+  # shipped-set)". That suggestion is INVERTED and is SUPERSEDED by the
+  # two later entries in the same cluster ("reconcile in ONE direction
+  # …" and "SUGGESTED SHAPE, offered rather than assumed"). Implementing
+  # it as written would DROP the purge directive for exactly the five
+  # paths that most need purging, permanently stranding loom-only
+  # artifacts at every consumer. The other direction is ALSO unavailable
+  # as stated: `.claude/bin/validate-emit.mjs` imports
+  # `hooks/lib/o1-citation-check.js`, so deleting the files breaks this
+  # template's own validator. Gate-1 is being asked to RESOLVE a
+  # three-way contradiction, NOT to apply the first suggestion it reads.
+  #
+  # (B) SCOPE GAP, `rules/cross-repo.md` citations. Entry 3025 scopes
+  # its citation count to `.claude/rules` + `.claude/commands` (11 sites)
+  # and dismisses the wider `.claude/**` count (29) as sweeping in
+  # `.proposals/`, `sync-manifest.yaml`, `.coc-obsoleted`, `team-memory/`,
+  # `bin/` and `hooks/`. SKILLS ARE IN NEITHER LIST. The three entries
+  # below are shipped skill artifacts that cite the use_excluded rule
+  # NORMATIVELY, and they are covered by no entry in this manifest.
+  # ────────────────────────────────────────────────────────────────
+  - file: .claude/skills/30-claude-code-patterns/multi-cli-migration.md
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0 and NOT covered by entry 3025, whose count is
+      scoped to `.claude/rules` + `.claude/commands` (11 sites — re-derived
+      independently here as 4 rules + 7 commands, matching 3025 exactly). This file
+      is a SKILL, which falls outside both that scope AND 3025's explicitly-dismissed
+      wider categories. It SHIPS: `skills/30-claude-code-patterns/**` is a tier
+      member (`sync-manifest.yaml:1182`) and the path appears in NO `use_exclude`
+      entry (checked against the `use_exclude:` block with a control that fires on
+      `cross-repo` in the same block).
+    reason: >-
+      FOUR NORMATIVE CITATIONS OF A RULE THIS TIER NEVER RECEIVES, IN A SKILL THAT
+      SHIPS. Three cite Rule 4 as the authority for MERGE SEMANTICS — the sentence
+      "The semantics are additive-merge with explicit obsoletion, NOT wholesale
+      replacement (per `rules/cross-repo.md` Rule 4)" at :212, the obsoleted-purge
+      instruction at :214, and a comment at :232 — and one cites MUST-1 at :146 to
+      FORBID a positional `~/repos/<sister>` guess.
+      THE :146 CITATION IS THE SHARPEST, and is the same shape as the `priority: 0`
+      case 3025 singles out: it tells the reader what NOT to do and defers the
+      permitted alternative to a file the reader does not have. A consumer following
+      it finds no resolver contract, no resolver module (`bin/lib/loom-links.mjs` is
+      loom_only + purged), and no stated fallback — so the clause forbids the obvious
+      approach without supplying the sanctioned one.
+      DISPOSITION DEFERRED TO 3025, NOT RE-DECIDED HERE. 3025 recommends (1) REPOINT
+      for the contract and the resolver-module entry takes the same line; these sites
+      should ride whatever Gate-1 chooses there rather than acquiring a separate
+      strategy. This entry exists so the choice is APPLIED to them — the risk is not
+      that Gate-1 decides wrongly, it is that Gate-1 never sees these sites at all
+      and repoints 11 of 14.
+    diff_lines: "4 citation lines, pending Gate-1's disposition for entry 3025"
+
+  - file: .claude/skills/30-claude-code-patterns/multi-operator-coordination-substrate.md
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0 and NOT covered by entry 3025 (skill, outside its
+      rules+commands scope and outside its dismissed categories). Ships via the same
+      `skills/30-claude-code-patterns/**` tier membership; absent from `use_exclude`.
+    reason: >-
+      A BLOCKED-MARKED MUST-NOT WHOSE PERMITTED ALTERNATIVE IS UNREACHABLE. Line 385:
+      "Any coordination-substrate tool … that needs another repo's on-disk location
+      MUST resolve it through `bin/lib/loom-links.mjs::resolveRepo(<logical-key>)`
+      per `rules/cross-repo.md` MUST-1. Positional construction (`~/repos/<name>`,
+      `../<name>`, `path.join(HOME, "repos", <name>)`) is BLOCKED."
+      BOTH HALVES ARE ABSENT AT THIS TIER — the rule (use_exclude) and the module
+      (loom_only + purged + `.coc-obsoleted:73`). So the clause blocks the three
+      named alternatives and mandates a fourth that does not exist here. This is the
+      SAME structural defect the baseline `repo-scope-discipline.md` carries and that
+      3025 documents; it is recorded separately only because the skill lane was never
+      counted. Note this file is the SKILL PAIRED with `rules/multi-operator-
+      coordination.md`, which IS covered — so one half of a paired artifact is
+      dispositioned and the other is not, which is precisely how a repoint leaves a
+      dangling reference behind.
+    diff_lines: "1 citation line, pending Gate-1's disposition for entry 3025"
+
+  - file: .claude/skills/44-enroll/SKILL.md
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0 and NOT covered by entry 3025 (skill lane). Ships:
+      `skills/44-enroll/**` is a tier member (`sync-manifest.yaml:1559`) and appears
+      in no `use_exclude` entry.
+    reason: >-
+      AN ONBOARDING SKILL POINTS A NEW OPERATOR AT A SECTION OF AN ABSENT RULE.
+      Line 51 cites `cross-repo.md` § "Canonical Sublayout (Recommended — F61)" for
+      the `~/repos/kailash/{build,use}/<slug>` layout. Lower severity than the two
+      above because the cited section is a RECOMMENDATION rather than a MUST, and the
+      skill states the layout inline — so the reader is not left without the content,
+      only without the citation's target.
+      IT IS WORTH FIXING ANYWAY BECAUSE OF WHO READS IT: `/enroll` is run by an
+      operator joining the repo for the first time, and a dangling authority pointer
+      in the first artifact a new operator follows is disproportionately corrosive to
+      trust in the corpus. A repoint costs one line.
+      ALSO RECORDED, DELIBERATELY NOT PROPOSED: a fourth skill,
+      `skills/30-claude-code-patterns/self-referential-allowlist-provenance.md:45`,
+      mentions `cross-repo.md` MUST-1 inside a provenance paragraph DESCRIBING what
+      `loom-links.mjs` is. That is descriptive, not a normative deferral — the reader
+      is not sent anywhere — so it needs no repoint and is named here only so a future
+      sweep does not re-flag it as a fourth finding.
+    diff_lines: "1 citation line, pending Gate-1's disposition for entry 3025"
+
 status: pending_review
