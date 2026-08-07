@@ -1,0 +1,68 @@
+# NO source_repo — hop-level-only provenance: the downstream consumer is
+# deliberately NOT identified. Lane head is template_slug.
+origin: downstream
+codify_date: 2026-08-08
+codify_session: "codify(instrument-discipline): an instrument is scoped to the question it was BUILT for"
+template_slug: kailash-coc-rs
+template_version: "2.24.0"
+loom_sha: "43167a54"
+changes:
+  - file: .claude/rules/instrument-discipline.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >
+      Proposes a new MUST clause: AN INSTRUMENT IS SCOPED TO THE QUESTION IT WAS BUILT FOR — A
+      SECOND QUESTION NEEDS ITS OWN FALSIFYING RESULT. When a check, script, query or report
+      built to answer question A is ALSO read to answer a different question B, MUST-1 applies
+      AGAIN — to B, against THAT instrument: name the result B would have produced had B's
+      proposition been FALSE. An instrument can be sound for A and silently unsound for B while
+      emitting ONE plausible output that appears to answer both; the plausibility of the output
+      is not evidence of its scope. A one-line corollary carries most of the practical weight:
+      a field's semantics are fixed by its PRODUCER, not by the reader's question.
+
+      WHY MUST-1 DOES NOT ALREADY COVER IT, stated plainly because read strictly it appears to.
+      MUST-1 is discharged ONCE, at an instrument's first use, and nothing in the corpus
+      re-triggers it when an already-trusted output is consulted for something else. The
+      observed failure is not "no falsifying result was named" — one WAS named, correctly, for
+      A — it is that the instrument's authority then transferred to B silently. Naming the
+      pattern is what makes it catchable at gate-review, because it changes the reviewer's
+      question from "was a falsifying result named?" (yes, for A) to "was this instrument BUILT
+      for the question it is being cited for?".
+
+      SIBLING COVERAGE CHECKED AND INSUFFICIENT. MUST-2 governs green tests and non-reddening
+      mutations — a different instrument class. evidence-first-claims.md MUST-3 governs ERRORED
+      or EMPTY commands as zero evidence, but here every command SUCCEEDED and returned a
+      well-formed value that was correct for A. verify-claims-before-write.md MUST-2 governs
+      truncated output and context-boundary reconstruction, but here the output was complete
+      and freshly produced.
+
+      EVIDENCE. One session produced TWO published-then-retracted recommendations from this
+      single pattern. (1) A merge-sequence simulator, sound for partitioning candidates into
+      clean-vs-conflicting because each candidate is tested against the real accumulated state,
+      was also read for "what does each REMAINING candidate conflict on"; a candidate that
+      failed is never merged into the accumulator, so the leftovers were each measured against
+      a state missing the others. The resulting claim shipped as a recommendation and was
+      refuted when the sequence was actually executed. (2) A CI job record's `labels` field was
+      read as the runner host's capabilities; it is in fact the labels the JOB REQUESTED. That
+      claim shipped as a remediation and was refuted by enumerating outcomes instead — 26 runs
+      across 6 hosts, 0 successes, so no capable subset existed to route work to. Both survived
+      a "does this check discriminate?" self-review, because for the question each was built
+      for, it did. Two further same-class near-misses were caught pre-publication in the same
+      session: a merge-commit diff printing EMPTY for a file whose resolution was
+      byte-identical to one parent (a combined diff suppresses hunks matching BOTH parents, so
+      it answers "what differs from both", not "what changed"), and a shell loop over an
+      unquoted list variable that did not word-split under that shell and returned a plausible
+      count of 1.
+
+      REMEDY named in-clause is the one that worked in every case above: re-derive the
+      falsifying result for the SECOND question against THAT instrument, or re-instrument for
+      it.
+
+      RELATIONSHIP TO A SIBLING PROPOSAL. A separate proposal in flight for this same rule
+      concerns a test that transcribes a user-facing string and so cannot fail when that string
+      goes false. These are SIBLINGS, not duplicates — that one is a test redding on the wrong
+      AXIS, this one is a sound instrument reused for the wrong QUESTION. The maintainer may
+      prefer to land them as one clause with two instances; this proposal deliberately does not
+      pre-decide that.
+    diff_lines: "~+16 (new MUST clause + DO/DO-NOT + BLOCKED corpus + Why) + clause-scoped Wiring"
+status: pending_review
