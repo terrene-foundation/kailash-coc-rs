@@ -160,8 +160,15 @@ compose.override.yml
 .session-notes
 .session-notes.d/
 .session-notes.shared.md
-/workspaces/*
-!/workspaces/_template/
+# workspaces/ IS tracked (owner directive 2026-08-07). The COC workspace —
+# briefs, specs, analysis, todos, journals, validation reports — is durable
+# project knowledge, and gitignoring it stranded every /sweep report and
+# workspace journal as local-only.
+# Secrets stay ignored: a workspace .env is a real credential surface, and
+# `security.md` § "No .env in Git" is not lifted by tracking the directory.
+/workspaces/**/.env
+/workspaces/**/.env.*
+!/workspaces/**/.env.example
 !.claude/bin/lib/
 !.claude/hooks/lib/
 !.claude/test-harness/lib/
