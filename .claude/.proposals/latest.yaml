@@ -3980,4 +3980,115 @@ changes:
       sweep does not re-flag it as a fourth finding.
     diff_lines: "1 citation line, pending Gate-1's disposition for entry 3025"
 
+  # ────────────────────────────────────────────────────────────────
+  # ENFORCEMENT-LAYER CENSUS at template 2.24.0 / HEAD 4418328.
+  # 29 committed fixture runners driven individually, real exit code
+  # read directly (never through a pipe — a pipe returns the LAST
+  # stage's status, which is how a prior sweep mis-scored this suite).
+  #   19 green · 10 non-green
+  # The 10: 4 module-not-found (bin modules absent at this tier — the
+  # rules/cross-repo.md class, no local repair), 4 exit-1, 1 exit-78
+  # (variant-overlay), 1 genuine hang (validate-proximity-band, still
+  # running at 151s).
+  # INSTRUMENT NOTE, because it changed the answer: a 45s cap scored
+  # THREE runners red that are green given time — cross-repo-authorize
+  # (48s), upflow-open-never-complete (72s), worktree-stale-base-ref
+  # (89s). The prior census's "2 UNKNOWN — hit a 60s timeout, not proven
+  # red" is hereby RESOLVED: worktree-stale-base-ref is GREEN, and
+  # validate-proximity-band genuinely hangs. Any re-run MUST allow
+  # >=150s per runner or it will re-derive a false red set.
+  # ────────────────────────────────────────────────────────────────
+  - file: .claude/audit-fixtures/scan-synced-disclosure/
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already filed. Distinct from every existing scan-synced-disclosure entry,
+      which concern the scanner's DETECTION LOGIC; this concerns the fixture
+      CONTENT being absent, so the logic entries are untestable at this tier
+      regardless of how they are resolved. Measured at HEAD `4418328`:
+      `node .claude/audit-fixtures/scan-synced-disclosure/run.mjs` exits 1 with
+      `3 fixture(s) FAILED — scanner regressed`, 20 of 23 passing.
+    reason: >-
+      THE DISCLOSURE FENCE'S OWN FALSE-NEGATIVE REGRESSION LOCKS ARE STRUCTURALLY
+      EMPTY AT THIS CONSUMER, SO THEY CANNOT FAIL. All three failures are
+      FALSE-NEGATIVE-shaped — the scanner returning CLEAN where the fixture
+      requires a finding — which is the one direction that matters for a
+      disclosure fence:
+        operator-local-md-destination-flip  exit 0 (expected 1), missing SHAPE:operator-home-path
+        test-mjs-destination-flip           exit 0 (expected 1), missing SHAPE:operator-home-path
+        r3-variant-surface                  2 findings (expected 5), missing operator-hostname,
+                                            operator-home-path, operator-service-label
+      THE CAUSE IS NOT A SCANNER REGRESSION — IT IS MISSING FIXTURE CONTENT, and
+      that distinction is the whole finding. `operator-local-md-destination-flip/`
+      and `test-mjs-destination-flip/` each contain ONLY `README.md`; there is no
+      planted file for the scanner to flag, so CLEAN is the correct answer to the
+      question actually being asked. Git is NOT the cause: `.gitignore:168` carries
+      `!.claude/audit-fixtures/**` (a NEGATION — explicitly un-ignored), and
+      `git check-ignore` returns nothing for the missing path while correctly
+      reporting a known-ignored control.
+      THE PLANTED FILE WAS DELIVERED BY ONE SYNC AND REMOVED BY THE NEXT:
+        A  39c281f  2026-07-19  chore(sync): Gate-2 use rs from loom 6df8c94b3efe
+        D  5fe4ea7  2026-07-21  chore(sync): Gate-2 use rs from loom f5a653e31e48
+      for `.../operator-local-md-destination-flip/.claude/variants/rs/rules/ci-runners.operator.local.md`.
+      Both are Gate-2 distributions two days apart. `test-mjs-destination-flip/`
+      never received its planted file at all — `README.md` is the ONLY path ever
+      committed under it.
+      THE SHAPE THIS SUGGESTS, OFFERED NOT ASSERTED: the deleted file is an
+      `*.operator.local.md`, and the surviving fixture is named for a
+      `*.test.mjs` — both are exactly the never-synced / operator-local classes a
+      distribution exclusion would strip. If an exclusion of that shape runs over
+      the audit-fixtures tree, then THE FENCE'S EXCLUSION RULE IS DELETING THE
+      FIXTURE BUILT TO TEST THAT EXCLUSION RULE, and the fixture is un-shippable
+      through the pipeline it validates. NOT VERIFIED HERE and deliberately not
+      claimed: `sync-tier-aware.mjs` does not exist at this tier (`ls` → No such
+      file), so the emitter is not inspectable from a consumer and Gate-1 must
+      confirm the mechanism rather than trust this inference. An earlier pass
+      grepped that absent file and read its silence as "no such patterns" — a
+      non-discriminating instrument, corrected here rather than shipped.
+      WHY IT MATTERS MORE THAN A RED TEST: `instrument-discipline.md` — a fixture
+      that cannot fail is not evidence. These three are the regression locks for
+      operator home paths, hostnames, and service labels reaching 30+ downstream
+      consumers, and every future run reports them green-or-red for a reason
+      unrelated to whether the scanner still detects those shapes.
+    diff_lines: "3 fixture dirs; content restoration, count unknown until the exclusion mechanism is identified at loom"
+
+  - file: .codex-mcp-guard/server.js
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      AMENDS THE EXISTING `.codex-mcp-guard/server.js` ENTRY — NOT a second action.
+      That entry closes with a `template_ingest_note` stating the write site was
+      "NOT pinned this cycle — stated so Gate-1 re-derives it rather than trusting
+      the path". This entry supplies the pin so Gate-1 does not have to. The
+      earlier entry owns the FIX; apply it once, informed by these coordinates.
+    reason: >-
+      THE SINK IS PINNED, AND THE EARLIER ENTRY'S GUESS WAS CORRECT.
+        server.js:78   const VIOLATIONS_PATH = path.join(COC_ROOT, "learning", "violations.jsonl");
+        server.js:216  function logViolation(entry) { ... }
+        server.js:221  fs.appendFileSync(VIOLATIONS_PATH, line + "\n");
+      with `COC_ROOT = resolveCocRoot(HERE)` at `:75`.
+      THE SUGGESTED FIX NEEDS A CODE CHANGE, NOT CONFIGURATION — this is the part
+      the pin settles. `server.js` contains EXACTLY ONE `process.env` reference,
+      a spread at `:264` into the child hook's env; there is NO env override for
+      any path in the file. So the "env-overridable sink" shape the earlier entry
+      suggests cannot be reached by setting a variable today.
+      A DELIBERATE DESIGN CONSTRAINT SITS ON THIS CODE — do not "fix" it by
+      routing through `appendStamped`. Lines 204-214 document an explicit MUST-6
+      exemption from `knowledge-convergence.md`: the guard runs as a standalone
+      subprocess companion and deliberately avoids the signing substrate, so the
+      breadcrumb is un-stamped BY DESIGN. The pollution fix must therefore
+      redirect the SINK, leaving that exemption intact.
+      RE-MEASURED THIS CYCLE, confirming the earlier entry's rate: 30 synthetic
+      rows landed in the live ledger on 2026-08-07 from THREE suite runs
+      (9 `codex_mcp_guard_deny`, 12 `_surface`, 6 `_failclosed_missing`,
+      3 `_failclosed_crash`) — the same ~10-per-run the earlier entry measured,
+      now reproduced independently. The live ledger was NOT hand-edited to remove
+      them: `violations.jsonl` is append-only and the MUST NOT against editing
+      state files stands, so the pollution is reported, not cleaned.
+    diff_lines: "unknown until loom picks the sink mechanism (this entry pins coordinates only)"
+
 status: pending_review
