@@ -4091,4 +4091,248 @@ changes:
       state files stands, so the pollution is reported, not cleaned.
     diff_lines: "unknown until loom picks the sink mechanism (this entry pins coordinates only)"
 
+  # ─────────────────────────────────────────────────────────────────────────
+  # RELAYED FROM THE DOWNSTREAM UPFLOW INBOX — /sync-from-downstream ingest,
+  # 2026-08-07, at template HEAD 9ae69ff.
+  #
+  # Two offers ingested. Provenance is HOP-LEVEL ONLY (origin: downstream,
+  # via: kailash-coc-rs); neither inbox file carried a `source_repo` and no
+  # consumer identity is carried onward (upstream-issue-hygiene.md MUST-2).
+  #
+  # SCRUB, STATED HONESTLY: the mechanical scanner CANNOT cover this surface.
+  # `scan-synced-disclosure.mjs --root` over the two offers reported
+  # "Scanned: 0 files ... clean — 0 findings" — a NON-DISCRIMINATING result,
+  # because `.proposals/` is isNeverSynced and the scanner skips it by design
+  # (artifact-flow.md § Intake Disclosure Scrub says so explicitly). The scrub
+  # relied on here is the HUMAN read of both bodies per MUST-2. Do not cite the
+  # scanner's exit 0 as scrub evidence for these entries.
+  #
+  # BOTH OFFERS WERE OPEN, NOT MERGED, at ingest time (PRs #116 and #117) —
+  # the consumer correctly stopped at "open" per upstream-issue-hygiene.md
+  # MUST-4. Verbatim originals live in those PRs until the template merges them.
+  # ─────────────────────────────────────────────────────────────────────────
+
+  # ---- from inbox 2026-08-07-readonly-reviewer-output-surface.yaml (PR #117) ----
+
+  - file: .claude/rules/agents.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved here, and NOT already relayed. Grep over this manifest
+      for "read-only reviewer" / "readonly-reviewer" returned 0 hits (control:
+      "codify_date" fires). The rule's existing "Read-only reviewer
+      materialization" clause covers the INPUT side only — it mandates
+      materializing the diff to a scratchpad path so a Bash-less reviewer can
+      read its context. Nothing in the rule covers the OUTPUT side.
+      THE OFFER'S LOAD-BEARING CLAIM WAS VERIFIED AT THIS TEMPLATE, not accepted
+      on assertion: `.claude/agents/quality/security-reviewer.md` declares
+      `tools: Read, Grep, Glob` — no Write, no Bash. So the agent this rule
+      routes adversarial security review to genuinely has no durable surface;
+      its findings exist only in the message it returns.
+      INDEPENDENTLY CORROBORATED BY THIS TEMPLATE'S OWN HISTORY: a 2026-08-07
+      session recorded five of five dispatched subagents (four recon, one
+      reviewer) completing and going idle with no findings delivered, and
+      recorded the consequence explicitly — no gate-level review ran on either
+      merged PR that session. That is the same failure mode from a second,
+      unrelated observer.
+    reason: >-
+      Closes the OUTPUT half of a gap whose INPUT half the rule already covers.
+      A read-only reviewer's findings exist only in the message it returns; when
+      that message is lost (long agent messages drop on some channels; an agent
+      can complete and go idle without its report arriving), the ENTIRE review is
+      gone and unrecoverable, because nothing was ever written down.
+      The compounding failure is epistemic, not merely lossy: the orchestrator
+      cannot distinguish a LOST report from a CLEAN verdict — both present as an
+      agent that finished and said nothing. Treating that silence as "no
+      findings" is exactly the shape evidence-first-claims.md MUST-3 blocks (an
+      absent result read as confirmation), and it is most dangerous precisely
+      where read-only reviewers are most used: adversarial security review of a
+      trust boundary, where silently losing a finding costs most.
+      The offer declines to pre-decide the fix and names three dispositions in
+      ascending structural strength: (a) require read-only reviewers to report in
+      short single-finding chunks by DEFAULT, highest-severity first (prompt
+      convention only); (b) dispatch adversarial security review through a
+      Write-capable agent carrying the security-reviewer brief (stronger, but
+      loses the declared read-only guarantee that makes the reviewer safe to point
+      at anything); (c) have the ORCHESTRATOR pre-create an empty scratchpad
+      output file per reviewer and name it in the prompt, so an absent file is
+      mechanically distinguishable from an empty verdict. The offer favours (c) on
+      the symmetry argument — it is the exact counterpart of the INPUT-side
+      materialization the rule already mandates.
+      Whichever is chosen, the load-bearing clause is that a review whose findings
+      have no durable surface MUST NOT have its silence read as a clean verdict.
+    diff_lines: "~+12 (extend the read-only-reviewer materialization clause to OUTPUTS) + clause-scoped Wiring"
+
+  # ---- from inbox 2026-08-07-preserved-project-skill-frontmatter-migration.yaml (PR #116) ----
+  #
+  # BASE-VERSION DRIFT, FLAGGED FOR GATE-1: every entry below declares
+  # base_version "2.23.22"; this template is now at 2.24.0. One entry targets
+  # .github/workflows/validate.yml, which THIS TEMPLATE RESTRUCTURED on
+  # 2026-08-07 (two-job split: `validate` + `validate-stacked`, body extracted to
+  # .github/scripts/validate-coc-structure.sh). The offer's suggested CI step is
+  # not in conflict, but it was authored against the single-job shape and must be
+  # re-based onto the split before it is applied anywhere.
+
+  - file: .claude/bin/validate-emit.mjs
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.23.22"
+    dedup_evidence: >-
+      NOT already relayed (0 manifest hits for "preserved project skill" /
+      "predate frontmatter"; control fires). Distinct from the validate-emit
+      hookEvent findings filed at this template as issue #112 — those concern
+      audit-fixture tier guards, this concerns skill-frontmatter parse-loading.
+    reason: >-
+      Fresh rs emission produces a parse-loadable `.codex/skills/project/SKILL.md`,
+      but that proves only the temporary tree generated from the current template.
+      A downstream consumer can retain a historical project-owned `SKILL.md`
+      without leading YAML frontmatter indefinitely, because `skills/project/**`
+      is preserved across template pulls. Codex then reports
+      `Skipped loading 1 skill(s)` and `missing YAML frontmatter` even after the
+      consumer is current. A source-and-installed-tree check would recursively
+      validate the canonical `.claude/skills/**/SKILL.md` plus the actual
+      `.codex/skills/**/SKILL.md` and `.gemini/skills/**/SKILL.md` for a
+      terminated frontmatter block, a concise non-empty `description`, and a
+      semantic `name` match — accepting either the immediate skill-directory name
+      or that name with its leading numeric ordering prefix removed. Nested
+      layouts apply the rule to the directory containing `SKILL.md`, not an
+      ancestor. Numbered-retained, numbered-stripped, unnumbered and nested
+      fixtures prevent a literal-only or stripped-only comparison from rejecting
+      valid skills; a historical no-frontmatter project manifest plus a valid
+      control pins the preserved-overlay failure mode without letting a clean
+      fresh emit mask it.
+    diff_lines: "+source/installed skill parse-load check + regression fixtures"
+
+  - file: .claude/commands/sync-from-template.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.23.22"
+    reason: >-
+      The downstream sync contract correctly preserves project-owned skills, but
+      preservation also preserves parser-invalid historical metadata. A
+      post-merge, pre-success source check would halt on that state and identify
+      metadata-only local `/codify` remediation: add `name` and a concise
+      non-empty `description` frontmatter block while retaining every existing
+      project-owned body byte. A regression fixture would assert exact
+      byte-for-byte body equality before and after metadata insertion, plus an
+      idempotent no-op for already-valid files. Once clean, the existing
+      multi-CLI emitter refreshes the derived Codex and Gemini project skill
+      trees, followed by the installed-tree efficacy gate. This keeps the
+      preservation boundary intact instead of replacing local skill content from
+      the template.
+    diff_lines: "+post-merge source gate, derived refresh, and installed verification"
+
+  - file: .claude/skills/30-claude-code-patterns/sync-flow.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.23.22"
+    reason: >-
+      The canonical downstream-sync reference distinguishes shared replacement
+      from project-owned preservation but does not bind preserved overlays to an
+      installed-tree parse-load gate. Recording that distinction in the depth
+      contract keeps command and validation behaviour aligned: fresh-emission
+      validity does not prove that preserved local overlays are loadable.
+    diff_lines: "+preserved-overlay migration contract"
+
+  - file: .claude/bin/emit-cli-artifacts.mjs
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.23.22"
+    dedup_evidence: >-
+      THE TOPOLOGY CLAIM WAS VERIFIED AT THIS TEMPLATE, not accepted on
+      assertion: `.claude/skills/management/` contains three reference documents
+      (build-reference.md, cargo-reference.md, release-workflow.md) and
+      ZERO SKILL.md at any depth. Control: `.claude/skills/32-trust-posture/`
+      returns exactly one SKILL.md, so the finder discriminates. The emitter
+      would therefore create a skill directory with no entrypoint on both
+      non-CC surfaces, exactly as the offer describes.
+    reason: >-
+      The skill-discovery path treats every immediate directory under
+      `.claude/skills/` as a semantic skill. The rs-only `management/` directory
+      intentionally contains command reference documents and no `SKILL.md`, yet
+      fresh emission creates both `codex/skills/management/` and
+      `gemini/skills/management/`. The target's own
+      `node .claude/bin/validate-emit.mjs --check consumer-efficacy --json`
+      exits 1 with `blocking: 2`; both failures read
+      `skill dir emitted with no SKILL.md anywhere in its tree`. Filtering
+      emission candidates to directories that contain a real `SKILL.md` closes
+      that topology class without deleting the command reference files, which
+      remain reachable through their canonical `.claude/skills/management/*.md`
+      citations. Separately, the generated `rules-reference/SKILL.md` emits an
+      unquoted description containing `: ` — the canonical skill validator rejects
+      it as invalid YAML even though the emitter's lightweight parser accepts it,
+      and its angle-bracket placeholder is independently forbidden by that
+      validator. YAML-safe scalar serialization, validator-safe prose, and a
+      strict parse-load fixture close that sibling frontmatter class.
+    diff_lines: "~candidate filter + YAML-safe metadata + semantic/reference fixtures"
+
+  - file: .claude/bin/emit-coc.mjs
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.23.22"
+    reason: >-
+      Unified `.coc` emission describes skill `name` and `description` as typed
+      fields but makes neither producer-required. A malformed canonical skill can
+      therefore degrade into a structurally valid-looking `.coc` set with its
+      discovery metadata omitted. Requiring both fields for skill artifacts,
+      reusing the same dual-form semantic name convention as the three-surface
+      check, and failing before write would close the remaining producer path.
+      Fixtures cover numbered-retained, numbered-stripped, unnumbered and nested
+      valid names, and reject missing, empty or malformed metadata without
+      accepting partial output.
+    diff_lines: "~producer-required skill metadata + fail-closed fixtures"
+
+  - file: .claude/commands/cc-audit.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.23.22"
+    reason: >-
+      `validate-emit.mjs` describes consumer efficacy as consumer-run via
+      `/cc-audit`, but the command contains no `validate-emit` invocation. Wiring
+      the source-and-installed skill check into the audit closes that
+      declared-but-absent enforcement path and makes an errored or missing result
+      explicitly UNKNOWN rather than clean — the evidence-first-claims.md MUST-3
+      disposition.
+    diff_lines: "+consumer-efficacy invocation and evidence row"
+
+  - file: .github/workflows/validate.yml
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.23.22"
+    rebase_required: >-
+      AUTHORED AGAINST A SHAPE THAT NO LONGER EXISTS. This template restructured
+      validate.yml on 2026-08-07: the `pull_request` trigger lost its
+      `branches: [main]` filter (stacked PRs previously got zero coverage) and the
+      single `validate` job became two — `validate` (push-to-main or a PR onto the
+      default branch) and `validate-stacked` (any other base) — with the inline
+      body extracted to `.github/scripts/validate-coc-structure.sh` so the two
+      cannot drift. The offer's suggested CI step is compatible in intent but must
+      be re-based: adding it to only one job would give stacked PRs different
+      coverage from default-base PRs, which is the asymmetry the split exists to
+      remove. Add it to the shared script, not to a job.
+    reason: >-
+      The target's consumer-efficacy command exits 1 with 216 passes and two
+      blocking reference-container failures, yet no workflow invokes it. Running
+      the focused check in validation CI after the emitter correction prevents
+      malformed or entrypoint-less skill directories from landing on either
+      non-CC surface without evidence.
+    diff_lines: "+focused consumer-efficacy CI step (re-base onto the two-job split first)"
+
 status: pending_review
