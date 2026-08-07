@@ -60,10 +60,20 @@ name: Sync Invariants
 # `false`, so `gh pr merge --admin` still merges over a red. Turning it ON would
 # lock the repo: protection also requires one approving review, and a solo
 # maintainer cannot approve their own PR, so admin-enforcement plus the review
-# requirement means nothing can ever merge. Revisit only if a second reviewer is
-# enrolled. Until then the gate depends on the operator honouring the red — and
-# a red is CLEARED (fix it, or record an `ACK-DISCARD:` line in the PR BODY,
-# never a comment), never bypassed.
+# requirement means nothing can ever merge.
+#
+# SETTLED 2026-08-07 by the repo owner: there will NOT be a second reviewer.
+# This is a decision, not a pending item — do not re-open it as "revisit when a
+# second reviewer is enrolled", and do not propose flipping `enforce_admins` to
+# `true` as a hardening step. It would lock the repo.
+#
+# The standing consequence, stated plainly because it is permanent rather than
+# transitional: THIS GATE CANNOT PREVENT A MERGE. It can only make one loud. Its
+# entire enforcement value rests on the operator honouring a red check, which no
+# mechanism in this repo can compel. A red is CLEARED — fix it, or record an
+# `ACK-DISCARD:` line in the PR BODY (never a comment; the gate does not read
+# comments) — and never bypassed. "I satisfied myself the finding was harmless"
+# is the same reasoning that merged the sync this gate was built to catch.
 
 # EVERY pull request, whatever its base.
 #
