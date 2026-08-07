@@ -1,6 +1,8 @@
 # Enforcement-layer census — CORRECTION at `2c4cd1e`
 
-**Supersedes** the `4418328` census in `.session-notes.d/<operator>.md` § Census.
+**Supersedes** the census taken at commit **`4418328`**. (That census lives in a
+per-operator session-notes fragment which is gitignored and therefore unreadable from a clone
+of this public repo — the commit SHA above is the durable anchor, not the path.)
 **Instrument:** each runner driven individually, `timeout 150 node run.mjs`, exit code read
 directly — never through a pipe. Same cap as the superseded census, so the two ARE comparable.
 
