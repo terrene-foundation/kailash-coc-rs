@@ -1,0 +1,132 @@
+# Step-7c downstream upflow offer.
+# NO source_repo: provenance remains hop-level only. The template stamps its own
+# `via` value during inbox ingest and does not carry a consumer identity onward.
+origin: downstream
+codify_date: 2026-08-07
+codify_session: "codify(skills): migrate preserved project skills that predate frontmatter enforcement"
+template_slug: kailash-coc-rs
+template_version: "2.23.22"
+loom_sha: "4bd993ac"
+
+changes:
+  - file: .claude/bin/validate-emit.mjs
+    action: modified
+    base_version: "2.23.22"
+    reason: >-
+      Fresh rs emission already produces a parse-loadable
+      `.codex/skills/project/SKILL.md`, but that proves only the temporary tree
+      generated from the current template. A downstream consumer can retain a
+      historical project-owned `SKILL.md` without leading YAML frontmatter
+      indefinitely because `skills/project/**` is preserved across template
+      pulls. Codex then reports `Skipped loading 1 skill(s)` and
+      `missing YAML frontmatter` even after the consumer is current. A
+      source-and-installed-tree check would recursively validate the canonical
+      `.claude/skills/**/SKILL.md` files and the actual
+      `.codex/skills/**/SKILL.md` and `.gemini/skills/**/SKILL.md` files for a
+      terminated frontmatter block, a concise non-empty `description`, and a
+      semantic `name` match. Name comparison would accept either the immediate
+      skill-directory name or that name with its accepted leading numeric
+      ordering prefix removed (for example, both `32-trust-posture` and
+      `core-sdk` for `01-core-sdk`-shaped conventions already exist in the
+      corpus). Nested layouts would apply the rule to the directory containing
+      `SKILL.md`, not an ancestor container. Numbered-retained,
+      numbered-stripped, unnumbered, and nested fixtures would prevent either a
+      literal-only or stripped-only comparison from rejecting valid skills. A
+      historical no-frontmatter project manifest plus a valid control would pin
+      the preserved-overlay failure mode without letting a clean fresh emit mask
+      it.
+    diff_lines: "+source/installed skill parse-load check + regression fixtures"
+
+  - file: .claude/commands/sync-from-template.md
+    action: modified
+    base_version: "2.23.22"
+    reason: >-
+      The downstream sync contract correctly preserves project-owned skills,
+      but preservation also preserves parser-invalid historical metadata. A
+      post-merge, pre-success source check would halt on that state and identify
+      metadata-only local `/codify` remediation: add `name` and a concise
+      non-empty `description` frontmatter block while retaining every existing
+      project-owned body byte. A regression fixture would assert exact
+      byte-for-byte body equality before and after metadata insertion, plus an
+      idempotent no-op for already-valid files. Once clean, the existing
+      multi-CLI emitter should refresh the derived Codex and Gemini project skill
+      trees, followed by the installed-tree efficacy gate. This keeps the
+      preservation boundary intact instead of replacing local skill content
+      from the template.
+    diff_lines: "+post-merge source gate, derived refresh, and installed verification"
+
+  - file: .claude/skills/30-claude-code-patterns/sync-flow.md
+    action: modified
+    base_version: "2.23.22"
+    reason: >-
+      The canonical downstream-sync reference currently distinguishes shared
+      replacement from project-owned preservation but does not bind preserved
+      overlays to an installed-tree parse-load gate. Recording that distinction
+      in the depth contract keeps the command and validation behavior aligned:
+      fresh-emission validity does not prove that preserved local overlays are
+      loadable.
+    diff_lines: "+preserved-overlay migration contract"
+
+  - file: .claude/bin/emit-cli-artifacts.mjs
+    action: modified
+    base_version: "2.23.22"
+    reason: >-
+      The same skill-discovery path currently treats every immediate directory
+      under `.claude/skills/` as a semantic skill. The rs-only `management/`
+      directory intentionally contains command reference documents and no
+      `SKILL.md`, yet fresh emission creates both `codex/skills/management/` and
+      `gemini/skills/management/`. The target's own command
+      `node .claude/bin/validate-emit.mjs --check consumer-efficacy --json`
+      exits 1 with `blocking: 2`; both failures read `skill dir emitted with no
+      SKILL.md anywhere in its tree`. Filtering emission candidates to
+      directories that contain a real `SKILL.md` closes that same topology
+      class without deleting the command reference files, which remain
+      available through their canonical `.claude/skills/management/*.md`
+      citations. The generated `rules-reference/SKILL.md` also currently emits
+      an unquoted description containing `: `; the canonical skill validator
+      rejects it as invalid YAML even though the emitter's lightweight parser
+      accepts it. Its angle-bracket placeholder is independently forbidden by
+      that validator. YAML-safe scalar serialization, validator-safe prose, and
+      a strict parse-load fixture close that sibling frontmatter class. A
+      fixture with one semantic skill and one reference-only directory would pin
+      both inclusion and exclusion.
+    diff_lines: "~candidate filter + YAML-safe metadata + semantic/reference fixtures"
+
+  - file: .claude/bin/emit-coc.mjs
+    action: modified
+    base_version: "2.23.22"
+    reason: >-
+      Unified `.coc` emission currently describes skill `name` and `description`
+      as typed fields but explicitly makes neither producer-required. A malformed
+      canonical skill can therefore degrade into a structurally valid-looking
+      `.coc` set with its discovery metadata omitted. Requiring both fields for
+      skill artifacts, reusing the same dual-form semantic name convention as
+      the three-surface check, and failing before write would close the remaining
+      producer path. Fixtures would cover numbered-retained, numbered-stripped,
+      unnumbered, and nested valid names and reject missing, empty, or malformed
+      metadata without accepting partial output.
+    diff_lines: "~producer-required skill metadata + fail-closed fixtures"
+
+  - file: .claude/commands/cc-audit.md
+    action: modified
+    base_version: "2.23.22"
+    reason: >-
+      `validate-emit.mjs` describes consumer efficacy as consumer-run via
+      `/cc-audit`, but the command currently contains no `validate-emit`
+      invocation. Wiring the source-and-installed skill check into the audit
+      closes that declared-but-absent enforcement path and makes an errored or
+      missing result explicitly unknown rather than clean.
+    diff_lines: "+consumer-efficacy invocation and evidence row"
+
+  - file: .github/workflows/validate.yml
+    action: modified
+    base_version: "2.23.22"
+    reason: >-
+      The target's current consumer-efficacy command exits 1 with 216 passes and
+      two blocking reference-container failures, yet no workflow invokes it.
+      Running the focused check in validation CI after the emitter correction
+      prevents malformed or entrypoint-less skill directories from landing on
+      either non-CC surface without evidence.
+    diff_lines: "+focused consumer-efficacy CI step"
+
+status: pending_review
