@@ -1,0 +1,49 @@
+# NO source_repo — hop-level-only provenance: the downstream consumer is deliberately NOT
+# identified (scenario 8/9 disclosure fence). The lane head is template_slug (the template NAME).
+origin: downstream
+codify_date: 2026-08-07
+codify_session: "codify(agents): a read-only reviewer's findings have no durable surface"
+template_slug: kailash-coc-rs
+template_version: "2.24.0"
+loom_sha: "43167a54"
+changes:
+  - file: .claude/rules/agents.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >
+      Proposes closing the OUTPUT half of a gap whose INPUT half the rule already covers. The
+      section "Read-only reviewer materialization" mandates materializing a read-only reviewer's
+      INPUTS to a scratchpad path, because a reviewer whose declared tool set omits Bash cannot
+      fetch its own context. The mirror-image weakness on the OUTPUT side is uncovered and is
+      strictly worse: security-reviewer declares Read, Grep, Glob — no Write, no Bash — so it has
+      NO durable surface at all. Its findings exist only in the message it returns. When that
+      message is lost (long agent messages drop on some channels; an agent can also complete and
+      go idle without its report arriving), the ENTIRE review is gone and unrecoverable, because
+      nothing was ever written down.
+      The compounding failure is epistemic, not merely lossy: the orchestrator cannot distinguish
+      a LOST report from a CLEAN verdict. Both present as an agent that finished and said nothing.
+      Treating that silence as "no findings" is exactly the shape evidence-first-claims.md MUST-3
+      blocks — an absent result read as confirmation — and it is most dangerous precisely where
+      read-only reviewers are most used: adversarial security review of a trust boundary, where
+      the cost of silently losing a finding is highest.
+      Observed in a downstream consumer's orchestration session: two independent read-only
+      reviewers dispatched against one security-critical change both completed and both went idle
+      with no report delivered. Recovery required re-requesting findings as short single-finding
+      chunks, which worked and is cheap — but only because the orchestrator happened to notice the
+      silence was suspicious rather than clean. Both reviewers, once chunked, returned a HIGH
+      finding that independently refuted the orchestrator's own analysis, so the near-miss was
+      material.
+      Three candidate dispositions, offered for the maintainer to choose between rather than
+      pre-decided here, in ascending structural strength: (a) require read-only reviewers to
+      report in short single-finding chunks by DEFAULT, highest-severity first, which needs only a
+      prompt convention; (b) dispatch adversarial security review through a Write-capable agent
+      carrying the security-reviewer brief, so findings land in a file — stronger, but loses the
+      declared read-only guarantee that makes the reviewer safe to point at anything; (c) have the
+      ORCHESTRATOR pre-create an empty scratchpad output file per reviewer and name it in the
+      prompt, so an absent file is mechanically distinguishable from an empty verdict — this is
+      the exact symmetric counterpart of the INPUT-side materialization the rule already mandates,
+      and is the option this proposal favours on that symmetry.
+      Whichever is chosen, the load-bearing clause is that a review whose findings have no durable
+      surface MUST NOT have its silence read as a clean verdict.
+    diff_lines: "~+12 (extend the existing read-only-reviewer materialization clause to OUTPUTS) + clause-scoped Wiring"
+status: pending_review
