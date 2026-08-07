@@ -37,12 +37,62 @@ name: Sync Invariants
 #
 # NOTE ON ENFORCEMENT: this workflow FAILS the check run. Whether a red check
 # actually blocks the merge depends on branch protection (required status
-# checks). Register `sync-invariants` as required, or an admin merge can still
-# proceed over the red — loudly, but proceed.
+# checks).
+#
+# The required-check context is the JOB `name:` below —
+#
+#     Sync invariants (local-fix discard + obsoleted disjointness)
+#
+# NOT the workflow filename `sync-invariants`. That filename matches no context,
+# so registering it protects nothing. (HYPOTHESIS, not established: this may also
+# be why the branch-protection UI picker appeared empty — the picker is populated
+# from contexts reported in a recent window, so "no run had reported yet" fits
+# the same observation. Do not cite it as the cause.)
+#
+# Verify the live registration rather than trusting this comment:
+#
+#     gh api repos/<owner>/<repo>/branches/main/protection \
+#       --jq '.required_status_checks.checks'
+#
+# It must return the job `name:` string below, byte-for-byte.
+#
+# The gate is LOUD, not ABSOLUTE, and that is deliberate. `enforce_admins` stays
+# `false`, so `gh pr merge --admin` still merges over a red. Turning it ON would
+# lock the repo: protection also requires one approving review, and a solo
+# maintainer cannot approve their own PR, so admin-enforcement plus the review
+# requirement means nothing can ever merge. Revisit only if a second reviewer is
+# enrolled. Until then the gate depends on the operator honouring the red — and
+# a red is CLEARED (fix it, or record an `ACK-DISCARD:` line in the PR BODY,
+# never a comment), never bypassed.
 
+# EVERY pull request, whatever its base.
+#
+# This deliberately carries NO `branches:` filter. It previously read
+# `branches: [main]`, which silently gave a STACKED PR (one based on another
+# open PR's branch rather than on main) ZERO coverage from this gate — measured:
+# PR #107, based on another branch, showed one skipped check and nothing else,
+# while the identical commit reopened against main (as #108) ran both gates and
+# passed. Combined with `enforce_admins: false`, that let a stacked PR be
+# admin-merged with the required check having NEVER RUN — a quieter form of
+# merging over a red, and indistinguishable from a pass in the merge box.
+#
+# The gate SCRIPTS are base-branch-agnostic, so running them on a non-`main`
+# base is meaningful work:
+#   - Gate A takes the PR's base SHA as its first argument and compares content
+#     against the MERGE BASE. Nothing in its logic references `main` (the only
+#     `main` occurrences in either script are prose comments). It does depend on
+#     `sync-subject-re.mjs`, which reads the shipped
+#     `.claude/bin/sync-preflight-local-mods.mjs` for its subject pattern.
+#   - Gate B runs against the checked-out merge result. It has no base concept.
+#
+# But the filter was NOT buying nothing, and an earlier revision of this comment
+# claimed it was. It was also keeping non-`main` verdicts out of the REQUIRED
+# CHECK NAMESPACE — which matters, because Gate A's verdict depends on the merge
+# base. That property is preserved deliberately by the two-job split below;
+# widening the trigger without it would have been a fail-open. Read that block
+# before touching either `name:`.
 on:
   pull_request:
-    branches: [main]
 
 # PR-gate only. Under the admin-merge flow the merge commit's tree equals the
 # PR head's tree, so re-running on the merge-commit push is redundant
@@ -54,9 +104,38 @@ concurrency:
   group: sync-invariants-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+# TWO JOBS, ONE GATE BODY — and why the names MUST differ.
+#
+# A check run is scoped to the HEAD SHA, not to the pull request. Two PRs with
+# the same head commit therefore SHARE check runs. Measured: PR #107 (base
+# `chore/proposal-105-fixture-runner-durability`) and PR #108 (base `main`) both
+# have head `d37d08de150c`, and `gh pr checks` returns the identical job URL for
+# each — #108's run surfacing on #107 purely by SHA.
+#
+# Branch protection resolves a required check by {app_id, context} against that
+# head SHA, with NO base-branch awareness:
+#
+#     "checks": [{"app_id": 15368,
+#                 "context": "Sync invariants (local-fix discard + obsoleted disjointness)"}]
+#
+# Gate A's verdict is base-DEPENDENT by construction — it compares content
+# against `git merge-base "$BASE_SHA" "$HEAD_SHA"`. Put those three facts
+# together and a SINGLE job running on every base is a fail-open: a PR onto
+# `main` goes red, someone opens a second PR from the same commit onto a branch
+# where the dropped line never existed, that run goes green under the SAME
+# context name on the SAME SHA, and the later green satisfies protection on the
+# first PR. That is precisely the silent-revert class this workflow exists to
+# refuse, re-created one layer up.
+#
+# So: the job that OWNS the required context runs only on the default base, and
+# a second, DIFFERENTLY-NAMED job gives stacked PRs their coverage. Renaming
+# `required-gate` below silently un-protects `main` — the context string is
+# registered in branch protection and matched byte-for-byte.
 jobs:
-  sync-invariants:
+  # The registered required status check. Its `name:` is load-bearing.
+  required-gate:
     name: Sync invariants (local-fix discard + obsoleted disjointness)
+    if: github.event.pull_request.base.ref == github.event.repository.default_branch
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -67,66 +146,29 @@ jobs:
           # load-bearing, not a convenience. The script independently refuses to
           # run on a shallow repository rather than trusting this setting.
           fetch-depth: 0
-
-      # Gate A — would this PR discard consumer-authored work?
-      #
-      # Exit contract is THREE-VALUED and deliberately not collapsed:
-      #   0 = nothing at risk
-      #   2 = a discard was found; a human decides
-      #   1 = the check DID NOT RUN — never read as safe
-      # Both 1 and 2 fail. Treating "did not run" as "nothing at risk" is the
-      # exact fail-open this workflow exists to close
-      # (`rules/evidence-first-claims.md` MUST-3: an errored command is zero
-      # evidence, never confirmation).
-      - name: "Gate A — local-fix discard detection"
+      - name: "Gates A + B"
         env:
-          # PR body and SHAs are passed through the environment, never
-          # interpolated into the shell. A PR body is attacker-controlled text;
-          # `${{ }}` interpolation into a `run:` block would be a script
-          # injection sink.
+          # The PR body is attacker-controlled text. It and the SHAs are passed
+          # through the environment, never interpolated into the shell —
+          # `${{ }}` inside a `run:` block would be a script-injection sink.
           PR_BODY: ${{ github.event.pull_request.body }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set +e
-          bash .github/scripts/check-local-fix-discard.sh "$BASE_SHA" "$HEAD_SHA"
-          rc=$?
-          set -e
-          case "$rc" in
-            0)
-              echo "Gate A: clean."
-              ;;
-            2)
-              echo "::error title=Gate A::This PR discards locally-authored work in shared .claude/ artifacts. See the step log for the exact files, the local commits that authored the lines, and the resolution options (including ACK-DISCARD)."
-              exit 1
-              ;;
-            *)
-              echo "::error title=Gate A did not run::The check exited $rc, which means it could not run — NOT that the PR is clean. Failing closed."
-              exit 1
-              ;;
-          esac
+        run: bash .github/scripts/run-sync-invariant-gates.sh "$BASE_SHA" "$HEAD_SHA"
 
-      # Gate B — does .coc-obsoleted list a path this same tree ships?
-      #
-      # Runs against the checked-out tree. For a `pull_request` event
-      # actions/checkout materializes the MERGE result, which is precisely the
-      # tree a downstream consumer would receive.
-      - name: "Gate B — obsoleted ∩ shipped disjointness"
-        run: |
-          set +e
-          bash .github/scripts/check-obsoleted-disjoint.sh
-          rc=$?
-          set -e
-          case "$rc" in
-            0)
-              echo "Gate B: disjoint."
-              ;;
-            2)
-              echo "::error title=Gate B::.coc-obsoleted lists paths this tree still ships. A downstream /sync-from-template deletes every listed path — including the copy this release hands it. See the step log for the offending paths."
-              exit 1
-              ;;
-            *)
-              echo "::error title=Gate B did not run::The check exited $rc, which means it could not run — NOT that the tree is disjoint. Failing closed."
-              exit 1
-              ;;
-          esac
+  # Coverage for stacked PRs (any non-default base). Deliberately NOT the
+  # registered context — see the block above. This job reports; it does not gate.
+  stacked-gate:
+    name: Sync invariants (non-default base)
+    if: github.event.pull_request.base.ref != github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: "Gates A + B"
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash .github/scripts/run-sync-invariant-gates.sh "$BASE_SHA" "$HEAD_SHA"
