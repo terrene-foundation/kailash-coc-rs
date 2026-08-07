@@ -3753,4 +3753,117 @@ changes:
       The durable surface is this proposal.
     diff_lines: "unknown — depends on which of the three dispositions Gate-1 takes; under the recommended (1), 9 files touched, of which 8 are citation-line edits and 1 (multi-operator-coordination.md:115) requires a replacement contract, not a deletion"
 
+  # ────────────────────────────────────────────────────────────────
+  # Cluster 105 — the durable half of a fixture-runner PR that landed
+  # WITHOUT one. Entry 3243 surfaced AC-3 as the live gap and stated
+  # "DELIBERATELY NOT PATCHED LOCALLY"; it has since BEEN patched
+  # locally, so 3243's dedup_evidence is STALE from the sentence
+  # "(AC3) IS the live gap" onward. These three entries supersede that
+  # portion of 3243 ONLY — 3243's AC1/AC2 findings and its
+  # coordination-ON precondition warning remain accurate and are NOT
+  # restated here (specs-authority.md Rule 9).
+  # ────────────────────────────────────────────────────────────────
+  - file: .claude/audit-fixtures/signing-mutation-guard/run.mjs
+    action: create
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0, and the gap is now the INVERSE of what entry
+      3243 recorded. 3243 says the fixtures are read by no runner and that the
+      fix was deliberately not applied locally. A runner has since landed on this
+      template's main (`8afe6ac`), so the LOCAL half is done and the DURABLE half
+      is missing: `git log -- .claude/.proposals/latest.yaml` shows the manifest's
+      last touch is `3687658`, which PRECEDES `8afe6ac`. The PR that added the
+      runner stated in its own body that "the durable surface is a Step-7b
+      proposal" and then did not file one. Measured at HEAD: `node
+      .claude/audit-fixtures/signing-mutation-guard/run.mjs` exits 0 with
+      `PASS 42 / FAIL 0`.
+    reason: >-
+      A SECURITY GUARD'S FIXTURE RUNNER EXISTS ONLY ON A CLASS-A SURFACE, SO THE
+      NEXT `/sync-to-use` DELETES IT. `.claude/audit-fixtures/**` is a synced glob
+      rebuilt wholesale from loom, so without this entry the runner is removed and
+      the seven sidecar pairs return to being documentation wearing the shape of a
+      test suite — the exact condition entry 3243 filed.
+      WHAT THE RUNNER DOES THAT A REPLACEMENT MUST ALSO DO, because this is a
+      precondition defect and a naive reimplementation reintroduces it: it builds a
+      temp git repo per fixture, ESTABLISHES coordination ON, and asserts that via
+      `isCoordinationEnabled()` IMPORTED FROM THE GUARD'S OWN MODULE rather than a
+      re-implementation that could drift. It then asserts `severity` / `exit_code` /
+      `continue` / `stderr_tag` from each `expected.txt`, and exits non-zero on any
+      mismatch (`cc-artifacts.md` Rule 9's load-bearing primitive).
+      IT CARRIES ITS OWN NEGATIVE CONTROL. Check T8 drives the SAME fixtures at a
+      coordination-OFF repo and asserts passthrough — so the greens are attributable
+      to the precondition rather than to luck, and the instrument is shown to
+      discriminate in both directions (`instrument-discipline.md` MUST-3).
+      Two fixtures also need a signing key their `input.json` does not inject; both
+      are pinned with the reason printed beside the check, because without that pin
+      fixture 01's disposition depends on whether the HOST has a git signing key —
+      an environment-dependent runner, which is a variant of the defect #89 reports.
+    diff_lines: "1 file added (~42 checks); measured PASS 42 / FAIL 0, exit 0"
+
+  - file: .claude/audit-fixtures/signing-mutation-guard/01-block-sibling-porcelain/
+    action: obsolete
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0 — the directory still ships from loom. It was
+      deleted on this template's main by `8afe6ac` with no proposal entry, so the
+      deletion is Class-A non-durable and the next `/sync-to-use` RE-ADDS it. The
+      contradiction was found by the runner on its first execution, not by review:
+      `01-block-sibling-porcelain/input.json` was BYTE-IDENTICAL to
+      `01-halt-sibling-porcelain/input.json` (sha `5289e5a5`) carrying the OPPOSITE
+      expectation — halt-and-report/exit 0 versus block/exit 2.
+    reason: >-
+      A FIXTURE PAIR NO GUARD CAN SATISFY, WHICH STANDS AS A STANDING ARGUMENT FOR
+      RE-INTRODUCING A DELIBERATELY-DOWNGRADED SEVERITY. Provenance: added at
+      `ffee6f7`, superseded at `123870f` (the loom#1323 downgrade of the §4.2 branch
+      from `block` to halt-and-report) which added `01-halt-*` WITHOUT deleting its
+      predecessor. The stale directory is therefore worse than dead weight — a
+      reader reconciling the two would plausibly "fix the inconsistency" by
+      re-upgrading the §4.2 branch to `block`, which is precisely the regression the
+      README's matched-pair note exists to prevent.
+      THE UPSTREAM FIX IS THE DELETION, NOT A RE-DELETE HERE. Per #89's own
+      Durability note: if a future sync re-adds this directory, that is evidence the
+      deletion never propagated, and the disposition is a proposal — not another
+      local delete. Two checks in `run.mjs` (coverage + contradiction-lock) catch a
+      recurrence independently of this entry.
+    diff_lines: "1 directory removed (input.json + expected.txt)"
+
+  - file: .claude/audit-fixtures/signing-mutation-guard/README.md
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    dedup_evidence: >-
+      NOT already solved at 2.24.0. The shipped README's § "Canonical invocation"
+      asserts `These fixtures are driven by .codex-mcp-guard/test-server.mjs`. That
+      claim is FALSE at 2.24.0 and was false when written: the guard's suite
+      hand-codes two equivalent scenarios in JavaScript and reads NEITHER
+      `input.json` NOR `expected.txt` from any of the seven cases — the measurement
+      entry 3243 records. `8afe6ac` replaced the line locally; the edit is Class-A.
+      NOTE FOR GATE-1 — DISTINCT FROM THE EARLIER README ENTRY, NOT A DUPLICATE.
+      A prior entry for this same path (`source_issue: kailash-coc-rs#74`,
+      `action: modify`) adds the coordination PRECONDITION header. This entry
+      changes a DIFFERENT section — § "Canonical invocation" — and the two edits
+      compose without conflict. Apply BOTH; neither supersedes the other.
+    reason: >-
+      THE README NAMED A DRIVER THAT NEVER READ THE FIXTURES, WHICH IS WHY THE
+      FIXTURE SET READ AS COVERED. A reader triaging a suspected fail-open would
+      reasonably treat `expected.txt` as executed ground truth on the strength of
+      that sentence; it had never been run against the guard. Replacing it with the
+      real invocation is what makes the directory's coverage claim true.
+      WORTH RECORDING FOR GATE-1, because the mechanism caught it and was then
+      bypassed: removing that sentence tripped this template's `sync-invariants`
+      gate-A (`check-local-fix-discard`), which flagged
+      `.claude/audit-fixtures/signing-mutation-guard/README.md` as dropping one
+      locally-authored line and failed the required check (run `31096138193`,
+      `scanned 4 file(s); 1 flagged, 0 acknowledged`). The PR was admin-merged over
+      the red without the sanctioned `ACK-DISCARD:` line, so the discard went
+      unrecorded at the point the gate was built to record it. The DISCARD ITSELF IS
+      CORRECT — the dropped sentence was a false claim — but the acknowledgement is
+      what makes it reviewable, and this entry is where it now lives.
+    diff_lines: "1 file modified (1 line removed, ~16 added)"
+
 status: pending_review
