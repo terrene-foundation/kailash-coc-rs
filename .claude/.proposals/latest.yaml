@@ -4335,4 +4335,64 @@ changes:
       non-CC surface without evidence.
     diff_lines: "+focused consumer-efficacy CI step (re-base onto the two-job split first)"
 
+  - file: .claude/rules/instrument-discipline.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    ingest_note: >-
+      CLASSIFY THE SHAPE BEFORE THE CONTENT — the offer's own sibling-coverage
+      analysis is INCOMPLETE, and the gap is in the rule it proposes to amend.
+      It rules out `instrument-discipline.md` MUST-2, `evidence-first-claims.md`
+      MUST-3 and `verify-claims-before-write.md` MUST-2, but never checks THIS
+      rule's own MUST-3(b) — "Read the matches, not the tally — including what a
+      count COUNTS" — whose worked example (`node --test` reporting "tests 14"
+      when that counts FILES and the inner harness ran 350) is the same shape as
+      the offer's headline corollary "a field's semantics are fixed by its
+      PRODUCER, not by the reader's question". The offer's EXAMPLE 2 (a CI job's
+      `labels` read as host capability when it records what the job REQUESTED)
+      substantially OVERLAPS MUST-3(b). Its EXAMPLE 1 (the merge-sequence
+      simulator, sound for partitioning but read for a question it was not built
+      for) is genuinely UNCOVERED — that is scope-of-question, not count-
+      semantics. Separately, MUST-1 already reads per-CITATION ("Before Citing
+      ANY Check As Evidence"), so the general case is textually covered; the
+      offer concedes this and rests on MUST-1 being discharged ONCE in practice
+      with nothing re-triggering it. That is an argument for gate-review
+      CATCHABILITY, which is weaker than the "genuine gap" framing. Gate-1 should
+      therefore decide between landing this as an EXTENSION to MUST-3(b) versus a
+      fifth standalone MUST; this relay deliberately does not pre-decide it.
+      Verified at ingest, not asserted: dedup control `grep -n "file:
+      .claude/rules/" latest.yaml` fires 8+ times while `grep -n "file:
+      .claude/rules/instrument-discipline.md"` returned nothing (exit 1), so no
+      prior manifest entry targets this rule and the empty result means ABSENT,
+      not a broken matcher. The offer also references a "sibling proposal in
+      flight" for this same rule concerning a test that transcribes a
+      user-facing string; that sibling is NOT present in this template — absent
+      from both `latest.yaml` and `.claude/.proposals/inbox/` — so if it exists
+      it is on another lane and Gate-1 should not assume it is available here.
+    reason: >-
+      Proposes that an instrument is scoped to the QUESTION IT WAS BUILT FOR — a
+      second question needs its own falsifying result. When a check, script,
+      query or report built to answer question A is also read to answer a
+      different question B, MUST-1 applies AGAIN, to B, against THAT instrument:
+      name what B would have printed had B's proposition been FALSE. An
+      instrument can be sound for A and silently unsound for B while emitting ONE
+      plausible output that appears to answer both, so the plausibility of the
+      output is not evidence of its scope. Corollary carrying most of the
+      practical weight: a field's semantics are fixed by its PRODUCER, not by the
+      reader's question. Evidence offered: one session produced two
+      published-then-retracted recommendations from this single pattern, plus two
+      same-class near-misses caught pre-publication; both retracted claims had
+      survived a "does this check discriminate?" self-review, because for the
+      question each instrument was built for, it did. Ingested via
+      /sync-from-downstream from inbox offer
+      `2026-08-08-instrument-scope.yaml` (PR #123, merged d26b43a). Provenance is
+      hop-level only — the offer carried no `source_repo` and this entry adds
+      none. Disclosure scrub was HUMAN, not mechanical: `.claude/.proposals/` is
+      isNeverSynced so `scan-synced-disclosure.mjs` skips it and would print
+      "Scanned: 0 files ... clean" for clean and leaking input alike; that
+      non-discriminating result is NOT cited as the scrub.
+    diff_lines: "~+16 (new MUST clause or MUST-3(b) extension + DO/DO-NOT + BLOCKED corpus + Why) + clause-scoped Wiring"
+
 status: pending_review
