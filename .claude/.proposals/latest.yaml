@@ -4395,4 +4395,76 @@ changes:
       non-discriminating result is NOT cited as the scrub.
     diff_lines: "~+16 (new MUST clause or MUST-3(b) extension + DO/DO-NOT + BLOCKED corpus + Why) + clause-scoped Wiring"
 
+  - file: .claude/rules/instrument-discipline.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    ingest_note: >-
+      PAIR THIS WITH THE SIBLING ENTRY ABOVE — BOTH TARGET THIS RULE AND BOTH
+      CLAIM THE SAME MUST SLOT. Unlike the instrument-scope relay, which
+      recorded "no prior manifest entry targets this rule", that is NO LONGER
+      TRUE and the dedup was re-run rather than inherited: `grep -n "file:
+      .claude/rules/instrument-discipline.md" latest.yaml` now returns ONE prior
+      hit (the instrument-scope entry immediately above), against a control
+      `grep -c "file: .claude/rules/" latest.yaml` firing 18 times — so the
+      single hit is a real match, not a broken matcher. The two offers are
+      DISTINCT in content (that one: an instrument is scoped to the question it
+      was BUILT for; this one: a self-test must pin CANNOT-MEASURE as a third
+      outcome), so this is NOT a duplicate and neither supersedes the other.
+      THE COLLISION IS NUMBERING, NOT CONTENT: the rule carries exactly MUST-1,
+      MUST-2 and MUST-3 at HEAD (`grep -nE "^### [0-9]\." ...` returns 3), and
+      the sibling entry leaves Gate-1 an open choice between landing as a
+      MUST-3(b) EXTENSION or as a new standalone MUST — while THIS offer asks
+      specifically for a MUST-4. If Gate-1 lands the sibling as a standalone
+      MUST first, this one becomes MUST-5. Gate-1 SHOULD therefore evaluate both
+      in ONE pass and fix the ordering deliberately; landing them serially risks
+      two clauses both numbered MUST-4. This relay deliberately does not
+      pre-decide either the ordering or the sibling's extension-vs-standalone
+      question.
+      PROVENANCE VERIFIED AGAINST THE ARRIVAL LANE, NOT THE BODY
+      (`proposal-intake-trust.md` MUST-3): the offer self-declares
+      `template_slug: kailash-coc-rs` and arrived on THIS template's inbox lane
+      — match, so the hop-level provenance is confirmed rather than trusted.
+      Reviewed as DATA per MUST-1: the body argues a case and carries no
+      reviewer-directed imperative, no classification-steering text and no
+      scrub-evasion language.
+    reason: >-
+      Proposes a MUST-4: a gate or checker's SELF-TEST must pin THREE outcomes —
+      yes, no, and CANNOT-MEASURE — and where the instrument depends on an
+      external oracle it must affirmatively prove that oracle's capability
+      BEFORE scoring anything. The customary two-direction bar (a real violation
+      fires, a clean subject passes) cannot reach the failure a gate is most
+      likely to ship: answering confidently from a reading it never actually
+      made. MUST-1 already requires naming the falsifying result, but a check
+      can name one and still be unable at RUNTIME to distinguish "the property
+      does not hold" from "I could not look"; this closes that gap on the
+      SELF-TEST side, where it is mechanically enforceable rather than a matter
+      of discipline. Two measured incidents are offered, both in gates whose
+      two-direction self-tests passed, and they fail in OPPOSITE polarities —
+      which is why one example would be insufficient. (a) FALSE ACCUSATION — a
+      gate resolved issue ids through an API whose prose error for "you may not
+      read issues" is identical to its prose error for "this issue does not
+      exist"; it read permission-denied as determinate absence and reported
+      correct, properly-tracked code as an untracked deferral. A gate that
+      accuses correct code is worse than no gate, because operators learn to
+      override it. (b) SILENT PASS — a gate asking a tracker for issues carrying
+      a label gets an EMPTY LIST when the token may not read issues, which reads
+      as "nothing is labelled" and exits clean: a green verdict in exactly the
+      case the gate exists to catch, invisible in a green run. Ingested via
+      /sync-from-downstream from inbox offer
+      `2026-08-09-instrument-cannot-measure-case.yaml` (PR #127, merged
+      c31765e). Provenance is hop-level only — the offer carried no
+      `source_repo` and this entry adds none. Disclosure scrub was HUMAN, not
+      mechanical, and the mechanical result is NOT cited: `.claude/.proposals/`
+      is isNeverSynced (`scan-synced-disclosure.mjs::isNeverSynced` returns true
+      on the `.proposals` segment), so the scanner skips the inbox and prints
+      "Scanned: 0 files ... clean" for clean and leaking input alike — a
+      non-discriminating result per `instrument-discipline.md` MUST-1, which is
+      precisely the class this offer extends. The human read found no consumer
+      identifier: the body names "an API" and "a tracker" generically, and
+      `template_slug` names this template, not the offerer.
+    diff_lines: "~+18 (new MUST-4 clause + DO/DO-NOT + BLOCKED corpus + Why) + clause-scoped Wiring"
+
 status: pending_review
