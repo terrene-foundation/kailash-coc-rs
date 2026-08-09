@@ -4540,4 +4540,108 @@ changes:
       `template_slug` names this template, not the offerer.
     diff_lines: "~+18 (new MUST-4 clause + DO/DO-NOT + BLOCKED corpus + Why) + clause-scoped Wiring"
 
+# ---------------------------------------------------------------------------
+# Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
+# removed (artifact-flow.md § "Append, Never Overwrite Unprocessed Proposals").
+#
+# Motivation: only 5 of 94 entries carried a `reconciliation:` block, the most
+# recent dated 2026-07-26, while syncs have landed since. Entries assert facts
+# ("X is absent", "N artifacts cite it") that Gate-1 acts on, and some of those
+# assertions have expired. This block records what a mechanical pass over all
+# 94 established, so Gate-1 does not re-derive it.
+#
+# SCOPE HONESTY: this is a STRUCTURAL pass (target existence, action type,
+# duplicate detection). It is NOT a clause-level reading of all 94 `reason:`
+# bodies. Three entries were read in full and carry per-entry `reconciliation:`
+# blocks (git.md, repo-scope-discipline.md, and the re-anchored .gitignore
+# block). The remaining classifications below are STRUCTURAL EVIDENCE ONLY and
+# are labelled as such — an `already_solved_candidate` is a candidate, not a
+# verdict, and Gate-1 should confirm content before skipping any entry.
+gate1_triage_2026_08_09:
+  method: >-
+    Entries indexed 0-93 in `changes` order. Target existence tested with
+    os.path.exists against the working tree at HEAD 695366f. Duplicate groups
+    computed on the (file, action) pair. Existence is NECESSARY but NOT
+    SUFFICIENT evidence that a proposal landed: a file can exist without
+    carrying the proposed content, which is why the create-targets below were
+    additionally size-checked for substance (all 8KB-92KB, none a stub).
+
+  duplicate_target_groups:
+    finding: >-
+      17 (file, action) pairs appear more than once across the 94 entries, so
+      the queue holds materially fewer distinct targets than its entry count
+      suggests. Gate-1 should batch these per target rather than process them
+      as independent passes — the same grouping argument the 2026-08-09 sweep
+      report makes for the open-issue queue.
+    caution: >-
+      For `modify` duplicates this is NOT a redundancy claim. Two entries on
+      one file may propose two DIFFERENT changes; only reading both settles it.
+      What is claimed is that they should be READ TOGETHER, not that either is
+      droppable.
+    structurally_redundant: >-
+      The three duplicated `create` pairs ARE structurally redundant — a path
+      can only be created once and all three targets now exist:
+      entries [36, 51] .claude/hooks/lib/upflow-self-repo.js;
+      entries [37, 58] audit-fixtures/upflow-open-never-complete/README.md;
+      entries [38, 57] audit-fixtures/upflow-open-never-complete/run.mjs.
+    groups:
+      - "x4 modify .claude/commands/sync-from-template.md -> entries [19, 24, 71, 86]"
+      - "x3 modify .claude/skills/30-claude-code-patterns/sync-flow.md -> [13, 39, 87]"
+      - "x3 modify .claude/rules/repo-scope-discipline.md -> [18, 23, 67]"
+      - "x3 modify .claude/hooks/lib/journal-reserve.js -> [31, 43, 56]"
+      - "x2 modify .claude/commands/codify.md -> [1, 40]"
+      - "x2 modify .gitignore -> [3, 12]"
+      - "x2 modify .claude/rules/agents.md -> [9, 84]"
+      - "x2 modify .claude/.coc-obsoleted -> [22, 47]"
+      - "x2 modify .claude/bin/sync-from-canon-fetch.mjs -> [30, 42]"
+      - "x2 modify .claude/hooks/lib/vcs-github-adapter.js -> [34, 52]"
+      - "x2 modify .claude/hooks/lib/vcs-azure-adapter.js -> [35, 53]"
+      - "x2 modify .claude/audit-fixtures/signing-mutation-guard/README.md -> [45, 78]"
+      - "x2 modify .codex-mcp-guard/server.js -> [46, 83]"
+      - "x2 modify .claude/rules/instrument-discipline.md -> [92, 93]  # PAIRED by design; second's ingest_note references the first"
+      - "x2 create .claude/hooks/lib/upflow-self-repo.js -> [36, 51]"
+      - "x2 create audit-fixtures/upflow-open-never-complete/README.md -> [37, 58]"
+      - "x2 create audit-fixtures/upflow-open-never-complete/run.mjs -> [38, 57]"
+
+  already_solved_candidates:
+    basis: >-
+      `action: create` entries whose target now EXISTS on disk and is
+      substantive. The proposal asked for the file to exist; it does, delivered
+      by a later sync. Falsifying result had these NOT landed: os.path.exists
+      would return False, as it still does for the two still-open creates
+      below. STRUCTURAL evidence — confirm content before skipping.
+    entries: [36, 37, 38, 51, 57, 58, 59, 60, 61, 62, 63, 64, 65, 76]
+    substance_check: >-
+      upflow-self-repo.js 88131B; upflow-open-never-complete/run.mjs 91969B;
+      differential-resolver-parity.mjs 8613B; upflow-self-repo-helpers/run.mjs
+      18001B; upflow-refusal-operand-sanitization/run.mjs 53755B;
+      journal-reserve-coordination-gate/run.mjs 37041B;
+      signing-mutation-guard/run.mjs 21177B. None is a stub.
+
+  still_open_creates:
+    basis: >-
+      `action: create` entries whose target is STILL absent. Control: the same
+      existence test returns True for the 14 candidates above, so these are
+      true negatives rather than a dead instrument.
+    entries:
+      - "5  -> guides/co-setup/11-genesis-ceremony.md (absent)"
+      - "48 -> .claude/bin/reconcile-settings-hooks.mjs (absent)"
+      - "4  -> .claude/operators.roster.README.md (absent; already carries its own reconciliation block from 2026-07-26, re-confirmed absent 2026-08-09)"
+
+  not_assessed:
+    count: 74
+    note: >-
+      Every `modify` / `added` / `obsolete` entry not named above had only its
+      target existence checked. Whether the proposed CHANGE landed inside an
+      existing file was NOT tested and remains open work. Do not read this
+      block's silence on an entry as a clean bill.
+    carve_out: >-
+      Three of these 74 are not in fact unassessed — entries 0, 1 and 20 carry
+      their own `reconciliation:` blocks from the 2026-07-26 pass and were all
+      dispositioned ALREADY-SOLVED then. They fall into this bucket only
+      because the 2026-08-09 pass did not re-verify them; entries 3 and 4 from
+      that same July pass WERE re-verified this session and are cited above.
+      Stated explicitly so the arithmetic (14 + 3 + 3 + 74 = 94) is not read as
+      "74 entries have never been looked at."
+
 status: pending_review
