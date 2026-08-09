@@ -1,0 +1,49 @@
+# Gate-C fixture — HEAD, introduces an UNDOCUMENTED duplicate group.
+#
+# Identical to gate-c-base.yaml except for the third entry, which targets the
+# SAME (file, action) pair as the first — `.claude/rules/alpha.md` [modify] —
+# and states NO coupling. Gate C MUST exit 1 on this pair.
+#
+# WHY THIS FIXTURE EXISTS. The gate used to fail on the duplicate COUNT alone
+# and then instruct the author to "add an `ingest_note` pairing them". It had
+# no code that read such a note, so following the instruction changed nothing
+# and the PR stayed red. The fix made the instruction real; this fixture is
+# the half that proves the fix did not simply DISARM the check. Its sibling
+# gate-c-head-dup-documented.yaml is the same duplicate group WITH the note
+# and MUST exit 0 — the pair is what shows the gate discriminates on the
+# coupling rather than on the count.
+#
+# MUTATION THAT REDS IT: delete the `duplicates`/`documented_duplicates`
+# comparison in the ratchet (or make `undocumented_new` always empty) and this
+# fixture starts exiting 0, failing the self-test.
+source_repo: fixture
+origin: use-template
+codify_date: 2026-08-10
+
+changes:
+  - file: .claude/rules/alpha.md
+    action: modify
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09
+      reconciled_at: 2026-08-09
+      evidence: fixture entry; not a real finding.
+
+  - file: .claude/rules/beta.md
+    action: modify
+    reconciliation:
+      status: ALREADY-SOLVED — no Gate-1 action required
+      reconciled_at: 2026-08-09
+      evidence: fixture entry; not a real finding.
+
+  # THE REGRESSION: a second entry on alpha.md [modify]. Evidence is fresh, so
+  # the unverified count does NOT move — the duplicate coupling is the only
+  # thing wrong, which is exactly the branch under test. No `ingest_note`, no
+  # `pairing`, no `cross_reference`: Gate-1 would meet the two as unrelated.
+  - file: .claude/rules/alpha.md
+    action: modify
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-10
+      reconciled_at: 2026-08-10
+      evidence: fixture entry; not a real finding.
+
+status: pending_review
