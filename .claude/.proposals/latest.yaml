@@ -213,7 +213,18 @@ changes:
     suggested_tier: coc
     reconciliation:
       status: PARTIALLY-SOLVED — gitignore half landed; policy half still open
-      reconciled_at: 2026-07-26
+      reconciled_at: 2026-08-09
+      restamped_note: >-
+        Date advanced 2026-07-26 -> 2026-08-09 because BOTH halves were
+        re-verified this session, not merely re-read: `git check-ignore -v
+        .claude/operators.roster.json` -> `.gitignore:147` (control: the same
+        command exits 1 on `CLAUDE.md`, so the match is a true positive), and
+        the policy half's sibling `.claude/operators.roster.README.md` is still
+        absent (control: the same `ls` returns a real file for
+        `.claude/rules/security.md`). The evidence text below was corrected in
+        the same pass. The stamp lagged the work until this edit — which is
+        exactly the failure the freshness gate is built to surface, so it is
+        recorded rather than quietly fixed.
       evidence: >-
         The load-bearing gitignore mechanism this entry asked for HAS landed.
         Verified live: `git check-ignore -v .claude/operators.roster.json` →
@@ -288,8 +299,16 @@ changes:
     action: create
     suggested_tier: coc
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-07-26, diagnosis sharpened
-      reconciled_at: 2026-07-26
+      status: STILL-OPEN — re-verified 2026-08-09, diagnosis unchanged from 2026-07-26
+      reconciled_at: 2026-08-09
+      restamped_note: >-
+        Date advanced 2026-07-26 -> 2026-08-09: absence re-confirmed this
+        session (`ls .claude/operators.roster.README.md` -> "No such file or
+        directory"; control: the same `ls` returns a real file for
+        `.claude/rules/security.md`, so this is a true negative and not a dead
+        instrument). The July diagnosis — three citing artifacts, two of them
+        HOOKS, and the file absent from `sync-manifest.yaml` entirely — was not
+        re-derived and is carried forward unchanged.
       evidence: >-
         Still absent (`ls .claude/operators.roster.README.md` → no such file),
         and the dangling-reference surface is WIDER than this entry recorded.
@@ -2378,6 +2397,27 @@ changes:
     via: kailash-coc-rs
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09, diagnosis unchanged and line-exact
+      reconciled_at: 2026-08-09
+      evidence: >-
+        The cited defect is intact at the cited LINE NUMBER. `awk 'NR==65' .claude/commands/doctor.md`
+        returns verbatim: "  unit tests at `.claude/bin/loom-doctor.test.mjs` drive every check + repair
+        branch." `ls -la .claude/bin/loom-doctor.test.mjs` → "No such file or directory", and
+        `find .claude -name 'loom-doctor*'` returns exactly ONE path — `.claude/bin/loom-doctor.mjs` —
+        so the test file is absent while the module it tests DOES ship. Falsifying result had the entry
+        been solved: line 65 would no longer carry the token (the same `grep -n loom-doctor
+        .claude/commands/doctor.md` that returned it also returned lines 15/22/23, proving the matcher
+        fires here and is not silently empty), or the .test.mjs path would have resolved. Neither.
+      still_open: >-
+        One doc pointer, one line. Blast radius is exactly as the entry stated (lowest of its batch):
+        doctor.md's OTHER two `loom-doctor.mjs` citations (lines 22, 23 — the `node .claude/bin/loom-doctor.mjs`
+        invocations) resolve correctly, so only the `.test.mjs` reference dangles. No normative dependency
+        rests on it.
+      disposition: >-
+        Gate-1 action still required. Fix is a single line: drop the test-file citation or repoint it at
+        the runner that actually ships. Belongs with entries 23-28 as one purge-without-reference-sweep
+        set, per this entry's own framing.
     dedup_evidence: >-
       NOT already solved here. No prior entry touches commands/doctor.md.
     reason: >-
@@ -2393,6 +2433,55 @@ changes:
     via: kailash-coc-rs
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened; the entry's own DISPOSITION QUESTION now has an answer, and it splits the two cited path classes
+      reconciled_at: 2026-08-09
+      evidence: >-
+        Every cited line number still holds exactly. `grep -n 'ecosystem\.json' .claude/commands/ecosystem-init.md`
+        returns 8 hits, of which the four backticked `.claude/bin/ecosystem.json` citations are at lines
+        34, 52, 69, 87 — the four the entry named, unshifted. Line 115 reads
+        "`.claude/bin/lib/loom-links.mjs` (the local⊕remote join); the synthetic companion is". Both
+        targets are absent: `ls .claude/bin/ecosystem.json` and `ls .claude/bin/lib/loom-links.mjs` each
+        return "No such file or directory". The matcher is shown to fire — the same grep returned lines
+        19/37/41/102 with the bare (non-path) form, so an empty result would have been a real absence.
+        BUT the two path classes differ in kind, and the on-disk neighbours settle it:
+        (a) `.claude/bin/ecosystem.json` is a WRITE TARGET, not a shipped artifact — line 52 says so
+        verbatim ("It is written to `.claude/bin/ecosystem.json` —") and line 69 says "Write the
+        `remote_links` block of `.claude/bin/ecosystem.json`". Its shipped template DOES exist:
+        `find . -name 'ecosystem*.json'` returns `./.claude/bin/ecosystem.example.json` plus three
+        audit-fixture copies. So these four are ILLUSTRATIVE/OUTPUT paths, correctly absent by design —
+        the entry's "if these are ILLUSTRATIVE" branch is the true one, and the fix is the marking fix,
+        not a citation correction.
+        (b) `.claude/bin/lib/loom-links.mjs` is a genuine dangling module reference, and its absence is
+        DELIBERATE, not a purge accident: `.claude/sync-manifest.yaml:3141` reads "- .claude/bin/lib/loom-links.mjs
+        # why: F1030a — fenced loom_only; purge the stale BUILD-lane copy." and :3299 "- bin/lib/loom-links.mjs
+        # why: F1030a — the canonical NAME→location resolver (cross-repo.md MUST-1). Loom-platform: a
+        consumer resolves nothing cross-repo." It is also listed at `.claude/.coc-obsoleted:73`. The
+        containing directory ships with 11 sibling modules (`ls .claude/bin/lib` → cli-delivery.mjs,
+        coc-manifest.mjs, ecosystem-config.mjs, emit-axes.mjs, identity-scrub.mjs, local-rules.mjs,
+        manifest-source.mjs, mesh-keys.mjs, slot-parser.mjs, strip-build-internal.mjs, variant-overlay.mjs)
+        — only this one module is fenced away.
+      still_open: >-
+        The reference sweep for the F1030a fence, not the fence itself. The EXECUTABLE consumers already
+        degrade correctly — `.claude/bin/sync-from-canon-fetch.mjs:68` carries the comment "lib/loom-links.mjs
+        is FENCED `loom_only` and actively PURGED from every", imports it lazily at :81
+        (`await import("./lib/loom-links.mjs")`) and emits an ABSENT note at :402; `.claude/bin/loom-doctor.mjs:57`
+        does the same with a documented local fallback copy (:65 "loom-doctor carries a local fallback copy").
+        The PROSE sites did not get swept and still cite it as if it ships: ecosystem-init.md:115, and —
+        wider than this entry claimed — `.claude/rules/self-referential-codify.md:134`, which lists
+        `.claude/bin/lib/loom-links.mjs` inside a bullet whose own parenthetical states "DEPTH-0 backtick
+        .claude/-rooted paths in THIS bullet are LIVE firing allowlist entries the parser reads directly",
+        i.e. a non-shipping path sitting in a machine-read allowlist. Also `.claude/guides/rule-extracts/repo-scope-discipline.md:271`
+        and the example-JSON prose at `.claude/bin/loom-links.local.example.json:4,97`,
+        `.claude/bin/repin-targets.local.example.json:4`, `.claude/bin/ecosystem.example.json:5`.
+      disposition: >-
+        Gate-1 action still required, but SPLIT it — the entry proposed one uniform +5/-5 and the two
+        halves need different fixes. (a) the four ecosystem.json sites: mark as illustrative/output so
+        `validate-xref-integrity` can tell a write-target from a shipped artifact (this is the entry's own
+        preferred remedy, now confirmed as the correct branch). (b) line 115 + the sibling prose sites: a
+        real F1030a reference sweep, scoped ACROSS files — fixing ecosystem-init.md alone leaves
+        self-referential-codify.md:134 pointing a live allowlist at an absent module. This is the same
+        class entry 28 proposes the structural gate for.
     dedup_evidence: >-
       NOT already solved here. No prior entry touches commands/ecosystem-init.md.
     reason: >-
@@ -2415,6 +2504,43 @@ changes:
     via: kailash-coc-rs
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09, and the debt the entry measured has GROWN; the adoption obstacle it flagged is now larger, not smaller
+      reconciled_at: 2026-08-09
+      evidence: >-
+        The proposed clause did NOT land. `grep -n -i 'xref\|validate-xref' .claude/rules/sync-completeness.md`
+        returns ZERO hits; the same file returns 55 hits for `MUST`, so the matcher demonstrably fires
+        against this file and the empty result is a real absence, not a silent no-match. The validator
+        the entry proposes to gate on DOES still ship: `.claude/bin/validate-xref-integrity.mjs`
+        (33674 bytes, mtime 2026-08-03 — i.e. it has been touched SINCE the 2.24.0 base this entry was
+        written against). Re-measured with the true exit code captured, not a pipeline's:
+        `node .claude/bin/validate-xref-integrity.mjs; echo $?` → TRUE_EXIT=1, and line 1 of its output
+        reads verbatim: "validate-xref-integrity: scanned 760 files, 2740 xref tokens; 363 dangling;
+        7 sanctioned deferred-fixture refs skipped; 3 absent-by-design refs skipped; 8 resolved as
+        directory via slash-less token". Falsifying result had the gate landed / the tree been burned
+        down: exit 0, or a `dangling` count of 0, or an xref clause in sync-completeness.md. None
+        occurred.
+      root_cause: >-
+        The entry's central factual claim — "the validator ALREADY EXISTS and ALREADY DETECTS every
+        finding above" — is CONFIRMED by direct measurement, not taken on trust. Its report names this
+        batch's own findings by file:line: ".claude/commands/doctor.md:65  [backtick]
+        .claude/bin/loom-doctor.test.mjs  → not-found" (entry 26, exact), and five consecutive rows
+        ".claude/commands/ecosystem-init.md:34/52/69/87  [backtick]  .claude/bin/ecosystem.json  →
+        not-found" plus ":115  [backtick]  .claude/bin/lib/loom-links.mjs  → not-found" (entry 27,
+        exact). So the gate would in fact bite on precisely the class it is proposed for.
+      still_open: >-
+        Numbers moved AGAINST the proposal in the ~2 weeks since it was written: 355 → 363 dangling
+        (+8), 759 → 760 files (+1), 2709 → 2740 xref tokens (+31). The entry's template_ingest_note
+        argued the gate "cannot land alone" because it would block every emission at 355; at 363 that
+        is more true, and the +8 drift is empirical support for its recommendation (b) — a RATCHET on
+        newly-dangling refs rather than a flag-day burn-down. A burn-down target that grows by 8 in two
+        weeks is not a burn-down target. Note also that the validator already ships three sanctioned
+        skip-classes ("phase2-deferred", "absent-by-design", "resolved-as-directory"), so the ratchet
+        has an existing allowlist mechanism to build on rather than needing a new one.
+      disposition: >-
+        Gate-1 action still required, unchanged in shape, strengthened in evidence. Recommend adopting
+        variant (b) (ratchet vs prior cut) as the entry itself recommended; the +8 drift measured here
+        is the argument. Nothing about the fix has been overtaken by a later sync.
     dedup_evidence: >-
       NOT already solved here. `grep -c sync-completeness latest.yaml` returned
       0 before this relay, and no prior entry proposes an emission-time xref
@@ -2460,6 +2586,54 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: ALREADY-SOLVED — no Gate-1 action required; BOTH the primary regression and the secondary Rule-9 gap are closed, and the root cause turned out to be narrower than the entry inferred
+      reconciled_at: 2026-08-09
+      evidence: >-
+        SECONDARY GAP CLOSED FIRST (it is the one that makes the primary verifiable). The entry stated
+        "there is NO canonical runner for the `signing-mutation-guard/` fixture directory, unlike the
+        sibling `signing-model-key-separation/` which ships a `run.mjs`. So the fixtures cannot be
+        executed as fixtures at all — they are inert documentation." That is no longer true:
+        `ls -la .claude/audit-fixtures/signing-mutation-guard/` shows `run.mjs` (21177 bytes, 2026-08-06)
+        alongside all six fixture directories, landed by commit 8afe6ac
+        "test(signing-mutation-guard): a runner that establishes the precondition it asserts".
+        PRIMARY REGRESSION CLOSED. Running that canonical runner:
+        `node .claude/audit-fixtures/signing-mutation-guard/run.mjs; echo $?` → TRUE_EXIT=0, final line
+        "PASS 42   FAIL 0". The two fixtures the entry named as fail-open now hold their specified
+        disposition verbatim: "✓ 03-block-degraded-mode-mutation: exit code 2 / exit=2 (expected 2)",
+        "✓ 03-block-degraded-mode-mutation: continue=false", "✓ 03-block-degraded-mode-mutation: stderr
+        carries [BLOCK]"; and "✓ 06-block-git-commit-degraded: exit code 2 ... continue=false ... stderr
+        carries [BLOCK]". The entry's OWN cited instrument agrees: in `.codex-mcp-guard`,
+        `node test-server.mjs` → TRUE_EXIT=0, "PASS  codex-mcp-guard server: 49/49 checks", `grep -c '✗'`
+        = 0 against `grep -c '✓'` = 49 (so the ✗ matcher is being read against output that contains 49
+        of its sibling marker — an empty ✗ result here is a real zero). The two verbatim failure strings
+        the entry quoted are gone and their tests now pass, reworded: line 8 reads "✓ apply_patch
+        degraded: DENY by signing-mutation-guard.js (gate bites through apply_patch lane)" and line 10
+        "✓ shell→Bash activation: degraded git-mut DENIED, degraded `ls` allowed (gate bites, no read
+        over-block)". The second half of `npm test` also passes: `node test-extract-policies.mjs` →
+        "PASS  validator-13 extractor: 4/4 predicates match (A, B, C, D)".
+      root_cause: >-
+        INFERENCE (labeled as such — I did not bisect): the new runner's own negative control suggests
+        the entry's diagnosis of "confirmed regression, the hook's actual behavior changed" was not the
+        whole story. run.mjs § T8 is titled "NEGATIVE CONTROL — the same fixtures at coordination=OFF"
+        and reports "✓ 03-block-degraded-mode-mutation: coordination OFF ⇒ designed passthrough (NOT a
+        fail-open) / exit=0 continue=true — matches #89's measurement", closing with "✓ the precondition
+        therefore CHANGES the outcome (instrument discriminates) / ON ⇒ deny/halt (T3, T7); OFF ⇒
+        passthrough (T8). Same fixtures, same guard, opposite dispositions." I.e. an `allow=true` from a
+        harness that has not established coordination=ON is the DESIGNED passthrough, not a fail-open
+        guard — which is exactly the un-established precondition the missing runner could not establish.
+        The entry's "TWO INDEPENDENT SURFACES AGREE" argument is weaker than it read: the fixture's
+        expected.txt and the npm-test assertion were not independent measurements of guard behavior,
+        they were one behavior read under an unstated precondition. This does not detract from the
+        filing — the filing is what produced the runner that settles it.
+      disposition: >-
+        Gate-1 should SKIP as already-satisfied. Retained per artifact-flow.md § "Append, Never Overwrite
+        Unprocessed Proposals" — the audit trail matters here because the entry's severity call
+        ("HIGHEST SEVERITY OF THIS BATCH — a fail-open security guard") should be recorded as having
+        resolved to a precondition/observability defect rather than a live fail-open. Its Rule-9
+        recommendation ("the missing run.mjs should land WITH the fix") was followed, and the resulting
+        runner is what makes the guard mechanically re-verifiable rather than rediscovered by a
+        downstream npm test.
     source_issue: "kailash-coc-rs#74"
     dedup_evidence: >-
       NOT already solved here. `grep -c signing-mutation-guard latest.yaml`
@@ -2503,6 +2677,52 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: ALREADY-SOLVED ON DISK — but the fix is a LOCAL edit to a synced artifact, so Gate-1 ingest is still required for durability; this entry is the FILING half of a filed/fixed pair with entry 42
+      reconciled_at: 2026-08-09
+      evidence: >-
+        The entry's own instrument now returns the OPPOSITE result. It stated: "`node -e
+        'import(\"./.claude/bin/sync-from-canon-fetch.mjs\")'` throws `ERR_MODULE_NOT_FOUND` for
+        `.claude/bin/lib/loom-links.mjs`". Re-run verbatim today, that command prints "LOADED OK" and
+        exits 0 — and the same harness would have printed "THREW: ERR_MODULE_NOT_FOUND | ..." had the
+        defect persisted (the catch branch was written to print exactly that), so this discriminates.
+        The proposed fix landed near-verbatim, in the exact shape the entry specified ("adopt the
+        loom-doctor.mjs shape", "static import -> guarded dynamic import"). `.claude/bin/sync-from-canon-fetch.mjs:80-86`
+        now reads: "let _resolveRemote;" / "try {" / "  ({ resolveRemote: _resolveRemote } = await
+        import(\"./lib/loom-links.mjs\"));" / "} catch {" / "  _resolveRemote = null; // fenced/absent at
+        a consumer — degrade, do not crash" / "}" / "const resolveRemote = _resolveRemote || (() =>
+        null);", preceded at :68-78 by a comment block that makes the entry's own argument, including
+        its zero-tolerance Rule-3 justification and its loom-doctor.mjs precedent verbatim: "This is the
+        ONE intended degrade path (the catch → null stub), documented per `zero-tolerance.md` Rule 3 —
+        it is NOT silent error hiding ... Same shape as `bin/loom-doctor.mjs`'s guarded loader."
+        `grep -n "^import"` confirms only three top-level static imports remain (node:child_process,
+        node:url, ./lib/ecosystem-config.mjs) — none fenced.
+      root_cause: >-
+        DUPLICATE PAIR, not a duplicate entry — verified, not assumed. Index 42 targets this same file
+        and its dedup_evidence says so explicitly: "Entry 31 FILED this defect; this entry carries its
+        FIX." (Its "Entry 31" is a 1-based label for THIS 0-based index 30.) The two propose different
+        things — 30 is the filing (+6/-2), 42 is the delivered fix (+22/-2) — so entry 42's disposition
+        does NOT automatically transfer and should be reconciled on its own terms. One factual drift in
+        THIS entry: it cites the purge line as `sync-manifest.yaml:3144`; that line now reads
+        "- .claude/bin/repin-downstream.mjs # why: F1030a — fenced loom_only; purge the stale BUILD-lane
+        copy." The loom-links.mjs row the entry meant is at :3141, with the identical "why:" text. The
+        claim is true, the line number shifted by 3.
+      still_open: >-
+        DURABILITY, not correctness. The fix arrived as a LOCAL commit at this template — `git log --oneline
+        -- .claude/bin/sync-from-canon-fetch.mjs` returns "8ece215 fix(upflow): downstream /codify opens a
+        PR and never merges into its upstream" (2026-08-03, +27/-2 on this file) sitting ON TOP of the
+        last sync commit "cf8ad61 chore(sync): redistribute loom@e2ac475". Under artifact-flow.md
+        § Distribution-Durability Invariants a local edit to a synced `.claude/bin/**` artifact is
+        Class-A non-durable and is rebuilt away by the next `/sync-to-use`. This is not theoretical here:
+        the sibling file in this same shard demonstrates the exact reversion (see entry 31 —
+        "0cce005 fix(journal-reserve): the inbound sync reverted the guard to its pre-hardening state").
+      disposition: >-
+        Gate-1 SHOULD still ingest — via entry 42, which carries the fix. Do NOT skip this pair as
+        "already fixed on disk"; the on-disk state at this template is the non-durable copy, and the
+        durable surface is the proposal. The entry's sweep claim ("three importers of the fenced module
+        exist ... No fourth") remains consistent with today's tree: `grep -rn "loom-links\.mjs" .claude/`
+        shows only `sync-from-canon-fetch.mjs` and `loom-doctor.mjs:57` importing it in executable code,
+        both now guarded; every other hit is prose or manifest.
     source_issue: "kailash-coc-rs#75"
     dedup_evidence: >-
       NOT already solved here. `grep -c sync-from-canon-fetch latest.yaml`
@@ -2540,6 +2760,51 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: ALREADY-SOLVED ON DISK — the proposed degrade landed verbatim AND was hardened further; but it has already been reverted once by an inbound sync, so Gate-1 ingest is what makes it stick
+      reconciled_at: 2026-08-09
+      evidence: >-
+        The entry's own mechanical instrument has flipped. It stated: "VERIFIED MECHANICALLY AT THIS
+        TEMPLATE: `grep -cE 'isCoordinationEnabled|coordination-mode|coordinationEnabled'` returns 4 in
+        `codify-lease.js` and 0 in `journal-reserve.js`". Re-run today, the same expression returns 5 in
+        `codify-lease.js` and 5 in `journal-reserve.js`. A 0 would still have been printed had the fix
+        not landed — the instrument discriminates, and the sibling count is the positive control proving
+        the matcher fires. Reading the hits rather than the tally: `.claude/hooks/lib/journal-reserve.js:657-661`
+        now reads "const { isCoordinationEnabled } = require(\"./coordination-mode.js\");" / "const
+        { resolveMainCheckout } = require(\"./state-resolver.js\");" / "const coordinationOn =
+        isCoordinationEnabled(resolveMainCheckout(repoDir) || repoDir);", threaded into the reservation
+        at :669 as "requireSigningIdentity: coordinationOn". The EXPECTED behavior the entry specified —
+        "when isCoordinationEnabled(repoDir) is false, degrade to the unsigned local high-water slot
+        computation (the pure reserveJournalSlot path) rather than throwing on a null person_id" — is
+        implemented at :693-701: "if (!coordinationOn) { return { ok: true, reservation, record: null,
+        record_emit: { emitted: false, reason: \"coordination-disabled\" } }; }". The entry's second
+        requirement ("the signed-reservation requirement is CORRECT when coordination is ON and must
+        stay unchanged") is preserved — the `emitSignedRecord` path at :703 is reached only when
+        coordinationOn. The in-code comment cites this entry's own source issue: ":648 // ... See issue #76."
+      root_cause: >-
+        The fix also closed a defect this entry did not anticipate, recorded in-code at :649-656: reading
+        the coordination predicate against a WORKTREE cwd would split a tier-2-enrolled repo OFF (the
+        `.claude/learning/coordination-mode.json` override is gitignored and therefore absent inside a
+        worktree) while `journal-write-guard.js` read it ON from main — "That is issue #76's own failure
+        class re-opened on the worktree path by the fix for #76; caught by the Tier-1 redteam." Hence
+        `resolveMainCheckout(repoDir)` rather than the bare `repoDir` the entry proposed.
+      still_open: >-
+        DURABILITY — and here the reversion is DEMONSTRATED, not hypothesised. `git log --oneline --
+        .claude/hooks/lib/journal-reserve.js` returns, newest first: "0cce005 fix(journal-reserve): the
+        inbound sync reverted the guard to its pre-hardening state" / "52ee39e chore(sync): Gate-2 use rs
+        from loom f4b920cb1819" / "c0a1283 fix(journal-reserve): the refusal told the operator a false
+        thing about rule-4". `git log -S"isCoordinationEnabled" -- <file>` names 0cce005, 52ee39e and
+        8ece215 — i.e. the token has been added and removed repeatedly across the local-fix / inbound-sync
+        boundary. The local fix is Class-A non-durable per artifact-flow.md and has already been rebuilt
+        away once.
+      disposition: >-
+        Gate-1 action still required despite the correct on-disk state. DUPLICATE-CLUSTER NOTE, verified
+        not assumed: indices 43 and 56 also target `.claude/hooks/lib/journal-reserve.js`; I did not
+        evaluate them and their verdicts do not follow from this one — the file has taken at least four
+        distinct local fixes (0cce005, c0a1283, b7e2be6, 4a16eaf) and the siblings may address different
+        ones. The entry's template_ingest_note recommendation stands and is now better supported: sweep
+        for further coordination primitives missing the `isCoordinationEnabled` early-return, and note
+        that the correct predicate argument is `resolveMainCheckout(repoDir) || repoDir`, not `repoDir`.
     source_issue: "kailash-coc-rs#76"
     dedup_evidence: >-
       NOT already solved here. `grep -c journal-reserve latest.yaml` returned 0.
@@ -2675,6 +2940,44 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09, and the entry's own durability prediction has since COME TRUE with a dated reversion; this is now the highest-confidence STILL-OPEN in the shard
+      reconciled_at: 2026-08-09
+      evidence: >-
+        The allowlist row is ABSENT, exactly as at 2.24.0. `grep -c upstream-issue-hygiene
+        .claude/rules/self-referential-codify.md` → 0, while the control `grep -c issue-triage-routing`
+        on the SAME file → 2, proving the matcher fires against this file and that the file does carry
+        rule-name tokens of this shape; a silent-empty from an untested matcher is ruled out. Reading the
+        allowlist itself rather than the tally: `.claude/rules/self-referential-codify.md:105` enumerates
+        42 rule stems in one `- **Rules (codify-discipline):**` bullet — trust-posture, cc-artifacts,
+        coc-sync-landing, sync-completeness, artifact-flow, … issue-triage-routing, handoff-completion,
+        coc-artifact-eval-coverage, command-skill-parity, orchestration-launch-ledger,
+        instrument-discipline, burn-down-reporting, completion-criterion — and `upstream-issue-hygiene`
+        is not among them.
+      root_cause: >-
+        The entry wrote: "the allowlist edit is a local change to a SYNCED rule, which `artifact-flow.md`
+        § Distribution-Durability Invariants classes as Class-A NON-DURABLE — rebuilt away by the next
+        `/sync-to-use`. Without a proposal entry loom never gains the allowlist row." That is no longer a
+        prediction. `git log --format='%h %ad %s' --date=short -S"upstream-issue-hygiene" --
+        .claude/rules/self-referential-codify.md` returns, newest first: "52ee39e 2026-08-04 chore(sync):
+        Gate-2 use rs from loom f4b920cb1819" and "916813d 2026-08-03 fix(upflow): close the fence's
+        remaining bypasses and instrument every guard". Counting the token at each blob settles the
+        direction: `git show 916813d:<file> | grep -c` → 2 (the local edit ADDED it), `git show
+        52ee39e:<file> | grep -c` → 0 (the inbound sync the NEXT DAY REMOVED it), HEAD → 0. The
+        allowlist row was added locally and rebuilt away by a sync within 24 hours, and unlike its
+        sibling (entry 33) it was never restored.
+      still_open: >-
+        Entirely. The rule `upstream-issue-hygiene.md` still ships MUST-4 on disk (entry 33) while the
+        Rule-2 allowlist that is supposed to admit edits to it does not name it — so the entry's stated
+        consequence holds today: the rule's own text at :271 ("Added in the same codify that lands
+        MUST-4 per Rule 2's same-codify obligation" class of claim) has no allowlist row backing it. The
+        entry's secondary claim also re-verifies: `allowlist-paths-coverage` (#443) checks `paths:` ⊇
+        allowlist, not whether an EDITED rule is ON the allowlist, so no validator surfaces this — it is
+        review-only, which is why one sync was enough to erase it silently.
+      disposition: >-
+        Gate-1 action required, and this entry should be ranked ABOVE the entries whose fixes are already
+        on disk: those have a correct (if non-durable) local state, this one has neither. The fix is two
+        lines (+2 -1 as filed) — add `upstream-issue-hygiene` to the :105 stem list at loom.
     dedup_evidence: "NOT already solved — `grep -c upstream-issue-hygiene .claude/rules/self-referential-codify.md` returns 0 at 2.24.0; the rule is absent from the Rule-2 allowlist."
     reason: >-
       THE GATE THAT PROTECTS MUST-4 DID NOT COVER THE RULE THAT DEFINES IT.
@@ -2702,6 +3005,53 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: ALREADY-SOLVED ON DISK — MUST-4 landed in full including its severity routing; but it has ALREADY been reverted once by an inbound sync and manually restored, so Gate-1 ingest is what makes it durable
+      reconciled_at: 2026-08-09
+      evidence: >-
+        MUST-4 exists with the proposed title verbatim. `.claude/rules/upstream-issue-hygiene.md:196`
+        reads "### 4. Open, Never Complete — A Downstream Upflow OPENS A PR And STOPS". `grep -c 'Open,
+        Never Complete'` → 3 (heading :196, the Wiring section header :256 "## Trust Posture Wiring —
+        MUST-4 (Open, Never Complete)", and the Origin paragraph :271 "**MUST-4 (Open, Never
+        Complete):** 2026-08-03 — co-owner-directed origination at the `kailash-coc-rs` USE template");
+        a 0 would have been printed had it not landed, and the same file returns 23 for `MUST`, so the
+        matcher is not silently failing. The entry's specific commitments are all present:
+        (a) "Ships canonical 8-field Wiring, clause-scoped" → :266 "**Violation scope:** MUST-4 ONLY
+        (clause-scoped) + its two MUST-NOT bullets; MUST-1/2/3 stay on their grandfathered footing."
+        (b) The severity routing its template_ingest_note flagged as "DELIBERATE — worth Gate-1
+        attention" → :263 verbatim: "routes through the pre-existing `critical` trigger in
+        `trust-posture.md` MUST-4 — **cross-repo write outside scope → drop to L1** — NOT the generic
+        1-step `regression_within_grace` ... no NEW key is minted because the existing `critical`
+        trigger describes the act exactly." (c) The entry's dedup grep evidence is preserved verbatim in
+        the shipped Origin at :271: "`grep -rn \"never merge\|MUST NOT merge\"` over `rules/`,
+        `commands/`, `sync-flow.md`, and the inbox README returned only an unrelated red-CI hit".
+        (d) The +62-line diff is consistent with the shipped length rationale at :277, which attributes
+        "~55 of the current overage" to MUST-4.
+      root_cause: >-
+        The shipped clause is materially STRONGER than the filing, in a direction worth recording: it
+        does not claim the structural fence is a boundary. :202 states the residuals explicitly — the
+        `completeUpflowPR` fence "is NOT a boundary against a caller that can choose its own working
+        directory: `process.cwd()` is selected by whoever launches the process", and enumerates what it
+        does not cover (`gh pr merge` at the CLI, a clone of the upstream, `curl`, `--auto`/merge-queue,
+        direct `git push`, the DESTINATION host, and the sibling `pushImage`/`applyDeployTarget`/
+        `invalidateCache` write primitives). :265 likewise states the fixtures are
+        "COMMITTED-FIXTURES-MANUALLY-DRIVEN, not a live gate". Gate-1 should carry that scoping upstream
+        with the clause — it is the part most likely to be lost in a re-summarisation.
+      still_open: >-
+        DURABILITY — demonstrated, not hypothesised, and on THIS file. `git log --format='%h %ad %s'
+        --date=short -- .claude/rules/upstream-issue-hygiene.md` with a per-blob token count gives:
+        8ece215 (2026-08-03, local) → 3; 23e4c0e (2026-08-03, local) → 3; 916813d (2026-08-03, local) →
+        3; 9fe00ce (2026-08-04, local) → 3; **52ee39e (2026-08-04, "chore(sync): Gate-2 use rs from loom
+        f4b920cb1819") → 0**; f5d1a47 (2026-08-05, "fix(upflow): three-way merge the docs half of the
+        open-never-complete fence") → 3; HEAD → 3. The inbound sync erased MUST-4 entirely and a human
+        had to three-way merge it back the next day. The same sync erased the entry-32 allowlist row,
+        which was NOT restored.
+      disposition: >-
+        Gate-1 action still required despite the correct on-disk state — this is the clearest case in the
+        shard for why "already fixed locally" is not "solved". Ingest entries 32 and 33 TOGETHER: 33 is
+        the clause, 32 is the allowlist row that lets the clause be edited under Rule 2, and the single
+        sync 52ee39e removed both. Ingesting 33 without 32 reproduces exactly the split the filing warned
+        about.
     dedup_evidence: >-
       NOT already solved. `grep -rn "never merge\|MUST NOT merge\|not merge"`
       across `.claude/rules/`, `.claude/commands/`, `sync-flow.md` and the inbox
@@ -3017,6 +3367,33 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: ALREADY-SOLVED — no Gate-1 action required
+      reconciled_at: 2026-08-09
+      evidence: >-
+        All four elements this entry proposed are on disk verbatim.
+        `sync-flow.md:233` now reads "the consumer lane has EXACTLY TWO methods"
+        and "**There is NO third consumer-lane method: the upflow OPENS and
+        STOPS** (`upstream-issue-hygiene.md` MUST-4)", with `completeUpflowPR`
+        relocated off the lane in the same sentence ("**NOT on this lane at all**
+        — it is the UPSTREAM MAINTAINER's primitive"). The ADO bullet at :234 is
+        corrected to "the SAME TWO consumer-lane methods". And :238 carries the
+        new section verbatim: "**The Step-7c stop-point (MUST).** Step 7c is
+        COMPLETE when the PR (or Route-A issue) is OPEN", naming the BLOCKED
+        reasoning "The cascade hasn't happened until it's merged" exactly as
+        this entry specified.
+      falsifying_result: >-
+        Had the fix not landed, :233 would still list all THREE methods in one
+        sentence closing with "`gh pr create` / `gh issue create` / `gh pr
+        merge`" as agent-followed equivalents, and no "stop-point" section would
+        exist. The same grep that returned these hits returns nothing for the
+        sibling surface (see the paired `commands/codify.md` entry), so it
+        discriminates rather than matching everything.
+      disposition: >-
+        CLOSE. Gate-1 should SKIP. Note the PAIRING: this entry's sibling — the
+        `commands/codify.md` Step-7c stop-point — did NOT land, and that is the
+        higher-reachability surface of the two. Closing this one does not close
+        that one.
     dedup_evidence: >-
       NOT already solved. The Step-7c § at 2.24.0 has no stop-point statement and
       its provider-dispatch bullet actively advertises the merge primitive.
@@ -3042,6 +3419,42 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09, and it is now the ONLY unlanded half of a landed pair
+      reconciled_at: 2026-08-09
+      evidence: >-
+        The gap this entry reports is unchanged. `commands/codify.md:129` Step
+        7c(5) still reads "HUMAN-GATED offer (`upstream-issue-hygiene.md`
+        MUST-1) — PR to the template's `.claude/.proposals/inbox/...`; no-fork
+        fallback Route A issue; no auto-submission, no standing approval",
+        followed only by transport detail. There is no "OPEN ONLY", no "STOPS at
+        an open PR", no MUST-4 citation — exactly the "ends at no
+        auto-submission, no standing approval with no stop-point" this entry
+        recorded. Verified by reading the WHOLE Step-7c section, not a phrase
+        grep: a phrase grep alone could not distinguish "absent" from "present
+        under different wording".
+      falsifying_result: >-
+        The discriminating comparison is the SIBLING. `sync-flow.md:238` DOES
+        carry the stop-point ("Step 7c is COMPLETE when the PR ... is OPEN"), so
+        the language exists in the corpus and a search for it succeeds
+        elsewhere. Its absence here is therefore a true negative, not a matcher
+        that fires nowhere.
+      diagnosis_sharpened: >-
+        The pairing is the finding. This entry and its `sync-flow.md` sibling
+        were authored together against ONE incident; the sibling landed in full
+        and this one did not — so the fix reached the DEPTH file while missing
+        the COMMAND surface. That inverts the entry's own reachability argument:
+        it chose `commands/codify.md` precisely because "a downstream agent
+        running `/codify` reads Step 7c(5) directly, whereas `sync-flow.md` is
+        the depth file it may or may not open." The half that landed is the half
+        the agent may never read.
+      disposition: >-
+        Gate-1 should take this as a ONE-LINE completion of an already-accepted
+        change, not a fresh proposal — the rule (MUST-4), the structural fence
+        (both VCS adapters), and the depth prose all landed. `commands/codify.md`
+        is on the `self-referential-codify.md` allowlist, so the edit is
+        self-referential and gated accordingly; that is a procedural cost, not a
+        reason to leave the highest-reachability surface silent.
     dedup_evidence: >-
       NOT already solved. Step 7c(5) at 2.24.0 ends at "no auto-submission, no
       standing approval" with no stop-point.
@@ -3059,6 +3472,25 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09
+      reconciled_at: 2026-08-09
+      evidence: >-
+        dedup_evidence CONFIRMED verbatim. `git show 93551cb:.claude/.proposals/inbox/README.md`
+        (base_version 2.24.0 merge-base) prints a § Contract of exactly four bullets — One file
+        per proposal / Schema / "**Offered via a human-gated PR** … No auto-submission." /
+        "**Never edit another proposer's entry**" — and NO bullet mentioning merge, completion,
+        or auto-merge. Falsifying result had the claim been false: a fifth bullet, or the string
+        "merge" anywhere in that § Contract; `git grep -n "OPEN the PR" 93551cb --
+        .claude/.proposals/inbox/README.md` exits 1 (no match) while the SAME grep at HEAD
+        returns `.claude/.proposals/inbox/README.md:16:- **OPEN the PR — never merge it**` —
+        the matcher is shown to fire here. diff_lines +9 -0 re-measured exact:
+        `git diff --numstat 93551cb -- <file>` → `9  0` at HEAD, and `9  0` at 3292bd3.
+      still_open: >-
+        The bullet exists at THIS template only (the origination side). Nothing on disk here can
+        show whether loom's copy carries it; that is Gate-1's to determine. No sync since
+        3292bd3 has touched this file (`git log 3292bd3..HEAD -- <file>` is empty), so the
+        entry's claims are unchanged and un-falsified.
     dedup_evidence: >-
       NOT already solved. The § Contract at 2.24.0 states the human gate and the
       never-edit-another-proposer rule, but nothing about merging.
@@ -3080,6 +3512,37 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened (diff_lines understated)
+      reconciled_at: 2026-08-09
+      evidence: >-
+        Every substantive claim holds. (a) The 2.24.0 defect is real: `git show
+        93551cb:.claude/bin/sync-from-canon-fetch.mjs` line 67 is
+        `import { resolveRemote } from "./lib/loom-links.mjs";` — a top-level static import; that
+        exact file, extracted to a scratchpad and dynamically imported, prints
+        `OLD IMPORT FAIL: ERR_MODULE_NOT_FOUND`, while importing the HEAD file prints
+        `IMPORT OK`. The instrument discriminates: it returns the opposite verdict on the two
+        revisions. (b) `.claude/bin/lib/loom-links.mjs` is genuinely absent here (`ls` → "No such
+        file or directory"), so the ERR_MODULE_NOT_FOUND is the real consumer-side condition, not
+        a synthetic one. (c) The guarded-dynamic-import shape landed at HEAD lines 79-86 (`let
+        _resolveRemote; … await import("./lib/loom-links.mjs") … catch { _resolveRemote = null }`),
+        and the cited in-tree precedent is real — `.claude/bin/loom-doctor.mjs:55-62` carries the
+        same try/catch → null shape. (d) The typed error survives: `unresolved-canon-remote` at
+        lines 211 and 395, with the added actionable NOTE at 400-402. (e) The class-closure sweep
+        re-runs clean: `grep -rEn 'import[^(]*from *"[^"]*loom-links\.mjs"' --include='*.mjs'
+        --include='*.js'` over the whole repo exits 1 (zero static imports); the same matcher
+        pattern applied to a known-positive (`ecosystem-config.mjs`) returns three hits
+        (sync-from-canon-fetch.mjs:66, emit-dev-container.mjs:44, deploy-config.mjs:56), so it
+        fires here. Reading the hits of the broader `loom-links\.mjs` sweep: the only two
+        executable references are `await import(...)` at sync-from-canon-fetch.mjs:81 and
+        loom-doctor.mjs:57; all remaining hits are comments/docstrings.
+      root_cause: >-
+        `diff_lines: +22 -2` is UNDERSTATED. `git diff --numstat 93551cb -- <file>` returns
+        `27  2`, and it returns `27  2` at 3292bd3 as well; only ONE commit (8ece215) has touched
+        the file since the merge-base, so +22 was never the true count against 2.24.0 — it appears
+        to count the import hunk only, not the error-message NOTE hunk. Gate-1 should read +27 -2.
+      disposition: >-
+        Fix still required upstream; only the line count needs correcting in the manifest row.
     source_issue: "kailash-coc-rs#75"
     dedup_evidence: >-
       Entry 31 FILED this defect; this entry carries its FIX. Entry 22
@@ -3161,6 +3624,36 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened (diff_lines wrong in BOTH directions)
+      reconciled_at: 2026-08-09
+      evidence: >-
+        The RETRACTION of entry 30 is re-confirmed, and the fix is present and green.
+        (a) The guard needs no change and its gate PREDATES 2.24.0:
+        `git show 93551cb:.claude/hooks/signing-mutation-guard.js | grep -n isCoordinationEnabled`
+        returns line 346 `if (!isCoordinationEnabled(resolveMainCheckout(repoDir) || repoDir)) {`
+        — the opt-in gate was already there at the base version, so the exit-1 could not have been
+        a guard fail-open introduced by this release. At HEAD the same gate is line 398. (The file
+        did change since 93551cb, +93 -10, but by the Gate-2 sync 52ee39e — NOT by this entry.)
+        (b) The precondition fix landed: `makeCoordinationEnabledRepo()` is defined at
+        test-server.mjs:52, writes `JSON.stringify({ enabled: true })` at :67, and BOTH degraded
+        lanes call it (:361 and :438). (c) EXECUTED rather than read: `npm test` in
+        `.codex-mcp-guard/` → `VERBATIM_EXIT=0`, `PASS  codex-mcp-guard server: 49/49 checks`,
+        `PASS  validator-13 extractor: 4/4 predicates match (A, B, C, D).` The two degraded lanes
+        appear verbatim as `✓ apply_patch degraded: DENY by signing-mutation-guard.js (gate bites
+        through apply_patch lane)` and `✓ shell→Bash activation: degraded git-mut DENIED, degraded
+        `ls` allowed (gate bites, no read over-block)`. The exit code is load-bearing and the
+        instrument was controlled: `node -e "process.exit(3)"` in the same shell returned
+        `control_exit=3`, so a non-zero would have propagated.
+      root_cause: >-
+        `diff_lines: +45 -6` is wrong in both directions. `git diff --numstat 93551cb --
+        .codex-mcp-guard/test-server.mjs` returns `56  3` — and returns `56  3` at 3292bd3 too.
+        Exactly one commit (8ece215) has touched the file since the merge-base, so +45 -6 was
+        never the count against 2.24.0. Gate-1 should read +56 -3.
+      still_open: >-
+        The fix and the retraction both live at this template only. Gate-1 still owes the
+        RETRACTION of entry 30's fail-open classification; ingesting entry 30 without entry 44
+        would land a "fix" for a defect that does not exist.
     source_issue: "kailash-coc-rs#74"
     dedup_evidence: >-
       NOT already filed. Entry 30 filed #74 as a CONFIRMED fail-open; that
@@ -3339,6 +3832,36 @@ changes:
     via: kailash-coc-rs
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: ALREADY-SOLVED — no Gate-1 action required
+      reconciled_at: 2026-08-09
+      evidence: >-
+        The contradiction the entry reports no longer exists, and the whole class is closed —
+        not merely the three named instances. (a) All three named paths are GONE from the
+        manifest: `grep -n -F -e o1-citation-check -e emit-dev-container -e repin-targets
+        .claude/.coc-obsoleted` at HEAD returns exactly ONE line —
+        `41:.claude/bin/emit-dev-container.test.mjs` (the .test.mjs sibling, a different path) —
+        while the SAME grep against `git show 3292bd3:.claude/.coc-obsoleted` returns four lines
+        including `5:.claude/hooks/lib/o1-citation-check.js`,
+        `97:.claude/bin/emit-dev-container.mjs`, and
+        `98:.claude/bin/repin-targets.local.example.json`. The matcher is shown to fire here: a
+        positive control, `grep -n -F -- ".claude/rules/terrene-naming.md" .claude/.coc-obsoleted`,
+        returns `100:.claude/rules/terrene-naming.md` exit 0. (b) The CLASS is closed, not just the
+        instances: intersecting every non-comment line of `.coc-obsoleted` (expanding
+        trailing-slash entries as prefixes) against `git ls-files` yields intersection size 0 —
+        down from the 5 paths entry 23 established and the 3 this entry re-verified. Control:
+        the `git ls-files` set is populated (`.claude/rules/security.md` resolves in it). (c) The
+        removal landed in the direction this entry's PROPOSED DISPOSITION option (a) named — drop
+        the entries, keep the files — across `bf7e747` ("stop the purge manifest deleting files
+        the same release ships"), `52ee39e` (Gate-2 sync), and `1af7994` ("refuse the next silent
+        revert, and stop the purge manifest eating shipped files"), the last of which adds the CI
+        guard against the recurrence the entry called structurally un-completable.
+      disposition: >-
+        The live inbound importers the entry cited are still live and now consistent with the
+        manifest: `.claude/bin/validate-emit.mjs:1396` still lists `"hooks/lib/o1-citation-check.js"`
+        and `.claude/bin/loom-links.local.example.json:98` still names `repin-targets.local.json`,
+        and all three files remain `git ls-files`-tracked. Nothing for Gate-1 to act on; land
+        together with entry 23's reconciliation, which this entry enriched.
     dedup_evidence: >-
       ENRICHES entry 23 (same file, same release) — NOT a duplicate. Entry 23
       established obsoleted ∩ shipped = 5 paths. This adds THREE facts entry 23
@@ -3654,6 +4177,37 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened (diff_lines grew; every named fix confirmed on disk)
+      reconciled_at: 2026-08-09
+      evidence: >-
+        dedup_evidence CONFIRMED: `git cat-file -e 93551cb:.claude/hooks/lib/upflow-self-repo.js`
+        exits non-zero (ABSENT at the merge-base), while the same probe against
+        `.claude/hooks/lib/vcs-github-adapter.js` at 93551cb exits 0 — the probe discriminates.
+        Every one of the entry's named fixes is present at HEAD and quoted here:
+        the host ASCII guard is `if (!/^[\x20-\x7e]*$/.test(authority)) return null;` (line 557,
+        documented at 555); the ADO identity is a QUAD with an absent collection normalizing to
+        `_ADO_DEFAULT_COLLECTION = "defaultcollection"` (line 1198, contract at 1138-1198,
+        including the "absent matches only absent" walk-back recorded at 1129); the bounded git
+        stderr is `_lastGitStderr = first ? first.trim().slice(0, 200) : null;` (line 239, rationale
+        225); the ssh last-`@` split is `const at = authority.lastIndexOf("@");` (line 487) with
+        the attack it closes written out at 446 and 475; `.claude/VERSION::repo` is refuse-only
+        (docstring 30-32: "It can REFUSE … a forged VERSION file is therefore powerless", read
+        at 919, disagreement refusal at 1078). The shared refusal-operand bound+scrub is OWNED
+        here and EXPORTED, not copied — `module.exports` at 1582-1592 carries `REASON_OPERAND_MAX,
+        reasonText, reasonOperand, reasonFromError, sanitizeForReason`, and both adapters
+        `require("./upflow-self-repo.js")` (vcs-github-adapter.js:53, vcs-azure-adapter.js:61).
+      root_cause: >-
+        `diff_lines: +1428 -0 … measured at 3292bd3` was EXACT at that SHA
+        (`git diff --numstat 93551cb 3292bd3` → `1428  0`) and is now STALE: `git diff --numstat
+        93551cb HEAD` → `1593  0`. Six adversarial-round fix commits landed after the measurement
+        (569de70, 844a4a5, 2352e98, da6c9a6, 6ed3e4a, b7e2be6), all on this same defect class.
+        Unlike its two adapter siblings, this module was NOT reverted by the inbound Gate-2 sync
+        — `git diff --numstat 52ee39e HEAD -- <file>` is empty, and the quad + ASCII-guard greps
+        return the same counts (4 and 2) at 52ee39e and at HEAD.
+      still_open: >-
+        Gate-1 should ingest against +1593 -0, not +1428 -0; the extra 165 lines are the
+        redteam-round fixes, not new scope.
     supersedes: "the 33-39 cluster entry for this file (diff_lines '+433 -0')"
     dedup_evidence: >-
       NOT already solved. The file does not exist at merge-base 93551cb (2.24.0)
@@ -3710,6 +4264,42 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09, PROVEN un-ingested upstream; dedup_evidence instrument corrected
+      reconciled_at: 2026-08-09
+      evidence: >-
+        MEASURED PROOF OF NON-INGESTION. The inbound Gate-2 sync 52ee39e ("chore(sync): Gate-2 use
+        rs from loom f4b920cb1819") REVERTED this file to its pre-proposal state: `git diff
+        --numstat 3292bd3 52ee39e -- <file>` returns `43  269` — the exact INVERSE of this entry's
+        `+269 -43` — and `git diff --numstat 52ee39e HEAD` returns `269  43`, the restoration
+        (commit 20bd59f, "fix(upflow): rewire the self-identity fence the inbound sync unwired").
+        A sync that carries loom's canonical copy and DELETES these 269 lines is direct evidence
+        loom at f4b920cb1819 did not have them. Had the proposal been ingested, that numstat would
+        have been empty. `diff_lines: +269 -43` re-measures EXACT at HEAD.
+        SUBSTANCE CONFIRMED: the MUST-4 fence is absent at 2.24.0 —
+        `git show 93551cb:<file> | grep -n "upflow-self-repo\|deriveSelfRepoRef\|isSelfRepo"`
+        exits 1 (no match) while the same matcher at HEAD returns
+        `53:} = require("./upflow-self-repo.js");` and `686:  const selfRepo = require(...)`.
+        The `JSON.stringify` undercount claim re-measures EXACTLY as written: at 93551cb,
+        `grep -c JSON.stringify` returns 24 on the GitHub adapter and 21 on the ADO adapter —
+        24 + 21 = 45, the entry's "45 … across both adapters (not ~20)". Post-sweep at HEAD the
+        same grep returns 2 and 2. The bound+scrub is consumed, not copied (require at :53), and
+        the no-cycle claim holds: `node -e "require('./.claude/hooks/lib/vcs-provider.js')"`
+        resolves populated — keys `getProvider, getProviderForRoster, getProviderForRecordContent,
+        PROVIDER_IDS` — rather than the empty object a require cycle would leave.
+      root_cause: >-
+        The dedup_evidence INSTRUMENT is wrong as written. `git show
+        93551cb:.claude/hooks/lib/vcs-github-adapter.js | grep -c 'reasonOperand\|completeUpflowPR'`
+        returns 10, NOT 0. Disaggregated: `reasonOperand` = 0 (correct — the sanitization helpers
+        are genuinely absent), `completeUpflowPR` = 10 (the FUNCTION already existed at 2.24.0;
+        reading the hits, they are its docstring :39, the W7 note :245, the endpoint map :390,
+        `function completeUpflowPR(transport, prRef)` :540, four refusal strings :543-576, and the
+        export :614). What is absent upstream is the FENCE and the SWEEP, not the function — which
+        is what the reason field claims and what the disaggregated grep confirms.
+      disposition: >-
+        Ingest as written; correct the dedup_evidence to cite `grep -c reasonOperand` (returns 0)
+        rather than the composite grep, and to state that `completeUpflowPR` PRE-EXISTS un-fenced
+        at 2.24.0 — which strengthens the entry rather than weakening it.
     supersedes: "the 33-39 cluster entry for this file (diff_lines '+152 -1')"
     dedup_evidence: >-
       NOT already solved at 2.24.0 — `git show 93551cb:.claude/hooks/lib/vcs-github-adapter.js
@@ -3752,6 +4342,46 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09, PROVEN un-ingested upstream; two cited instruments corrected
+      reconciled_at: 2026-08-09
+      evidence: >-
+        SAME MEASURED PROOF OF NON-INGESTION as its GitHub sibling: `git diff --numstat 3292bd3
+        52ee39e -- <file>` returns `44  341` — the exact inverse of the claimed `+341 -44` — and
+        the restoration commit 20bd59f follows. The Enforcement-Surface-Parity argument for
+        landing the two together is therefore not theoretical: the inbound sync unwired BOTH
+        adapters in one commit.
+        SUBSTANCE CONFIRMED. The ADO widening is real and is on the repoRef, not only on
+        `_parseAdo`: the type is `{ org, project, repo, collection?: string }` (docstring :33-38),
+        the validator runs the project shape over it (`adoLogin.validateAdoProject(ref.collection)`
+        at :111, with the "VALIDATED WITH THE PROJECT SHAPE because a collection appears in the
+        same …" rationale at :100), and absence renders `<default-collection>` in refusals
+        (`_collectionLabel` :149-155) — so neither leg of the comparison is a leg-that-can-never-fail.
+        The carried-forward residual is recorded in-code exactly where the entry says: at
+        `completeUpflowPR`, lines 729-745, verbatim "KNOWN RESIDUAL, RECORDED NOT FIXED — THE
+        REQUEST PATH HAS NO COLLECTION SLOT … Deliberately NOT guessed at."
+      root_cause: >-
+        Two cited instruments are wrong; neither changes the verdict.
+        (1) dedup_evidence — "same grep as the GitHub adapter returns 0 for both the fence and the
+        sanitization helpers" — actually returns 7: `reasonOperand` = 0 (correct),
+        `completeUpflowPR` = 7 (the function pre-exists un-fenced at 2.24.0).
+        (2) "`completeUpflowPR` has no callers outside the two adapters — verified by grep across
+        js/mjs/md/json, the only non-adapter mention being a comment in ado-login.js." The
+        ado-login.js half is CORRECT (comments at ado-login.js:63 and :70, present at 3292bd3
+        too), but it is NOT the only non-adapter mention — a repo-wide sweep returns roughly
+        twenty, in journal/0001 + journal/0002, `.claude/rules/upstream-issue-hygiene.md` (six
+        sites), `.codex/prompts/codify.md`, `upflow-self-repo.js:532`, and both
+        `upflow-open-never-complete/` and `upflow-refusal-operand-sanitization/` fixtures. Only
+        ONE of those is a genuine CALLER — `audit-fixtures/upflow-open-never-complete/run.mjs:187`
+        builds `adapter.completeUpflowPR(transport, …)` into the subprocess it drives — and that
+        is entry 57, the same proposal's own instrument. The PRODUCTION-caller claim stands;
+        the mention-enumeration does not. (Instrument note: a first sweep filtered on
+        `grep -v "vcs-azure-adapter.js"`, which silently swallowed the ado-login.js hits because
+        those comment lines NAME the adapter — the enumeration only came out right on re-run.)
+      still_open: >-
+        `diff_lines: +341 -44` was exact at 3292bd3 and is now `+348 -44` at HEAD (one later
+        commit, 844a4a5, touched it). Gate-1 should ingest against +348 -44 and land it in the
+        SAME change as entry 52.
     supersedes: "the 33-39 cluster entry for this file (diff_lines '+93 -1')"
     dedup_evidence: >-
       NOT already solved at 2.24.0 — same grep as the GitHub adapter returns 0
@@ -3873,6 +4503,35 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09, PROVEN un-ingested upstream; dedup_evidence instrument corrected, diagnosis intact
+      reconciled_at: 2026-08-09
+      evidence: >-
+        MEASURED PROOF OF NON-INGESTION, third instance: `git diff --numstat 3292bd3 52ee39e --
+        <file>` returns `15  183` — the exact inverse of the claimed `+183 -15` — and the
+        restoration commit is named for it: `0cce005 fix(journal-reserve): the inbound sync
+        reverted the guard to its pre-hardening state`. loom at f4b920cb1819 did not carry this.
+        THE DIAGNOSIS IS CONFIRMED VERBATIM at the merge-base. `git show
+        93551cb:.claude/hooks/lib/journal-reserve.js` lines 218-226 read:
+        `let roster = null;` / `try {` / `const rosterPath = path.join(repoDir, ".claude",
+        "operators.roster.json");` / … / `} catch {` / `roster = null;` / `}` — the bare catch the
+        entry describes, with no error-code discrimination. At HEAD the ENOENT arm is explicit at
+        :231 (`if (err && err.code === "ENOENT") return 0;`) and :298 (`if (!err || err.code !==
+        "ENOENT") throw err;`), with the "ENOENT is the ONE case that legitimately means 'no
+        roster'" rationale at :260 and the "Parsed but resolves nobody is UNKNOWN, not ABSENT"
+        distinction at :327.
+      root_cause: >-
+        The dedup_evidence INSTRUMENT is wrong: `git show 93551cb:<file> | grep -c 'ENOENT'`
+        returns 2, NOT 0. Reading the two hits — lines 83 and 202, both `if (err && err.code ===
+        "ENOENT") return 0;` — they are OTHER reads in the same module that ALREADY discriminated
+        ENOENT. That makes the entry's point sharper, not weaker: the module already knew the
+        ENOENT-vs-other distinction two reads over and did not apply it to the roster read, which
+        is precisely the "same failure, one read over" the reason field argues. The discriminating
+        instrument is the bare-catch quote above, not the count.
+      still_open: >-
+        `diff_lines: +183 -15` was exact at 3292bd3 and is now `+361 -15` at HEAD — four further
+        fix commits landed on this file after the measurement (4a16eaf, b7e2be6, c0a1283, and the
+        post-sync restoration 0cce005). Gate-1 should ingest against +361 -15.
     supersedes: "the two earlier entries for this file (diff_lines '+8 -1' and '+31 -9')"
     dedup_evidence: >-
       NOT already solved at 2.24.0 — `git show 93551cb:.claude/hooks/lib/journal-reserve.js
@@ -3907,6 +4566,35 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened (case count and diff_lines both grew)
+      reconciled_at: 2026-08-09
+      evidence: >-
+        dedup_evidence CONFIRMED: `git cat-file -e 93551cb:<path>` exits non-zero (ABSENT at the
+        merge-base); the same probe against a path known present at 93551cb exits 0.
+        EXECUTED rather than read, per the runner's own contract: `node
+        .claude/audit-fixtures/upflow-open-never-complete/run.mjs` → `VERBATIM_EXIT=0` and final
+        line `upflow-open-never-complete: 55/55 PASS`. The new-since-33-39 cases the entry names
+        are present in the run output by name, including the five ADO collection cases covering
+        both polarities of the triple→quad widening and the two asymmetric wildcard cases:
+        `✓ ado/allow-own-repo-legacy-collection-form`,
+        `✓ ado/cross-collection-same-org-project-repo-refuses`,
+        `✓ ado/unstated-collection-does-not-match-a-nondefault-collection-form`,
+        `✓ ado/stated-nondefault-collection-does-not-match-a-collection-free-form`,
+        `✓ ado/invalid-collection-in-repo-ref-refuses`, plus
+        `✓ ado/collection-form-does-not-admit-fragment-injection` and
+        `✓ ado/triangular-cross-collection-same-org-project-repo-refuses`.
+      root_cause: >-
+        Two counts are stale. (1) "NOW 53 CASES" is now 55 — the runner's own printed total is the
+        authoritative instrument (`55/55 PASS`); a `grep -cE "^\s+name: "` proxy returns 57 at HEAD
+        and 55 at 3292bd3, i.e. it over-matches by a constant 2, which is consistent with 53
+        executed cases at the time of measurement. (2) `diff_lines: +1735 -0` was EXACT at 3292bd3
+        (`git diff --numstat 93551cb 3292bd3` → `1735  0`) and is now `+1808 -0` at HEAD.
+      still_open: >-
+        Ingest against 55 cases / +1808 -0. Cross-artifact staleness worth flagging at Gate-1:
+        the SIBLING fixture's README, `.claude/audit-fixtures/upflow-refusal-operand-sanitization/README.md:223`,
+        still cites this suite as "47 cases; must stay green" — an un-updated cross-reference that
+        will read as a mismatch against the 55 this suite now runs.
     supersedes: "the 33-39 cluster entry for this file (diff_lines '+585 -0')"
     dedup_evidence: >-
       NOT already solved — the path does not exist at merge-base 93551cb.
@@ -3937,6 +4625,35 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened (diff_lines stale)
+      reconciled_at: 2026-08-09
+      evidence: >-
+        dedup_evidence CONFIRMED: `git cat-file -e 93551cb:<path>` exits non-zero (ABSENT at the
+        merge-base). Both load-bearing claims are on disk and quoted.
+        (a) The "what a green does NOT prove" paragraph is README.md:25-35, verbatim: "A green run
+        does NOT show the fence is an identity boundary. `process.cwd()` is selected by whoever
+        launches the process, so a scratch tree …" and "which CLOSES the accident class (an agent
+        following stale prose …) and RAISES THE COST of a deliberate act. It is NOT a boundary
+        against a caller that can choose its own working directory, and it cannot be: a caller
+        able to run arbitrary code in-process can replace the module outright." The same
+        true-strength framing is mirrored into the rule at
+        `.claude/rules/upstream-issue-hygiene.md:202`, so the two surfaces agree.
+        (b) The corrected-wrong-verdict record is real and is not one instance but several:
+        README.md:134 ("CORRECTED — an earlier revision of this heading said \"EXHAUSTIVE\""),
+        :632 ("This invalidated a previously-recorded mutation, and it is corrected rather than
+        left standing"), :651, :691 ("this section previously argued the opposite rule"), and
+        :778 ("Third pass — row 1 corrected under re-measurement"). The reachability-argument
+        discipline the entry invokes is written out at :153 ("and only establishing reachability
+        tells you which") and applied at :159, where mutation P3 is recorded GREEN-because-
+        UNREACHABLE with the reason stated rather than assumed. The mutation table is 100 rows
+        (`grep -cE "^\| "`) at HEAD and 100 at 3292bd3 — the table itself did not drift.
+      root_cause: >-
+        `diff_lines: +795 -0` was EXACT at 3292bd3 (`git diff --numstat 93551cb 3292bd3` → `795  0`)
+        and is now `+812 -0` at HEAD.
+      still_open: >-
+        Ingest against +812 -0, together with entry 57 — the README is that runner's mutation-
+        validity record and is not readable as a standalone artifact.
     supersedes: "the 33-39 cluster entry for this file (diff_lines '+215 -0')"
     dedup_evidence: >-
       NOT already solved — the path does not exist at merge-base 93551cb.
@@ -6599,31 +7316,40 @@ gate1_triage_2026_08_09:
       whether or not the proposition holds.
 
   not_assessed:
-    count: 20
-    superseded_note: >-
-      This count was 74 when the structural pass first landed. Three
-      clause-level shards have since reconciled entries 321-1056, 2233-3243 and
-      3334-4398, so 70 of 94 entries now carry a `reconciliation:` block. The
-      20 that remain had only their target existence checked, and they are the
-      honest remainder of this pass: `changes` indices 26-58 (anchor lines
-      ~1536-2192), `commands/doctor.md` through
-      `audit-fixtures/upflow-open-never-complete/README.md`. A fourth
-      clause-level shard closed indices 2, 21, 23 and 24 before stopping part
-      way, which is why the range is no longer contiguous from 21 and why index
-      2 (`CLAUDE.md`) — previously called out as a gap between passes — is no
-      longer among them.
-    note: >-
-      Every `modify` / `added` / `obsolete` entry not named above had only its
-      target existence checked. Whether the proposed CHANGE landed inside an
-      existing file was NOT tested and remains open work. Do not read this
-      block's silence on an entry as a clean bill.
-    carve_out: >-
-      Three of these 74 are not in fact unassessed — entries 0, 1 and 20 carry
-      their own `reconciliation:` blocks from the 2026-07-26 pass and were all
-      dispositioned ALREADY-SOLVED then. They fall into this bucket only
-      because the 2026-08-09 pass did not re-verify them; entries 3 and 4 from
-      that same July pass WERE re-verified this session and are cited above.
-      Stated explicitly so the arithmetic (14 + 3 + 3 + 74 = 94) is not read as
-      "74 entries have never been looked at."
+    count: 0
+    completion_note: >-
+      COMPLETE. This count went 74 -> 24 -> 20 -> 0 over the 2026-08-09 pass.
+      All 94 entries now carry a `reconciliation:` block: 6 clause-level shards
+      plus 3 entries reconciled directly. The earlier revisions of this field
+      are preserved in git history rather than restated, since a running
+      commentary on a count that is now zero is itself the kind of stale claim
+      this pass exists to remove.
+    residual: >-
+      TWO entries — 0 (`rules/issue-triage-routing.md`) and 1
+      (`commands/codify.md`) — carry blocks dated 2026-07-26, which PREDATE the
+      2026-08-02 sync, so Gate C
+      (`.github/workflows/proposal-freshness.yml`) correctly counts them as
+      unverified-since-sync even though they are not blank. Both were
+      dispositioned ALREADY-SOLVED in July and nothing observed this session
+      contradicts that; entry 0's target was additionally confirmed to exist on
+      disk. But an existence check is weaker than the July block's actual claim
+      (that the rule landed with the PROPOSED SHAPE), and "not contradicted" is
+      not "re-verified" — so the stamps are deliberately left at 2026-07-26
+      rather than advanced on thinner evidence than they assert.
+    residual_correction: >-
+      An earlier revision of this field named entries 0, 1 and 20 as the
+      residual. That was wrong on both ends: the real pre-sync set was 0, 1, 3
+      and 4, and entry 20 was never in it. Entries 3 and 4 HAD been re-verified
+      this session — with controls — but their `reconciled_at` was never
+      advanced, so the machine could not see work that had actually happened.
+      Both are now restamped with the evidence recorded inline. Kept as a
+      correction rather than an overwrite because a hand-maintained summary
+      drifting from the file it summarises is the same defect class as an entry
+      whose evidence has expired, and this block is not exempt from it.
+    verification: >-
+      The count is asserted equal to reality in the same commit that sets it:
+      `len([c for c in changes if 'reconciliation' not in c]) == 0`. A count
+      field that can drift from the file it describes is the same defect class
+      as an entry whose evidence has expired.
 
 status: pending_review
