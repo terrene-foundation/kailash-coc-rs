@@ -1,0 +1,117 @@
+name: Proposal Freshness
+
+# WHY THIS WORKFLOW EXISTS
+#
+# `.claude/.proposals/latest.yaml` is the Step-7b manifest loom's Gate-1
+# ingests. Entries state FACTS to justify a change — "X is absent", "line N
+# says Z", "11 artifacts cite it" — and Gate-1 acts on those statements.
+#
+# Those facts are point-in-time snapshots with no expiry. On 2026-08-09 a
+# clause-level pass found 89 of 94 entries had never been re-checked since they
+# were written, and among the ones that were: a count understated by more than
+# half (11 claimed, 27 actual, five of them executable enforcement code), a
+# request to investigate a whole tree where exactly one file was missing, and a
+# "this grep returns ZERO hits" that returned seven. Each cost Gate-1 either a
+# wasted investigation or an under-scoped fix.
+#
+# The root cause is not any individual entry. It is that evidence had no expiry
+# signal. This gate is that signal.
+#
+# WHY IT LIVES HERE AND NOT IN `.claude/`
+#
+# Same reasoning `sync-invariants.yml` documents for Gates A and B: `.claude/**`
+# is Class-A non-durable (`rules/artifact-flow.md`), so a check placed there is
+# rebuilt away by the next `/sync-to-use`. `.github/` is repo-owned here.
+#
+# WHY IT IS A RATCHET AND NOT AN ABSOLUTE BAR
+#
+# 24 entries are still unverified as of this workflow landing. A gate that
+# failed on all of them would be red on every PR from day one, and an
+# enforcement instrument that cannot pass trains readers to treat red as normal
+# — the exact defect issue #112 records about this repo's fixture runners. So
+# it fails only when a PR makes the count WORSE than its base.
+#
+# ENFORCEMENT, HONESTLY
+#
+# This workflow FAILS its check run. Whether that BLOCKS a merge depends on
+# branch protection, and this job is NOT registered as a required status check.
+# It is evidence-producing, not merge-preventing. Registering it would use the
+# job `name:` below, byte-for-byte — not the workflow filename:
+#
+#     Proposal manifest freshness (ratchet)
+#
+# Verify any such registration live rather than trusting this comment:
+#
+#     gh api repos/<owner>/<repo>/branches/main/protection \
+#       --jq '.required_status_checks.checks'
+#
+# WHAT IT CANNOT DO
+#
+# It compares dates. It does not read prose, so it never claims a specific
+# entry is wrong — only that its evidence predates a sync that could have
+# falsified it. It cannot catch a claim falsified by something other than a
+# sync. `reconciled_at` is self-reported and taken on trust. A PASS means "not
+# staler than before", never "every claim holds".
+
+on:
+  pull_request:
+    paths:
+      - ".claude/.proposals/latest.yaml"
+      - ".github/scripts/check-proposal-freshness.py"
+      - ".github/workflows/proposal-freshness.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: proposal-freshness-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  freshness:
+    name: Proposal manifest freshness (ratchet)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # The ratchet reads the base revision of the manifest via `git show`,
+          # so the base commit must be present. A shallow clone would make the
+          # base unreadable, which the script reports as "no baseline" — a PASS.
+          # That would be a pass by omission, so the depth is load-bearing.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        # Pinned rather than floating: the gate parses a file whose structure
+        # decides a merge signal, and a silent parser behaviour change would
+        # move that signal with no diff to explain it.
+        run: python -m pip install --disable-pip-version-check "PyYAML==6.0.2"
+
+      - name: Self-test — prove the gate can fail before trusting it passes
+        # A gate only ever demonstrated PASSING has not been shown to
+        # discriminate (`rules/instrument-discipline.md` MUST-3). This step
+        # drives the fixtures every run: a regressing pair MUST exit 1 and an
+        # unchanged pair MUST exit 0. If the gate ever stops discriminating,
+        # this fails here rather than silently green-lighting every PR.
+        run: |
+          set -euo pipefail
+          F=.github/scripts/fixtures
+          if python3 .github/scripts/check-proposal-freshness.py \
+               --manifest "$F/gate-c-head-regressed.yaml" \
+               --base-manifest "$F/gate-c-base.yaml" >/dev/null 2>&1; then
+            echo "SELF-TEST FAILED: the gate PASSED a deliberately regressed manifest."
+            echo "It is no longer discriminating; every PASS it prints is meaningless."
+            exit 1
+          fi
+          python3 .github/scripts/check-proposal-freshness.py \
+            --manifest "$F/gate-c-base.yaml" \
+            --base-manifest "$F/gate-c-base.yaml" >/dev/null
+          echo "Self-test OK: fails on regression, passes on no-change."
+
+      - name: Gate C — manifest freshness ratchet
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: python3 .github/scripts/check-proposal-freshness.py --base-ref "$BASE_SHA"

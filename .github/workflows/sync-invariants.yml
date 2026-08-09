@@ -74,6 +74,21 @@ name: Sync Invariants
 # `ACK-DISCARD:` line in the PR BODY (never a comment; the gate does not read
 # comments) — and never bypassed. "I satisfied myself the finding was harmless"
 # is the same reasoning that merged the sync this gate was built to catch.
+#
+# AFTER EDITING THE PR BODY, PUSH — DO NOT `gh run rerun`.
+#
+# `PR_BODY` comes from `${{ github.event.pull_request.body }}`, which is the
+# body captured in the event payload at trigger time. `gh run rerun` REPLAYS
+# that original payload, so a body edited afterwards is invisible to it: the
+# gate re-reads the pre-edit body and reports `1 flagged, 0 acknowledged`
+# again, identically to the first run. Only a NEW `pull_request` event —
+# i.e. a push, which fires `synchronize` — carries the updated body.
+#
+# Observed 2026-08-09 on PR #130: an `ACK-DISCARD:` line was added, the run
+# was re-run, and it failed with the same `0 acknowledged` line. Nothing was
+# wrong with the acknowledgement; the rerun simply never saw it. If you are
+# staring at an ACK that "isn't working", check whether you pushed after
+# writing it before you go looking for a bug in `run-sync-invariant-gates.sh`.
 
 # EVERY pull request, whatever its base.
 #
