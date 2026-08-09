@@ -7302,6 +7302,23 @@ gate1_triage_2026_08_09:
       - "x2 create audit-fixtures/upflow-open-never-complete/run.mjs -> [38, 57]"
 
   already_solved_candidates:
+    OVERTURNED_IN_FULL: >-
+      READ THIS BEFORE THE LIST BELOW. All 14 candidates were subsequently read
+      at clause level, and ALL 14 came back STILL-OPEN. Zero were confirmed.
+      The structural heuristic — target exists and is substantive, therefore the
+      `create` landed — has a 0% hit rate on this set.
+      The files DO exist; that part was never wrong. What existence does not
+      establish is the thing the entries actually asked for: the fixture cases
+      they specify, the helper behaviour they pin, the contract text they
+      require. A `create` whose target is present can still be entirely unmet.
+      The `basis` note below already said "STRUCTURAL evidence — confirm content
+      before skipping", and that caveat turns out to have been carrying the
+      whole claim. A reader who skimmed the index list and honoured the label
+      would have skipped 14 live entries. The list is retained rather than
+      deleted because the overturn IS the finding: it is the sharpest evidence
+      in this pass for why clause-level reading was necessary and why an
+      existence check must never be reported as a verdict.
+      Per-entry verdicts are authoritative; this list is history.
     basis: >-
       `action: create` entries whose target now EXISTS on disk and is
       substantive. The proposal asked for the file to exist; it does, delivered
@@ -7322,8 +7339,18 @@ gate1_triage_2026_08_09:
       existence test returns True for the 14 candidates above, so these are
       true negatives rather than a dead instrument.
     entries:
-      - "48 -> .claude/bin/reconcile-settings-hooks.mjs (absent)"
-      - "4  -> .claude/operators.roster.README.md (absent; already carries its own reconciliation block from 2026-07-26, re-confirmed absent 2026-08-09)"
+      - "48 -> .claude/bin/reconcile-settings-hooks.mjs (absent) — SUPERSEDED, see below"
+      - "4  -> .claude/operators.roster.README.md (absent; carries its own block, re-confirmed absent 2026-08-09 — clause-level verdict STILL-OPEN, consistent)"
+    superseded_by_clause_level: >-
+      Entry 48's clause-level verdict is PARTIALLY-SOLVED, not still-open: the
+      "silently cannot fire" half is closed and the entry's flagged INFERENCE is
+      now MEASURED, while the rule-text half is untouched. The target file is
+      indeed still absent, so this list is not factually wrong — but "absent"
+      and "still-open" are different claims, and reading the first as the second
+      is the same existence-as-verdict error the OVERTURNED note above records
+      at scale. Entry 4 is consistent across both passes. The per-entry
+      `reconciliation:` blocks are authoritative wherever they disagree with
+      this list.
     corrected_2026_08_09: >-
       Entry 5 (guides/co-setup/11-genesis-ceremony.md) was listed here in the
       first pass of this block and has been REMOVED — the structural
