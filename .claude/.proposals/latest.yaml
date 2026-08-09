@@ -196,7 +196,9 @@ changes:
       evidence: >-
         The load-bearing gitignore mechanism this entry asked for HAS landed.
         Verified live: `git check-ignore -v .claude/operators.roster.json` →
-        matches `.gitignore:133`, INSIDE the loom-managed
+        matches `.gitignore:147` (was `:133` when this block was written on
+        2026-07-26; re-verified 2026-08-09 — the rule still matches, only the line
+        number drifted), INSIDE the loom-managed
         coc:gitignore_additions block, so the roster is no longer committable
         from a template clone. The siblings this entry cites are ignored too
         (`.claude/learning/coordination-log.jsonl`,
@@ -1512,6 +1514,33 @@ changes:
     via: kailash-coc-rs
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09, diagnosis narrowed from a tree to a single file
+      reconciled_at: 2026-08-09
+      evidence: >-
+        The defect stands: `.claude/rules/git.md` cites
+        `guides/rule-extracts/git.md` at TWO sites (line 8 header pointer, line
+        119 Origin footer) and that extract does not exist.
+      refutes_own_gate1_note: >-
+        This entry's GATE-1 NOTE asks loom to "establish whether git.md is one
+        instance or the whole tree", speculating that `.claude/guides/rule-extracts/**`
+        may be "obsoleted wholesale". THAT SPECULATION IS REFUTED — do not spend a
+        Gate-1 cycle on it. The tree SHIPS: `ls .claude/guides/rule-extracts/`
+        returns 28 files. Across the whole rule corpus there are 68 citations of a
+        `guides/rule-extracts/<name>.md`; 66 resolve to a present file and exactly
+        2 do not — both of them the git.md pair above. The scan is
+        self-controlling: it prints PRESENT and MISSING from the same code path,
+        so a MISSING line is discriminating rather than a silent no-match.
+      inverse_dangler: >-
+        One inverse case exists and is worth the same distribution decision:
+        `.claude/guides/rule-extracts/cross-sdk-inspection.md` ships while
+        `.claude/rules/cross-sdk-inspection.md` does not — a depth extract with no
+        rule, the mirror image of this entry's rule with no depth extract.
+      disposition: >-
+        Scope is ONE missing file plus one orphaned extract, not a tree. The
+        paired-extraction concern this entry raises (a rule body deliberately
+        trimmed against an extract that never ships) is REAL for git.md
+        specifically and does NOT generalize to the other 27 extracts.
     dedup_evidence: >-
       NOT already solved here. No prior entry touches rules/git.md or the
       guides/rule-extracts depth-pointer class.
@@ -3027,6 +3056,50 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09, blast radius corrected upward
+      reconciled_at: 2026-08-09
+      evidence: >-
+        The defect stands: `.claude/rules/cross-repo.md` is still absent
+        (`ls .claude/rules/cross-repo.md` → "No such file or directory"; control:
+        the same `ls` returns a real file for `.claude/rules/security.md`, so the
+        negative is a true negative and not a dead instrument). BUT this entry's
+        COUNT IS WRONG AND MUST NOT BE CARRIED INTO GATE-1 AS WRITTEN. It records
+        "All 11 citing artifacts"; the actual figure at HEAD 695366f is 27 citing
+        files, enumerated by reading the hits (not a tally) via
+        `grep -rl 'cross-repo\.md' .claude/ CLAUDE.md | grep -v '^\.claude/\.proposals'`.
+        Matcher control: the same pattern returns 1 hit against the known-positive
+        `.claude/rules/repo-scope-discipline.md`, so it fires here.
+      severity_escalation: >-
+        FIVE of the 27 are EXECUTABLE ENFORCEMENT SUBSTRATE, not prose:
+        `.claude/bin/validate-xref-integrity.mjs`, `.claude/bin/validate-emit.mjs`,
+        `.claude/bin/sync-from-canon-fetch.mjs`, `.claude/hooks/cross-ecosystem-disclosure-guard.js`
+        and `.claude/hooks/lib/cross-ecosystem-disclosure-guard.js`. The dangling
+        authority therefore sits in the validators and hooks, not only in
+        operator-facing text — the same escalation the
+        `operators.roster.README.md` entry records ("two of the three are HOOKS").
+        Citations are CLAUSE-LEVEL, not vague: `MUST-1`, `Rule 4`,
+        `§ "Canonical Sublayout (Recommended — F61)"`, and
+        `§ "Ecosystem-Scoped Remote Links"` are each cited by name against a rule
+        that does not exist at any consumer.
+      same_class_sibling: >-
+        A SECOND instance of this exact class was found the same session and is
+        recorded here rather than minted as a new manifest entry, to avoid growing
+        the Gate-1 queue: `.claude/rules/ci-runners.operator.local.example.md:4`
+        points to `.claude/variants/rs/rules/ci-runners.md`, but `.claude/variants/`
+        is DELIBERATELY never-synced (`.claude/sync-manifest.yaml:3132` — "NEVER
+        synced; its presence in ANY consumer is a sync-hygiene defect"). So a
+        SHIPPED file documents itself as the operator-local companion to a rule
+        whose home tree is absent at every consumer by construction. `emit.mjs`
+        reports the same fact independently at every run: 'NOTICE — lane "rs" is
+        DECLARED but has no overlay directory (.claude/variants/rs)'. Note the
+        referent rule itself is NOT missing — `.claude/rules/ci-runners.md` IS
+        present — so this is a wrong-PATH citation, materially milder than the
+        cross-repo.md case, and should not be conflated with it.
+      disposition: >-
+        Gate-1 should treat the mechanism, not the instance: `cross-repo.md` is
+        `use_exclude`d by design, so the fix is a distribution decision (ship it,
+        or de-cite it across all 27), not a text edit at any one call site.
     dedup_evidence: >-
       NOT already solved at 2.24.0. `.claude/rules/cross-repo.md` is absent from the
       delivered tree and has ZERO commits in this repo's history; it is listed under
