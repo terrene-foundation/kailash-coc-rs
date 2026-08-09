@@ -1920,6 +1920,30 @@ changes:
         its skip is detectable. The synced emit.mjs EMITS the SKIP line; whether
         any validator asserts its PRESENCE was not verified in this cycle and
         is recorded as unverified, not as covered.
+      refuted_sub_claim: >-
+        THE VERDICT ON V15 STANDS; ONE COLLATERAL CLAIM IN THIS ENTRY'S `reason:`
+        DOES NOT, AND GATE-1 MUST NOT CARRY IT FORWARD. The `reason:` body asserts
+        "Validators 14, 16 and 18 PASS; only 15 fails, and it fails the entire run
+        with EXIT=1." Issue #125 (filed 2026-08-09, six days AFTER this entry's
+        reconciled_at) measured the opposite at THIS tier: validator 14 FAILS
+        (10 findings across 6 rule files) and `process.exit(1)`s before 16/18/15/17
+        are reached, so their status was never observed — and when 16 and 18 are
+        invoked directly as exported functions, BOTH FAIL. The discriminating
+        instrument is the emit log itself: had 14 passed, a `[validator-16]` line
+        would appear; it does not, so "16/18 pass" was an ABSENCE of observation
+        wearing the grammar of one (instrument-discipline.md MUST-1).
+        WHY THE V15 VERDICT SURVIVES ANYWAY: #125 independently confirms V15 is
+        correct here ("15 and 17 behave correctly ... SKIP (`skipped: true`),
+        asserts nothing in this class, by design"), which is this entry's whole
+        subject. ALREADY-SOLVED is therefore retained for V15 and NOT extended to
+        the collateral claim.
+        SCOPE NOTE: this entry is the ONLY one in the manifest still carrying
+        reconciled_at 2026-08-03; every other entry was re-derived 2026-08-09. It
+        is post-sync (sync landed 2026-08-02) so the freshness gate does not flag
+        it, but its collateral claim predates the measurement that refutes it.
+        The V16/V18 defect is carried by its OWN entry appended 2026-08-10 (issue
+        #125, `.claude/bin/emit.mjs` — the validator-16-vs-18 manifest-presence
+        contradiction); Gate-1 should read the two together.
       disposition: >-
         Retained, not deleted, per artifact-flow.md § "Append, Never Overwrite
         Unprocessed Proposals" — the audit trail of what was extracted and when
@@ -7237,6 +7261,216 @@ changes:
       identifier: the body names "an API" and "a tracker" generically, and
       `template_slug` names this template, not the offerer.
     diff_lines: "~+18 (new MUST-4 clause + DO/DO-NOT + BLOCKED corpus + Why) + clause-scoped Wiring"
+
+  # -------------------------------------------------------------------------
+  # ISSUE-COVERAGE APPEND, 2026-08-10. Three OPEN issues filed at this template
+  # carried NO manifest entry, so Gate-1 could not see them at all. Route-A
+  # filings are the input surface; the DURABLE surface is the proposal
+  # (CLAUDE.md § "GitHub Issue Triage → Upflow Routing"), and a Route-A issue
+  # with no entry is an upflow that stops at this repo.
+  # Measured, matcher-controlled: a '#<N>' scan over all 94 entry bodies
+  # returned 0 for #125, #119 and #113, while the SAME matcher fired on #56
+  # (1 entry) — so the empty result is a true negative, not a broken matcher.
+  # Coverage for the other four open issues was confirmed present and is NOT
+  # re-filed here: #64 -> entry 71, #79 -> entries 23 + 67, #78 -> entry 22/47
+  # (.coc-obsoleted), #112 -> entry 85 names it but scopes ITSELF away from it
+  # ("those concern audit-fixture tier"), so #112 is recorded below as the one
+  # UNRESOLVED coverage question rather than asserted either way.
+  # -------------------------------------------------------------------------
+
+  - file: .claude/bin/emit.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — net-new entry, first filed 2026-08-10
+      reconciled_at: 2026-08-10
+      evidence: >-
+        Filed as issue #125 at this template 2026-08-09 with the emit log
+        inline; appended here 2026-08-10 because no manifest entry carried it
+        (a '#125' scan over all 94 prior entries returned 0 against a control
+        that fired on '#56'). The contradiction is between two validators in
+        ONE file: validator 16 (`_classifyManifestPresence`, emit.mjs:2389-2405)
+        declares `.claude/sync-manifest.yaml` MUST NOT exist in a
+        `coc-use-template` repo and instructs the operator to DELETE it, while
+        validator 18 (`cli-delivery`) READS that same file through the shared
+        `loadExclusions()` (emit.mjs:1849, imported at :93) for its
+        `cli_emit_exclusions` stanza. Both cannot be satisfied.
+        THE FILE IS SHIPPED HERE ON PURPOSE, not local drift: sync-manifest.yaml
+        :407-421 carries `manifest_distribute: true` with the explicit carve-out
+        "Multi-CLI USE templates require the manifest for the emitter to function
+        (issue #184 root cause)", and it arrived by loom's own Gate-2 sync
+        (123870f). Obeying validator 16 would reproduce the exact breakage #184
+        was filed about.
+        WHY IT WENT UNSEEN: validator 14 runs FIRST and `process.exit(1)`s on
+        failure (emit.mjs:3060), so 16/18/15/17 never execute at this tier — the
+        emit log shows no `[validator-16]` line at all. Invoked directly as
+        exported functions, 16 and 18 both FAIL, 15 correctly SKIPs, 17 PASSes.
+      cross_reference: >-
+        REFUTES a collateral claim in the earlier `.claude/bin/emit.mjs` entry
+        (the validator-15 tier-completeness one, reconciled 2026-08-03), whose
+        `reason:` asserts "Validators 14, 16 and 18 PASS; only 15 fails". That
+        entry's V15 verdict is CORRECT and untouched — #125 independently
+        confirms V15 behaves correctly here — but its 14/16/18 claim was an
+        absence of observation, not an observation. See that entry's
+        `refuted_sub_claim:` block. Gate-1 should read the two together.
+        ALSO note: validator 18's four failures share their root cause with the
+        `.claude/rules/patterns.md` entry appended below (issue #119) — one
+        frontmatter defect surfaces in both validators.
+      still_open: >-
+        Entire entry. Both reconciliation options remain loom's call and neither
+        is pre-decided here: (1) make validator 16 template-TYPE-aware so a
+        target carrying `manifest_distribute: true` is exempt from the
+        forbidden-class branch — the smaller change, and it aligns the class
+        check with the distribution decision already encoded in the manifest;
+        or (2) revisit the carve-out entirely, which requires giving the
+        multi-CLI emitter another source for `cli_variants` /
+        `cli_emit_exclusions` / `multi_cli_overlays` FIRST and re-opens #184.
+      note_for_gate_1: >-
+        Class-A at this template either way — emit.mjs and sync-manifest.yaml
+        are both synced artifacts, so a local edit here is rebuilt away by the
+        next `/sync-to-use`. There is no durable local fix; the proposal IS the
+        fix. Do not close this by editing the synced file at a consumer.
+    reason: >-
+      A `coc-use-template` repo cannot run its own multi-CLI emitter: validator
+      16 orders the deletion of the very file validator 18 reads, and validator
+      14 masks both by exiting first. The class check keys on repo CLASS
+      (`coc-use-template`) while loom's carve-out keys on template TYPE
+      (multi-CLI vs cc-only-legacy); a multi-CLI USE template is both, and the
+      two rules disagree about it. Reconcile the two artifacts so the class
+      check and the distribution decision agree.
+    diff_lines: "~+8-15 in _classifyManifestPresence (manifest_distribute-aware class branch), or a larger emitter-sourcing change under option 2"
+
+  - file: .claude/rules/patterns.md
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — net-new entry, first filed 2026-08-10
+      reconciled_at: 2026-08-10
+      evidence: >-
+        Filed as issue #119 at this template 2026-08-09; appended here
+        2026-08-10 because NO manifest entry carried it. Dedup was run, not
+        inherited: a scan for 'patterns.md' across all 94 prior entry bodies
+        returned ZERO hits, against a control scan for 'frontmatter' that fired
+        on 12 entries — so the corpus does discuss frontmatter defects, and none
+        of them is this file. The nearest neighbour (the validate-emit.mjs entry)
+        is a DIFFERENT frontmatter defect (a consumer-retained project
+        `SKILL.md`), not this one.
+        THE USER-FACING DEFECT, measured control-first in the filing:
+        `.claude/rules/patterns.md` — the rule governing the core Kailash
+        execution pattern — is entirely ABSENT from `AGENTS.md` (Codex) and
+        `GEMINI.md` (Gemini). Not inlined, not referenced by name (patterns=0 in
+        both; the control rule security.md=1 in both; 62 rules inlined in each).
+        Codex and Gemini consumers therefore receive NO guidance on
+        `rt.execute(wf)` / `wf = builder.build(reg)` ordering, string-literal
+        node IDs, `import kailash` discipline, the 3-parameter node pattern, or
+        the DataFlow/Nexus/Kaizen/MCP patterns. CLAUDE.md lists patterns.md in
+        its Rules Index, which is exactly what makes the gap invisible.
+      root_cause: >-
+        Missing frontmatter does NOT default to baseline — it causes a SILENT
+        DROP. `emit.mjs::getCritBaseline()` (~:756) and `validateCliDelivery()`
+        (~:1861) both `if (!fm) continue;`, so a rule with no frontmatter enters
+        neither the CRIT baseline NOR the rules-reference skill channel.
+        THE GENERATING CONDITION IS STRUCTURAL, not per-file: all six
+        validator-14 offenders are `variants/rs/rules/*.md` overlay files that
+        land FLATTENED into `.claude/rules/`, and `.claude/variants/` does not
+        exist at this tier. Control: `security.md` has both a global and an rs
+        variant, overlays only a SLOT (4 slot-marker lines), lands composed, and
+        PASSES with `priority: 0 / scope: baseline`. Every offender has ZERO
+        slot-marker lines — they are full-body replacements, not slot overlays.
+        The invariant: every rs-variant artifact landing flattened arrives
+        without frontmatter; every global artifact has it. It generalizes past
+        rules — validate-emit.mjs independently flags 7 commands missing
+        frontmatter, and all 7 are `variants/rs/commands/` entries.
+        patterns.md additionally has NO H1 (headings start at `### 1.`).
+      still_open: >-
+        Entire entry. The fix is loom-side and has three parts the filing keeps
+        separate: (a) restore frontmatter to the rs-variant rule files so they
+        stop silently dropping — this is the load-bearing half; (b) convert
+        full-body replacements to slot overlays where the divergence does not
+        warrant a whole-file copy (the same stale-full-copy mode already
+        recorded for the former `variants/rs/rules/agents.md`, which dropped the
+        global's #200 slot:examples partition plus 14 global lines); (c) give
+        patterns.md an H1. The filing ALSO recommends relocating
+        `ci-runners.operator.local.example.md` OUT of `rules/` rather than
+        carving it out of validator 14 — it is a values TEMPLATE an operator
+        copies, not a rule, so the carve-out would leave it misfiled.
+      note_for_gate_1: >-
+        Fixing validator 14 will UNMASK validators 16/18/15/17, which have never
+        executed at this tier (see the sibling emit.mjs entry, issue #125).
+        Budget for further failures surfacing rather than expecting a clean run.
+        Class-A at this template: `.claude/rules/patterns.md` is synced, so a
+        local frontmatter patch here is rebuilt away — the durable fix is at the
+        `variants/rs/rules/` source.
+    reason: >-
+      This is `cross-cli-parity.md`'s failure mode in its literal form — a rule
+      shipped to Codex is not merely weaker than the CC version, it is absent
+      entirely — and it is silent by construction, because the emitter's two
+      frontmatter guards skip rather than warn. Restore frontmatter at the
+      rs-variant source so the flattened overlays rejoin the baseline, and close
+      the generating condition so the next flattened overlay does not repeat it.
+    diff_lines: "~+4-6 frontmatter lines x 6 variant rule files, +1 H1 on patterns.md; larger if (b) slot-overlay conversion is taken"
+
+  - file: .github/scripts/check-local-fix-discard.sh
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — net-new entry, first filed 2026-08-10; a DESIGN QUESTION, deliberately not answered locally
+      reconciled_at: 2026-08-10
+      evidence: >-
+        Filed as issue #113 at this template 2026-08-07 (ledger item G5);
+        appended here 2026-08-10 because no manifest entry carried it — a scan
+        for 'sync-added' over all 94 prior entries returned 0, and the 6 entries
+        matching 'gate a' are about other surfaces (audit-fixture tiering,
+        signing-mutation-guard), none about Gate A's added-content coverage.
+        THE GAP: Gate A detects what an inbound sync REMOVES — substantive lines
+        a local commit authored, present at the merge base and absent from the
+        PR. Its own header states this limitation honestly. It has NO coverage
+        for what a sync ADDS.
+        NOT HYPOTHETICAL: the `52ee39e` sync recovery found the sync had
+        INTRODUCED a new HIGH forged-authorization surface, not merely reverted
+        fixes — `readRepoClass` and its sink `localityNote` were introduced BY
+        that sync (`git log -S` names it sole introducer; both absent at
+        `c4305de`). A crafted `.claude/VERSION::type` carrying a newline planted
+        an arbitrary-target marker at column 0 inside otherwise-legitimate
+        receipts. Gate A would have PASSED that PR. The gate built in response
+        to the sync incident does not detect the most dangerous thing that
+        incident actually did.
+      still_open: >-
+        Entire entry, and it is a DESIGN question for loom as the distributor,
+        not a local fix. Three reasons the filing gives for not answering it
+        locally, the third load-bearing: (1) any coverage rule must distinguish
+        LEGITIMATE sync-added content — the overwhelming majority of every sync
+        diff — from the dangerous kind, and a naive flag-added-lines gate flags
+        every sync completely and is worthless within one cycle (the
+        alert-fatigue mode Gate A's own header designs against); (2) the
+        dangerous class is SEMANTIC, not lexical — a new reader of a synced file
+        on an authorization path — so `hook-output-discipline.md` MUST-2 and
+        `probe-driven-verification.md` MUST-1 both bear on whether a lexical
+        matcher may carry blocking teeth; (3) it is a question about what the
+        DISTRIBUTION CONTRACT should guarantee, which is loom's to answer — a
+        local answer becomes a divergence loom later has to reconcile, and this
+        repo has already spent two sessions recovering from exactly that.
+      disposition: >-
+        The filing offers the narrowest defensible option if loom wants one now,
+        and this entry does NOT pre-decide it: scope Gate A's new half to NEW
+        READERS OF SYNCED FILES ON THE AUTHORIZATION PATH — not all added
+        content, not all added readers. Concretely, a sync PR introducing a new
+        read of `.claude/VERSION`, `.claude/cross-repo-authz/`, or a
+        receipt-bearing surface fails until acknowledged, the same way
+        `ACK-DISCARD:` works today.
+    reason: >-
+      Gate A is asymmetric in the one direction that matters: it guards against
+      a sync silently DISCARDING local fixes, but not against a sync silently
+      ADDING an authorization-path surface — and the incident that motivated the
+      gate did the latter. Decide what the distribution contract guarantees for
+      sync-ADDED content, then scope the gate to it.
+    diff_lines: "~+30-60 in check-local-fix-discard.sh plus an ACK path, IF the narrow authorization-path-reader scoping is taken; unbounded under a broader answer"
 
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
