@@ -1,0 +1,33 @@
+# Gate-C fixture — HEAD, REGRESSED against gate-c-base.yaml.
+#
+# Identical to the base except for the third entry, which carries NO
+# reconciliation block. Gate C MUST exit 1 on this pair. If it ever exits 0,
+# the gate has stopped discriminating and every PASS it has ever printed is
+# worthless — that is the whole reason this fixture exists.
+source_repo: fixture
+origin: use-template
+codify_date: 2026-08-09
+
+changes:
+  - file: .claude/rules/alpha.md
+    action: modify
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09
+      reconciled_at: 2026-08-09
+      evidence: fixture entry; not a real finding.
+
+  - file: .claude/rules/beta.md
+    action: modify
+    reconciliation:
+      status: ALREADY-SOLVED — no Gate-1 action required
+      reconciled_at: 2026-08-09
+      evidence: fixture entry; not a real finding.
+
+  # THE REGRESSION: a new entry asserting a fact with no verification date.
+  - file: .claude/rules/gamma.md
+    action: create
+    reason: >-
+      Fixture entry with no reconciliation block — the exact shape that let 89
+      entries accumulate unverified evidence.
+
+status: pending_review

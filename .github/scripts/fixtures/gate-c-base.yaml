@@ -1,0 +1,25 @@
+# Gate-C fixture — BASE. Two entries, both verified after the last sync.
+# Paired with gate-c-head-regressed.yaml (adds an unverified entry, must FAIL)
+# and gate-c-head-improved.yaml (reconciles nothing new but adds none, PASS).
+# Dates are AFTER `.claude/VERSION::upstream.synced_at` (2026-08-02) so these
+# count as verified; the regression fixture is what moves the number.
+source_repo: fixture
+origin: use-template
+codify_date: 2026-08-09
+
+changes:
+  - file: .claude/rules/alpha.md
+    action: modify
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09
+      reconciled_at: 2026-08-09
+      evidence: fixture entry; not a real finding.
+
+  - file: .claude/rules/beta.md
+    action: modify
+    reconciliation:
+      status: ALREADY-SOLVED — no Gate-1 action required
+      reconciled_at: 2026-08-09
+      evidence: fixture entry; not a real finding.
+
+status: pending_review
