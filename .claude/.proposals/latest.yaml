@@ -159,6 +159,27 @@ changes:
   - file: CLAUDE.md
     action: modify
     suggested_tier: coc
+    reconciliation:
+      status: "ALREADY-SOLVED — no Gate-1 action required"
+      reconciled_at: 2026-08-09
+      evidence: >-
+        BOTH halves this entry tracked have landed. The local stopgap it describes is on disk:
+        CLAUDE.md:118 carries the heading '## GitHub Issue Triage → Upflow Routing (always-loaded)'
+        (confirmed by `grep -n '^## ' CLAUDE.md`, which lists all 10 headings — the same instrument
+        would have shown the section ABSENT had it not landed), and the Rules Index entry at
+        CLAUDE.md:114 indexes artifact-flow.md with the exact reachability argument this entry made:
+        '...the routing summary is ALSO surfaced always-loaded in § "GitHub Issue Triage → Upflow
+        Routing" below, because the path-scope above does NOT trip when triaging a GH issue via `gh`'.
+        More decisively, the PRIMARY fix this entry deferred to (change #1, the synced baseline rule)
+        also landed: `.claude/rules/issue-triage-routing.md` exists (4926 bytes, 2026-08-03) — the
+        same file whose landing entry_index 0 already recorded as ALREADY-SOLVED.
+      disposition: >-
+        Retained per artifact-flow.md § "Append, Never Overwrite Unprocessed Proposals". Gate-1 should
+        SKIP as already-satisfied. The open decision this entry posed to loom — "also propagate the
+        CLAUDE.md pointer to sibling templates, or rely solely on the baseline rule?" — is MOOT by the
+        entry's own stated recommendation: the baseline-rule route landed and is single-source/synced,
+        so the per-template CLAUDE.md addition is belt-and-suspenders, not required. Sibling-template
+        state is NOT verifiable from this repo (repo-scope-discipline.md) and does not need to be.
     reason: |
       GAP 3 local fix (already applied at this template; recommend loom
       coordinate the same across sibling templates).
@@ -1973,6 +1994,36 @@ changes:
   - file: .claude/commands/sweep.md
     action: modify
     suggested_tier: coc
+    reconciliation:
+      status: "STILL-OPEN — re-verified 2026-08-09, defect reproduced verbatim; two of the entry's own cited coordinates have drifted"
+      reconciled_at: 2026-08-09
+      evidence: >-
+        The gate is UNCHANGED and the defect REPRODUCES. sweep.md:141 still opens with an unconditional
+        dynamic import and a raw-message catch: `import("./.claude/bin/lib/loom-links.mjs").then(...)
+        .catch(e=>console.log("<!-- sweep-ecosystem:v1:ERROR reason="+e.message+" -->"))`. Running that
+        exact one-liner in this repo prints (path genericized):
+        `<!-- sweep-ecosystem:v1:ERROR reason=Cannot find module '<repo>/.claude/bin/lib/loom-links.mjs'
+        imported from <repo>/[eval1] -->`. Falsifying result had the fix landed: the N/A sentinel
+        `<!-- sweep-ecosystem:v1:N/A reason=not-orchestration-root -->`, which the same command emits on
+        the isConfigured()/role branch — so the instrument can produce both answers and produced the bad one.
+        The module is absent AND actively purged: `git ls-files .claude/bin/lib/` returns 11 files
+        (cli-delivery, coc-manifest, ecosystem-config, emit-axes, identity-scrub, local-rules,
+        manifest-source, mesh-keys, slot-parser, strip-build-internal, variant-overlay) with no
+        loom-links.mjs; sync-manifest.yaml fences it loom_only at :3299 and purges it on BOTH lanes
+        (:3141 BUILD, :4013 USE); .coc-obsoleted:73 lists it.
+      root_cause: >-
+        Unchanged from the entry: the .catch() cannot distinguish the EXPECTED module-not-found at every
+        consumer from a genuine resolver fault at the orchestration root, and it emits e.message raw —
+        which Node populates with the resolved absolute path, into a report the command's own Output
+        section says is committed at a `visibility: public` template.
+      still_open: >-
+        Both proposed fixes remain unapplied: (a) key the N/A on the resolver CONFIG (positive signal)
+        rather than a module error, and (b) emit a TYPED reason (`reason=resolver-failed code=<e.code>`)
+        or scrub against the repo root instead of raw e.message.
+      note: >-
+        Two coordinates in the entry's own prose have drifted and should be re-read, not trusted:
+        it cites `sync-manifest.yaml:2870` for the purge line (now :3141 BUILD / :4013 USE) and states
+        `.claude/bin/lib/` holds 9 tracked files (now 11). Neither changes the defect.
     reason: |
       SWEEP 9's PRE-CONDITION GATE THROWS AT EVERY CONSUMER INSTEAD OF EMITTING
       ITS N/A SENTINEL — SURFACED BY RUNNING /sweep, NOT BY READING IT.
@@ -2149,6 +2200,45 @@ changes:
     via: kailash-coc-rs
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: "STILL-OPEN — re-verified 2026-08-09, blast radius corrected upward ~12x and the 'implicit exclusion' half is WRONG"
+      reconciled_at: 2026-08-09
+      evidence: >-
+        Core claim HOLDS: `.claude/rules/cross-repo.md` does not exist (`ls` → 'No such file or
+        directory'; control `ls .claude/rules/git.md` → present, so the probe discriminates), and no
+        CROSS-REPO artifact exists on any emitted surface either (`ls .coc/rules/ | grep -i cross` →
+        CROSS-CLI-ARTIFACT-HYGIENE.md, CROSS-CLI-PARITY.md, CROSS-SDK-INSPECTION.md only). The
+        .coc-obsoleted claim HOLDS: grep for 'cross-repo' in .claude/.coc-obsoleted returns nothing,
+        while grep 'loom-links' on the SAME file returns :73/:74 — so the matcher fires there and the
+        silence is a true negative. The priority-0 framing HOLDS: repo-scope-discipline.md frontmatter
+        is `priority: 0` / `scope: baseline`, and its MUST-NOT at :26 defers outward — "instead of the
+        operator's `loom-links.local.json` via `bin/lib/loom-links.mjs::resolveRepo`/`resolveAll`
+        (`rules/cross-repo.md` MUST-1). Artifact paths are illustrative; on disagreement the resolver
+        is authoritative, and no carve-out ever lifts it."
+      diagnosis_sharpened: >-
+        TWO corrections. (1) BLAST RADIUS — the entry says "5 citing artifacts total (worktree.md,
+        sweep.md, enroll.md, migrate.md + this rule)". `grep -rln 'cross-repo\.md'` excluding
+        .claude/.proposals/ returns 62 distinct files: 27 under .claude/ (incl. 5 EXECUTABLE citers —
+        bin/sync-from-canon-fetch.mjs:18,:382, bin/validate-emit.mjs:1461, bin/validate-xref-integrity.mjs:65,
+        hooks/cross-ecosystem-disclosure-guard.js:29, hooks/lib/cross-ecosystem-disclosure-guard.js:53),
+        13 under .coc/, 8 under .codex/, 8 under .gemini/, plus AGENTS.md and GEMINI.md — i.e. the
+        dangling authority is baked into the Codex and Gemini baselines too, not just the CC rule set.
+        (2) The entry's suggested fix asks loom to "record the exclusion in the manifest so it is
+        auditable rather than implicit". That half is ALREADY DONE and the entry is wrong about it:
+        sync-manifest.yaml:3877 lists `- rules/cross-repo.md` under an explicit loom-only fence with a
+        10-line why-comment (:3868-3876) — "USE templates are per-project CC sessions that do NOT do
+        cross-repo enumeration ... Same loom-only-meta-rule classification as loom-csq-boundary.md".
+        So this is a DELIBERATE, DOCUMENTED loom_only fence, NOT a missing distribution.
+      root_cause: >-
+        Restated: the exclusion is intentional and audited, but 62 shipped artifacts — including a
+        priority-0 baseline rule loaded every session at every consumer, two CLI baselines, and five
+        executables — still cite `cross-repo.md` as the authoritative contract. The defect is a
+        CITATION/FENCE mismatch, not an unrecorded omission. The fence and the citations were never
+        reconciled.
+      still_open: >-
+        Gate-1 decides between: ship rules/cross-repo.md on the consumer lane (contradicting the
+        documented loom_only rationale), or repoint/soften the 62 citations at a shipped surface. The
+        second is the larger job and now provably so.
     dedup_evidence: >-
       NOT already solved here. latest.yaml carries 16 `cross-repo` hits, but
       ALL of them concern the `/cross-repo-authorize` RECEIPT-gitignore finding
@@ -2187,6 +2277,31 @@ changes:
     via: kailash-coc-rs
     suggested_tier: coc
     base_version: "2.24.0"
+    reconciliation:
+      status: "STILL-OPEN — re-verified 2026-08-09, diagnosis narrowed: the citation is on the OFFLINE-FALLBACK branch, not the primary resolution path"
+      reconciled_at: 2026-08-09
+      evidence: >-
+        The citation is present and points at a purged module. sync-from-template.md:72, verbatim:
+        "4. **Offline fallback only** — local sibling resolved via `bin/lib/loom-links.mjs`
+        (`use-template.<key>` logical key — canonical NAME→location binding per `cross-repo.md`
+        MUST-1, subsumes `$LOOM_PATH` under the `loom` / `use-template.*` keys), NOT a positional
+        `../{template}/` / `~/repos/loom/{template}/` guess. Used ONLY when steps 2-3 all fail
+        (network unreachable)." That module is on .coc-obsoleted:73 and loom_only-fenced at
+        sync-manifest.yaml:3299, and is absent from `git ls-files .claude/bin/lib/` (11 files, none
+        loom-links). The falsifying result — a step 4 repointed at a shipped resolver, or the citation
+        removed — is not what the file contains. The section heading is `### 2. Locate template`
+        (line 65), confirming the entry's "§ 2 resolution step 4" locator.
+      diagnosis_sharpened: >-
+        The entry describes this as "the documented resolution path names a file the same release
+        deletes", implying the primary path. It is narrower: step 4 is explicitly gated — "Used ONLY
+        when steps 2-3 all fail (network unreachable)" — so the breakage fires only on the offline
+        branch. Real, but the everyday `/sync-from-template` does not hit it. That also means it is
+        silently latent: a consumer discovers it exactly when the network is down and the fallback is
+        the only path left.
+      dedup_note: >-
+        The entry's dedup_evidence claim is CONFIRMED — this is disjoint from the merge-vs-replace
+        contract entry on the same file, and disjoint from the runtime static-import instance it names
+        (they are the doc and runtime halves of one class and must be swept together).
     dedup_evidence: >-
       NOT the same finding as the existing sync-from-template.md entry
       (lines 1056-1176), which is the merge-vs-replace contract contradiction.
@@ -6484,19 +6599,19 @@ gate1_triage_2026_08_09:
       whether or not the proposition holds.
 
   not_assessed:
-    count: 24
+    count: 20
     superseded_note: >-
       This count was 74 when the structural pass first landed. Three
       clause-level shards have since reconciled entries 321-1056, 2233-3243 and
       3334-4398, so 70 of 94 entries now carry a `reconciliation:` block. The
-      24 that remain had only their target existence checked, and they are the
-      honest remainder of this pass. Twenty-three are the un-run shard
-      (`changes` indices 21-58, anchor lines ~1329-2192, `commands/sweep.md`
-      through `audit-fixtures/upflow-open-never-complete/README.md`). The
-      twenty-fourth is index 2, `CLAUDE.md` — NOT part of that shard; it fell
-      in the gap between the 2026-07-26 pass (indices 0,1,3,4,20) and the first
-      clause-level shard's start at index 5, and is called out by name here so
-      the range description does not silently omit it.
+      20 that remain had only their target existence checked, and they are the
+      honest remainder of this pass: `changes` indices 26-58 (anchor lines
+      ~1536-2192), `commands/doctor.md` through
+      `audit-fixtures/upflow-open-never-complete/README.md`. A fourth
+      clause-level shard closed indices 2, 21, 23 and 24 before stopping part
+      way, which is why the range is no longer contiguous from 21 and why index
+      2 (`CLAUDE.md`) — previously called out as a gap between passes — is no
+      longer among them.
     note: >-
       Every `modify` / `added` / `obsolete` entry not named above had only its
       target existence checked. Whether the proposed CHANGE landed inside an
