@@ -1,0 +1,48 @@
+# Gate-C fixture — HEAD, introduces a DOCUMENTED duplicate group.
+#
+# Byte-for-byte the same duplicate group as gate-c-head-dup-undocumented.yaml
+# — a second `.claude/rules/alpha.md` [modify] entry — with ONE difference:
+# the new entry states the coupling. Gate C MUST exit 0 on this pair.
+#
+# WHY THIS FIXTURE EXISTS. Its sibling proves the gate still FAILS an
+# undocumented duplicate; this one proves the documented case actually CLEARS.
+# Without it, the "add a pairing note" instruction would be unfalsifiable from
+# the gate's side all over again — a rule that only ever fails teaches nothing
+# about what passing looks like. The two fixtures differ ONLY in the presence
+# of the note, so the note is provably the operative variable and not some
+# incidental difference in the entry.
+#
+# MUTATION THAT REDS IT: drop `pairing` from the recognised key list in
+# `classify()` and this fixture starts exiting 1, failing the self-test.
+source_repo: fixture
+origin: use-template
+codify_date: 2026-08-10
+
+changes:
+  - file: .claude/rules/alpha.md
+    action: modify
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-09
+      reconciled_at: 2026-08-09
+      evidence: fixture entry; not a real finding.
+
+  - file: .claude/rules/beta.md
+    action: modify
+    reconciliation:
+      status: ALREADY-SOLVED — no Gate-1 action required
+      reconciled_at: 2026-08-09
+      evidence: fixture entry; not a real finding.
+
+  # The SAME duplicate group as the undocumented sibling, but the coupling is
+  # stated — so Gate-1 is told to read the two alpha.md entries together.
+  - file: .claude/rules/alpha.md
+    action: modify
+    reconciliation:
+      status: STILL-OPEN — re-verified 2026-08-10
+      reconciled_at: 2026-08-10
+      evidence: fixture entry; not a real finding.
+      pairing: >-
+        Pairs with the earlier `.claude/rules/alpha.md` entry above. Gate-1
+        should evaluate both in one pass; neither supersedes the other.
+
+status: pending_review

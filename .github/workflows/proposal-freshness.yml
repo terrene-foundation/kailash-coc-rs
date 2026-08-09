@@ -52,6 +52,22 @@ name: Proposal Freshness
 # falsified it. It cannot catch a claim falsified by something other than a
 # sync. `reconciled_at` is self-reported and taken on trust. A PASS means "not
 # staler than before", never "every claim holds".
+#
+# The duplicate-group half is weaker still, and deliberately so. It checks that
+# a NEWLY duplicated (file, action) target carries a non-empty pairing key on
+# at least one of its entries — `ingest_note`, or `pairing` /
+# `cross_reference` / `dedup_note` / `note_for_gate_1` inside
+# `reconciliation:`. It does NOT read that note, so it cannot tell a real
+# pairing from the word "paired". It asserts the coupling was DECLARED, never
+# that it was declared correctly; the reading stays Gate-1's.
+#
+# Until 2026-08-10 this half failed on the duplicate COUNT and then told the
+# author to add an `ingest_note` — advice no code checked, so following it did
+# not clear the red. That is the shape the header warns about two paragraphs
+# up: an instrument whose instruction cannot clear it trains readers to treat
+# red as normal. The fixtures gate-c-head-dup-{undocumented,documented}.yaml
+# differ only in that note and are driven by the self-test below, so the check
+# is shown to discriminate on the coupling rather than on the count.
 
 on:
   pull_request:
@@ -99,17 +115,40 @@ jobs:
         run: |
           set -euo pipefail
           F=.github/scripts/fixtures
-          if python3 .github/scripts/check-proposal-freshness.py \
-               --manifest "$F/gate-c-head-regressed.yaml" \
-               --base-manifest "$F/gate-c-base.yaml" >/dev/null 2>&1; then
-            echo "SELF-TEST FAILED: the gate PASSED a deliberately regressed manifest."
-            echo "It is no longer discriminating; every PASS it prints is meaningless."
-            exit 1
-          fi
-          python3 .github/scripts/check-proposal-freshness.py \
-            --manifest "$F/gate-c-base.yaml" \
-            --base-manifest "$F/gate-c-base.yaml" >/dev/null
-          echo "Self-test OK: fails on regression, passes on no-change."
+          G=.github/scripts/check-proposal-freshness.py
+
+          # must_fail <fixture> <what it proves>
+          must_fail() {
+            if python3 "$G" --manifest "$1" --base-manifest "$F/gate-c-base.yaml" \
+                 >/dev/null 2>&1; then
+              echo "SELF-TEST FAILED: the gate PASSED $1"
+              echo "  ($2)"
+              echo "It is no longer discriminating; every PASS it prints is meaningless."
+              exit 1
+            fi
+          }
+          must_pass() {
+            if ! python3 "$G" --manifest "$1" --base-manifest "$F/gate-c-base.yaml" \
+                   >/dev/null 2>&1; then
+              echo "SELF-TEST FAILED: the gate FAILED $1"
+              echo "  ($2)"
+              echo "A gate that cannot be cleared by following its own instruction"
+              echo "teaches readers that red is normal — the failure this gate avoids."
+              exit 1
+            fi
+          }
+
+          must_fail "$F/gate-c-head-regressed.yaml" \
+            "a new entry with no reconciliation block must regress the count"
+          must_fail "$F/gate-c-head-dup-undocumented.yaml" \
+            "a new duplicate group with no stated coupling must fail"
+          must_pass "$F/gate-c-head-dup-documented.yaml" \
+            "the SAME duplicate group WITH a pairing note must clear"
+          must_pass "$F/gate-c-base.yaml" \
+            "an unchanged manifest must pass"
+
+          echo "Self-test OK: fails on an unverified entry and on an undocumented"
+          echo "duplicate; passes on no-change and on a documented duplicate."
 
       - name: Gate C — manifest freshness ratchet
         env:

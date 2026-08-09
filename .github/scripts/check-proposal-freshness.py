@@ -61,10 +61,19 @@ Note the asymmetry: this gate READS `.claude/VERSION`, which sync DOES rebuild.
 That is deliberate and correct — sync rewrites it with the NEW sync date, which
 is exactly the reference point the freshness comparison needs.
 
-Exit 0 = no regression. Exit 1 = this PR increased unverified or duplicate
-counts. Exit 2 = the manifest is structurally broken (or the gate could not run,
-which is reported as a failure rather than a pass, since a gate that did not run
-is not a gate that passed).
+Exit 0 = no regression. Exit 1 = this PR raised the unverified count, OR it
+introduced a duplicate (file, action) group whose entries do not state the
+coupling. A NEW duplicate group that DOES state it passes: the manifest is
+append-only, so a second entry against one target is often the correct shape,
+and what matters is that Gate-1 is told to read them together. The coupling is
+declared by a non-empty `ingest_note` (top level) or `pairing` /
+`cross_reference` / `dedup_note` / `note_for_gate_1` inside `reconciliation:`
+on at least one entry in the group. The check is structural — it confirms the
+note EXISTS, never that it is correct.
+
+Exit 2 = the manifest is structurally broken (or the gate could not run, which
+is reported as a failure rather than a pass, since a gate that did not run is
+not a gate that passed).
 """
 
 from __future__ import annotations
@@ -177,11 +186,38 @@ def classify(entries: list[dict], sync: dt.date | None) -> dict:
     counts = Counter((str(e.get("file")), str(e.get("action"))) for e in entries)
     duplicates = {pair: n for pair, n in counts.items() if n > 1}
 
+    # A duplicate group is DOCUMENTED when at least one of its entries states
+    # the coupling, so Gate-1 reads them together. Before this existed the gate
+    # failed on the duplicate COUNT and then told the author to "add an
+    # `ingest_note`" — advice it had no code to check, so an author who did
+    # exactly as instructed still got red. A gate whose instruction cannot
+    # clear it teaches readers that red is normal, which is the alert-fatigue
+    # failure this workflow's header sets out to avoid.
+    documented: set[tuple[str, str]] = set()
+    for entry in entries:
+        pair = (str(entry.get("file")), str(entry.get("action")))
+        if pair not in duplicates:
+            continue
+        block = entry.get("reconciliation")
+        block = block if isinstance(block, dict) else {}
+        if any(
+            str(source.get(key, "")).strip()
+            for source, key in (
+                (entry, "ingest_note"),
+                (block, "pairing"),
+                (block, "cross_reference"),
+                (block, "dedup_note"),
+                (block, "note_for_gate_1"),
+            )
+        ):
+            documented.add(pair)
+
     return {
         "total": len(entries),
         "verified": verified,
         "unverified": unverified,
         "duplicate_groups": duplicates,
+        "documented_duplicates": documented,
     }
 
 
@@ -309,7 +345,20 @@ def main() -> int:
         f"  duplicates : {len(base['duplicate_groups'])} -> {len(head['duplicate_groups'])} ({d_duplicates:+d})"
     )
 
-    if d_unverified > 0 or d_duplicates > 0:
+    # Only groups this PR INTRODUCED are its responsibility, and only the ones
+    # that left the coupling undocumented. A new duplicate group is allowed —
+    # the manifest is append-only, so a second entry against one target is
+    # often the correct shape — provided Gate-1 is told to read them together.
+    new_groups = set(head["duplicate_groups"]) - set(base["duplicate_groups"])
+    undocumented_new = sorted(new_groups - head["documented_duplicates"])
+    if new_groups:
+        documented_new = len(new_groups) - len(undocumented_new)
+        print(
+            f"  new duplicate groups: {len(new_groups)} "
+            f"({documented_new} documented, {len(undocumented_new)} not)"
+        )
+
+    if d_unverified > 0 or undocumented_new:
         print("\nFAIL(gate-c): this PR leaves the manifest staler than it found it.")
         if d_unverified > 0:
             noun = "entry carries" if d_unverified == 1 else "entries carry"
@@ -317,10 +366,15 @@ def main() -> int:
             print("  unchecked since the last sync. A new entry should state evidence")
             print("  taken NOW; an old one should carry a `reconciliation:` block with")
             print("  `reconciled_at`. Gate-1 acts on these statements as fact.")
-        if d_duplicates > 0:
-            print(f"  {d_duplicates} more target(s) now carry multiple entries.")
-            print("  That is allowed, but they must be read together at Gate-1 — add")
-            print("  an `ingest_note` pairing them so the coupling is not lost.")
+        if undocumented_new:
+            noun = "target" if len(undocumented_new) == 1 else "targets"
+            print(f"  {len(undocumented_new)} newly-duplicated {noun} do not state the")
+            print("  coupling, so Gate-1 would meet them as unrelated entries:")
+            for target, action in undocumented_new:
+                print(f"    {action:9s} {target}")
+            print("  Pair them by adding ONE of `ingest_note` (top level) or")
+            print("  `pairing` / `cross_reference` / `dedup_note` / `note_for_gate_1`")
+            print("  (inside `reconciliation:`) to at least one entry in each group.")
         return 1
 
     if d_unverified < 0 or d_duplicates < 0:
