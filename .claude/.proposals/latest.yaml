@@ -33,7 +33,18 @@ changes:
     suggested_tier: coc
     reconciliation:
       status: ALREADY-SOLVED — no Gate-1 action required
-      reconciled_at: 2026-07-26
+      reconciled_at: 2026-08-09
+      restamped_note: >-
+        Date advanced 2026-07-26 -> 2026-08-09: every claim below was re-derived
+        against the post-sync tree, not carried forward. Frontmatter is exact
+        (`priority: 0` / `scope: baseline` / `cli_delivery: baseline`, lines
+        2-4); the single MUST is at :13; all four repo classes are at :17-20;
+        depth is deferred to `artifact-flow.md` (2 references, not inlined).
+        Control: the same grep returns 0 against a string known absent from the
+        file, so these are real matches rather than a matcher that fires on
+        anything. ONE drift: the July text says "48 lines"; `wc -l` now reports
+        46 — a post-2026-08-02-sync change touching no substantive claim.
+        Recorded rather than silently corrected.
       evidence: >-
         The proposed rule EXISTS in this template as of the 2026-07-22 sync
         (.claude/rules/issue-triage-routing.md, 48 lines) with exactly the
@@ -114,7 +125,19 @@ changes:
     suggested_tier: coc
     reconciliation:
       status: ALREADY-SOLVED — no Gate-1 action required
-      reconciled_at: 2026-07-26
+      reconciled_at: 2026-08-09
+      restamped_note: >-
+        Date advanced 2026-07-26 -> 2026-08-09: both halves re-read on the
+        post-sync tree. `commands/codify.md:51` still carries the proposed
+        Step-1b text verbatim INCLUDING the disclosure-scrub clause
+        ("disclosure-scrub each per `rules/upstream-issue-hygiene.md` MUST-2
+        (hop-level provenance only, no consumer-identifying tokens carried into
+        the proposal)"). The four-row repo-class precedence is present in full,
+        routing to Steps 7a/7b/7c. ONE drift: the July text cites it at
+        :119-124; it now sits at :123-127 — same four rows, shifted by a later
+        edit above it. The line numbers in the evidence below are therefore
+        stale while the claim they support holds; corrected here rather than
+        left for a reader to trip over.
       evidence: >-
         The proposed FIX landed near-verbatim. commands/codify.md:51 now reads
         "**USE-template repos only** (`.claude/VERSION::type ==
@@ -7325,17 +7348,17 @@ gate1_triage_2026_08_09:
       commentary on a count that is now zero is itself the kind of stale claim
       this pass exists to remove.
     residual: >-
-      TWO entries — 0 (`rules/issue-triage-routing.md`) and 1
-      (`commands/codify.md`) — carry blocks dated 2026-07-26, which PREDATE the
-      2026-08-02 sync, so Gate C
-      (`.github/workflows/proposal-freshness.yml`) correctly counts them as
-      unverified-since-sync even though they are not blank. Both were
-      dispositioned ALREADY-SOLVED in July and nothing observed this session
-      contradicts that; entry 0's target was additionally confirmed to exist on
-      disk. But an existence check is weaker than the July block's actual claim
-      (that the rule landed with the PROPOSED SHAPE), and "not contradicted" is
-      not "re-verified" — so the stamps are deliberately left at 2026-07-26
-      rather than advanced on thinner evidence than they assert.
+      NONE. Every entry now carries evidence dated at or after the 2026-08-02
+      sync, so Gate C (`.github/workflows/proposal-freshness.yml`) counts zero
+      unverified-since-sync. The last two — 0 (`rules/issue-triage-routing.md`)
+      and 1 (`commands/codify.md`) — were briefly left at 2026-07-26 on the
+      grounds that "not contradicted" is not "re-verified" and an existence
+      check is weaker than the claim those blocks assert. That reasoning was
+      right, so the fix was to do the stronger check rather than to advance the
+      stamp: entry 0's frontmatter, MUST clause, four repo classes and
+      depth-deferral were each re-derived, and entry 1's Step-1b text and
+      four-row precedence were re-read in full. Both then restamped, each
+      carrying the line-number drift the re-check surfaced.
     residual_correction: >-
       An earlier revision of this field named entries 0, 1 and 20 as the
       residual. That was wrong on both ends: the real pre-sync set was 0, 1, 3
