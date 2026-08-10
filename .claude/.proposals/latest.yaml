@@ -7557,6 +7557,104 @@ changes:
       red at every consumer. Tie a fixture's distribution to its subject's.
     diff_lines: "~+6-12 use_exclude entries (one per stranded fixture dir), or fewer if the exclusion is derived from the subject's tier rather than enumerated"
 
+  - file: .claude/bin/validate-emit.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — net-new entry, first filed 2026-08-10; census re-measured, supersedes the figure issue #112 carried
+      reconciled_at: 2026-08-10
+      evidence: >-
+        RE-MEASURED AT HEAD BY RUNNING THE VALIDATOR, not read from a prior
+        census: `node .claude/bin/validate-emit.mjs` exits 1 and prints
+        `summary: 800 pass / 53 fail / 0 fixture-needed / 84 skip — 53
+        blocking`, followed by `/sync is BLOCKED. Fix the findings above, or
+        pass --allow=<check-id>:<artifact>`. Exit code read directly, not
+        through a pipe.
+        THE FIGURE IN CIRCULATION WAS STALE AND UNDERSTATED. Issue #112 records
+        this runner as "34 pass / 21 fail". At HEAD it is 800 pass / 53 fail —
+        the pass count is off by a factor of ~23 and the blocking count by more
+        than double. Anyone sizing this work from #112 would have planned
+        against a quarter of the real surface. The failure count is now
+        asserted equal to the instrument's own output in the same change that
+        states it.
+        EIGHTEEN OF THE 53 WERE FIXED AT THIS TEMPLATE, NOT PROPOSED, and are
+        deliberately NOT part of this entry: `claude-md-surface-role-parity`
+        failed once per de-surfaced command because CLAUDE.md's half of the
+        surface_roles contract was absent entirely. CLAUDE.md is template-owned
+        and preserved across syncs, so that fix is durable HERE (Class-A does
+        not apply to it) and a proposal would have been the wrong instrument.
+        Post-fix re-run: `801 pass / 35 fail`, that check `[ok]`.
+        THE RESIDUAL 35 ARE LOOM'S — every one targets a synced artifact where
+        a local edit is rebuilt away by the next `/sync-to-use`.
+      root_cause: >-
+        The 35 are NOT one defect; they are ten independent checks, and Gate-1
+        should route them as such rather than as a single "validator red" item.
+        Counts measured by grouping the validator's own `✗` lines under their
+        `[FAIL] <check-id>` headers (total reconciles to 35):
+          7  provenance-subagent-hooks    — agents wired cc=true but frontmatter lacks the provenance-capture-tool.js PreToolUse hook
+          7  hook-delivery                — hooks UNDECLARED in hook_delivery, i.e. SILENT DROP with no Codex/Gemini lane
+          7  command-frontmatter          — commands whose first line is an H1, not `---`
+          4  provenance-parity            — codex/gemini declare a provenance hook wired that is not registered in their emit target
+          2  settings-hook-registration   — top-level hooks neither registered in settings.json nor carrying an @settings-registration marker
+          2  gitignore-learning-parity    — learning/** paths loom gitignores that gitignore_additions omits, so a consumer can commit per-clone state
+          2  consumer-efficacy            — codex/gemini skills/management emitted with no SKILL.md anywhere in the tree
+          2  command-line-cap             — sync-from-template.md at 185 and test.md at 173 body lines, over the 150 cap
+          1  paths-annotation-consistency — CLAUDE.md's Rules-Index annotates `**/*.rb` for env-models.md but the rule's own paths: lacks it
+          1  codex-policies-fresh         — committed .codex-mcp-guard/policies.json diverges from a fresh extraction
+      still_open: >-
+        All 35. Two clusters are worth Gate-1's attention ahead of the rest
+        because they are SILENT rather than merely non-compliant:
+        `hook-delivery` (7) reports a SILENT DROP — a hook with no declared
+        delivery lane simply never reaches Codex or Gemini, which is the
+        cross-CLI parity failure mode in its literal form; and
+        `gitignore-learning-parity` (2) is a disclosure class — loom's own
+        .gitignore treats those learning/** paths as per-clone state while the
+        distributable block omits them, so a consumer can git-commit
+        coordination state into a repo that may be public.
+      note_for_gate_1: >-
+        ONE FINDING IS DELIBERATELY NOT PRE-DECIDED. `paths-annotation-
+        consistency` can be cleared from either side, and the two are not
+        equivalent: dropping `**/*.rb` from CLAUDE.md's annotation would make
+        the doc agree with the rule, but this is the rs ALL-BINDINGS template
+        whose consumers write Ruby as well as Python, so the likely-correct fix
+        is the rule's `paths:` GAINING `**/*.rb` — the doc is probably right and
+        the rule under-declared. Editing the doc was available here and was NOT
+        taken, because papering the check green would silently deny the rule to
+        every Ruby consumer. Gate-1 decides which side moves.
+      cross_reference: >-
+        Supersedes the "34 pass / 21 fail" figure in issue #112, whose OTHER
+        two root causes are already routed: the stranded-fixture cluster has its
+        own `.claude/sync-manifest.yaml` entry filed the same day, and the
+        `proximity-band` failures are downstream of the emit RED carried by the
+        `.claude/bin/emit.mjs` (#125) and `.claude/rules/patterns.md` (#119)
+        entries. This entry is the third and last of #112's findings to be
+        carried.
+    ingest_note: >-
+      PAIR THIS WITH THE OTHER `.claude/bin/validate-emit.mjs` ENTRY — the
+      preserved-project-SKILL.md one. BOTH target this validator and Gate-1
+      should read them together, but they are DISTINCT and neither supersedes
+      the other: that entry proposes ADDING a check (a consumer-retained
+      project SKILL.md without leading frontmatter that Codex then skips), while
+      this one is a CENSUS of what the validator ALREADY reports red at HEAD.
+      One widens the instrument, the other reports its current output — so
+      landing that entry will, if anything, ADD to this count rather than
+      reduce it, and the two should be sequenced with that in mind. Dedup was
+      re-run rather than inherited: a scan for `file: .claude/bin/validate-emit.mjs`
+      returns exactly TWO hits, that entry and this one, against a control
+      `file: .claude/bin/` firing across several entries, so the pair is real
+      and there is no third claimant.
+    reason: >-
+      This validator gates `/sync` and it is red, so the distribution path is
+      blocked at every consumer that runs it — and the figure the institution
+      carried for it (34 pass / 21 fail, via #112) understated the real surface
+      by more than double on the blocking count. Re-census it, route the ten
+      checks independently, and treat hook-delivery's silent drop and
+      gitignore-learning-parity's disclosure gap as the two that are not merely
+      cosmetic.
+    diff_lines: "spans 10 independent checks across commands/, agents/, hooks/, sync-manifest.yaml and the codex/gemini emit targets — not a single-file diff; sizing is per-cluster"
+
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
 # removed (artifact-flow.md § "Append, Never Overwrite Unprocessed Proposals").
