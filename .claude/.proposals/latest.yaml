@@ -7472,6 +7472,91 @@ changes:
       sync-ADDED content, then scope the gate to it.
     diff_lines: "~+30-60 in check-local-fix-discard.sh plus an ACK path, IF the narrow authorization-path-reader scoping is taken; unbounded under a broader answer"
 
+  - file: .claude/sync-manifest.yaml
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — net-new entry, first filed 2026-08-10
+      reconciled_at: 2026-08-10
+      evidence: >-
+        Filed as issue #112 at this template 2026-08-07 (enforcement-census
+        correction, full working in the workspace census file); appended here
+        2026-08-10 because NO manifest entry carried it. Dedup run, not
+        inherited: scans over all 97 prior entry bodies returned ZERO for
+        `codex-dispatcher`, `codex-templates`, `coc-sync.md`,
+        `coc-manifest-integrity`, `detection-dispatch-check`,
+        `validate-envelope-dna` and `validate-pact-envelope`, against controls
+        that fired hard on `audit-fixtures` (28 entries), `sync-manifest` (27)
+        and `use_exclude` (8) — so the corpus does discuss fixture paths and
+        the exclusion mechanism, and none of it is this claim. The two entries
+        matching `strip-build-internal` (sweep.md, ecosystem-init.md) cite it
+        only as one item in a list of absent `.claude/bin/*.mjs` modules; they
+        carry a different defect. Entry 85 names #112 explicitly ONLY to scope
+        ITSELF away from it ("those concern audit-fixture tier").
+        THE DEFECT: six audit-fixture runners cannot pass at ANY consumer tier
+        because the fixture DIRECTORY ships while the artifact it tests does
+        NOT. The runner fails on absence and reads as an enforcement
+        regression. Measured absent with a working control proving the check
+        can report PRESENT (`.claude/bin/emit.mjs` PRESENT; the fixture dir
+        `.claude/audit-fixtures/codex-dispatcher` PRESENT — so the fixture DID
+        ship while its subject did not).
+      root_cause: >-
+        For two of the six the exclusion is not an oversight — THIS FILE
+        DECLARES IT DELIBERATELY, which is what makes the pairing a
+        self-contradiction rather than a gap: `.claude/codex-templates/` is
+        described as a "loom-internal Codex emitter SOURCE tree ... NEVER
+        belongs on a consumer surface" (~line 3133, actively purged via
+        `.coc-obsoleted`), and `agents/management/coc-sync.md` as a "Gate-2
+        distributor — loom-only orchestration" (~line 3234). So the manifest
+        purges the subject from every consumer while the fixture testing it
+        still ships. The other four import `.claude/bin/*.mjs` modules absent
+        for the same reason.
+      still_open: >-
+        Entire entry. Proposed fix is one change of shape, applied six times:
+        `use_exclude` each fixture directory alongside the subject it tests. A
+        fixture is an enforcement instrument FOR an artifact and belongs on
+        exactly the tiers that receive that artifact — so the exclusion should
+        be derived from the subject's tier rather than maintained as a second
+        independent list that can drift from it. Gate-1 should decide whether
+        to encode that derivation or to enumerate the six.
+      note_for_gate_1: >-
+        SCOPE — this entry carries ONLY root cause A (the six shipped-fixture /
+        unshipped-subject runners). #112's root cause B (`proximity-band` does
+        not hang; it terminates at exit 1 with all 8 failures downstream of an
+        emit dry-run exiting 2) is the SAME emit RED that the `emit.mjs` and
+        `patterns.md` entries filed 2026-08-10 carry, so it is deliberately not
+        re-filed here — fixing validator 14 is expected to clear it. #112's
+        third finding (`validate-emit` genuinely substantive, 34 pass / 21
+        fail) is a separate live defect and is NOT carried by this entry.
+      cross_reference: >-
+        Read with the `.claude/bin/emit.mjs` (issue #125) and
+        `.claude/rules/patterns.md` (issue #119) entries filed the same day:
+        those close the emit RED that #112's root cause B is downstream of.
+    ingest_note: >-
+      PAIR THIS WITH THE OTHER `.claude/sync-manifest.yaml` ENTRY — the
+      `.coc-obsoleted`-purge one (issue #78: the purge manifest names five
+      paths the same release ships). BOTH target this file and BOTH are about
+      the manifest describing a distribution that does not match what ships,
+      so Gate-1 should evaluate them in ONE pass over the file's tier and
+      exclusion lists rather than twice. They are DISTINCT and neither
+      supersedes the other: #78 is a purge list naming paths that DO ship
+      (over-deletion at the consumer), while this entry is an exclusion list
+      MISSING paths that should NOT ship (fixtures stranded without their
+      subject). The dedup was re-run rather than inherited — a scan for
+      `file: .claude/sync-manifest.yaml` returns exactly TWO hits, that entry
+      and this one, against a control `file: .claude/` firing across most of
+      the manifest, so the pair is real and there is no third claimant.
+    reason: >-
+      Six enforcement runners that cannot pass at any consumer tier train every
+      future reader to treat a red enforcement layer as normal, and that is the
+      condition under which a real red goes unnoticed. The fixtures are not
+      wrong and the exclusions are not wrong — they are just not derived from
+      each other, so the two lists drift and the drift shows up as permanent
+      red at every consumer. Tie a fixture's distribution to its subject's.
+    diff_lines: "~+6-12 use_exclude entries (one per stranded fixture dir), or fewer if the exclusion is derived from the subject's tier rather than enumerated"
+
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
 # removed (artifact-flow.md § "Append, Never Overwrite Unprocessed Proposals").
