@@ -71,6 +71,23 @@ Phase commands map 1:1 across the three CLIs. The prompt body is shared — only
 
 Source-of-truth definitions live in `.claude/commands/`; Codex mirrors at `.codex/prompts/<name>.md`; Gemini at `.gemini/commands/<name>.toml`.
 
+### Surface roles — which commands the platform role does NOT see
+
+`sync-manifest.yaml::surface_roles` narrows which operator roles each command
+surfaces to. This list is the doc half of that config and MUST stay equal to it
+— `validate-emit.mjs::claude-md-surface-role-parity` asserts set equality in
+BOTH directions and BLOCKS `/sync` on any drift, so a command added to or
+removed from the manifest's role lists MUST be mirrored here in the same change.
+
+- Phase + delivery commands **de-surfaced at the platform role**: `/analyze`, `/todos`, `/implement`, `/redteam`, `/codify`, `/release`, `/deploy`, `/validate`.
+- Framework quick-references **de-surfaced at the platform role**: `/ai`, `/api`, `/db`, `/sdk`, `/test`.
+- Design + frontend commands **de-surfaced at the platform role**: `/design`, `/i-audit`, `/i-harden`, `/i-polish`.
+- Method commands **de-surfaced at the platform role**: `/conformance-walk`.
+
+No command is currently platform-surfaced, so there is no "default-surfaced for
+every role" list to keep in step; if one is added to the manifest it needs its
+own bullet here carrying that exact phrase, which is the token the checker reads.
+
 ## Agent Invocation — Per-CLI Syntax
 
 Semantics identical; syntax differs:
