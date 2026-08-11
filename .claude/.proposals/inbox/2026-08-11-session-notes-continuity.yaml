@@ -1,0 +1,55 @@
+# Step-7c downstream upflow proposal.
+# NO source_repo — hop-level-only provenance per the scenario-8 disclosure fence.
+origin: downstream
+codify_date: 2026-08-11
+codify_session: "rules+hooks(continuity): operator-fragment-first, no-truncate-read, bounded session notes"
+template_slug: kailash-coc-rs
+template_version: "2.23.22"
+loom_sha: "22fff0a"
+changes:
+  - file: .claude/rules/session-notes-continuity.md
+    action: created
+    base_version: "2.23.22"
+    reason: >-
+      Session continuity has two artifacts that are not interchangeable: the per-operator
+      fragment (.session-notes.d/<display_id>.md) carries STANDING DIRECTIVES — cycle budgets,
+      class ordering, reporting cadence — while workspace .session-notes carries project
+      narrative. An agent that reads the workspace notes and skips the fragment inherits what
+      happened and loses what it was told to do, and cannot detect the gap because nothing in
+      the narrative references the missing directive. Compounding this, unbounded notes cannot
+      be read whole, so the agent truncates — and a truncated continuity read is
+      indistinguishable at act-time from a complete one, so every downstream decision inherits
+      the gap with full confidence. Three MUST clauses as one mechanism: read the fragment
+      first (it routes), never truncate-read a continuity artifact, and keep notes bounded
+      (target 150 lines / ceiling 300) with history in named overflow files. A no-truncate rule
+      over an unbounded file only relocates the failure, which is why all three ship together.
+      Composes with knowledge-convergence.md MUST-1, which established WHERE the fragment lives
+      for concurrency; this adds that it is read first, whole, and stays bounded.
+    diff_lines: "+247 -0"
+  - file: .claude/hooks/session-notes-guard.js
+    action: created
+    base_version: "2.23.22"
+    reason: >-
+      Structural enforcement for the rule above; prose alone is what already failed, since the
+      directive existed and was not read. PreToolUse(Read) blocks a Read carrying limit/offset
+      against a continuity artifact — an irrefutable structural fact off the tool-call
+      parameters, which hook-output-discipline.md MUST-2 reserves block for. It also blocks a
+      workspace .session-notes read when no operator fragment has been read this session,
+      failing OPEN when no fragment resolves, a bounded one-step-recoverable false block in the
+      same posture as analyze-completeness-guard.js. PostToolUse(Edit|Write) advises when a
+      continuity artifact exceeds the ceiling; advisory only, because blocking the write would
+      strand the content being organised. Fragment resolution prefers <display_id>.md, else
+      newest mtime, and names sibling lane fragments — a fragment the agent never learns about
+      is the same invisible-directive failure.
+    diff_lines: "+310 -0"
+  - file: .claude/audit-fixtures/session-notes-continuity/run-fixtures.mjs
+    action: created
+    base_version: "2.23.22"
+    reason: >-
+      15 committed fixtures per cc-artifacts.md Rule 9, one per scope-restriction predicate:
+      the three block paths, offset=0 as a non-truncation, the fragment-first ordering unblock,
+      both fail-open paths, non-continuity scope isolation, the advisory ceiling boundary, and
+      four regression locks on fragment resolution (prefers display_id over alphabetical-first;
+      reports siblings; falls back to newest not stalest; returns null with no fragment dir).
+    diff_lines: "+108 -0"
+status: pending_review
