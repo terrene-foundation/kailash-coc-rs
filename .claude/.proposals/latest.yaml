@@ -7804,6 +7804,153 @@ changes:
       silent on both sides.
     diff_lines: "+70 -0"
 
+  # -------------------------------------------------------------------------
+  # RELAYED FROM THE DOWNSTREAM UPFLOW INBOX — /sync-from-downstream 2026-08-11
+  # Source offer: .claude/.proposals/inbox/2026-08-11-session-notes-continuity.yaml
+  # Hop-level provenance ONLY (origin: downstream, via: kailash-coc-rs); the
+  # offer carries no source_repo and this relay adds none. Provenance verified
+  # against the ARRIVAL LANE (proposal-intake-trust.md MUST-3): declares
+  # `template_slug: kailash-coc-rs`, arrived on THIS template's inbox lane.
+  # Disclosure scrub HUMAN; the mechanical scanner is NOT cited because
+  # `.claude/.proposals/` is isNeverSynced and prints "0 files ... clean" for
+  # clean and leaking input alike (instrument-discipline.md MUST-1).
+  # BASE-VERSION DRIFT, flagged not silently normalized: the offer declares
+  # base_version 2.23.22 while this template is at 2.24.0, so its line-number
+  # and file-state assumptions are one minor behind. Its three target files are
+  # still ABSENT here (verified), so the drift does not invalidate the offer —
+  # but Gate-1 should re-derive against current HEAD rather than trust the
+  # stated base.
+  # -------------------------------------------------------------------------
+
+  - file: .claude/rules/session-notes-continuity.md
+    action: create
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    rebase_required: true
+    reconciliation:
+      status: STILL-OPEN — relayed 2026-08-11; target absence re-verified here, base_version rebased 2.23.22 -> 2.24.0
+      reconciled_at: 2026-08-11
+      evidence: >-
+        TARGET IS GENUINELY NET-NEW: `.claude/rules/session-notes-continuity.md`
+        does not exist at this template, against a control confirming the same
+        check reports PRESENT for `.claude/rules/git.md` — so `create` is the
+        correct action and the absence is a true negative, not a broken check.
+        THE COMPOSITION CLAIM HOLDS: the offer says it composes with
+        `knowledge-convergence.md` MUST-1, which established WHERE the fragment
+        lives; that rule at :26 does mandate the split to
+        `.session-notes.d/<display_id>.md` and BLOCKS a single shared
+        `.session-notes`. So this offer adds READ-ORDER and BOUNDEDNESS on top
+        of an existing LOCATION mandate, and does not contradict it.
+        DEDUP RE-RUN, NOT INHERITED: scans for `session-notes-continuity`,
+        `session-notes-guard` and `continuity` each returned ZERO across all
+        101 prior entries, against controls firing on `rules/` (42) and
+        `hooks/` (28); no prior entry targets any of the three files.
+      note_for_gate_1: >-
+        THE FAILURE MODE THIS DESCRIBES RECURRED AT THIS TEMPLATE DURING THE
+        INGEST SESSION, which is first-hand corroboration the offer could not
+        have supplied and Gate-1 would not otherwise have. Both halves fired:
+        (a) the workspace `.session-notes` this repo advertises at SessionStart
+        was STALE and had to carry an explicit "SUPERSEDED — read the operator
+        fragment instead" banner, i.e. the exact two-artifact confusion the
+        offer names, resolved only because a human-authored redirect happened
+        to be there; and (b) a `session-notes-coherence/C3` hook fired FOUR
+        times in one session reporting the operator fragment lagging HEAD by
+        2-5 commits. The offer's premise — that an agent reading the wrong
+        artifact cannot detect the gap from the narrative — matches what was
+        observed.
+      still_open: >-
+        Entire entry. The three MUST clauses (fragment read first; no
+        truncate-read of a continuity artifact; bounded notes at target 150 /
+        ceiling 300 with named overflow files) are unlanded here.
+    reason: >-
+      Session continuity has two artifacts that are not interchangeable — the
+      per-operator fragment carries standing DIRECTIVES, the workspace notes
+      carry project NARRATIVE — and an agent that reads the narrative and skips
+      the fragment inherits what happened while losing what it was told to do,
+      with nothing in the narrative referencing the missing directive. Bounding
+      ships with it because a no-truncate rule over an unbounded file only
+      relocates the failure.
+    diff_lines: "+247 -0"
+
+  - file: .claude/hooks/session-notes-guard.js
+    action: create
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    rebase_required: true
+    reconciliation:
+      status: STILL-OPEN — relayed 2026-08-11; target absence + cited precedent both re-verified here
+      reconciled_at: 2026-08-11
+      evidence: >-
+        TARGET ABSENT at this template (same control as the paired rule entry),
+        so `create` is correct.
+        THE CITED FAIL-OPEN PRECEDENT SHIPS: the offer justifies its
+        block-when-no-fragment-read posture by analogy to
+        `analyze-completeness-guard.js`, and that hook IS present here — so the
+        precedent is checkable rather than asserted, and Gate-1 can compare the
+        two postures directly.
+        THE SEVERITY SPLIT IS THE PART TO SCRUTINIZE AND IT LOOKS SOUND:
+        `block` is claimed only for a Read carrying `limit`/`offset` against a
+        continuity artifact, which is an irrefutable STRUCTURAL fact read off
+        the tool-call parameters — the narrow case `hook-output-discipline.md`
+        MUST-2 reserves block for — while the size-ceiling check is advisory
+        because blocking a write would strand the content being organised.
+      still_open: >-
+        Entire entry: the PreToolUse(Read) block paths, the fragment-first
+        ordering gate, the fail-open branches, the PostToolUse(Edit|Write)
+        ceiling advisory, and the fragment-resolution order
+        (display_id, else newest mtime, naming sibling lane fragments).
+      note_for_gate_1: >-
+        Prose alone is NOT sufficient here and the offer says so plainly — the
+        directive it protects already existed and was still not read. That is
+        the argument for a structural hook rather than a fourth MUST clause,
+        and it is the strongest part of the submission.
+    reason: >-
+      Structural enforcement for the paired rule: a truncated continuity read
+      is indistinguishable at act-time from a complete one, so every downstream
+      decision inherits the gap with full confidence. Only a tool-call-time
+      check can tell them apart, and only for the structural half.
+    diff_lines: "+310 -0"
+
+  - file: .claude/audit-fixtures/session-notes-continuity/run-fixtures.mjs
+    action: create
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    rebase_required: true
+    reconciliation:
+      status: STILL-OPEN — relayed 2026-08-11; target absence re-verified here
+      reconciled_at: 2026-08-11
+      evidence: >-
+        TARGET ABSENT at this template, so `create` is correct. The fixture set
+        arrives WITH its detector, which is what `cc-artifacts.md` Rule 9
+        requires and what most deferred-detector entries in this manifest
+        cannot claim.
+        COVERAGE SHAPE IS ONE-PER-PREDICATE, not one-per-clause: the three
+        block paths, `offset=0` as an explicit NON-truncation boundary, the
+        fragment-first unblock, both fail-open paths, non-continuity scope
+        isolation, the advisory ceiling boundary, and four regression locks on
+        fragment resolution (prefers display_id over alphabetical-first; names
+        siblings; falls back to NEWEST not stalest; returns null with no
+        fragment dir).
+      still_open: >-
+        Entire entry. NOT VERIFIED AT THIS HOP, and stated rather than implied:
+        the fixtures were not executed here because neither they nor the hook
+        they exercise exist at this template — the count and per-predicate
+        mapping above are read from the offer's own description, not measured.
+        Gate-1 MUST run them after landing the hook; per
+        `instrument-discipline.md` MUST-2(b) each case should name the mutation
+        that reds it before the suite is cited as coverage.
+    reason: >-
+      Fixtures land WITH the detector rather than deferred, so the hook's
+      scope-restriction predicates are mechanically checkable from the first
+      release instead of resting on review judgment.
+    diff_lines: "+108 -0"
+
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
 # removed (artifact-flow.md § "Append, Never Overwrite Unprocessed Proposals").
