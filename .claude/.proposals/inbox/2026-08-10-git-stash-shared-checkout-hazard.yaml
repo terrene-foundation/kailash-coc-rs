@@ -1,0 +1,93 @@
+origin: downstream
+codify_date: 2026-08-10
+codify_session: "fix: git stash is unsafe when worktrees share one .git — correct git.md's endorsement and add a dedicated worktree-isolation.md rule"
+template_slug: kailash-coc-rs
+template_version: "2.24.0"
+changes:
+  - file: .claude/rules/git.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      Corrects rules/git.md § "Destructive Working-Tree Ops MUST Verify Clean
+      Working Tree", which currently reads: "Prefer `git reset --keep <ref>`
+      (aborts on a dirty tree) and `git stash -u` over `git clean -f`." This
+      actively recommends `git stash` as the safe alternative, but `git stash`
+      is UNSAFE in any repo with >=1 `git worktree add` checkout (including the
+      main checkout itself): the stash stack lives in the shared `.git`
+      directory, not per-worktree, so a stash pushed in one checkout is visible
+      via `git stash list` and poppable via `git stash pop`/`apply` from every
+      sibling checkout, and `git stash pop` with no argument always takes the
+      single most recent entry regardless of whose message is on it. Verified
+      reproducibly in a disposable sandbox (not the reporting repo): pushing a
+      stash in worktree A and popping from worktree B silently applied and
+      dropped A's change with no error and no worktree-identity marker in the
+      default `git stash list` output. Four recovery entries recording exactly
+      this cross-lane pop/drop pattern were separately observed in one
+      downstream repo's live stash stack over two sessions, consistent with the
+      verified mechanism and not an isolated fluke. The fix replaces the stash
+      endorsement with a pointer to the new rule proposed in the paired
+      worktree-isolation.md change below (diff/checkout/apply as the safe
+      sequence), so the corpus is not left self-contradictory — a corrected
+      rule pointing at a still-unwritten alternative would be worse than the
+      status quo.
+    diff_lines: "+4 -1"
+  - file: .claude/rules/worktree-isolation.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      Proposes a new MUST rule (the file's current HEAD ends at Rule 8,
+      "Creation Owns Teardown"; this would be Rule 9): `git stash` is UNSAFE
+      across sibling worktrees AND in the main checkout of any repo with >=1
+      `git worktree add` checkout, because the stash stack is `.git`-scoped,
+      not worktree-scoped. This is a distinct hazard from Rules 1-8 (which
+      govern worktree creation, cwd assertion, and teardown) — none of the
+      existing rules address the shared-stash collision, and rules/git.md
+      currently actively recommends the unsafe pattern (see the paired
+      proposal on that file in this same submission). Proposed MUST NOT: use
+      `git stash` in any form (push/pop/apply/drop/bare) in a repo where other
+      worktrees are active, in ANY checkout including main. Proposed MUST: use
+      the diff/checkout/apply sequence instead — save via `git diff --
+      <paths> > /tmp/wip-<lane>.patch`, discard via `git checkout -- <paths>`,
+      restore via `git apply /tmp/wip-<lane>.patch` — since it never touches
+      the shared `.git`'s stash ref and cannot collide with a sibling
+      checkout. Recovery procedure for an already-popped/dropped stash (the
+      damage is not necessarily permanent — a dropped stash is a dangling
+      commit until `git gc` reaps it, recoverable for roughly the
+      `gc.pruneExpire` grace window, commonly ~2 weeks, not indefinitely):
+      `git fsck --unreachable | grep commit` lists every dangling commit SHA
+      still in the object store; `git log -1 --format='%s' <sha>` on each
+      recovers its original stash message for identification; `git stash
+      apply <sha>` re-applies it as a working-tree diff without needing it
+      back on the named stash@{N} stack. All three mechanisms were verified
+      reproducibly in a disposable sandbox repo (three separate repros:
+      cross-worktree visibility and pop, fsck recovery of a dropped stash's
+      SHA and message, and apply-by-SHA reapplication) — transcript below.
+      Rationalizations worth naming explicitly in the authored rule: "I'll
+      name the stash message so it's obviously mine" fails because `git
+      stash pop` with no argument always takes stash@{0}, the most recent
+      entry, regardless of whose message is on it; "my worktree is isolated,
+      stash won't leak" fails because stash isolation is a `.git`-directory
+      property, not a worktree property. Four recovery entries recording
+      exactly this cross-lane pop/drop pattern were separately observed in
+      one downstream repo's live stash stack over two sessions, consistent
+      with the verified mechanism above and not an isolated fluke.
+
+      Repro transcript (disposable sandbox, generic naming, no downstream
+      context):
+        $ git init repo && cd repo
+        $ git worktree add ../wt-a wt-a && git worktree add ../wt-b wt-b
+        --- worktree A: make a change, stash it ---
+        $ cd ../wt-a && echo "change-from-A" > f.txt && git stash push -m "A's WIP"
+        Saved working directory and index state On wt-a: A's WIP
+        --- worktree B: list stash (sees A's entry from a DIFFERENT worktree) ---
+        $ cd ../wt-b && git stash list
+        stash@{0}: On wt-a: A's WIP
+        --- worktree B: pop it (simulating a lane in B taking A's stash) ---
+        $ git stash pop
+        On branch wt-b
+        Changes not staged for commit: modified: f.txt
+        Dropped refs/stash@{0} (b95a7e8d1702a4c44a643caae5a7719d1a0c7c4b)
+        $ cat f.txt
+        change-from-A
+    diff_lines: "+70 -0"
+status: pending_review
