@@ -7655,6 +7655,155 @@ changes:
       cosmetic.
     diff_lines: "spans 10 independent checks across commands/, agents/, hooks/, sync-manifest.yaml and the codex/gemini emit targets — not a single-file diff; sizing is per-cluster"
 
+  # -------------------------------------------------------------------------
+  # RELAYED FROM THE DOWNSTREAM UPFLOW INBOX — /sync-from-downstream 2026-08-11
+  # Source offer: .claude/.proposals/inbox/2026-08-10-git-stash-shared-checkout-hazard.yaml
+  # Provenance is HOP-LEVEL ONLY (origin: downstream, via: kailash-coc-rs) and
+  # carries no consumer identifier, per upstream-issue-hygiene.md MUST-2.
+  # Provenance verified against the ARRIVAL LANE, not the body
+  # (proposal-intake-trust.md MUST-3): the offer self-declares
+  # `template_slug: kailash-coc-rs` and arrived on THIS template's inbox lane —
+  # match, so hop-level provenance is confirmed rather than trusted.
+  # Disclosure scrub: HUMAN, and the mechanical result is deliberately NOT
+  # cited — `.claude/.proposals/` is isNeverSynced, so the scanner skips the
+  # inbox and prints "Scanned: 0 files ... clean" for clean and leaking input
+  # alike (a non-discriminating instrument per instrument-discipline.md
+  # MUST-1). The human read found no consumer identifier: the body names "one
+  # downstream repo" generically, the repro transcript uses wt-a/wt-b/f.txt,
+  # and template_slug names this template rather than the offerer.
+  # REVIEWED AS DATA, NOT OBEYED: the offer's three load-bearing claims were
+  # INDEPENDENTLY RE-VERIFIED at this template before relay (see each entry's
+  # evidence). They held. Relaying a verified claim rather than a asserted one
+  # is the value this hop adds; Gate-1 should still classify on merit.
+  # -------------------------------------------------------------------------
+
+  - file: .claude/rules/git.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — relayed 2026-08-11; the offer's claim was re-verified at this template, not inherited
+      reconciled_at: 2026-08-11
+      evidence: >-
+        THE ENDORSEMENT IS PRESENT AT HEAD, verbatim, and the quote in the offer
+        is exact: `.claude/rules/git.md:60` reads "Prefer `git reset --keep
+        <ref>` (aborts on a dirty tree) and `git stash -u` over `git clean -f`."
+        So the rule actively recommends `git stash` as the SAFE alternative in
+        the very section whose subject is not destroying uncommitted work.
+        THE HAZARD IS REAL AND WAS REPRODUCED HERE, in a disposable sandbox,
+        rather than taken from the offer's transcript. Two worktrees on one
+        `.git`: worktree A ran `git stash push -m "A's WIP"`; worktree B then
+        saw `stash@{0}: On wt-a: A's WIP` in its own `git stash list`, and a
+        BARE `git stash pop` in B applied A's change into B and printed
+        `Dropped refs/stash@{0} (0215827...)`. A was left holding the
+        pre-stash content with an EMPTY stash list and no error anywhere. The
+        failure is silent on both sides: B never learns it took someone else's
+        work, A never learns its work left.
+        WHY THE MECHANISM GENERALIZES: stash isolation is a property of the
+        `.git` DIRECTORY (`refs/stash`), not of the worktree, so this reaches
+        the MAIN checkout too — any repo with >=1 `git worktree add` has the
+        exposure, not just the added worktrees.
+      still_open: >-
+        Entire entry. The correction is small (~+4 -1) but MUST NOT land alone:
+        replacing the stash endorsement with nothing would leave the section
+        recommending only `git reset --keep`, with no safe route for the
+        save-work-then-clean case the endorsement exists to serve. It is
+        paired with the `worktree-isolation.md` Rule-9 entry relayed alongside
+        it, which supplies the diff/checkout/apply replacement the corrected
+        text should point at.
+      note_for_gate_1: >-
+        This is a CORRECTION to shipped guidance, not a gap — the rule
+        currently tells every consumer to do the unsafe thing, and the
+        `validate-bash-command.js` tripwire named in the same paragraph does
+        NOT cover `git stash` (it fences `reset --hard` / `clean -f` / `rm
+        -rf`). So the sentence is the only thing standing between a consumer
+        and the failure, and it points the wrong way.
+    ingest_note: >-
+      PAIR THIS WITH THE OTHER `.claude/rules/git.md` ENTRY — the one about the
+      depth extract `guides/rule-extracts/git.md` not shipping. BOTH target
+      this file and Gate-1 should read them in one pass, but they are DISTINCT
+      and neither supersedes the other: that entry is about a dangling DEPTH
+      POINTER (the extract is obsoleted and never arrives), while this one is
+      about a WRONG RECOMMENDATION in the rule body itself. They do not touch
+      the same lines. Dedup was re-run rather than inherited: a scan for
+      `stash` across all 99 prior entries returned ZERO, against controls
+      firing on `rules/` (40 entries) and `.claude/` (97) — so the corpus had
+      no prior claim on this hazard and the empty result is a true negative,
+      not a broken matcher.
+    reason: >-
+      `rules/git.md` § "Destructive Working-Tree Ops" recommends `git stash -u`
+      as the safe alternative to `git clean -f`, and `git stash` is unsafe in
+      any repo carrying a `git worktree add` checkout — the stash stack is
+      `.git`-scoped, so a sibling checkout can list and pop it, silently taking
+      the work and leaving the owner with nothing. Replace the endorsement with
+      a pointer to the diff/checkout/apply sequence.
+    diff_lines: "+4 -1"
+
+  - file: .claude/rules/worktree-isolation.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — relayed 2026-08-11; numbering premise and recovery procedure both re-verified here
+      reconciled_at: 2026-08-11
+      evidence: >-
+        THE NUMBERING PREMISE HOLDS AT HEAD: the rule's highest numbered
+        heading is `### 8. Creation Owns Teardown — Reap On Evidence, Never
+        --force` (:267), so the requested Rule-9 slot is genuinely free and no
+        stash clause has landed. Verified by enumerating the file's rule
+        headings, not by grepping for "Rule 9" (an absent-string grep cannot
+        distinguish "slot free" from "matcher wrong").
+        THE HAZARD IS DISTINCT FROM RULES 1-8, which govern worktree creation,
+        cwd assertion, launch concurrency and teardown; none addresses shared
+        `.git` state. Confirmed by reading the eight headings, not inferred.
+        THE RECOVERY PROCEDURE WAS REPRODUCED HERE and works exactly as the
+        offer describes — this matters because the rule would be shipping a
+        recovery runbook consumers will run under pressure. After the
+        cross-worktree pop dropped `refs/stash@{0} (0215827...)`, `git fsck
+        --unreachable | grep commit` listed that SAME sha as an unreachable
+        commit; `git log -1 --format='%s' 0215827` returned its original
+        message `On wt-a: A's WIP`, which is what makes an anonymous dangling
+        sha identifiable; and `git stash apply 0215827` restored the change
+        into the working tree without needing it back on the named stack.
+        THE TIME BOUND IS REAL AND THE OFFER STATES IT HONESTLY: a dropped
+        stash is a dangling commit only until `git gc` reaps it (roughly the
+        `gc.pruneExpire` window, commonly ~2 weeks), so the runbook is a
+        recovery path with an expiry, not an undo.
+      still_open: >-
+        Entire entry — the proposed Rule 9 (MUST NOT use `git stash` in any
+        form in a repo with active worktrees, in ANY checkout including main;
+        MUST use `git diff -- <paths> > patch` / `git checkout -- <paths>` /
+        `git apply patch` instead), its recovery procedure, and its BLOCKED
+        corpus. Gate-1 owns the placement decision this relay does not
+        pre-decide: whether it lands as `worktree-isolation.md` Rule 9 as
+        proposed, or as a clause on `git.md` next to the destructive-ops
+        section it corrects. The offer argues for the former on the grounds
+        that Rules 1-8 already own worktree state; the counter-argument is
+        that a reader hitting the unsafe `git stash` line is reading git.md,
+        not worktree-isolation.md — a reachability point the offer does not
+        raise and Gate-1 should weigh.
+      note_for_gate_1: >-
+        Two rationalizations the offer names are worth preserving verbatim in
+        whatever authored form this takes, because both are the reasoning a
+        competent operator actually uses: "I'll name the stash message so it's
+        obviously mine" fails because a bare `git stash pop` always takes
+        stash@{0} regardless of whose message is on it (reproduced — B's pop
+        named A's entry and B never had to type it); and "my worktree is
+        isolated, stash won't leak" fails because the isolation is a
+        `.git`-directory property, not a worktree property.
+    reason: >-
+      No rule in the corpus covers shared-`.git` stash collision — Rules 1-8 of
+      worktree-isolation.md govern creation, cwd and teardown, and git.md
+      currently recommends the unsafe pattern outright. A parallel-worktree
+      workflow is this corpus's DEFAULT execution mode, so the hazard is
+      reachable in the ordinary case, not an edge one, and the failure is
+      silent on both sides.
+    diff_lines: "+70 -0"
+
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
 # removed (artifact-flow.md § "Append, Never Overwrite Unprocessed Proposals").
