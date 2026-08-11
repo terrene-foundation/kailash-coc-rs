@@ -7951,6 +7951,260 @@ changes:
       release instead of resting on review judgment.
     diff_lines: "+108 -0"
 
+  # -------------------------------------------------------------------------
+  # RELAYED FROM THE DOWNSTREAM UPFLOW INBOX — /sync-from-downstream 2026-08-11
+  # Source offer: .claude/.proposals/inbox/2026-08-11-worktree-teardown-discipline.yaml
+  # Hop-level provenance ONLY (origin: downstream, via: kailash-coc-rs).
+  # Provenance verified against the ARRIVAL LANE (proposal-intake-trust.md
+  # MUST-3): declares `template_slug: kailash-coc-rs`, arrived on this lane.
+  # Disclosure scrub HUMAN; scanner NOT cited (`.claude/.proposals/` is
+  # isNeverSynced -> non-discriminating, instrument-discipline.md MUST-1).
+  #
+  # THIS RELAY AMENDS THE OFFER, OPENLY. The offer's ROOT CAUSE was tested here
+  # and REFUTED, and a sharper one was established in its place. Nothing was
+  # silently edited: the original claim is quoted in full below, the refuting
+  # evidence is given, and the correction is labelled as this hop's, not the
+  # offerer's. Per proposal-intake-trust.md MUST-2 the reject-don't-edit path
+  # governs SUSPECTED INJECTION; this is an honest, well-evidenced offer with
+  # one wrong premise, so it is relayed WITH the correction rather than bounced.
+  #
+  # BASE DRIFT IS THE DOMINANT FACT: the offer declares base 2.23.22, this
+  # template is at 2.24.0, and `worktree-isolation.md` Rule 8 ("Creation Owns
+  # Teardown") LANDED IN BETWEEN. Most of what the offer proposes as net-new
+  # Rule 9 already exists as Rule 8. Entries carry rebase_required: true and
+  # each names precisely which half survives.
+  # -------------------------------------------------------------------------
+
+  - file: .claude/rules/worktree-isolation.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    rebase_required: true
+    reconciliation:
+      status: PARTIALLY-SOLVED — the WORKTREE half is already Rule 8 at HEAD; only the BRANCH-reaping half survives, and its root cause is corrected here
+      reconciled_at: 2026-08-11
+      evidence: >-
+        THE OFFER'S CENTRAL PREMISE IS REFUTED BY HEAD. It states "Rules 1-8
+        govern creating, isolating, placing and pushing FROM a worktree. NONE
+        governs reaping one". At 2.24.0 Rule 8 is titled, verbatim, "Creation
+        Owns Teardown — Reap On Evidence, Never `--force`" (:267) and covers
+        exactly that: (a) per-wave reap by the creating orchestrator at the
+        terminal-lane transition, (b) a periodic `/sweep` Sweep-6 forest audit
+        as the backstop for an orchestrator that dies mid-wave, the affordance
+        `node .claude/bin/worktree-reap.mjs`, evidence-tiered ZERO-LOSS /
+        TAG-FIRST / KEEP verdicts, and `--force` BLOCKED.
+        THIS IS BASE DRIFT, NOT A BAD OFFER. The offer declares base 2.23.22;
+        Rule 8 landed between that and this template's 2.24.0, so the gap it
+        describes was real when written and is largely closed now.
+        THE OFFER'S POINT (c) IS ALREADY STATED BY RULE 8, near-verbatim: Rule
+        8 reads "Removing a worktree does not delete its branch. `git worktree
+        remove` deletes the DIRECTORY ... it never touches
+        `refs/heads/<branch>`." Rule 8 frames branch survival as the DESIRED
+        property — the branch is the durable artifact, which is what makes
+        reaping a forest safe — so a Rule 9 that reframes the same fact as a
+        leak would CONTRADICT Rule 8's stated rationale, not extend it.
+      still_open: >-
+        ONLY THE BRANCH-ACCUMULATION HALF, and it needs re-framing before it
+        can land. Rule 8 makes the branch deliberately durable across worktree
+        removal; it says nothing about reaping branches once their PR is merged
+        AND their worktree is gone. That residual is real — merged local
+        branches have no remaining function — but it must be written as a
+        SUCCESSOR step to Rule 8's reap, not as a correction of it.
+      root_cause: >-
+        ESTABLISHED AT THIS HOP, and it is not the offer's. Branch
+        accumulation is NOT caused by tooling that "only deletes the remote"
+        (see the paired git.md entry, where that claim is refuted). It is
+        caused by WORKTREE OCCUPANCY: `git branch -d` REFUSES a branch checked
+        out in any worktree — measured here in a sandbox, "error: cannot delete
+        branch 'feat-2' used by worktree at ..." — and it still refuses AFTER
+        the branch is merged. So in a repo with many live worktrees, every
+        local delete silently fails and the branches pile up.
+        THAT MAKES BRANCH REAPING DOWNSTREAM OF RULE 8, not parallel to it:
+        reap the worktree (Rule 8) and the branch becomes deletable; leave the
+        worktree and no branch-reap step can succeed. Gate-1 should land the
+        residual as a Rule-8 continuation rather than a competing Rule 9.
+      note_for_gate_1: >-
+        The offer also proposes correcting Rule 7's "still auto-cleaned"
+        description of agent-wave worktrees. Verified present at :223 — the
+        phrase is there. But Rule 8 ALREADY draws the directory-vs-branch
+        distinction the correction is meant to add, so the fix is now a
+        one-line cross-reference from Rule 7 to Rule 8, not the standalone
+        correction the offer scopes.
+    ingest_note: >-
+      PAIR THIS WITH THE OTHER `.claude/rules/worktree-isolation.md` ENTRY —
+      the `git stash` Rule-9 proposal relayed from the 2026-08-10 offer. BOTH
+      target this rule and BOTH claim the Rule-9 slot, so Gate-1 MUST evaluate
+      them in ONE pass or land two clauses both numbered 9. They are DISTINCT
+      in content: that one is about `git stash` colliding across a shared
+      `.git`; this one is about reaping branches after teardown. Ordering is
+      not pre-decided here. NOTE the asymmetry when sequencing: the stash entry
+      needs a genuinely new clause, whereas this one is now mostly a
+      CONTINUATION of the existing Rule 8 — so landing this as "Rule 9" may be
+      the wrong shape even if it lands first.
+    reason: >-
+      Rule 8 reaps worktrees but deliberately preserves their branches, and
+      nothing reaps a branch once its PR is merged and its worktree is gone.
+      The residual is real but must be written as a successor to Rule 8's reap
+      — and on the corrected root cause (worktree occupancy blocks
+      `git branch -d`), not the offer's refuted one.
+    diff_lines: "well under the offer's +67 -1 — most of that content is Rule 8 at HEAD; the surviving residual is a short successor clause plus a Rule 7 cross-reference"
+
+  - file: .claude/rules/git.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    rebase_required: true
+    reconciliation:
+      status: STILL-OPEN — but the offer's CLAIM IS REFUTED; relayed with the corrected statement, and MUST NOT land as the offer words it
+      reconciled_at: 2026-08-11
+      evidence: >-
+        THE OFFER'S CLAIM, QUOTED IN FULL SO THE CORRECTION IS AUDITABLE:
+        "That flag deletes the REMOTE branch only; the local branch survives.
+        This is why the leak is invisible rather than merely unaddressed — the
+        PR closes, the remote branch disappears, and cleanup appears to have
+        happened. The flag name reads as complete and is not."
+        REFUTED ON THREE INDEPENDENT INSTRUMENTS.
+        (1) gh's own help text at 2.97.0 reads, verbatim: "-d,
+        --delete-branch   Delete the local and remote branch after merge" —
+        local AND remote, stated by the tool itself.
+        (2) EMPIRICAL, at this template: six PRs were merged this session with
+        `gh pr merge --admin --merge --delete-branch`, and all six local
+        branches are GONE (`git show-ref --verify` reports each absent, against
+        a control confirming it reports `main` PRESENT — so the check
+        discriminates).
+        (3) SANDBOX, isolating the variable: `git branch -d` on a branch held
+        by NO worktree succeeds ("Deleted branch feat-1"); the same command on
+        a branch checked out in a worktree REFUSES ("error: cannot delete
+        branch 'feat-2' used by worktree at ..."), and still refuses after that
+        branch is merged.
+        SO THE ACCURATE STATEMENT IS THE OPPOSITE SHAPE: `--delete-branch` DOES
+        delete the local branch — except when a worktree holds it, in which
+        case the delete fails and the branch survives. In a repo with many live
+        worktrees that exception is the common case, which is why the offer's
+        OBSERVATION (branches accumulating) is real even though its MECHANISM
+        is wrong.
+      still_open: >-
+        A git.md amendment is still warranted, but a DIFFERENT one than the
+        offer drafts. What belongs next to the owner-workflow line at :48 is
+        the accurate caveat — `--delete-branch` deletes the local branch too,
+        but silently cannot while any worktree has it checked out, so a
+        worktree-heavy repo must reap worktrees (worktree-isolation.md Rule 8)
+        BEFORE the local branch becomes deletable.
+      note_for_gate_1: >-
+        LANDING THE OFFER'S WORDING WOULD PUT A FALSE CLAIM INTO A priority:0
+        BASELINE RULE that every consumer loads every session, and it would be
+        self-refuting on any machine where a reader tries it. This entry
+        deliberately does NOT carry the offer's sentence forward as proposed
+        text. The correction is this hop's, not the offerer's, and is labelled
+        as such rather than folded in silently.
+        VERSION CAVEAT, stated because it bounds the refutation: the empirical
+        and help-text evidence is from gh 2.97.0. If an older gh genuinely
+        deleted only the remote, the offer may have been accurate against the
+        version it was authored on — but the corrected statement is the one
+        that holds at the version this corpus's own git.md workflow line
+        targets today, and a rule cannot ship a claim that is false on current
+        tooling.
+    ingest_note: >-
+      THIS JOINS THE EXISTING `.claude/rules/git.md` GROUP — the dangling
+      depth-pointer entry and the `git stash` correction relayed 2026-08-10.
+      All three target this file and Gate-1 should read them together; they
+      touch different sections (depth pointer at the header, the stash
+      endorsement at :60, the owner workflow at :48) and none supersedes
+      another. Sequencing note: the stash entry and this one BOTH end up
+      pointing at worktree-isolation.md, so whichever lands first should
+      establish the cross-reference the other reuses.
+    reason: >-
+      The owner-workflow line at git.md:48 ends at `gh pr merge --admin --merge
+      --delete-branch` with no mention that the local delete silently fails
+      while a worktree holds the branch. The gap the offer identified is real;
+      the explanation it gives for it is not, and the accurate caveat is the
+      one that should land.
+    diff_lines: "~+3 -0 (a caveat sentence + a pointer to worktree-isolation.md Rule 8) — NOT the offer's +10 -1, which encodes the refuted claim"
+
+  - file: .claude/hooks/worktree-hygiene-guard.js
+    action: create
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    rebase_required: true
+    reconciliation:
+      status: STILL-OPEN — target absent (create correct); the hook's VALUE survives the refutation, its TRIGGER RATIONALE does not
+      reconciled_at: 2026-08-11
+      evidence: >-
+        TARGET GENUINELY ABSENT at this template, against a control confirming
+        the same check reports PRESENT for an existing hook — so `create` is
+        correct.
+        THE ACCUMULATION IT DETECTS IS REAL, and Rule 8's own Why records the
+        same class independently ("one clone reached 20 worktrees / 1.0 GB at
+        83% volume capacity"), so the hook is not chasing a phantom.
+        THE SEVERITY REASONING IS SOUND AND WORTH KEEPING VERBATIM: the signal
+        IS structural (git counts, not a lexical regex), so `block` would be
+        defensible under hook-output-discipline.md MUST-2 on that axis — and
+        the offer chooses ADVISORY anyway, because halting a session over
+        untidy branches is disproportionate and trains operators to disable the
+        hook. That is the correct reading of MUST-2's intent rather than its
+        letter, and it is the strongest reasoning in the submission.
+      still_open: >-
+        Entire entry, with ONE required amendment before authoring: the
+        PostToolUse(Bash) trigger fires after `gh pr merge` on the stated
+        premise that "this is the exact moment a local branch is orphaned".
+        That premise is REFUTED (see the git.md entry) — at that moment the
+        local branch is usually already DELETED. The trigger should fire on the
+        real condition instead: a merged local branch that could NOT be deleted
+        because a worktree still holds it. Same hook, same advisory posture,
+        correct predicate.
+      note_for_gate_1: >-
+        This template measured ZERO leak on all three of the offer's thresholds
+        (1 local branch, 0 merged-local, 0 `worktree-agent-*`, 1 worktree), so
+        the SessionStart thresholds (25/25/15) cannot be validated here — a
+        tidy repo is exactly the case the hook is designed to stay silent for,
+        and it would. The thresholds are unverified at this hop, not endorsed.
+    reason: >-
+      Branch and worktree accumulation is a slow leak that is invisible until
+      it is severe, and prose alone did not prevent it. An advisory structural
+      counter makes it impossible to not see without halting work over it.
+    diff_lines: "+262 -0, minus whatever the corrected trigger predicate changes"
+
+  - file: .claude/audit-fixtures/worktree-hygiene/run-fixtures.mjs
+    action: create
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    rebase_required: true
+    reconciliation:
+      status: STILL-OPEN — target absent (create correct); fixtures ship WITH their detector, which is the part most entries in this manifest cannot claim
+      reconciled_at: 2026-08-11
+      evidence: >-
+        TARGET ABSENT at this template, so `create` is correct.
+        THE FIXTURE SET COVERS THE RIGHT SHAPE — one per scope-restriction
+        predicate, both fail-open paths (non-repo, unresolvable default
+        branch), non-string tool input, and explicitly the FALSE-POSITIVE
+        class: a `gh pr merge` mention inside a commit-message BODY must not
+        fire, which is why the trigger is segment-anchored. That is the same
+        class `validate-bash-command.js` was previously bitten by, and naming
+        it as a fixture rather than a comment is the right instinct.
+      still_open: >-
+        Entire entry. NOT EXECUTED AT THIS HOP, and stated rather than implied:
+        neither the fixtures nor the hook they exercise exist here, so the
+        count and per-predicate mapping are read from the offer's description,
+        not measured. Per instrument-discipline.md MUST-2(b) Gate-1 MUST run
+        them after landing the hook and name the mutation that reds each case
+        before citing the suite as coverage.
+        ONE FIXTURE WILL NEED REVISION with the corrected trigger predicate
+        (see the hook entry): any case asserting the hook fires immediately
+        after `gh pr merge` is asserting the refuted premise.
+    reason: >-
+      Fixtures land WITH the detector rather than deferred, so the hook's
+      scope-restriction predicates — the surface a future edit silently weakens
+      — are mechanically checkable from the first release.
+    diff_lines: "+122 -0, minus the case(s) revised for the corrected trigger"
+
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
 # removed (artifact-flow.md § "Append, Never Overwrite Unprocessed Proposals").
