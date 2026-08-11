@@ -1,0 +1,92 @@
+# NO source_repo — hop-level-only provenance per the Step-7c schema.
+origin: downstream
+codify_date: 2026-08-11
+codify_session: "codify(worktree): branch and worktree teardown discipline + advisory hygiene hook"
+template_slug: kailash-coc-rs
+template_version: "2.23.22"
+loom_sha: "22fff0a"
+changes:
+  - file: .claude/rules/worktree-isolation.md
+    action: modified
+    base_version: "2.23.22"
+    diff_lines: "+67 -1"
+    reason: >
+      Rules 1-8 govern creating, isolating, placing and pushing FROM a worktree.
+      NONE governs reaping one — Rule 7's task lifecycle ends "admin-merge,
+      return". A census of a repo running this corpus found 972 local branches
+      (718 already merged into main), 218 worktree-agent-* branches, and 196
+      active worktrees. Creation was mandated; teardown was nobody's job.
+
+      Adds Rule 9 (teardown) with clause-scoped Trust Posture Wiring, covering
+      three distinct leaks: (a) after merging a PR, delete the LOCAL branch —
+      `gh pr merge --delete-branch` deletes only the REMOTE, so the local branch
+      survives every correctly-executed merge; (b) after a durable worktree's
+      task ends, remove it, having first verified `git status --porcelain` is
+      empty (uncommitted and untracked work has no reflog); (c) agent-wave
+      worktree BRANCHES are not auto-cleaned even though the scratch DIRECTORY
+      is.
+
+      Also CORRECTS a false claim in Rule 7 itself, in place rather than by
+      deletion: it described agent-wave worktrees as "auto-cleaned". The
+      directory is; the branch is not. 218 accumulated worktree-agent-* branches
+      disprove a claim the rule had been making since it was written — a
+      verify-claims-before-write failure living inside the rule that should have
+      prevented the problem. Correcting in place means a reader who remembers
+      "auto-cleaned" learns which half was true.
+
+      All reap commands use `git branch -d`, never `-D`. `-d` REFUSES anything
+      unmerged, so the reap is safe by construction.
+
+  - file: .claude/rules/git.md
+    action: modified
+    base_version: "2.23.22"
+    diff_lines: "+10 -1"
+    reason: >
+      The owner workflow ends at `gh pr merge <N> --admin --merge
+      --delete-branch`. That flag deletes the REMOTE branch only; the local
+      branch survives. This is why the leak is invisible rather than merely
+      unaddressed — the PR closes, the remote branch disappears, and cleanup
+      appears to have happened. The flag name reads as complete and is not.
+
+      Extends the owner workflow to end at the local reap and states plainly
+      what --delete-branch does not do, with the two-command form.
+
+  - file: .claude/hooks/worktree-hygiene-guard.js
+    action: created
+    base_version: "2.23.22"
+    diff_lines: "+262 -0"
+    reason: >
+      The structural half — a prose rule alone did not prevent this, and the
+      corpus already had a rule in the area.
+
+      Two surfaces. PostToolUse(Bash) after a `gh pr merge`, which is the exact
+      moment a local branch is orphaned, naming the reap command. SessionStart
+      above threshold (25 merged-local / 25 agent branches / 15 worktrees) so a
+      tidy repo stays silent and a leaking one cannot be ignored.
+
+      Severity is ADVISORY deliberately. The signal IS structural — git counts,
+      not a lexical regex — so `block` would be defensible under
+      hook-output-discipline MUST-2 on that axis alone. It is advisory anyway
+      because halting a session over untidy branches is disproportionate to the
+      harm and trains operators to disable the hook. Accumulation is a slow
+      leak: make it impossible to NOT see, rather than stopping work over it.
+
+      Fails silent on every error path (git absent, not a repo, unresolvable
+      default branch) — a hygiene advisory must never be why a session breaks.
+
+  - file: .claude/audit-fixtures/worktree-hygiene/run-fixtures.mjs
+    action: created
+    base_version: "2.23.22"
+    diff_lines: "+122 -0"
+    reason: >
+      15 committed fixtures per cc-artifacts.md Rule 9, one per
+      scope-restriction predicate the hook relies on — the predicates are what a
+      future edit can silently weaken.
+
+      Includes the false-positive class explicitly: a `gh pr merge` mention
+      inside a commit-message body must NOT fire, which is why the trigger
+      predicate is segment-anchored (the same class validate-bash-command.js was
+      previously bitten by). Also covers both fail-open paths (non-repo,
+      unresolvable default branch) and non-string tool input.
+
+status: pending_review
