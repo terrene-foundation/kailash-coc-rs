@@ -8403,6 +8403,226 @@ changes:
       at ingest.
     diff_lines: "~+12 -0 in Step 7c — a version comparison plus the warn/refuse branch"
 
+  # -------------------------------------------------------------------------
+  # RELAYED FROM THE DOWNSTREAM UPFLOW INBOX — /sync-from-downstream 2026-08-12
+  # Source offer: .claude/.proposals/inbox/2026-08-12-variant-slot-semantics.yaml
+  # Hop-level provenance ONLY (origin: downstream, via: kailash-coc-rs).
+  # Provenance verified against the ARRIVAL LANE (proposal-intake-trust.md
+  # MUST-3). Disclosure scrub HUMAN; scanner NOT cited (`.claude/.proposals/`
+  # is isNeverSynced -> non-discriminating, instrument-discipline.md MUST-1).
+  #
+  # THIS IS THE STRUCTURAL ROOT CAUSE OF THE ALREADY-FILED #119 ENTRY, and the
+  # two MUST be read together. That entry's own root_cause reads: "Every
+  # offender has ZERO slot-marker lines — they are full-body replacements, not
+  # slot overlays." This offer proposes exactly that fix: give the global an
+  # additive extension slot so the variant stops having to occupy the body.
+  # #119 is the symptom (frontmatter dropped, rule absent from AGENTS.md /
+  # GEMINI.md); this is why the variant is a replacement in the first place.
+  #
+  # THE OFFER MADE A FALSIFIABLE NUMERIC PREDICTION AND IT MATCHES TO THE BYTE:
+  # it states a consumer on this axis receives 5,805 bytes of patterns.md; this
+  # template's `.claude/rules/patterns.md` is EXACTLY 5805 bytes. An offer that
+  # predicts an independently-checkable number and hits it is a materially
+  # stronger artifact than one that argues, and it is why the security claim
+  # below is relayed as CONFIRMED-AT-THIS-HOP rather than as an allegation.
+  # -------------------------------------------------------------------------
+
+  - file: .claude/rules/patterns.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — relayed 2026-08-12; the slot asymmetry and the byte-level consequence are both CONFIRMED at this template
+      reconciled_at: 2026-08-12
+      evidence: >-
+        THE SLOT ASYMMETRY IS REAL AND MEASURED HERE. `.claude/rules/security.md`
+        declares TWO slots — `neutral-body` (12-222) and
+        `lang-security-extensions` (224-300). `.claude/rules/patterns.md`
+        declares ZERO slot markers at this tier, which is itself the proof of
+        the defect: our copy IS the flattened variant, and a variant that
+        replaced the body carries no slots at all.
+        A SECOND PRECEDENT THE OFFER DID NOT CITE: `.claude/rules/testing.md`
+        also declares both `neutral-body` and `lang-testing-extensions`. So the
+        additive-extension-slot pattern is established on at least TWO globals,
+        not one — the offer understated its own support.
+        THE PREDICTED BYTE COUNT IS EXACT. The offer states a consumer on this
+        axis receives 5,805 bytes; `wc -c .claude/rules/patterns.md` here
+        returns 5805. That is an independently-checkable prediction about a
+        repo the offerer does not control, and it lands precisely.
+        THE SUBTRACTED CONTENT IS ABSENT HERE, verified with a control rather
+        than a bare grep miss: `Propagate Caller Context`, `Thread-Boundary`,
+        `Async vs Sync` and `ContextVar` return ZERO hits in our patterns.md,
+        while the control section `Runtime Execution Pattern` returns 1 — so
+        the matcher works and the absence is a true negative.
+      root_cause: >-
+        A variant occupying `slot:neutral-body` REPLACES the global rather than
+        extending it, and a replacement never reports what it displaced. There
+        is no signal at emission, none at sync, and none at the consumer — the
+        rule simply arrives smaller. That silence is the defect; the staleness
+        is its consequence.
+      note_for_gate_1: >-
+        SECURITY CONSEQUENCE, CONFIRMED NOT ALLEGED. The displaced content
+        includes a tenant-isolation MUST — the offer names `Propagate Caller
+        Context Across Every Thread-Boundary Dispatch`, whose DO-NOT is a
+        tenant/trace ContextVar reading its DEFAULT inside `node.run()`. That
+        section is absent from what this template ships, so every consumer on
+        this axis — including multi-tenant ones — has been silently subtracted
+        a tenant-isolation control. Treat this as the highest-severity item in
+        the current queue.
+        SCOPE LIMIT, STATED: this hop CANNOT see `.claude/variants/` (it does
+        not exist at this tier) nor the global `patterns.md` (it lives at
+        loom). So the offer's figures for the GLOBAL (12,738 bytes, modified
+        08-11) and the VARIANT (5,861 bytes, modified 07-04) are ITS claims,
+        re-stated not re-derived. What is confirmed here is the shipped
+        RESULT — 5805 bytes, the named sections absent, and the slot asymmetry
+        across security.md / testing.md / patterns.md.
+      still_open: >-
+        Entire entry: add an empty `<!-- slot:lang-patterns-extensions -->`
+        extension point to the global, mirroring security.md and testing.md.
+        The paired variant change cannot be made additive until this slot
+        exists, so this is the ordering constraint, not a preference.
+    ingest_note: >-
+      PAIR THIS WITH THE OTHER `.claude/rules/patterns.md` ENTRY (the #119
+      frontmatter/absent-from-baselines one) — they are the SAME DEFECT at two
+      layers and landing either alone leaves the other half live. That entry's
+      own root_cause already identifies the generating condition in its own
+      words: "Every offender has ZERO slot-marker lines — they are full-body
+      replacements, not slot overlays." THIS entry supplies the fix for exactly
+      that condition. Sequence: land the SLOT first, then retarget the variant;
+      fixing frontmatter alone leaves the variant still replacing the global,
+      and fixing the variant without the slot has nowhere additive to target.
+      Dedup was re-run rather than inherited: `slot:neutral-body`,
+      `lang-patterns-extensions` and `connection-pool` each returned ZERO across
+      all 111 prior entries against controls firing on `patterns.md` (4) and
+      `rules/` (45).
+    reason: >-
+      The global declares only `neutral-body`, so a language variant has no
+      additive slot and must occupy the body — silently replacing ~12.7 KB of
+      current guidance, including a tenant-isolation MUST, with 5.8 KB that is
+      five weeks older. Add the extension point so the variant can extend
+      rather than displace.
+    diff_lines: "+2 (an empty slot marker pair) — the enabling change for everything else in this submission"
+
+  - file: .claude/variants/rs/rules/patterns.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — relayed 2026-08-12; NOT verifiable at this hop and said so, since `.claude/variants/` does not exist at this tier
+      reconciled_at: 2026-08-12
+      evidence: >-
+        NOT VERIFIED HERE, AND THE REASON IS STRUCTURAL: `.claude/variants/`
+        does not exist at a USE template — emit.mjs says so itself ("lane 'rs'
+        is DECLARED but has no overlay directory"). So the variant's current
+        slot target, its byte count and its modification date are the offer's
+        claims and are relayed as such, not re-derived.
+        WHAT THE SHIPPED RESULT CORROBORATES INDIRECTLY: our flattened
+        patterns.md is 5805 bytes and carries no slot markers, which is the
+        shape a `neutral-body`-occupying variant produces. That is consistent
+        with the claim without independently proving the variant's contents.
+      still_open: >-
+        Entire entry: retarget from `slot:neutral-body` to the new
+        `slot:lang-patterns-extensions`, and reduce to only genuinely
+        rs-specific content — the offer names `Feature-Gated Modules With
+        Unconditional Call Sites (MUST — Rust crate edits)` as the surviving
+        section. Deleting the rest rather than updating it is the offer's
+        argument and it is a good one: once the variant stops replacing the
+        global, the stale duplicate disappears instead of needing perpetual
+        maintenance.
+      note_for_gate_1: >-
+        A CLAIM WORTH GATE-1 TESTING BEFORE ACTING, because this hop cannot:
+        the offer reports a downstream consumer measured this variant's
+        prescribed execution API at ZERO call sites in its own source, while
+        the API the variant marks WRONG is used at over 1,300. If that holds,
+        the variant is not merely stale — it is actively instructing consumers
+        against their own working code. It is the single most consequential
+        assertion in the submission and the one this template has no way to
+        check.
+        THE AXIS SUBSCRIPTION IS EXPLICITLY NOT IN DISPUTE. The offer states,
+        correctly, that the rs axis is RIGHT for a Rust-SDK-via-Python-bindings
+        consumer and that the py axis would be actively wrong for them. The
+        defect is the SLOT, not the axis — do not "fix" this by re-subscribing
+        the consumer.
+    reason: >-
+      The variant occupies the body slot and so replaces the global wholesale,
+      shipping five-week-old guidance in place of current. Retargeting it to an
+      additive slot and trimming it to genuinely rs-specific content makes the
+      staleness structurally impossible rather than a maintenance obligation.
+    diff_lines: "large deletion + a slot retarget; the offer does not size it and this hop cannot"
+
+  - file: .claude/rules/connection-pool.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — relayed 2026-08-12; PROPHYLACTIC (nothing has drifted yet), and the offer says so plainly
+      reconciled_at: 2026-08-12
+      evidence: >-
+        THE SLOT ASYMMETRY IS CONFIRMED HERE: `.claude/rules/connection-pool.md`
+        declares ONLY `neutral-body` (14-120) — no extension slot — exactly as
+        the offer states, against the security.md / testing.md two-slot
+        controls.
+        NO DRIFT HAS OCCURRED YET, and the offer is candid that this is
+        preventive rather than remedial. The global and the rs variant are both
+        dated 04-22 per the offer; this hop can confirm the global's slot shape
+        but not the variant's date.
+      still_open: >-
+        Entire entry: add an empty `<!-- slot:lang-connection-pool-extensions -->`
+        extension point.
+      note_for_gate_1: >-
+        THE ARGUMENT IS THE INTERESTING PART AND IT IS SOUND: nothing CAN drift
+        while global and variant move together, and the moment the global is
+        updated the variant silently stops tracking it with NO signal — which
+        is precisely how patterns.md reached a five-week gap unnoticed. The
+        cost of the slot is two lines; the cost of discovering the next
+        instance is a tenant-isolation control going missing for five weeks.
+        A prophylactic entry with a demonstrated sibling failure is a different
+        proposition from a speculative one, and Gate-1 should weigh it as such.
+    reason: >-
+      Same defect shape as patterns.md, caught before it fires. The global
+      offers no additive slot, so its variant must occupy the body, so the
+      moment the global changes the variant silently stops tracking it.
+    diff_lines: "+2 (an empty slot marker pair)"
+
+  - file: .claude/variants/rs/rules/connection-pool.md
+    action: modify
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — relayed 2026-08-12; NOT verifiable at this hop (`.claude/variants/` absent at this tier)
+      reconciled_at: 2026-08-12
+      evidence: >-
+        NOT VERIFIED HERE, same structural reason as the patterns.md variant:
+        `.claude/variants/` does not exist at a USE template. Relayed as the
+        offer's claim.
+      still_open: >-
+        Entire entry: retarget from `slot:neutral-body` to the new
+        `slot:lang-connection-pool-extensions`, carrying only genuinely
+        rs-specific content.
+      note_for_gate_1: >-
+        THE OFFER'S OWN SCOPE DISCIPLINE IS WORTH PRESERVING AND IS THE REASON
+        TO TRUST THE REST OF IT. It deliberately EXCLUDES
+        `variants/rs/rules/ci-runners.md`, which also occupies `neutral-body`
+        but is a LEGITIMATE full replacement — the rs CI runbook genuinely
+        differs and its variant is LARGER than the global (32 KB vs 20 KB), so
+        replacement is the correct semantic there. And it states plainly that
+        `e2e-god-mode.md` was NOT assessed rather than implying coverage it did
+        not do. An offer that names the cases its own thesis does not cover is
+        applying the thesis rather than pattern-matching it.
+    reason: >-
+      Paired with the connection-pool global change; included in the same
+      submission because splitting them would mean reviewing one line of
+      reasoning twice.
+    diff_lines: "a slot retarget plus trimming to rs-specific content; not sized by the offer"
+
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
 # removed (artifact-flow.md § "Append, Never Overwrite Unprocessed Proposals").
