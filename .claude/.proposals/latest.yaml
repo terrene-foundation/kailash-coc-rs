@@ -8205,6 +8205,204 @@ changes:
       — are mechanically checkable from the first release.
     diff_lines: "+122 -0, minus the case(s) revised for the corrected trigger"
 
+  # -------------------------------------------------------------------------
+  # ROOT-CAUSE ORIGINATION — 2026-08-12, this template (NOT a downstream relay).
+  #
+  # The three entries below are deliberately NOT more per-check findings. This
+  # manifest already carries the ten validate-emit clusters as symptoms. These
+  # name the CAUSES behind them, and are filed because fixing the symptoms
+  # one-by-one is what produced a permanently-red validator in the first place.
+  #
+  # Measured basis: of the ELEVEN validate-emit checks that have ever failed at
+  # this template, NINE are the same defect — one fact stored in two artifacts,
+  # reconciled by a hand-written checker. Only `command-frontmatter` and
+  # `command-line-cap` are genuine shape rules. Enumeration in the first entry.
+  # -------------------------------------------------------------------------
+
+  - file: .claude/bin/validate-emit.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — net-new ROOT-CAUSE entry, first filed 2026-08-12; supersedes nothing, but reframes the ten symptom clusters already in this manifest
+      reconciled_at: 2026-08-12
+      evidence: >-
+        MEASURED BY CLASSIFYING EVERY CHECK THAT HAS EVER FAILED HERE, not by
+        impression. Of the eleven, NINE are "one fact, two artifacts, hand-
+        reconciled": `settings-hook-registration` (hook on disk <-> settings.json
+        registration), `paths-annotation-consistency` (CLAUDE.md Rules-Index
+        annotation <-> the rule's own `paths:`), `provenance-parity` (declared
+        wired <-> registered in the emit target), `provenance-subagent-hooks`
+        (manifest cc=wired <-> agent frontmatter), `hook-delivery` (hooks on
+        disk <-> `hook_delivery` declarations), `consumer-efficacy` (skill dir
+        emitted <-> SKILL.md present), `codex-policies-fresh` (committed
+        policies.json <-> a fresh extraction), `gitignore-learning-parity`
+        (loom's own .gitignore <-> `gitignore_additions`), and
+        `claude-md-surface-role-parity` (surface_roles <-> CLAUDE.md prose).
+        Only `command-frontmatter` and `command-line-cap` are genuine
+        single-source shape rules.
+        THE STRONGEST EVIDENCE IS INSIDE THE FAILURE TEXT ITSELF:
+        `codex-policies-fresh` reports the committed file "diverges from a FRESH
+        EXTRACTION". The derivation function already exists. The committed copy
+        is redundant with a generator that is already written — which is the
+        existence proof that derivation is tractable for this class, not a
+        speculative refactor.
+        THE PATTERN OF RESPONSE IS THE PROBLEM: each of the nine got a bespoke
+        parity check, added after someone was burned. That is why the validator
+        holds ten of them and is permanently red. Adding an eleventh check for
+        the eleventh pair does not converge.
+      still_open: >-
+        Entire entry. The proposal is to DERIVE the dependent copy wherever a
+        source of truth exists, and retire the corresponding parity check —
+        rather than keep growing the checker. Per pair, the source is already
+        obvious: `hook_delivery` from the hooks on disk; `gitignore_additions`
+        from loom's .gitignore; the agent-frontmatter provenance hook from the
+        manifest's cc=wired declaration; policies.json from the extraction that
+        already runs. Gate-1 owns sequencing and owns which pairs are genuinely
+        derivable versus which have two legitimately independent authorities.
+      note_for_gate_1: >-
+        THIS TEMPLATE HAS ALREADY DONE ONE OF THE NINE, as a worked precedent
+        rather than a proposal: `claude-md-surface-role-parity` is now derived.
+        `.github/scripts/gen-claude-md-sections.mjs` generates the CLAUDE.md
+        block from `surface_roles`, CI asserts `--check` is a no-op, and the
+        parity check still reports [ok]. That one was doable locally ONLY
+        because CLAUDE.md is template-owned and `.github/` is repo-owned, so
+        both halves survive a sync; the other eight live entirely in synced
+        artifacts and cannot be fixed durably at a consumer.
+        HONEST SCOPE ON THAT PRECEDENT: it is one pair, the easiest one, and it
+        replaced a fix THIS TEMPLATE HAD MADE TWO DAYS EARLIER by hand-writing
+        eighteen command names into prose — an instance of the very defect being
+        reported. That sequence is offered as evidence the pull toward "just
+        write the second copy correctly" is strong even when the class is known,
+        which is the argument for removing the authorship rather than
+        documenting the discipline.
+      cross_reference: >-
+        The ten symptom clusters are already carried by the `validate-emit`
+        census entry filed 2026-08-10. This entry does NOT supersede it: the
+        census says WHAT is red now, this says WHY the list keeps growing. Land
+        the census fixes if they are cheap, but sequence THIS ahead of writing
+        an eleventh parity check.
+    ingest_note: >-
+      JOINS THE EXISTING `.claude/bin/validate-emit.mjs` GROUP (the preserved-
+      project-SKILL.md entry and the 2026-08-10 census). All three target this
+      validator; Gate-1 should read them together. They are distinct and
+      ordered: one ADDS a check, one COUNTS the current reds, this one argues
+      most of the checks should not need to exist. If the derivation lands,
+      the census shrinks and the added check may become unnecessary — so
+      evaluate this FIRST, or work will be done twice.
+    reason: >-
+      Nine of eleven failing checks are the same defect and the standing
+      response has been another checker, which is why the validator is
+      permanently red and why `/sync` is blocked. Derive the dependent copy and
+      the drift becomes unauthorable instead of detectable-after-the-fact.
+    diff_lines: "per-pair; each retirement removes a check and adds a generator. The worked precedent at this template was ~200 lines of generator to retire one check."
+
+  - file: .claude/bin/emit.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — net-new entry, first filed 2026-08-12; the masking is measured here, not inferred from the issue
+      reconciled_at: 2026-08-12
+      evidence: >-
+        VALIDATOR 14 EXITS BEFORE ITS SUCCESSORS RUN, so the emitter's own
+        output understates its findings by half. Measured at HEAD: a normal
+        `emit.mjs --cli codex --lang rs` prints exactly ONE `[validator-N]`
+        line — `[validator-14]` — while the file defines validators 13 through
+        18. Invoking the exported functions directly gives the real state:
+        V14 FAIL 10 findings, V15 PASS (skipped: true — correct at this class),
+        V16 FAIL 1, V17 PASS 0, V18 FAIL 4.
+        SO THE TRUE COUNT IS 15 ACROSS THREE FAILING VALIDATORS, and a reader
+        of the normal run sees 10 and reasonably concludes that is all. This
+        independently reproduces what issue #125 reported, by a different route
+        (direct invocation vs reading the log), so two instruments agree.
+        THIS IS THE SAME CLASS AS THE STALE CENSUS IN #112, one layer down: a
+        number that is authoritative-looking, widely quoted, and wrong — except
+        here the tool itself is the source of the understatement, so no amount
+        of care by the reader corrects it.
+      still_open: >-
+        Entire entry. Proposal: run every validator, accumulate findings, and
+        exit ONCE on the union — rather than `process.exit(1)` at the first
+        failing gate. The current shape also means the pass/fail status of
+        15/16/17/18 is UNKNOWN on any normal run, which is how "16/18 pass" got
+        asserted in an earlier manifest entry from an absence of observation.
+      note_for_gate_1: >-
+        SEQUENCE THIS FIRST, ahead of the derivation work in the paired
+        validate-emit entry. Until emit stops masking, nobody can see whether a
+        derivation actually reduced the finding count — the visible number would
+        stay at 10 regardless. A fix whose effect is invisible cannot be
+        verified, and this is the cheapest change of the three filed today.
+    ingest_note: >-
+      JOINS THE EXISTING `.claude/bin/emit.mjs` GROUP (the validator-15
+      tier-completeness entry and the #125 validator-16-vs-18 contradiction).
+      All three target this file. Distinct and complementary: one is about V15's
+      class gate, one about the V16/V18 contradiction, this one about the exit
+      that hides both from every normal run. Landing THIS first makes the other
+      two verifiable, which is the ordering argument.
+    reason: >-
+      The emitter reports 10 findings when there are 15, because validator 14
+      exits before 15-18 execute. Every consumer, and every census taken from
+      the output, inherits a 50% understatement that no reader-side care can
+      correct. Aggregate and exit once.
+    diff_lines: "~+15 -5 — accumulate results across the validator chain, exit once on the union"
+
+  - file: .claude/commands/codify.md
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reconciliation:
+      status: STILL-OPEN — net-new entry, first filed 2026-08-12; the waste is measured across three real offers
+      reconciled_at: 2026-08-12
+      evidence: >-
+        ALL THREE DOWNSTREAM OFFERS INGESTED AT THIS TEMPLATE THIS WEEK WERE
+        AUTHORED AGAINST A STALE BASE, and it is measured rather than sampled:
+        each declares `template_version: 2.23.22` while this template is at
+        2.24.0.
+        ON ONE OF THE THREE IT COST MOST OF THE SUBMISSION. The 2026-08-11
+        worktree-teardown offer proposed a new Rule 9 for teardown; at HEAD,
+        `worktree-isolation.md` Rule 8 is titled "Creation Owns Teardown" and
+        already covers per-wave reap, the /sweep backstop, the reap affordance,
+        tiered verdicts and a BLOCKED --force. Rule 8 landed BETWEEN the
+        offer's declared base and this template's version. The contributor
+        wrote a rule, a 262-line hook and 15 fixtures against a gap that had
+        already been closed.
+        THE SCHEMA ALREADY CARRIES WHAT IS NEEDED — `template_version` and
+        `loom_sha` are in every offer — but they are read at INGEST, which is
+        after the effort is spent. Detection is on the wrong side of the work.
+      still_open: >-
+        Entire entry. Proposal: `/codify` Step 7c compares the consumer's
+        recorded template version against the template's current release BEFORE
+        the offer is authored, and warns loudly (or refuses) when behind. The
+        cheap form is a comparison against the already-recorded
+        `.claude/VERSION::upstream.template_version`; the stronger form fetches
+        the template's current release. Gate-1 owns which, and owns whether
+        this warns or blocks — a hard block on a stale base would stop a
+        consumer contributing at all when the template moves faster than they
+        pull, which may be worse than the waste it prevents.
+      note_for_gate_1: >-
+        THE INGEST-SIDE HALF IS ALREADY WORKING and is NOT what this asks to
+        change: this template caught all three drifts and relayed them with
+        `rebase_required: true` plus a per-entry note on which half survives.
+        The ask is to move detection EARLIER, not to add it — the ingest catch
+        is the backstop, and should stay.
+    ingest_note: >-
+      JOINS THE EXISTING `.claude/commands/codify.md` GROUP (the Step-7c
+      stop-point entry and its sibling). All target this command's Step 7c.
+      Distinct: those are about where the upflow STOPS (open, never complete);
+      this is about what Step 7c should CHECK before it starts. They compose —
+      a staleness check at the top and a stop-point at the bottom are the two
+      ends of the same step — and Gate-1 could reasonably land them together.
+    reason: >-
+      A downstream consumer authors an offer against a snapshot with no
+      staleness signal, so effort is spent before anyone can know the gap has
+      already closed. Three for three this week were stale; one lost most of its
+      work to a rule that had already landed. Check the base at author time, not
+      at ingest.
+    diff_lines: "~+12 -0 in Step 7c — a version comparison plus the warn/refuse branch"
+
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
 # removed (artifact-flow.md § "Append, Never Overwrite Unprocessed Proposals").
