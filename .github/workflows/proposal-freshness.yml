@@ -34,16 +34,29 @@ name: Proposal Freshness
 # ENFORCEMENT, HONESTLY
 #
 # This workflow FAILS its check run. Whether that BLOCKS a merge depends on
-# branch protection, and this job is NOT registered as a required status check.
-# It is evidence-producing, not merge-preventing. Registering it would use the
-# job `name:` below, byte-for-byte — not the workflow filename:
+# branch protection. As of 2026-08-12 this job IS registered as a required
+# status check — it is merge-preventing, not merely evidence-producing.
+#
+# Registration uses the job `name:` below, byte-for-byte — not the workflow
+# filename, and not the job KEY (`freshness`):
 #
 #     Proposal manifest freshness (ratchet)
 #
-# Verify any such registration live rather than trusting this comment:
+# ORDERING MATTERS, and getting it wrong parks every PR. Registration was only
+# safe AFTER the `paths:` filter came off the trigger above: a filtered workflow
+# reports on some PRs and not others, and a required context that never reports
+# leaves the PR at "Expected — waiting for status" with nothing to fix. If this
+# filter is ever reinstated, DE-REGISTER the check in the same change.
+#
+# Never trust this comment for the live state — protection is edited out of band.
+# Read it:
 #
 #     gh api repos/<owner>/<repo>/branches/main/protection \
 #       --jq '.required_status_checks.checks'
+#
+# To de-register, PUT the protection payload back with this context removed from
+# the `checks` array; `enforce_admins` is false, so `gh pr merge --admin` is the
+# escape hatch in the meantime.
 #
 # WHAT IT CANNOT DO
 #
@@ -69,12 +82,27 @@ name: Proposal Freshness
 # differ only in that note and are driven by the self-test below, so the check
 # is shown to discriminate on the coupling rather than on the count.
 
+# TRIGGER: deliberately UNFILTERED.
+#
+# This workflow carried a `paths:` filter until 2026-08-12. That made it
+# unregistrable as a required check, which was measured, not assumed: PR #133
+# (journal cleanup, manifest untouched) produced ZERO check runs from this
+# workflow, while PR #135 (manifest touched) produced one. A required context
+# that reports on only some PRs leaves the rest parked at "Expected — waiting
+# for status to be reported" forever.
+#
+# So the filter is gone and the ratchet runs on every PR. On a PR that does not
+# touch the manifest the comparison is head-vs-base over an identical file — a
+# genuine 0 -> 0 pass, not a special-cased skip, which keeps the result readable
+# as the same measurement in both cases.
+#
+# The cost is the ~1-minute GitHub Actions minimum per PR (`ci-runners.md` §10).
+# Paid deliberately: it buys a check that CAN be required, and it runs the
+# self-test below on every PR rather than only on the PRs that happen to touch
+# this file — so the gate's ability to discriminate is re-proven continuously
+# instead of at the moments it is least likely to have regressed.
 on:
   pull_request:
-    paths:
-      - ".claude/.proposals/latest.yaml"
-      - ".github/scripts/check-proposal-freshness.py"
-      - ".github/workflows/proposal-freshness.yml"
 
 permissions:
   contents: read
