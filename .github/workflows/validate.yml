@@ -15,11 +15,28 @@ name: Validate COC Structure
 # running on every base would let a green computed against one base appear under
 # the same context name on a PR targeting another.
 #
-# Unlike `sync-invariants.yml`, no context here is registered in branch
-# protection, so today this cannot bypass a merge gate — it could only mislead a
-# human reading the checks list. The split is kept anyway so that registering
-# this check later is safe by default rather than silently reintroducing the
-# fail-open. If you add it to protection, register `validate` — not `validate-stacked`.
+# `validate` IS NOW REGISTERED in branch protection (2026-08-12, owner-approved),
+# which is what the paragraph above anticipated. `validate-stacked` is NOT, and
+# deliberately so — registering both would make a required context depend on
+# whether GitHub treats a `skipped` job as satisfying a required check, and that
+# has NOT been verified on this repo. Requiring only the job that runs on the
+# base every PR here actually targets is the option whose failure mode is known.
+#
+# THE CONSEQUENCE, STATED SO IT IS NOT REDISCOVERED THE HARD WAY: `validate`'s
+# `if:` fires only when the base is the default branch. A STACKED PR (base != main)
+# runs `validate-stacked` instead, `validate` never reports, and the PR sits at
+# "Expected — waiting for status to be reported" indefinitely. It is not stuck on
+# a failure; it is stuck on a check that will never arrive.
+#
+#   Clearing it:  gh pr merge <N> --admin --merge     (enforce_admins is false)
+#   Or:           reopen the PR against main, which is this repo's normal shape
+#
+# Do NOT "fix" this by collapsing the two jobs into one context name. That
+# reintroduces exactly the fail-open the split exists to prevent: a check run is
+# scoped to the head SHA, and this workflow's verdict depends on the BASE, so one
+# shared context would let a green computed against one base appear on a PR
+# targeting another. The split is correct; the gap is in what protection can
+# express, and it is bounded by admin-merge.
 on:
   push:
     branches: [main]
@@ -40,6 +57,13 @@ jobs:
       - name: Validate structure
         run: bash .github/scripts/validate-coc-structure.sh
 
+      - name: Derived CLAUDE.md sections are in sync with their source
+        # The generated surface-roles block must equal what the manifest
+        # implies. This is the STRUCTURAL half of the fix that retired the
+        # hand-written copy: without it the generator is a convenience an
+        # author can forget, and the drift class reopens silently.
+        run: node .github/scripts/gen-claude-md-sections.mjs --check
+
   # Coverage for stacked PRs (any non-default base). Deliberately a DIFFERENT
   # job name from `validate` above — see this file's header.
   validate-stacked:
@@ -50,3 +74,10 @@ jobs:
 
       - name: Validate structure
         run: bash .github/scripts/validate-coc-structure.sh
+
+      - name: Derived CLAUDE.md sections are in sync with their source
+        # The generated surface-roles block must equal what the manifest
+        # implies. This is the STRUCTURAL half of the fix that retired the
+        # hand-written copy: without it the generator is a convenience an
+        # author can forget, and the drift class reopens silently.
+        run: node .github/scripts/gen-claude-md-sections.mjs --check

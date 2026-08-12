@@ -74,19 +74,37 @@ Source-of-truth definitions live in `.claude/commands/`; Codex mirrors at `.code
 ### Surface roles — which commands the platform role does NOT see
 
 `sync-manifest.yaml::surface_roles` narrows which operator roles each command
-surfaces to. This list is the doc half of that config and MUST stay equal to it
-— `validate-emit.mjs::claude-md-surface-role-parity` asserts set equality in
-BOTH directions and BLOCKS `/sync` on any drift, so a command added to or
-removed from the manifest's role lists MUST be mirrored here in the same change.
+surfaces to. The block below is **generated** from that config — it is output,
+not a second copy to maintain. Change `surface_roles`, then run:
 
-- Phase + delivery commands **de-surfaced at the platform role**: `/analyze`, `/todos`, `/implement`, `/redteam`, `/codify`, `/release`, `/deploy`, `/validate`.
-- Framework quick-references **de-surfaced at the platform role**: `/ai`, `/api`, `/db`, `/sdk`, `/test`.
-- Design + frontend commands **de-surfaced at the platform role**: `/design`, `/i-audit`, `/i-harden`, `/i-polish`.
-- Method commands **de-surfaced at the platform role**: `/conformance-walk`.
+```bash
+node .github/scripts/gen-claude-md-sections.mjs          # rewrite
+node .github/scripts/gen-claude-md-sections.mjs --check   # CI: exit 1 on drift
+```
 
-No command is currently platform-surfaced, so there is no "default-surfaced for
-every role" list to keep in step; if one is added to the manifest it needs its
-own bullet here carrying that exact phrase, which is the token the checker reads.
+This section used to be hand-written prose, which is why
+`validate-emit.mjs::claude-md-surface-role-parity` exists at all: one fact lived
+in two artifacts and a checker reconciled them after the fact. Generating the
+dependent copy removes the authorship that drifts, rather than adding an
+eleventh check to catch it.
+
+<!-- BEGIN GENERATED: surface-roles -->
+
+<!-- Generated from .claude/sync-manifest.yaml::surface_roles by
+     .github/scripts/gen-claude-md-sections.mjs. DO NOT EDIT BY HAND —
+     edit surface_roles and regenerate, or CI's --check will fail. The
+     phrases below are load-bearing: validate-emit.mjs's parity check
+     reads bullet lines for the exact strings "de-surfaced at the
+     platform role" and "default-surfaced for every role", and extracts
+     the backticked /name tokens from them. -->
+
+- Commands **de-surfaced at the platform role**: `/ai`, `/analyze`, `/api`, `/codify`, `/conformance-walk`, `/db`, `/deploy`, `/design`, `/i-audit`, `/i-harden`, `/i-polish`, `/implement`, `/redteam`, `/release`, `/sdk`, `/test`, `/todos`, `/validate`.
+
+No command is platform-surfaced, so there is no default-surfaced list to
+keep in step. Add one to `surface_roles` and it appears here on the next
+regeneration.
+
+<!-- END GENERATED: surface-roles -->
 
 ## Agent Invocation — Per-CLI Syntax
 
