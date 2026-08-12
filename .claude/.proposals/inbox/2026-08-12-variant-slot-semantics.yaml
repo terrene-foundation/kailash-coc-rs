@@ -1,0 +1,63 @@
+# Step-7c downstream upflow — hop-level-only provenance.
+# NO source_repo: the consumer is deliberately NOT identified.
+origin: downstream
+codify_date: 2026-08-12
+codify_session: "variant slot semantics: a language variant occupying slot:neutral-body REPLACES the global instead of extending it, silently discarding current guidance including a thread-boundary tenant-context MUST"
+template_slug: kailash-coc-rs
+changes:
+  - file: .claude/rules/patterns.md
+    action: modified
+    reason: >-
+      Add an empty `<!-- slot:lang-patterns-extensions -->` extension point, mirroring
+      the one `security.md` and `testing.md` already expose. The global currently
+      declares ONLY `slot:neutral-body`, so a language variant has no additive slot to
+      target and must occupy the body slot — which REPLACES the entire global rather
+      than extending it. This is the structural root cause of the drift in the
+      companion variant change below; that variant cannot be made additive until this
+      slot exists. Measured 2026-08-12: `rules/security.md` declares both
+      `neutral-body` (12-222) and `lang-security-extensions` (224-225);
+      `rules/patterns.md` declares only `neutral-body` (13-232).
+  - file: .claude/variants/rs/rules/patterns.md
+    action: modified
+    reason: >-
+      Retarget from `slot:neutral-body` to the new `slot:lang-patterns-extensions`, and
+      reduce to ONLY the genuinely rs-specific content (the `Feature-Gated Modules With
+      Unconditional Call Sites (MUST — Rust crate edits)` section). Deleting the rest is
+      the fix rather than updating it: the current global already covers runtime
+      execution, node API, DataFlow, Nexus, Kaizen, async-vs-sync, and thread-boundary
+      context propagation, so once the variant stops replacing it the stale content
+      disappears instead of needing perpetual maintenance. Evidence: global is 12,738
+      bytes modified 08-11; this variant is 5,861 bytes modified 07-04; a consumer on
+      this axis receives 5,805 — the variant alone. The ~12.7 KB global is discarded
+      silently, because a replacement never reports what it displaced. Two lost clauses
+      matter beyond staleness: `Async vs Sync Runtime`, and `Propagate Caller Context
+      Across Every Thread-Boundary Dispatch (MUST)`, whose DO-NOT is a tenant/trace
+      ContextVar reading its DEFAULT inside `node.run()` — a tenant-isolation MUST,
+      subtracted from every consumer on this axis including multi-tenant ones.
+      Separately, a downstream consumer measured this variant's prescribed execution API
+      at 0 call sites in its own source while the API this variant marks WRONG is used
+      at over 1,300; the variant predates the current binding surface by five weeks.
+      NOTE the axis subscription is CORRECT for a Rust-SDK-via-Python-bindings consumer
+      and is NOT proposed for change — the py axis would be actively wrong for them
+      (different SDK). The defect is the slot, not the axis.
+  - file: .claude/rules/connection-pool.md
+    action: modified
+    reason: >-
+      Add an empty `<!-- slot:lang-connection-pool-extensions -->` extension point, same
+      rationale as above. Prophylactic rather than remedial: global (4,716 bytes) and rs
+      variant (4,381) are both dated 04-22, so nothing has drifted yet. The point is
+      that nothing CAN drift while they move together, and the moment the global is
+      updated the variant silently stops tracking it with no signal — which is exactly
+      how `patterns.md` reached a five-week gap unnoticed.
+  - file: .claude/variants/rs/rules/connection-pool.md
+    action: modified
+    reason: >-
+      Retarget from `slot:neutral-body` to the new
+      `slot:lang-connection-pool-extensions`, carrying only genuinely rs-specific
+      content. Same defect shape as the `patterns.md` variant; included here because
+      splitting them would mean reviewing the same reasoning twice. Deliberately NOT
+      included: `variants/rs/rules/ci-runners.md`, which also occupies `neutral-body`
+      but is a LEGITIMATE full replacement — the rs CI runbook genuinely differs and its
+      variant is LARGER than the global it replaces (32 KB vs 20 KB), so replacement is
+      the correct semantic there. `e2e-god-mode.md` was not assessed and is left alone.
+status: pending_review
