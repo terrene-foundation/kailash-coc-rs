@@ -8471,6 +8471,40 @@ changes:
         this axis — including multi-tenant ones — has been silently subtracted
         a tenant-isolation control. Treat this as the highest-severity item in
         the current queue.
+      severity_corrected: >-
+        CORRECTION TO THE `note_for_gate_1:` ABOVE, appended 2026-08-12 rather
+        than rewritten — the original wording is left intact above so a claim
+        that reached Gate-1 and then moved leaves a trail. Same shape as the
+        `refuted_sub_claim:` block on the validator-15 emit.mjs entry, and the
+        same standard applied to the #140 offer whose mechanism was refuted at
+        ingest; it would be inconsistent to hold an inbound contributor to that
+        and not this template's own relay.
+        THE OVER-CLAIM: "every consumer on this axis — including multi-tenant
+        ones — has been silently subtracted a tenant-isolation control. Treat
+        this as the highest-severity item in the current queue." That reads as
+        the control SURFACE being absent. It is not, and Gate-1 would have
+        prioritized on a false premise.
+        WHAT SHIPS INTACT: `.claude/rules/tenant-isolation.md`, 19,970 bytes,
+        SEVEN MUST rules — tenant-scoped cache keys; strict-mode typed error on
+        missing tenant_id; tenant-scoped invalidation; the keyspace-bump
+        invalidation sweep; bounded tenant metric labels; tenant_id persisted on
+        audit rows; ONE canonical tenant source across every write path
+        INCLUDING bulk; tenant-guarded upsert excluding tenant_id from SET —
+        plus a MUST NOT block and an Audit Protocol. The tenant-isolation
+        DOMAIN has a dedicated rule at this template.
+        WHAT IS GENUINELY UNCOVERED, verified not assumed: context propagation
+        across a THREAD-BOUNDARY dispatch. A sweep of the shipped rule corpus
+        for thread / executor / dispatch-boundary context propagation returns
+        only incidental `async def` code samples inside tenant-isolation.md —
+        no rule addresses losing caller context across a thread boundary. So
+        the displaced clause is NOT redundant with what ships; it is narrower
+        than "a tenant-isolation control".
+        REVISED DISPOSITION: a GAP IN DEPTH on a covered domain, not a missing
+        control surface. Still the most security-adjacent item in this relay and
+        still worth landing — prioritize on that basis. The STRUCTURAL finding
+        is unaffected: a variant occupying slot:neutral-body still silently
+        displaces ~12.7 KB of current guidance with no signal at emission,
+        sync, or consumer.
         SCOPE LIMIT, STATED: this hop CANNOT see `.claude/variants/` (it does
         not exist at this tier) nor the global `patterns.md` (it lives at
         loom). So the offer's figures for the GLOBAL (12,738 bytes, modified
