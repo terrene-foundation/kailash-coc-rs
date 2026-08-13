@@ -1,8 +1,20 @@
-# Gate-C fixture — BASE. Two entries, both verified after the last sync.
-# Paired with gate-c-head-regressed.yaml (adds an unverified entry, must FAIL)
-# and gate-c-head-improved.yaml (reconciles nothing new but adds none, PASS).
-# Dates are AFTER `.claude/VERSION::upstream.synced_at` (2026-08-02) so these
-# count as verified; the regression fixture is what moves the number.
+# Gate-C fixture — BASE. Two entries, both verified after the reference sync.
+# It is the baseline for all three HEAD fixtures: gate-c-head-regressed.yaml
+# (adds an unverified entry, must FAIL), gate-c-head-dup-undocumented.yaml
+# (adds a duplicate group with no stated coupling, must FAIL), and
+# gate-c-head-dup-documented.yaml (the same group WITH a pairing note, must
+# PASS). It is also driven against ITSELF as the no-change case.
+#
+# The reference date is PINNED by the workflow's `--sync-date` (2026-08-02) and
+# is NOT read from `.claude/VERSION`. Every `reconciled_at` below is on or after
+# it, so these entries count as verified and the HEAD fixtures are what move the
+# number. Do not lower a date below the pin, and do not raise the pin above the
+# earliest date here — either inverts the expectations the self-test asserts.
+#
+# This used to say the dates were "AFTER `.claude/VERSION::upstream.synced_at`",
+# which was true when written and became false the moment a sync moved that
+# stamp — reddening a REQUIRED check on every sync PR. The pin is the fix; this
+# comment is corrected rather than deleted so the coupling stays legible.
 source_repo: fixture
 origin: use-template
 codify_date: 2026-08-09
