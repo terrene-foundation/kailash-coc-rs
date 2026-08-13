@@ -47,6 +47,7 @@ const HOOKS_LIB = path.resolve(
 const {
   detectStateFileMutation,
   detectStateFileMutationSegmentAware,
+  detectHeredocWriteRunBundle,
   splitShellSegments,
   hasInterpreterWriteSignal,
   detectRepoScopeDriftBash,
@@ -174,6 +175,11 @@ const NO_PROTECTED_PATH_FIXTURES = new Set([
   //     asserted clean here (asserting it would be false).
   "detectStateFileMutationSegmentAware/clean-1399-version-stamper-worktree-arg",
   "detectStateFileMutationSegmentAware/clean-1399-version-tmp-sandbox-bare-name",
+  // loom#1426 — surfaced by wiring the orphaned bundle dir below. This one pins
+  // the VAR-INDIRECT residual (`T=/tmp/s.cjs; node "$T"`), where the protected
+  // path never reaches the command string at all, so the ABSENCE of a match is
+  // the property. The other 26 bundle fixtures are reachable.
+  "detectHeredocWriteRunBundle/clean-variable-indirect-run-only",
 ]);
 
 function runFixtureDir(dir, detector) {
@@ -238,6 +244,17 @@ runFixtureDir(
   "detectStateFileMutationSegmentAware",
   detectStateFileMutationSegmentAware,
 );
+// loom#1426 — the `detectHeredocWriteRunBundle` fixture dir was ORPHANED. It has
+// been committed since #764 with 27 pairs, `state-file-write-guard.md` §
+// Cross-references cites it as the Layer-4 evidence, and `cc-artifacts.md` Rule 9
+// binds a detector to its fixtures — but NO runner iterated it, so not one of
+// those 27 had ever executed. Measured before wiring: this file's own output
+// named `detectStateFileMutationSegmentAware/` 85 times and
+// `detectHeredocWriteRunBundle/` 0 times. It is added HERE rather than in a new
+// file because the Layer-4 pass is reached through
+// `detectStateFileMutationSegmentAware` in production, so the two belong to one
+// runner — and a second runner would be a second thing to forget to register.
+runFixtureDir("detectHeredocWriteRunBundle", detectHeredocWriteRunBundle);
 
 // R2-1 (closure) — the exemption list MUST NOT rot. A stale entry (fixture
 // renamed or deleted) would silently pre-authorize a future fixture that happens

@@ -1,5 +1,7 @@
 ---
 id: "AI"
+name: ai
+description: "Kaizen quick reference: BaseAgent, Signature, Delegate, multi-agent, RAG, trust, governance."
 ---
 
 # /ai - Kaizen Quick Reference

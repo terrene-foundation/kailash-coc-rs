@@ -1,6 +1,6 @@
 ---
 name: sdk
-description: "Loom command: sdk"
+description: "Core SDK quick reference: workflows, 110+ nodes, runtime, async, cycles, MCP, OpenTelemetry."
 ---
 
 # /sdk - Core SDK Quick Reference

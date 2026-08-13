@@ -1,80 +1,65 @@
-# cross-repo-authorize audit fixtures
+# `cross-repo-authorize` audit fixtures
 
-Per `cc-artifacts.md` Rule 9. Behavioral fixtures for
-`.claude/bin/cross-repo-authorize.mjs`, covering the receipt-collision defect
-(issue #88 defect 2) and the invariants that defect exposed.
+Backs `.claude/bin/cross-repo-authorize.mjs` (the User-Authorized Exception ceremony
+tool) and `.claude/commands/cross-repo-authorize.md` (its ceremony doc).
 
-```bash
-node .claude/audit-fixtures/cross-repo-authorize/run.mjs
-# exit 0 = all 17 checks behaved as expected; 1 = a regression
+```
+node .claude/audit-fixtures/cross-repo-authorize/run.mjs     # exit 0 = all cases held
 ```
 
-Every fixture builds its own throwaway git repo in `os.tmpdir()` and removes it.
-Nothing here reads or writes the real `.claude/cross-repo-authz/`. All org slugs
-(`acme/one`, `other/repo`) are synthetic.
+Registered in `.claude/test-harness/ci-audit-fixtures.json` as
+`cross-repo-authorize` / `mode: run` / `min_cases: 26` — the count taken from an
+ACTUAL run, not from reading the source. The registry is closed in both
+directions (`run-audit-fixtures.mjs` § REGISTRY COMPLETENESS), so an unregistered
+runner here fails the build.
 
-## What the reported defect actually was
+## Why this runner drives the REAL guard
 
-The filing described the second same-day receipt as **refused**, and proposed
-only to disambiguate the filename while "preserving the refusal-to-overwrite
-invariant". Measured against the tree: **there was no such invariant.**
-`fs.writeFileSync` carried no `wx` flag, so the second write **silently
-destroyed the first receipt** — including its verbatim authorizing instruction.
+The load-bearing cases import
+`violation-patterns.js::hasCrossRepoAuthorizationReceipt` and drive it against a
+real temp git repo. They do **not** grep the tool's source for `wx` / `sha256`:
+that would pass on a tool which imported the digest and never used it. The
+question each case asks is the one that matters — _is this cross-repo action
+still authorized?_ — so a regression fails by printing
+`write-authorized after read receipt: false`.
 
-Because a receipt is the ONLY distinguisher between an authorized cross-repo
-action and an unauthorized one (`repo-scope-discipline.md` § User-Authorized
-Exception condition 4 — "present = in-scope, absent = critical L1"), the
-consequence is stronger than an ergonomics annoyance:
+`control-harness-writes-and-guard-reads` is the positive control
+(`instrument-discipline.md` MUST-3(a)). If it fails, every result below it is
+uninterpretable and the runner says so: a later "no receipt" would be
+indistinguishable from a harness that cannot write one. It caught a real breakage
+during authoring — a backtick in an edit terminated the tool's body template
+literal, and the control reported the SyntaxError instead of the suite quietly
+reporting 13 unrelated failures.
 
-- **Audit-record destruction.** The authorization evidence for a real,
-  human-approved action disappears with no error.
-- **Tier defeat.** A cheap `--mode read` receipt for the same action
-  overwrote an existing `write` receipt, after which the hook reported the
-  authorized WRITE action as unauthorized. The read/write tier the tool's own
-  comments call "the design's central tier" was defeated by a filename
-  collision.
+## Named regression cases (`coc-artifact-eval-coverage.md` MUST-2)
 
-Both halves were therefore required: the `wx` refusal (the invariant that was
-assumed to exist) **and** the filename discriminator (so distinct actions stop
-colliding in the first place).
+Case names that are finding ids are the regression locks for those findings.
 
-## Discrimination — do not trust these greens without it
+| Case                            | Finding | Mutation that REDS it (verified)                      |
+| ------------------------------- | ------- | ----------------------------------------------------- |
+| `RS-71-tier-defeat-measured`    | RS-71   | pre-fix tool (no digest, no `wx`): `true` → `false`   |
+| `RS-71-mode-in-filename-digest` | RS-71   | `tripleDigest(target, action, mode)` → `…, "MUTANT")` |
+| `RS-71-no-silent-clobber`       | RS-71   | drop `flag: "wx"` from `writeReceiptNoClobber`        |
+| `RS-71-truncation-collision`    | RS-71   | pre-fix 48-char slug filename                         |
+| `PY-3-C2-*` (7 cases)           | PY-3-C2 | pre-fix mtime claims + the two stale line anchors     |
 
-Per `instrument-discipline.md` MUST-2(a), a green is evidence only once the run
-has been shown to RED in the behavior's absence. Reproduce:
+### The mutation that did NOT red, and why that mattered
 
-```bash
-git show <sha-before-the-fix>:.claude/bin/cross-repo-authorize.mjs > /tmp/orig.mjs
-TOOL=/tmp/orig.mjs node .claude/audit-fixtures/cross-repo-authorize/run.mjs
-```
+Replacing `mode` with a constant in the digest was **reached** (verified by
+grepping the mutated line) yet left the suite green, because the `wx` no-clobber
+retry independently kept both receipts by writing a `-2` sibling. Per
+`instrument-discipline.md` MUST-2(b) that leaves two live hypotheses — vacuous
+test, or inert mutation — and it was neither: the mutation was real, its effect
+was **masked by the second mechanism**.
 
-Measured against the pre-fix tool: **PASS 9 / FAIL 8.** The reds are T1 (two
-distinct actions collapse to one receipt; action A's text and instruction gone),
-T2 (identical re-run exits 0 and rewrites the record), and T3 (read and write
-receipts collide).
+`RS-71-mode-in-filename-digest` was therefore strengthened from "two files exist"
+to "two files with DISTINCT base names, neither the other's `-N` sibling." It
+then redded under the same mutation. A case that merely counted files would have
+reported the digest property as covered while only the retry was holding it up.
 
-`TOOL=<path>` is the supported override and exists for exactly this check.
+## Disclosure
 
-## Case map
-
-| Case | Predicate pinned                                                           |
-| ---- | -------------------------------------------------------------------------- |
-| T1   | two DISTINCT same-day actions → two surviving receipts (the reported bug)  |
-| T2   | identical re-run → REFUSED (exit 1), original byte-identical, no clobber   |
-| T3   | same action, different `--mode` → distinct receipts (tier preservation)    |
-| T4   | the REAL hook consumer still resolves the renamed receipts (no regression) |
-| T5   | a read receipt does NOT clear a write action (the central tier holds)      |
-| T6   | marker-injection guard still rejects newline / forged marker text          |
-
-T4 and T5 call the actual
-`hooks/lib/violation-patterns.js::hasCrossRepoAuthorizationReceipt`, not a
-re-implementation of it — the filename changed, so the real consumer is the
-only thing that can prove nothing broke.
-
-## Note for a future reader
-
-The consumer enforces a **6-hour content-timestamp window**
-(`CROSS_REPO_RECEIPT_WINDOW_MS`). A receipt older than that resolves `false` by
-design. If you hand-check the repo's committed receipts and find them all
-`false`, that is expiry, not a regression — the fixtures generate fresh receipts
-precisely so the window is not what they are measuring.
+Every token is synthetic: target `example-org/example-repo`, requester
+`fixture-operator`. No real operator `display_id`, org slug, home path, or repo
+name appears here. Receipts are written into `mkdtemp` repos and removed; the
+runner never touches the live `.claude/cross-repo-authz/` store.

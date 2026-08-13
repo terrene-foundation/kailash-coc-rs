@@ -1,19 +1,38 @@
 # COC Sync Marker — kailash-coc-rs (rs lane, multi-CLI)
-timestamp: 2026-08-02T00:00:00Z
+timestamp: 2026-08-13T08:58:45Z
 source: loom/.claude
-loom_sha: 43167a54921f7454a3eb2573af0252ca7d16df2a
+loom_sha: 323af9ce004a9ea3b46f7b8124527d22662efcf1
 variant: rs
 clis: [claude, codex, gemini]
 visibility: public
 stats:
-  engine_changed: 497
-  engine_verify: "CONSISTENT — 2023/2023 delivered (62 content-equal after BUILD-internal strip, 1961 byte-equal)"
-  version_stamp: "loom-tracking -> 2.45.0 @ 43167a54 (own 2.23.23 -> 2.24.0)"
-  sdk_pins: "N/A — this template carries no dependency manifest (no pyproject.toml / Cargo.toml / Gemfile); Dockerfile ARG KAILASH_PY_PACKAGE is a package name, not a version. sdk_packages metadata refreshed to PyPI-latest (5 bumped); kailash-rs held at 4.40.0 because PyPI kailash-enterprise 4.43.0 ships no macosx_11_0_arm64 wheel and no sdist."
+  engine_changed: 276
+  engine_base: "target origin/main 45224984 (isolated worktree, two-phase --stage-only -> --finalize)"
+  version_stamp: "loom-tracking -> 2.45.0 @ 323af9ce (own 2.24.0 -> 2.25.0)"
+  sdk_pins: "N/A as a dependency-manifest edit — full find confirms NO pyproject.toml / Cargo.toml / Gemfile on this template (only .codex-mcp-guard/package.json for the guard's own Node deps + the consumer-owned requirements-user.txt). The pin surface IS .claude/VERSION::upstream.sdk_packages. Bumped vs PUBLISHED artifacts: kailash-mcp 0.4.3->0.5.1 (PyPI latest); kailash-rs 4.40.0->4.43.0 (newest published BUILD tag v4.43.0). The 2026-08-02 kailash-rs hold is RETIRED: it cited 'no macosx_11_0_arm64 wheel and no sdist' for 4.43.0, and re-measurement refutes both halves — 4.40.0/4.41.0/4.42.0/4.43.0 are artifact-identical (20 files, 0 sdist, 5 macosx_11_0_arm64 wheels cp310-cp314 each). kailash HELD at 2.62.0 (PyPI latest 2.62.0; newest BUILD tag v2.62.0; no v2.63.0 tag — 2.63.0 unpublished)."
   baselines_emitted: { cc: 0, codex: 1, gemini: 1 }
+  baseline_emission_bytes:
+    block_cap_bytes: 65536
+    warn_cap_bytes: 32768
+    codex:
+      rules: 11
+      bytes: 58000
+      tier: WARN
+      headroom_pct: 11.5
+      floor_pct: 8.5
+      floor_note: "#1355 exception applied (10% -> 8.5% for lane rs); EXPIRES 2026-10-31. ADVISORY: within the 15% proximity band."
+    gemini:
+      rules: 11
+      bytes: 58000
+      tier: WARN
+      headroom_pct: 11.5
+      floor_pct: 8.5
+      floor_note: "#1355 exception applied (10% -> 8.5% for lane rs); EXPIRES 2026-10-31. ADVISORY: within the 15% proximity band."
   cli_artifacts:
-    codex: { prompts: 42, agent_prompts: 22, skills: 40 }
-    gemini: { commands: 42, skills: 40, agents: 22 }
-  coc_artifacts: { artifacts: 198, files: 200, coc_version: "1.0.0" }
+    codex: { prompts: 42, agent_prompts: 22, skills: 39 }
+    gemini: { commands: 42, skills: 39, agents: 22 }
+  coc_artifacts: { artifacts: 203, files: 205, coc_version: "1.0.0", rules: 91, agents: 25, skills: 42, commands: 45 }
   codex_dispatcher: "bin/coc + 28 per-phase symlinks"
+  idempotency: "VERIFIED — a second emit of all three producers is byte-identical to the placed trees across all 8 surfaces (codex/prompts, codex/skills, gemini/commands, gemini/skills, gemini/agents, .coc, AGENTS.md, GEMINI.md)"
+  mcp_guard: "external tree .codex-mcp-guard/ synced + .claude/codex-mcp-guard -> ../.codex-mcp-guard symlink verified resolving (sync-completeness.md MUST-5)"
   preserved: [CLAUDE.md, settings.json, Gemfile.user, Dockerfile.user, requirements-user.txt, "visibility:public"]
