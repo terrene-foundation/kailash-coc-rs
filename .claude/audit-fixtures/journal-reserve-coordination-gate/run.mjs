@@ -695,16 +695,20 @@ for (const c of cases) {
       }
     }
     if (c.expect(r)) {
-      console.log(`  ✓ ${c.name}`);
+      // `PASS <name>` at column 0 is the shape run-audit-fixtures.mjs::CASE_PASS
+      // counts (/^[ \t]*(?:PASS|ok)[ \t]+\S/). An indented `✓ <name>` is invisible
+      // to it, so this runner reported 0 cases against its own min_cases floor of 17
+      // while passing standalone.
+      console.log(`PASS ${c.name}`);
     } else {
       failed += 1;
-      console.log(`  ✗ ${c.name}`);
+      console.log(`FAIL ${c.name}`);
       console.log(`      expected: ${c.describe}`);
       console.log(`      actual  : ${JSON.stringify(r).slice(0, 300)}`);
     }
   } catch (err) {
     failed += 1;
-    console.log(`  ✗ ${c.name} — threw: ${err && err.message}`);
+    console.log(`FAIL ${c.name} — threw: ${err && err.message}`);
   } finally {
     if (made) fs.rmSync(made.root, { recursive: true, force: true });
   }
