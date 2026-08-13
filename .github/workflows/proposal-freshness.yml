@@ -145,38 +145,65 @@ jobs:
           F=.github/scripts/fixtures
           G=.github/scripts/check-proposal-freshness.py
 
-          # must_fail <fixture> <what it proves>
-          must_fail() {
-            if python3 "$G" --manifest "$1" --base-manifest "$F/gate-c-base.yaml" \
-                 >/dev/null 2>&1; then
-              echo "SELF-TEST FAILED: the gate PASSED $1"
-              echo "  ($2)"
-              echo "It is no longer discriminating; every PASS it prints is meaningless."
-              exit 1
-            fi
-          }
-          must_pass() {
-            if ! python3 "$G" --manifest "$1" --base-manifest "$F/gate-c-base.yaml" \
-                   >/dev/null 2>&1; then
-              echo "SELF-TEST FAILED: the gate FAILED $1"
-              echo "  ($2)"
-              echo "A gate that cannot be cleared by following its own instruction"
-              echo "teaches readers that red is normal — the failure this gate avoids."
+          # The fixtures' reference point, PINNED — never read from the live
+          # `.claude/VERSION`. This is the whole fix for the 2026-08-13 breakage:
+          # the fixtures' entries are dated 08-09/08-10, an inbound sync moved
+          # `upstream.synced_at` to 08-13, every fixture entry became "predates
+          # sync", and the fixture that MUST pass failed — reddening a REQUIRED
+          # check on every sync PR for a reason unrelated to the manifest.
+          #
+          # CONSTRAINT on this value: it MUST be <= the earliest `reconciled_at`
+          # in the fixtures (2026-08-09), or the fixtures' entries stop counting
+          # as verified and the pass/fail expectations below invert. It is a
+          # constant precisely because the fixtures are constants.
+          SYNC_DATE=2026-08-02
+
+          # expect <want-rc> <fixture> <what it proves> [extra args...]
+          #
+          # Asserts the EXACT exit code, not merely non-zero. Exit 1 is "the
+          # ratchet regressed"; exit 2 is "the gate could not run". An earlier
+          # version tested `if python3 ...; then fail`, which counted BOTH as a
+          # successful discrimination — so a fixture that failed to parse, or a
+          # gate that refused to start, read as proof the gate still works.
+          expect() {
+            local want="$1" fixture="$2" why="$3"; shift 3
+            local rc=0
+            python3 "$G" --manifest "$fixture" \
+              --base-manifest "$F/gate-c-base.yaml" "$@" >/dev/null 2>&1 || rc=$?
+            if [ "$rc" -ne "$want" ]; then
+              echo "SELF-TEST FAILED: $fixture exited $rc, expected $want"
+              echo "  ($why)"
+              echo "The gate is not behaving as the fixture asserts, so neither its"
+              echo "PASSes nor its FAILures can be read as measurements."
               exit 1
             fi
           }
 
-          must_fail "$F/gate-c-head-regressed.yaml" \
-            "a new entry with no reconciliation block must regress the count"
-          must_fail "$F/gate-c-head-dup-undocumented.yaml" \
-            "a new duplicate group with no stated coupling must fail"
-          must_pass "$F/gate-c-head-dup-documented.yaml" \
-            "the SAME duplicate group WITH a pairing note must clear"
-          must_pass "$F/gate-c-base.yaml" \
-            "an unchanged manifest must pass"
+          expect 1 "$F/gate-c-head-regressed.yaml" \
+            "a new entry with no reconciliation block must regress the count" \
+            --sync-date "$SYNC_DATE"
+          expect 1 "$F/gate-c-head-dup-undocumented.yaml" \
+            "a new duplicate group with no stated coupling must fail" \
+            --sync-date "$SYNC_DATE"
+          expect 0 "$F/gate-c-head-dup-documented.yaml" \
+            "the SAME duplicate group WITH a pairing note must clear" \
+            --sync-date "$SYNC_DATE"
+          expect 0 "$F/gate-c-base.yaml" \
+            "an unchanged manifest must pass" \
+            --sync-date "$SYNC_DATE"
+
+          # HERMETICITY FENCE. The four cases above are only meaningful if the
+          # gate cannot silently resolve its reference point from live state
+          # when the pin is absent — which is exactly what it used to do. Drive
+          # the fixture path with NO --sync-date and require a refusal (exit 2).
+          # Deleting the fence in the script reds this case, so the fence is
+          # shown to exist rather than asserted to.
+          expect 2 "$F/gate-c-head-dup-documented.yaml" \
+            "fixture mode with no --sync-date must REFUSE, not fall back to live VERSION"
 
           echo "Self-test OK: fails on an unverified entry and on an undocumented"
-          echo "duplicate; passes on no-change and on a documented duplicate."
+          echo "duplicate; passes on no-change and on a documented duplicate; and"
+          echo "refuses to run fixtures against live state at all."
 
       - name: Gate C — manifest freshness ratchet
         env:

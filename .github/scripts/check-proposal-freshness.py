@@ -61,6 +61,29 @@ Note the asymmetry: this gate READS `.claude/VERSION`, which sync DOES rebuild.
 That is deliberate and correct — sync rewrites it with the NEW sync date, which
 is exactly the reference point the freshness comparison needs.
 
+WHERE THE SYNC DATE COMES FROM — A BIJECTION, NOT A FALLBACK
+------------------------------------------------------------
+Reading live `.claude/VERSION` is correct for the LIVE run and WRONG for the
+fixture-driven self-test, and conflating the two broke the gate on 2026-08-13.
+The self-test drives committed fixtures whose entries are dated 2026-08-09/10.
+An inbound sync moved `upstream.synced_at` from 08-02 to 08-13, so every fixture
+entry became "evidence predates sync", the fixture that MUST PASS started
+failing, and a REQUIRED check went red on every sync PR for a reason that had
+nothing to do with the manifest. A test coupled to state it does not own reports
+on that state, not on the thing it names.
+
+So the two modes are now disjoint, and each has exactly one source:
+
+  LIVE mode     (no --manifest / --base-manifest) -> reads `.claude/VERSION`.
+                 `--sync-date` is REFUSED here: accepting a pin on the live path
+                 would be a one-flag bypass of the freshness comparison itself.
+  FIXTURE mode  (--manifest and/or --base-manifest) -> REQUIRES `--sync-date`.
+                 Reading live VERSION is refused, so the self-test is a pure
+                 function of its committed inputs and no sync can move it.
+
+Neither mode can fall back to the other. Exit 2 in both directions, because a
+gate that ran against the wrong reference point is not a gate that passed.
+
 Exit 0 = no regression. Exit 1 = this PR raised the unverified count, OR it
 introduced a duplicate (file, action) group whose entries do not state the
 coupling. A NEW duplicate group that DOES state it passes: the manifest is
@@ -269,9 +292,47 @@ def main() -> int:
     # every other instrument to (`rules/instrument-discipline.md` MUST-3).
     parser.add_argument("--manifest", help="read the HEAD manifest from this path")
     parser.add_argument("--base-manifest", help="read the BASE manifest from this path")
+    # The fixture mode's reference point. REQUIRED with --manifest/--base-manifest
+    # and REFUSED without them — see the module docstring's bijection. Pinning it
+    # is what makes the self-test a pure function of its committed inputs.
+    parser.add_argument(
+        "--sync-date",
+        help="pin the last-sync date (fixture mode only, e.g. 2026-08-02)",
+    )
     args = parser.parse_args()
 
-    sync, source = last_sync_date(args.repo_root)
+    fixture_mode = bool(args.manifest or args.base_manifest)
+
+    if fixture_mode and not args.sync_date:
+        print("FAIL(gate-c): fixture mode requires an explicit --sync-date.")
+        print("  --manifest / --base-manifest drive committed fixtures, whose entry")
+        print("  dates are fixed. Resolving the sync date from the live")
+        print(f"  {VERSION} instead would couple the result to state the")
+        print("  fixtures do not own: the next sync moves `upstream.synced_at`")
+        print("  forward, every fixture entry becomes 'predates sync', and the")
+        print("  fixture that MUST pass fails for a reason unrelated to it.")
+        print("  Pass the date the fixtures were written against, e.g.")
+        print("  --sync-date 2026-08-02.")
+        return 2
+
+    if args.sync_date and not fixture_mode:
+        print("FAIL(gate-c): --sync-date is fixture-mode only.")
+        print("  On the live path the reference point MUST be the repo's own")
+        print(f"  {VERSION}::upstream.synced_at. Accepting a pinned date here")
+        print("  would let any caller clear the ratchet by naming a date, which")
+        print("  is the comparison this gate exists to make.")
+        return 2
+
+    if args.sync_date:
+        pinned = parse_date(args.sync_date)
+        if pinned is None:
+            print(f"FAIL(gate-c): --sync-date {args.sync_date!r} is not a date.")
+            print("  Expected an ISO date such as 2026-08-02. Refusing rather than")
+            print("  silently continuing with no reference point.")
+            return 2
+        sync, source = pinned, "--sync-date (pinned, fixture mode)"
+    else:
+        sync, source = last_sync_date(args.repo_root)
 
     head_path = args.manifest or f"{args.repo_root}/{MANIFEST}"
     try:
