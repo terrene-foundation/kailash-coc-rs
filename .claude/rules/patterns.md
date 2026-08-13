@@ -1,4 +1,12 @@
-
+---
+priority: 10
+scope: path-scoped
+paths:
+  - "**/*.py"
+  - "**/*.ts"
+  - "**/*.js"
+  - "**/*.rs"
+---
 ### 1. Runtime Execution Pattern
 
 MUST use `rt.execute(wf)` where `wf = builder.build(reg)`.
