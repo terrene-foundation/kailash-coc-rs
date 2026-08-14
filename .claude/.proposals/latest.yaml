@@ -9623,6 +9623,122 @@ changes:
         verified as real UTC against `date -u` (38s delta).
 
 
+
+  - file: .claude/rules/agents.md
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    diff_lines: "+18 -6 (clause body + 4 clause-scoped Wiring fields)"
+    reason: >-
+      SECOND-MODE EXTENSION OF § AGENT-RESULT-DELIVERY, PLUS THE BOUNDS AN
+      ADVERSARIAL ROUND SHOWED THE FIRST DRAFT WAS MISSING. The clause landed
+      2026-08-13 (prior cycle). The class RECURRED TWICE the next day in a mode
+      neither existing half covered, so this is evidence, not speculation.
+      THE MODE. Both lanes were spawned CORRECTLY (no `name`, so `toolUseId` is
+      present) and both notifications carried a real `result` field. What arrived
+      was a status fragment where the findings belonged — a forward-looking
+      progress line — after 16 and 85 tool calls. Every surface scored them as
+      returned. This is NOT the SPAWN CONTRACT failure (nothing was named) and
+      NOT the DELIVERY GATE as written ("a lifecycle/idle notification is NOT a
+      delivery signal" does not reach a payload that EXISTS and is merely a
+      progress line).
+      WHAT THE CLAUSE NOW SAYS. (a) A fragment is defined by ANNOUNCING WORK
+      STILL TO COME rather than stating a result — explicitly NOT by brevity, so
+      a terse complete verdict ("CLEAN — no findings") is a delivery and MUST NOT
+      be re-run. That bound came from the correctness reviewer, which showed the
+      unbounded first draft would have let an orchestrator re-run a genuine clean
+      round and invert the clean-round counter this same file governs.
+      (b) RECOVERY keys on the RETURN PATH, not on whether a report was written.
+      The first draft keyed on "was a report written", which BOTH redteam arms
+      independently flagged as confounded: the two measured arms differ in the
+      return path AND in report-written, and keying on the latter contradicts
+      this file's own headline finding that one field (`toolUseId`) decides
+      delivery. The return path is also the only one of the two an orchestrator
+      can OBSERVE at decision time.
+      (c) THE RESUME IS BOUNDED — the adversarial arm found the unbounded first
+      draft was a convergence hole and an agent-triggerable scope-relaxation
+      loop. ONE resume per lane (a second fragment routes to transcript-recovery
+      or re-dispatch); it MAY release only a sub-goal the AGENT assigned itself,
+      and a BRIEF item named as the blocker ESCALATES rather than being marked
+      optional (otherwise a subagent obtains scope relaxation by emitting one
+      line naming a constraint it dislikes, and the sanctioned orchestrator reply
+      grants it); and the resumed payload counts as a delivery only if it
+      addresses each brief item or names it UNRESOLVED, with UNRESOLVED items
+      carried as OPEN FINDINGS that do NOT count toward a clean round.
+      WIRING CORRECTIONS THE ROUND ALSO FORCED. Severity previously read "confirm
+      every relied-on agent returned a payload" — the exact test this extension
+      declares too weak, so a gate-review against it would have PASSED both
+      instances; it now tests that the payload STATED A RESULT. The
+      Regression-within-grace rationale ("recoverable from the on-disk agent
+      transcripts") holds for the SPAWN-CONTRACT part only and is now scoped:
+      a fragment lane never wrote a report, so the synthesis is genuinely gone.
+      Detection (c) no longer claims to be structurally Phase-1-only (its correct
+      home is PostToolUse on the delegation tools, where the payload exists; it
+      stays Phase-1 because the discrimination is semantic) and now requires the
+      resume transition be recorded in the launch ledger, because the check was
+      otherwise transcript-dependent and compaction is what erases transcripts.
+    dedup_evidence: >-
+      `grep -ci "status.fragment"` over `latest.yaml` -> 0 before this append.
+      Control: `grep -ci "idle notification"` -> 1 and `agent-result-delivery` ->
+      6 on the same file, so the matcher fires and the zero is a true negative.
+      The four pre-existing `agents.md` entries were read, not counted: two are
+      downstream-relayed reviewer-dispatch items, one is the 2026-08-13 first-mode
+      clause, one is the Rule-11 (a') disposition. None covers the fragment mode.
+    reconciliation:
+      status: "STILL-OPEN — net-new second-mode extension, filed 2026-08-14 after a Tier-1 three-arm redteam returned DO-NOT-LAND-AS-IS and the findings were applied"
+      reconciled_at: 2026-08-14
+      evidence: >-
+        Both fragment instances are from this session and are quoted generically
+        in the paired skill (the verbatim lines named internal WIP and the skill
+        cascades, so they were genericized per knowledge-cascade-routing MUST-3).
+        Evidence bound recorded rather than implied: n=2, one session, one
+        orchestrator, shared confound — NOT independent replication, and
+        "delivered in full" was not measured against the brief's item list.
+
+  - file: .claude/skills/30-claude-code-patterns/agent-result-delivery.md
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    diff_lines: "+62 -14"
+    reason: >-
+      PAIRED DEPTH FOR THE SECOND-MODE CLAUSE ABOVE. Carries what the baseline
+      rule must not: the two-mode discriminator table keyed on the RETURN PATH,
+      a DO/DO-NOT block for the second mode, the second-mode BLOCKED corpus, the
+      bounded resume procedure, and two honesty records the redteam required.
+      THE TWO HONESTY RECORDS ARE THE PART WORTH REVIEWING. (1) The UNTESTED
+      QUADRANT: a NAMED agent that stalled BEFORE writing has not been measured,
+      and under the return-path mechanism a bare resume of it would be LOST
+      unless the resume also instructs SendMessage. The first draft's table
+      implied a verdict for that quadrant; it now refuses one. (2) A LIVE,
+      UNREFUTED HYPOTHESIS about the FIRST mode: the file's own measurement shows
+      a named agent WITH a SendMessage reporting instruction DELIVERS, so
+      "teammates can never reply" is not established — the mode-1 re-requests may
+      simply have failed to instruct the reply CHANNEL. The discriminating
+      experiment is named inline. If it resolves that way, mode 1's recovery
+      procedure in this corpus is wrong and must be rewritten.
+      A PRE-EXISTING BLOCKED ENTRY WAS SCOPED, NOT DELETED. The file already
+      listed "I'll just ask it again with SendMessage" as BLOCKED on measured
+      evidence. That entry is correct FOR MODE 1 and is retained, now explicitly
+      scoped, with a "check which mode you are in" instruction — deleting it
+      would re-open the failure it records, and leaving it unscoped would have
+      shipped a flat contradiction with the new second-mode finding.
+    dedup_evidence: >-
+      This file has one prior entry in the manifest (the 2026-08-13 create). It
+      covers the first mode only: `grep -ci "status.fragment"` -> 0 across the
+      whole manifest before this append, against a control of 6 hits for
+      `agent-result-delivery`, so the matcher fires and the zero is a true
+      negative.
+    reconciliation:
+      status: "STILL-OPEN — net-new second-mode depth, filed 2026-08-14 alongside the rule clause it pairs with"
+      reconciled_at: 2026-08-14
+      evidence: >-
+        Rule-to-skill redirect verified to resolve to a CLAUSE, not merely a
+        file: the rule cites per-mode DO/DO-NOT, and a `^# DO` sweep over the
+        second-mode section returns 6 (control: 4 in the first-mode block, 0
+        there before this change), closing the dangling-cross-reference case
+        cc-artifacts.md MUST NOT names.
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
 # removed (artifact-flow.md § "Append, Never Overwrite Unprocessed Proposals").
