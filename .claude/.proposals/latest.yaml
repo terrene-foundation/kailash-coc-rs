@@ -8657,6 +8657,299 @@ changes:
       reasoning twice.
     diff_lines: "a slot retarget plus trimming to rs-specific content; not sized by the offer"
 
+  # ── Appended 2026-08-13 — agent-result-delivery codify ──────────────────────
+  # CORRECTED IN PLACE after the Tier-1 self-referential redteam (reviewer +
+  # security-reviewer + cc-architect, parallel) ruled against the first cut on
+  # five points. These entries were authored and corrected in the SAME
+  # uncommitted change and were never relayed, so an in-place correction is not
+  # the rewrite-of-a-relayed-entry that `artifact-flow.md` blocks. What the
+  # round found is recorded here rather than quietly fixed.
+  - file: .claude/rules/agents.md
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    reason: >-
+      ADDS THE MUST CLAUSE "A Dispatched Agent's Result Is Not Received Until It
+      Is DELIVERED" to the § Quality Gates cluster, plus its clause-scoped
+      8-field Trust-Posture Wiring. THE GAP: § Redteam Reviewer Dispatch already
+      makes an ERRORED/EMPTY agent zero evidence, but no clause covered an agent
+      that SUCCEEDS, writes its full report, and still returns nothing because of
+      how it was SPAWNED — the more dangerous case, because every surface reports
+      success. MECHANISM: passing `name:` registers the agent as
+      `taskKind: in_process_teammate` with NO `toolUseId`; with no tool call
+      awaiting a result the final message has no return path and lands only in
+      the agent's own transcript. `run_in_background: false` does NOT override it
+      (a named+sync spawn returns "Spawned successfully"), and `name` shadows
+      `subagent_type`. Two halves — SPAWN CONTRACT and DELIVERY GATE (a
+      lifecycle/idle notification is NOT a delivery signal). The Phase-2 detector
+      matcher is `Agent|Task`, NOT `Agent` alone, sourced from
+      `hooks/lib/provenance-capture-tool.js::DELEGATION_TOOLS` — the delegation
+      tool is `Agent` on current harnesses and `Task` on vanilla CC, so an
+      Agent-only matcher would be structurally blind there (never fires, always
+      passes, reads as enforcement).
+    diff_lines: "+40 -16"
+    reconciliation:
+      status: STILL-OPEN — authored 2026-08-13 at this template; not yet ingested upstream
+      reconciled_at: 2026-08-13
+      evidence: >-
+        Root-caused from the session's own `subagents/*.meta.json`
+        (`taskKind` / `toolUseId` / `spawnDepth`) and confirmed by a THREE-ARM
+        controlled experiment: (1) UNNAMED probe returned its text as the tool
+        result; (2) NAMED + `run_in_background:false` returned "Spawned
+        successfully", and its transcript proves it produced the exact requested
+        string that was never delivered; (3) NAMED + `SendMessage({to:"main"})`
+        instruction DELIVERED its payload verbatim. Arm 3 was added because the
+        Tier-1 security lens correctly found the escape hatch was ASSERTED but
+        never measured — the only in-session SendMessage evidence had been a
+        FAILURE (re-requests to agents that had already ended their turn). The
+        distinction instructed-at-spawn vs re-request-after-turn-end is now
+        measured, not inferred.
+      pairing: >-
+        Pairs with the `agent-result-delivery.md` skill entry and the
+        `guides/rule-extracts/agents.md` extraction entry below. Gate-1 should
+        read all three together; none supersedes the others.
+      rule_10_disposition: >-
+        INDETERMINATE — FAIL-CLOSED, and explicitly NOT claimed satisfied.
+        The first cut recorded "PATH (a) PAIRED EXTRACTION, executed to its
+        irreducible floor"; the Tier-1 structural validator ruled that INVALID
+        and it is withdrawn. `rule-authoring.md` path (a) requires an extraction
+        that "recovers AT LEAST the bytes added", and :240 is decisive — path (b)
+        "is the only path that ADDS net bytes to a near-breach lane". This change
+        is NET +1445 B on the baseline lane (15922 -> 17367, verified against
+        `git show HEAD:`), so it is NOT path (a). The extraction is real and
+        worth having (3863 B relocated to a non-baseline guide; the
+        clause-scoped-wiring precedent was TRIPLICATED and is now stated once)
+        but it does not DISCHARGE Rule 10 — it only shrinks the exception still
+        owed. Path (b) remains unavailable: its sub-fields (i)/(ii) require the
+        verbatim `emit.mjs --dry-run` byte count and numeric pre/post
+        `headroom_pct`, and the dry-run still cannot reach
+        `validateAggregateHeadroom` (see rule_10_measurability_gap). Under the
+        rule's own fail-closed reading the gate FIRES and NEITHER path is
+        satisfied. Recorded as an open obligation for Gate-1, not as compliance.
+      rule_10_measurability_gap: >-
+        The 15%-proximity TRIGGER is STILL unmeasured, but the blocker MOVED and
+        the first cut misreported it. FIRST CUT SAID "TWO PRE-EXISTING failures"
+        and quoted only the two "MISSING frontmatter block" lines. ACTUAL
+        verbatim output was SIX files / TEN lines — it also carried
+        `build-speed.md`, `dataflow-null-typing.md`,
+        `llm-auth-strategy-hygiene.md` and `release.md`, each "MISSING priority:
+        field" + "MISSING scope: field". Quoting a filtered subset under the word
+        "verbatim" is the `instrument-discipline.md` MUST-3(b) failure, inside a
+        codify about undelivered evidence; the earlier exit-code read that showed
+        0 was a piped `tail`'s status, the same truncation trap. FIXED THIS
+        CYCLE: all four missing priority/scope pairs added (they already carried
+        `paths:`), `patterns.md` given the canonical frontmatter the incoming
+        sync also carries, and validator-14's file selection narrowed to exclude
+        `*.example.md` (a schema/template doc in the rules tree is not a rule;
+        giving it rule frontmatter would misdeclare it). Validator-14 now PASSES.
+        THE MEASUREMENT IS STILL BLOCKED, one validator later: validator-16 now
+        fails with "sync-manifest.yaml MUST NOT exist in a coc-use-template repo
+        — found one", a separate structural defect whose fix (deleting a local
+        second distribution source) is out of this codify's scope and is filed
+        as its own entry below.
+      rule_11_disposition: >-
+        POSSIBLY FIRING — corrected from the first cut's "NOT FIRING", which was
+        verified against a corpus that could not contain the falsifying record.
+        The local `journal/` tree holds two entries and no `05xx` entries;
+        `journal/0543`, named in this rule's own Origin as the § Triad Rule-10
+        invocation, is a LOOM-side journal — `agents.md` is a synced artifact, so
+        its Rule-10 invocations are journaled at loom by construction. The stated
+        control established only that the grep RUNS, never that the tree could
+        hold the record (`instrument-discipline.md` MUST-1/MUST-3(a)). The
+        falsifying evidence was in the edited file all along: agents.md's Origin
+        records a Rule-10 path-(a) paired extraction to
+        `parallel-dispatch-default.md` on 2026-07-18 — 26 calendar days before
+        2026-08-13, INSIDE Rule 11's rolling 30-day window, on a `priority: 0` +
+        `scope: baseline` rule. Whether it counts turns on the same unmeasurable
+        proximity-band predicate as Rule 10. The first cut dispositioned that
+        predicate FAIL-CLOSED for Rule 10 (cheap) and FAIL-OPEN for Rule 11
+        (expensive) — an asymmetry Rule 11's own BLOCKED corpus anticipates ("we
+        can keep applying Rule 10 indefinitely as long as each invocation
+        balances"). Corrected to fail-closed on BOTH. Gate-1 should treat Rule 11
+        disposition (a') — corpus-level review of `agents.md` (split / demote to
+        path-scoped / extract-to-skill+pointer) — as OWED, not discharged.
+      emission_consequence: >-
+        NOT YET EMITTED. `agents.md` is `priority: 0` + `scope: baseline`, so it
+        emits to `AGENTS.md` (Codex) and `GEMINI.md` (Gemini) via
+        `emit.mjs --lang rs` — which still exits non-zero at validator-16. The
+        new MUST is therefore LIVE for Claude Code (loaded from `.claude/rules/`)
+        and ABSENT from the Codex and Gemini always-on baselines until the
+        validator-16 blocker is resolved and emit is re-run. Stated explicitly
+        because the first cut framed the blocker as measurement-only and a Gate-1
+        reader could not have inferred the emission gap from it.
+
+  - file: .claude/skills/30-claude-code-patterns/agent-result-delivery.md
+    action: create
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    reason: >-
+      DEPTH FILE for the agents.md clause above — the spawn-configuration sibling
+      of `redteam-dispatch-evidence-gate.md` Axis 1 (that axis covers an agent
+      that ERRORED and returned nothing; this covers one that SUCCEEDED and still
+      returned nothing). Carries the three-arm measurement table, the three
+      aggravating behaviors (sync flag ignored, `subagent_type` shadowed,
+      idle-looks-like-completion), DO/DO-NOT, a BLOCKED corpus, and the
+      TRANSCRIPT RECOVERY PROCEDURE — the operationally valuable half, since the
+      work is undelivered rather than lost. Records WHY the standard
+      task-subagent prompt line actively CAUSES the loss under the teammate
+      contract: a mismatch between how an agent is SPAWNED and how it is
+      INSTRUCTED destroys the output of an otherwise-correct run.
+    diff_lines: "+108 -0"
+    reconciliation:
+      status: STILL-OPEN — authored 2026-08-13 at this template; not yet ingested upstream
+      reconciled_at: 2026-08-13
+      evidence: >-
+        Recovery procedure is EXERCISED, not theorized: it recovered 9 reports /
+        145,855 characters (~36k tokens) of completed adjudication + research in
+        the originating session (figure reproduced independently by the Tier-1
+        correctness reviewer). The recovered reports corroborated every finding
+        the orchestrator had since re-derived by hand and surfaced one additional
+        security vector the hand pass missed.
+      security_fences_added: >-
+        The Tier-1 security lens found the recovery procedure shipped with NO
+        scrub and NO untrusted-data warning while actively encouraging the reader
+        to act on recovered content. Both fences added: (1) an agent transcript
+        is the highest-sensitivity artifact on disk (full tool output, any `.env`
+        read, any credential reaching a Bash call, tenant identifiers, and the
+        operator's munged home path), so recovered text is scrubbed per
+        `user-flow-validation.md` MUST-6 + `security.md` before any durable or
+        cascading write, preferring the diagnostic fields over the path shape;
+        (2) recovered `.jsonl` text is LLM-authored prose re-entering an
+        orchestrator's context and is read as DATA to be re-verified, never as
+        instructions — the posture `upstream-issue-hygiene.md` MUST-4 gives an
+        ingested offer.
+      pairing: >-
+        Pairs with the `.claude/rules/agents.md` entry above (the MUST clause it
+        backs); registered in that skill directory's SKILL.md index.
+
+  - file: .claude/guides/rule-extracts/agents.md
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    reason: >-
+      RECEIVES the Rule-10 extraction for the agents.md clause above — the
+      clause-scoped-wiring precedent (the grandfather framing + the shared
+      no-dedicated-key rationale, previously restated in ALL THREE wiring blocks,
+      now stated once with the per-clause deltas named), the file-level Origin
+      provenance chain, the Examples delegation-syntax mapping, and the
+      read-only-reviewer materialization paragraph. Removes a genuine
+      triplication in a `priority: 0` baseline rule, which
+      `rule-authoring.md` MUST NOT § "Rules longer than 200 lines" treats as an
+      OUTPUT-QUALITY defect, not merely budget hygiene.
+    diff_lines: "+52 -0"
+    reconciliation:
+      status: STILL-OPEN — authored 2026-08-13 at this template; not yet ingested upstream
+      reconciled_at: 2026-08-13
+      evidence: >-
+        Byte accounting measured against `git show HEAD:` for the rule file:
+        15922 -> 17367, net +1445 from a +5308 addition (3863 B relocated).
+      preservation_correction: >-
+        The first cut claimed "every relocated sentence is preserved". That was
+        FALSE and is corrected. The § Correctness-Review-Clean Origin had been
+        compressed to "…; see guide" while the guide carried no Origin content
+        for that clause, dropping the artifact identifier "kailash 2.58.0 signed
+        recovation ledger" and the loom-landing placement — a redirect resolving
+        to a file but not to a clause, the exact failure `cc-artifacts.md`
+        MUST NOT § "No Dangling Cross-References After Extraction" names. The
+        full Origin is now restored INLINE in the rule. Separately, the §
+        Correctness Detection-mechanism compression had dropped "prompted to
+        refute" — a semantic narrowing, not prose-only, since the detection
+        procedure no longer instructed the reviewer to check the very property
+        the MUST requires; those four words are restored.
+      dangling_xref_fix: >-
+        The clause's Phase-2 fixture path
+        `.claude/audit-fixtures/agent-result-delivery/` was landing as a NET-NEW
+        dangling cross-reference (the dir does not exist; fixtures land WITH the
+        detector per `cc-artifacts.md` Rule 9). Added to
+        `validate-xref-integrity.mjs::SANCTIONED_DEFERRED_FIXTURES`, matching the
+        seven sibling Phase-2-deferred fixture refs already allowlisted.
+
+  - file: .claude/bin/emit.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reason: >-
+      VALIDATOR-14 SELECTION FIX — `*.example.md` is excluded from the
+      rule-frontmatter validator. `ci-runners.operator.local.example.md` is an
+      operator-local VALUES SCHEMA documenting how to populate a gitignored local
+      file; it is NOT a rule, and giving it `priority:`/`scope:` frontmatter
+      would MISDECLARE it as an emittable rule. Because validator-14 exits
+      non-zero it MASKED validators 15-18 AND `validateAggregateHeadroom`, so
+      `rule-authoring.md` Rule 10's proximity-band trigger was unmeasurable for
+      EVERY baseline-rule codify in this repo, AND `emit.mjs --lang rs` could not
+      regenerate `AGENTS.md` / `GEMINI.md` at all. Applied locally so the blocker
+      is cleared now; `.claude/bin/**` is a synced artifact, so the DURABLE fix
+      is this proposal, not the local edit (which the next `/sync-to-use`
+      rebuilds away).
+    diff_lines: "+11 -1"
+    reconciliation:
+      status: STILL-OPEN — local fix applied 2026-08-13; durable fix is loom-side
+      reconciled_at: 2026-08-13
+      evidence: >-
+        Before, verbatim and complete (six files, ten lines): "[validator-14]
+        rule-frontmatter: FAIL / VALIDATOR 14 FAIL (rule-authoring.md Rule 7): /
+        build-speed.md: MISSING priority: field / build-speed.md: MISSING scope:
+        field / ci-runners.operator.local.example.md: MISSING frontmatter block /
+        dataflow-null-typing.md: MISSING priority: field / dataflow-null-typing.md:
+        MISSING scope: field / llm-auth-strategy-hygiene.md: MISSING priority:
+        field / llm-auth-strategy-hygiene.md: MISSING scope: field /
+        patterns.md: MISSING frontmatter block / release.md: MISSING priority:
+        field / release.md: MISSING scope: field". After the four priority/scope
+        additions + the patterns.md frontmatter + this selection fix:
+        "[validator-14] rule-frontmatter: PASS". Exit code captured by redirect,
+        not through a pipe (a piped `tail` reports tail's status — the truncation
+        trap that produced a false 0 earlier in this same session).
+      note_for_gate_1: >-
+        `patterns.md`'s frontmatter was adopted from the INCOMING sync's
+        canonical copy (loom already carries `priority: 10` + `scope:
+        path-scoped` + `paths:` that this template's copy lacked) — a
+        returning-canonical fix, not a local invention.
+
+  - file: .claude/sync-manifest.yaml
+    action: obsolete
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reason: >-
+      A LOCAL sync-manifest.yaml EXISTS IN THIS `coc-use-template` REPO AND
+      VALIDATOR-16 FORBIDS IT. Surfaced only after the validator-14 fix above
+      unmasked it. Verbatim: "sync-manifest.yaml MUST NOT exist in a
+      \"coc-use-template\" repo — found one. A local manifest is a SECOND
+      distribution source: loom already declares this repo's artifacts'
+      distribution fate when it classifies the proposal, so a local manifest
+      claims to classify them too. When the two disagree an artifact either
+      cascades twice or not at all, and nothing detects the divergence."
+      CONSEQUENCE BEYOND CLASSIFICATION: because validator-16 exits non-zero,
+      `emit.mjs` still cannot regenerate `AGENTS.md` / `GEMINI.md`, so EVERY
+      baseline rule authored at this template — including the
+      agent-result-delivery MUST above — is CC-only in practice, and Rule 10's
+      proximity-band trigger remains unmeasurable. NOT ACTED ON IN THIS CODIFY:
+      deleting a repo's distribution-source file is a consequential, separately-
+      scoped decision, and this session read `block_cap_bytes` /
+      `headroom_floor_pct` out of that very file while reasoning about Rule 10 —
+      so other tooling may read it too. Filed for Gate-1 to disposition rather
+      than self-decided mid-codify.
+    diff_lines: "+0 -0"
+    reconciliation:
+      status: STILL-OPEN — surfaced 2026-08-13; disposition deliberately deferred to Gate-1
+      reconciled_at: 2026-08-13
+      evidence: >-
+        `node .claude/bin/emit.mjs --all --dry-run` (exit captured by redirect,
+        REAL_EXIT=1): "[validator-14] rule-frontmatter: PASS / [validator-16]
+        manifest-yaml: FAIL (class:coc-use-template → manifest FORBIDDEN)".
+        Repo class confirmed independently: `node .claude/bin/repo-class.mjs
+        --json` → `"class": "coc-use-template", "source": "declaration"`.
+      note_for_gate_1: >-
+        Pairs with the `emit.mjs` entry above — together they are the full
+        emission-blocker chain at this template. Gate-1 should decide whether the
+        local manifest is deleted (validator-16's own instruction), or whether a
+        USE template legitimately needs one and validator-16's class predicate is
+        wrong. This entry takes NO position on which.
+
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
 # removed (artifact-flow.md § "Append, Never Overwrite Unprocessed Proposals").

@@ -227,3 +227,64 @@ Relocated from `rules/agents.md` under the co-owner-directed triad codification 
 - "I'll re-launch with a different specialist if it halts"
 - "Read-only review IS implementation when the diff is trivial"
 - "The agent has Write — that's enough for code edits"
+
+## Clause-Scoped Wiring Precedent (extracted from the rule body 2026-08-13)
+
+`agents.md` carries THREE clause-scoped Trust-Posture-Wiring blocks (§ Triad,
+§ Correctness-Review-Clean, § Agent-Result-Delivery). Each states the same
+grandfather + precedent framing, so the framing lives here ONCE rather than
+three times in a `priority: 0` baseline rule (`rule-authoring.md` MUST NOT
+§ "Rules longer than 200 lines" — baseline density is an output-quality
+requirement, not only budget hygiene).
+
+**The shared framing.** Per `trust-posture.md` MUST-8's grandfather cutoff, a
+clause landing AT/AFTER the MUST-8 SHA MUST ship canonical-8-field-compliant,
+while the pre-existing grandfathered sections of the same rule stay exempt until
+each is itself `/codify`-touched. The clause-scoped shape — one wiring block per
+clause rather than one per file — is the precedent set by `security.md`
+§ Enforcement-Surface Parity and `git.md` § CI-check/merge.
+
+**The shared no-dedicated-key rationale.** All three clauses route
+regression-within-grace through the GENERIC `regression_within_grace` trigger
+rather than minting a per-clause key. Two reasons recur: (a) each property is
+review-layer / session-history judgment rather than a structural instant-drop
+signal, and (b) minting a key would edit `trust-posture.md`, which is a
+`self-referential-codify.md` Rule-2 allowlist file — dragging an otherwise
+narrow codify into a self-referential edit. Same disposition
+`security.md` § Enforcement-Surface Parity, `git.md` § CI-check/merge,
+`issue-triage-routing.md`, and `wave-loop.md` MUST-6/7 took.
+
+**Per-clause deltas** (what each block does NOT share): § Correctness-Review-Clean
+landed via `/sync-from-build` Wave-1 placement (loom-sweep-waves-2026-07-22) and
+does NOT reuse the § Triad clause's key; § Agent-Result-Delivery is the only one
+of the three with a genuine structural tool-call-time signal available (the spawn
+parameters are present in the `PreToolUse` input), yet still carries `advisory`
+rather than `block` because the named+`SendMessage`-instructed pairing is
+legitimate and the detector cannot adjudicate intent.
+
+## Origin — full provenance chain (extracted from the rule body 2026-08-13)
+
+Sessions 2026-04-19/20/27 (worktree drift, parallel-release PRs #552/#553, W6
+closure-parity); slot-partitioned 2026-05-14 (#200); F20 extraction 2026-05-22
+(journal/0143); prose trim 2026-06-11 (Gate-1 paired extraction);
+worktree-cluster extraction to skill Rules 1–10 + Examples 6–10 retired
+2026-06-12 (#491, journal/0271); triad default-execution-mode clause + paired
+extraction to `parallel-dispatch-default.md` 2026-07-18 (co-owner-directed
+origination, `journal/0543`); agent-result-delivery clause + paired extraction
+to `agent-result-delivery.md` 2026-08-13 (USE-template origination).
+
+## Examples — CLI delegation-syntax mapping (extracted 2026-08-13)
+
+The MUST clauses reference numbered examples by their inline "(Example N = …)"
+descriptors. The WORKED examples (Examples 1–5) — the concrete CC
+`Agent(subagent_type=…)` delegation code for each clause — live in
+`.claude/skills/30-claude-code-patterns/specialist-delegation-syntax.md`, which
+also carries the Codex (`bin/coc` inline-cat injection) and Gemini
+(`@specialist`) mappings. They are reference material loaded on-demand when
+delegating; the MUST clauses in the rule body are the CLI-neutral contract.
+
+## Read-only reviewer materialization (extracted 2026-08-13)
+
+`security-reviewer` is read-only (no `Bash`) → materialize the diff / changed
+files to a scratchpad path and name that path in the prompt, so it reviews the
+change instead of halting for context it cannot fetch. Classed INCREMENTAL.

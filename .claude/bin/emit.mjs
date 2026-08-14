@@ -1766,7 +1766,18 @@ export async function validateMcpBijectionAgainstFixtures() {
 // pre-existing path-scoped Rule 7 violations this way.
 export function validateRuleFrontmatter() {
   const rulesDir = path.join(REPO, ".claude", "rules");
-  const files = fs.readdirSync(rulesDir).filter((f) => f.endsWith(".md"));
+  // `*.example.md` is a SCHEMA / TEMPLATE doc that lives in the rules tree for
+  // discoverability but is NOT a rule — it documents how an operator populates a
+  // gitignored local values file. Rule 7's priority/scope pair applies to RULES;
+  // giving one to a template would MISDECLARE it as an emittable rule. Excluding
+  // it here is the semantically correct selection fix, not a suppression: before
+  // this, `ci-runners.operator.local.example.md` failed validator-14, and because
+  // v14 exits non-zero it MASKED validators 15-18 AND `validateAggregateHeadroom`
+  // — so `rule-authoring.md` Rule 10's proximity-band trigger was unmeasurable and
+  // `emit.mjs --lang rs` could not regenerate AGENTS.md / GEMINI.md at all.
+  const files = fs
+    .readdirSync(rulesDir)
+    .filter((f) => f.endsWith(".md") && !f.endsWith(".example.md"));
   const failures = [];
 
   for (const f of files) {

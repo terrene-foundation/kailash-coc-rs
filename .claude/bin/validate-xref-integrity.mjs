@@ -209,6 +209,10 @@ const SANCTIONED_DEFERRED_FIXTURES = new Set([
   "audit-fixtures/recommendation-quality/sensitivity-escalation",
   // security.md § Enforcement-Surface Parity Detection mechanism.
   "audit-fixtures/enforcement-surface-parity",
+  // agents.md § Agent-Result-Delivery Detection mechanism (Phase-2 PreToolUse
+  // detector, matcher `Agent|Task`). Fixtures land WITH the detector per
+  // cc-artifacts.md Rule 9, so the dir is deliberately absent until then.
+  "audit-fixtures/agent-result-delivery",
 ]);
 
 // --- Sanctioned absent-by-design / external references -------------------
