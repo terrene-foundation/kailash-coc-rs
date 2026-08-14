@@ -8950,6 +8950,153 @@ changes:
         USE template legitimately needs one and validator-16's class predicate is
         wrong. This entry takes NO position on which.
 
+  # ── Appended 2026-08-14 — Rule-11 disposition (a') corpus-level review ──────
+  - file: .claude/rules/agents.md
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    reason: >-
+      RULE-11 DISPOSITION (a') — CORPUS-LEVEL REVIEW, RECOMMENDING A PER-CLI
+      EMISSION-STRATEGY CHANGE, NOT A SPLIT OR A DEMOTE. `rule-authoring.md`
+      Rule 11 fired on (agents.md, all CLI lanes): a Rule-10 path-(a) paired
+      extraction landed 2026-07-18 and a second Rule-10 invocation landed
+      2026-08-13 — 26 days apart, inside the rolling 30-day window, on a
+      `priority: 0` + `scope: baseline` rule. Rule 11 requires the disposition be
+      CORPUS-level, not addition-local, and names four options.
+      MEASURED FINDING THAT DECIDES IT: across the 11 `priority: 0` +
+      `scope: baseline` rules, `## Trust Posture Wiring` + `### Clause-scoped
+      wiring` blocks total 44,666 of 112,816 baseline bytes — 39.6% of the
+      ALWAYS-ON emission, paid in every session of every consumer. Per rule:
+      security.md 14,481 B (48%), agents.md 13,404 B (72%),
+      instrument-discipline.md 6,101 B (55%), repo-scope-discipline.md 3,475 B
+      (41%), git.md 2,861 B (28%), issue-triage-routing.md 2,738 B (56%),
+      evidence-first-claims.md 1,606 B (27%).
+      WHY THAT IS THE RIGHT LEVER: all EIGHT canonical wiring fields
+      (`trust-posture.md` MUST-8) are consumed by REVIEW and HOOK surfaces, not
+      by the agent doing the work — Severity/Detection/Violation-scope by
+      reviewers + cc-architect at gates; Cumulative/Regression-within-grace by
+      the posture math; Receipt requirement by the SessionStart HOOK reading
+      `posture.json` (the agent does not need the rule TEXT to be told to ack);
+      Grace period + Origin as provenance. The agent needs the MUST clauses; the
+      REVIEWER needs the wiring. Emitting reviewer metadata into the always-on
+      agent baseline is a 39.6% misallocation, and it is the structural reason
+      `agents.md` keeps re-triggering Rule 10 — every clause-scoped wiring block
+      a new MUST requires is itself baseline-emitted.
+      RECOMMENDATION: loom emits `## Trust Posture Wiring` / `### Clause-scoped
+      wiring` blocks on the SKILL/REFERENCE channel (reachable at the gate
+      surfaces that consume them) rather than into the always-on baseline, while
+      the MUST clauses stay baseline. This is Rule 11's fourth option (per-CLI
+      emission strategy change) and it dissolves the recurrence rather than
+      relocating it.
+      HONEST BOUND: the wiring IS agent-facing in exactly one case — an agent
+      AUTHORING a rule must emit the 8 fields per `trust-posture.md` MUST-8. That
+      agent is in a `/codify` session touching `.claude/rules/**`, a path-scoped
+      trigger, so the authoring case is served by the skill/reference channel
+      without loss. This proposal does NOT itself change any emission behavior;
+      it is the corpus-level disposition Rule 11 requires, for Gate-1 to decide.
+    diff_lines: "+0 -0"
+    reconciliation:
+      status: STILL-OPEN — Rule-11 (a') disposition filed 2026-08-14; the emission change is loom's to make
+      reconciled_at: 2026-08-14
+      evidence: >-
+        Byte measurement scripted over `.claude/rules/*.md`, selecting on
+        frontmatter `priority: 0` + `scope: baseline` and summing each
+        `## Trust Posture Wiring` / `### Clause-scoped wiring` block to the next
+        same-or-higher heading. 11 rules, 112,816 baseline bytes, 44,666 wiring
+        bytes. Rule-11 window verified by date arithmetic: 2026-07-18 →
+        2026-08-13 is 26 days, inside the 30-day rolling window.
+      alternatives_rejected: >-
+        (1) SPLIT `agents.md` into sibling baseline rules — REJECTED: two
+        `scope: baseline` rules emit the same total bytes as one, so a split
+        relieves nothing on the axis Rule 10 gates. It would also fragment the
+        orchestration contract every delegation consults.
+        (2) DEMOTE `agents.md` to `scope: path-scoped` — REJECTED: orchestration
+        and delegation have no file-glob signal (an agent dispatches before
+        touching any matching path), so demotion would make the rule unreachable
+        at the moment it governs — the exact reachability gap
+        `issue-triage-routing.md` was created to close, reintroduced one rule
+        over.
+        (3) FURTHER extract-to-skill + pointer — REJECTED as insufficient, not
+        wrong: `agents.md` has already been extracted three times (F20 2026-05-22,
+        #491 2026-06-12, and 2026-08-13), and the residual is the minimum viable
+        MUST clauses plus the mandatory 8-field wiring. A fourth extraction would
+        recur within the month, which is precisely the pattern Rule 11 exists to
+        escalate rather than repeat.
+      rule_10_invocation_receipts: >-
+        Invocation 1 — 2026-07-18, § Triad clause + paired extraction to
+        `skills/30-claude-code-patterns/parallel-dispatch-default.md`; receipt is
+        loom-side `journal/0543` (NOT resolvable in this repo — the local
+        `journal/` tree holds two entries, which is why a local-tree grep cannot
+        falsify a Rule-11 claim about a synced artifact).
+        Invocation 2 — 2026-08-13, § Agent-Result-Delivery clause + paired
+        extraction to `guides/rule-extracts/agents.md`; receipts
+        `workspaces/docker-dev-environment/journal/0028-jack-hong-DECISION-codify-agent-result-delivery.md`
+        and PR #153 (merged `9f08703`).
+      value_anchor: >-
+        Source (d), literal operator quote in the 2026-08-13 session: "we have
+        multiple runs where we waste tokens and time because agents did not
+        reply. I want you to get to the root of this issue and eradicate it at
+        the root", and "root cause long term fix please". The always-on baseline
+        is the single largest recurring token cost every consumer session pays,
+        and 39.6% of it is metadata the agent never acts on — this is the same
+        waste class the operator directed be eradicated at the root, one surface
+        over. Reducing it is a root-cause fix; a fourth extraction is not.
+      note_for_gate_1: >-
+        Filed as the Rule-11 (a') disposition, not as an implementation. The
+        emission-channel change belongs to loom's emitter, and any change MUST
+        keep the `**Violation scope:**` grep token reachable to the cc-architect
+        sweep that `trust-posture.md` MUST-8 anchors on — a naive "strip the
+        section" would break that sweep, which is why this is a routing change,
+        not a deletion.
+
+  - file: .claude/sync-manifest.yaml
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reason: >-
+      CORRECTION BY APPEND to the 2026-08-13 `obsolete` entry above, which
+      deferred the disposition to Gate-1 without knowing whether deletion would
+      even hold. It would not, and the disposition is now DECIDED: DO NOT DELETE
+      THE LOCAL MANIFEST. Evidence gathered 2026-08-14: the file ARRIVED via a
+      Gate-2 sync (`fd27074`, loom 2.30.0), is touched by every subsequent sync
+      commit (`123870f`, `8b278e1`, `1549c95`), and is PRESENT in the incoming
+      #150 sync — so a local deletion is Class-A non-durable and the next sync
+      restores it (`artifact-flow.md` § Distribution-Durability Invariants). The
+      defect is UPSTREAM, not local: loom's `/sync-to-use` DISTRIBUTES
+      `sync-manifest.yaml` to USE templates while `emit.mjs` validator-16
+      FORBIDS a `coc-use-template` from having one. That contradiction is
+      already filed as issue #125 ("emit.mjs contradicts itself on
+      sync-manifest.yaml: validator 18 reads the file validator 16 says must not
+      exist"); this entry adds the CONSEQUENCE #125 does not state — the
+      contradiction BLOCKS EMISSION at every USE template, so any baseline rule
+      authored at a template is CC-only in practice, never reaching the Codex or
+      Gemini always-on baselines. Confirmed live: the § Agent-Result-Delivery
+      MUST landed in PR #153 (`9f08703`) and is absent from `AGENTS.md` /
+      `GEMINI.md` for exactly this reason.
+    diff_lines: "+0 -0"
+    reconciliation:
+      status: STILL-OPEN — disposition CORRECTED 2026-08-14 from "deferred" to "do not delete; fix upstream"
+      reconciled_at: 2026-08-14
+      evidence: >-
+        `git log --diff-filter=A -- .claude/sync-manifest.yaml` → added by
+        `fd27074` (a Gate-2 sync). `git cat-file -e
+        refs/adjudicate/sync-150:.claude/sync-manifest.yaml` → exit 0, so the
+        incoming sync carries it. `.claude/bin/lib/manifest-source.mjs` declares
+        `MANIFEST_OWNER_CLASS = "coc-source"` with this repo's class in
+        `MANIFEST_FORBIDDEN_CLASSES`, so the reader is class-aware and EXPECTS
+        absence here — the tooling is not what requires the file; the SYNC is
+        what keeps delivering it.
+      ingest_note: >-
+        Pairs with the 2026-08-13 `obsolete` entry on this same file, which this
+        entry CORRECTS rather than replaces (append-only per `artifact-flow.md`
+        § Proposal Lifecycle). Gate-1 should read them together and treat this
+        one as the current disposition. Also pairs with the `emit.mjs` entry
+        (validator-14 selection fix) — together they are the full
+        emission-blocker chain: validator-14 was fixed locally, which unmasked
+        validator-16, which only loom can resolve.
+
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
 # removed (artifact-flow.md § "Append, Never Overwrite Unprocessed Proposals").
