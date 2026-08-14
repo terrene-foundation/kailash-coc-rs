@@ -9236,10 +9236,13 @@ changes:
       prevents a subsequent Gate-2 sync from shipping the canonical copy that
       LACKS the fix. The result is a loop: discover -> fix locally -> file
       upstream -> next sync reverts -> rediscover.
-      THIS IS NOT A PREDICTION. This manifest already carries TWO entries whose
-      own reconciliation text reads "ALREADY-SOLVED ON DISK ... but it has
-      ALREADY been reverted once by an inbound sync and manually restored, so
-      Gate-1 ingest is what makes it durable." Inbound PR #150 makes
+      THIS IS NOT A PREDICTION. This manifest already carries TWO entries recording a prior reversion. The
+      quotation is COMPOSITE and is marked as such: the full text
+      "ALREADY-SOLVED ON DISK ... ALREADY been reverted once by an inbound sync
+      and manually restored, so Gate-1 ingest is what makes it durable" is entry
+      idx 33 (`upstream-issue-hygiene.md`) verbatim; entry idx 31
+      (`journal-reserve.js`) carries the same "reverted once by an inbound sync"
+      substance but ends "...makes it stick" and omits "manually restored". Inbound PR #150 makes
       `upstream-issue-hygiene.md` MUST-4 OCCURRENCE TWO, verified this session:
       `grep -c 'Open, Never Complete'` -> ours 3, incoming 0, against a control
       heading present in both (1/1). The rule file is byte-identical up to the
@@ -9253,28 +9256,72 @@ changes:
       sync introduces the vulnerability -> template fixes it -> next sync
       removes the fix. Measured behaviorally, not lexically: this template's own
       committed fixture suite run against both binaries through its `TOOL=` seam
-      gives ours PASS 47 / FAIL 0 and incoming PASS 34 / FAIL 13, and the
-      failing case reports verbatim "guard(evil/repo, write) -> true ...
+      gives ours PASS 47 / FAIL 0 and incoming PASS 34 / FAIL 13. READ THE 13, DO
+      NOT COUNT THEM: an adversarial pass classified all thirteen and only TWO
+      are genuine control subtractions — the T13b escalation pair below, plus the
+      U+2028/U+2029 rejection in `--action` (defense-in-depth, NOT live-
+      exploitable: incoming accepted that payload but the guard still read the
+      genuine first `^timestamp:`). The other eleven are a DIFFERENT VALID DESIGN
+      or artifacts of our suite's assumptions. In particular INCOMING DOES NOT
+      CLOBBER audit records — verified byte-identical preservation, with the
+      duplicate landing at a numbered sibling; ours dedupes by refusal, incoming
+      by numbered sibling, and audit immutability (the actual security property)
+      is preserved by BOTH. Citing "13 failures" as thirteen controls would let a
+      reviewer disprove the no-clobber reading in five minutes and discard the
+      real escalation with it. The failing case that matters reports verbatim "guard(evil/repo, write) -> true ...
       a fully legitimate ceremony for acme/one silently minted write authority
-      over evil/repo for the whole window". `.claude/VERSION` is committed and
-      synced, so the payload is plantable upstream and detonates later in
-      another operator's session.
+      over evil/repo for the whole window". CORRECTED AFTER ADVERSARIAL REVIEW:
+      an earlier draft of this entry said `.claude/VERSION` is "committed and
+      synced, so the payload is plantable upstream". THAT IS FALSE and is
+      withdrawn — `VERSION` sits in `sync-manifest.yaml`'s top-level `exclude:`
+      block beside `settings.json`, `sync-manifest.yaml` and `CLAUDE.md`, so it
+      is NEVER distributed; each repo owns its own. The vector is a merged PR to
+      the affected repo, not upstream propagation. PRECONDITION: commit access to
+      `.claude/VERSION`. MARGINAL CAPABILITY, stated precisely: a principal who
+      can commit VERSION can already plant a receipt `.md` directly (the guard
+      also scans committed `journal/`), but a directly-planted receipt goes STALE
+      in 6h — the `type` payload is PERSISTENT AND SELF-REFRESHING, so every
+      subsequent legitimate ceremony mints a live forged marker carrying a real
+      display_id, a real verbatim instruction and a fresh timestamp. That is
+      freshness-laundering plus stealth plus persistence, NOT a trust-boundary
+      crossing. SEVERITY: MEDIUM-HIGH, not CRITICAL. "Detonates later in another
+      operator's session" is accurate; "plantable upstream" was not. The payload
+      also requires a TRAILING newline (`<type>\ncross-repo-authorized: evil/repo
+      write\nx`); a bare embedded newline leaves the marker un-terminated and the
+      guard returns false.
       FIVE CONTROL-SUBTRACTIONS IN #150, all re-derived this session with
       controls proving each instrument fires on the incoming blobs:
-      R1 both VCS adapters lose the own-repo derivation fence (842->616 lines /
-      21->0 fence symbols; 982->678 / 13->0; control `function` 17/17 and 17/16).
+      R1 both VCS adapters lose the own-repo derivation fence. Lines 842->616 and
+      982->678 (exact); control `function` 17/17 and 17/16 (exact). FENCE-SYMBOL
+      COUNTS RESTATED WITH THEIR INSTRUMENT after review found an earlier draft
+      mixed occurrence-counts and line-counts under one label: pattern
+      `deriveSelfRepoRef|upflow-self-repo|selfRepoRef|selfRepo`, LINES, github
+      18->0 and azure 13->0. The direction (->0) is robust under every pattern
+      tried; the magnitudes are only meaningful with the pattern named.
       `upflow-self-repo.js` SURVIVES but is orphaned — no enforcing consumer
       imports it, so a reader greps, finds it, and concludes the fence exists.
       R2 MUST-4 deleted (above). R3 the sync-subject pattern stops matching
-      `chore(coc-sync):`, this repo's most common sync subject — discriminating
-      test with a negative control that correctly fails on both patterns; the
-      harm direction is FALSE POSITIVES, i.e. the 59-of-82 miscount the tool's
+      `chore(coc-sync):` — CORRECTED: an earlier draft called that "this repo's
+      most common sync subject", which is REFUTED (it is fourth: `chore(sync)` 32,
+      `chore(coc)` 31, `sync(` 11, `chore(coc-sync)` 8). The measured magnitude is
+      LARGER than the withdrawn claim: over ~390 real subjects the incoming
+      pattern loses 34 that ours classifies as sync, dominated by the
+      `Merge pull request ... from ...sync` class, and `sync(loom):` and
+      `release(coc-template):` are lost too. Discriminating test with a negative
+      control that correctly fails on both patterns; the harm direction is FALSE
+      POSITIVES, i.e. the 59-of-82 miscount the tool's
       own header records having fixed, returning. R4 refusal-path sanitization
-      reverts to `JSON.stringify` (`reasonText|reasonOperand|reasonFromError`
-      55->0; `JSON.stringify` 2->21), which per ECMA-262 QuoteJSONString escapes
-      only `"`, `\` and sub-0x20 — leaving 0x7f, the C1 range including U+009B
-      CSI, U+2028/9 and bidi controls verbatim in error text, i.e. terminal
-      injection on a refusal path. R5 the escalation above.
+      reverts to `JSON.stringify`. Counts are LINE counts and are PER-ADAPTER —
+      `vcs-azure-adapter.js` `reasonText|reasonOperand|reasonFromError` 55->0 and
+      `JSON.stringify` 2->21; `vcs-github-adapter.js` 52->0 and 2->24. Per
+      ECMA-262 QuoteJSONString only `"`, `\` and sub-0x20 are escaped, so 0x7f,
+      the C1 range including U+009B, U+2028/9 and bidi controls DO survive
+      verbatim (verified empirically). CHARACTERIZATION CORRECTED: an earlier
+      draft called this "terminal injection", which is wrong and is withdrawn —
+      the classic ANSI primitive is ESC (0x1b) and ESC IS escaped. The defensible
+      claim is bidi / invisible-character DISPLAY SPOOFING (Trojan-Source class)
+      on a refusal path. Filing it as terminal injection invites a reviewer to
+      test ESC, find it blocked, and dismiss the whole report. R5 the escalation above.
       THE PROPOSED ROOT-CAUSE FIX (loom's to design; the shape is the ask):
       Gate-2 distribution MUST NOT ship a file that a STILL-OPEN Gate-1 entry
       names in the REVERTING direction. Mechanically: `sync-tier-aware.mjs`
@@ -9322,16 +9369,26 @@ changes:
       DEFECT 1 — the "SYNC-ONLY is safe" inference is unfalsifiable by
       construction. `had_local=1` (:169) is set ONLY when a commit subject does
       NOT match the sync pattern, and `[ "$had_local" -eq 1 ] || continue` (:182)
-      gates the whole file on it. So Gate
-      A flags a file ONLY IF it already found a non-sync commit. For every one of
-      its 84 flags, "every authoring commit is a sync commit" is FALSE by
-      construction. A 62-file SYNC-ONLY bucket among those 84 is therefore not a
-      partition of Gate A's finding at all — it was computed from a hand-rolled
-      reconstruction diverging from Gate A's query in four ways (ref `main` vs
-      `$MERGE_BASE`; merges included vs `--no-merges`; uncapped vs capped;
-      filter-then-cap vs cap-then-filter). Consequence: 62 files were
-      dispositioned "safe" on an argument the gate's own semantics cannot
-      support, and they remain UNADJUDICATED.
+      gates the whole file on it. The candidate-line collector (:172-178) sits
+      inside that same non-sync branch, so every reported discarded line is
+      attributed to a non-sync commit. Gate A therefore flags a file ONLY IF it
+      already found a non-sync commit, and the flagged set and the SYNC-ONLY set
+      are DISJOINT BY CONSTRUCTION — no SYNC-ONLY bucket can be a subset of Gate
+      A's flags at ANY flag count.
+      NUMBERS RE-DERIVED BY RUNNING THE GATE, and two earlier figures WITHDRAWN.
+      An earlier draft of this entry said "Gate A's 84 flags" and "a 62-file
+      SYNC-ONLY bucket". Both were carried forward from a 2026-08-13 sweep taken
+      against a DIFFERENT `main` and were never re-derived — which is this
+      entry's own defect class, committed inside the entry that names it, and it
+      is recorded rather than quietly corrected. Measured now
+      (`bash .github/scripts/check-local-fix-discard.sh main refs/adjudicate/sync-150`,
+      exit 2): 348 files scanned, **17 flagged**, 0 acknowledged — not 84.
+      Partitioning all 348 under Gate A's OWN query: 28 files carry >=1 non-sync
+      commit (eligible to flag), **180 are SYNC-ONLY and skipped at :182**, and
+      140 have no merge-base history at all (new files, never examined).
+      Consequence: the skipped-and-unexamined population is 180 + 140, far larger
+      than the withdrawn 62, so correcting the figure STRENGTHENS the ask rather
+      than weakening it. Those files remain UNADJUDICATED.
       DEFECT 2 — the cap is applied BEFORE the filter, and the variable is
       misnamed. `--max-count="$MAX_LOCAL_COMMITS"` (:180) is handed to `git log`;
       the sync-subject filter runs later, in the loop body. So the cap bounds the
@@ -9343,23 +9400,40 @@ changes:
       yields `had_local=0` -> never flagged, never examined.
       DEFECT 3 — scope. `git diff --name-only "$MERGE_BASE" "$HEAD_REF" --
       '.claude/'` (:135). On inbound #150 that is 348 of 600 changed files;
-      252 files received ZERO discard checking — the `.coc/`, `.codex/` and
-      `.gemini/` derived trees. A control-subtraction landing there is invisible.
+      252 files received ZERO discard checking. Full enumeration (the derived trees
+      alone are 245, so an earlier draft's list was incomplete): `.coc/` 91,
+      `.gemini/` 78, `.codex/` 76, `.codex-mcp-guard/` 4 (SHIPPED TOOLING, not a
+      derived tree), plus 3 root files (`AGENTS.md`, `GEMINI.md`, `.gitignore`).
+      A control-subtraction landing in any of them is invisible.
       DEFECT 4 (documented, not new) — Gate A's own header states: "A revert of
       work committed under a SYNC-shaped subject (a fix landed as `chore(sync):`
-      is read as upstream content and its loss is not flagged)." This
-      CONTRADICTS the unqualified claim in `.claude/bin/sync-preflight-local-mods.mjs`
-      that mis-recognition "fails toward OVER-reporting ... never toward
-      silently missing a real loss." The preflight's argument covers only
-      UNRECOGNIZED sync subjects; the converse — a LOCAL commit whose subject
-      MATCHES the pattern — is exactly a silent miss, and the leak class is LIVE
-      here: 10+ local `chore(coc):` commits, four of them disclosure scrubs
+      is read as upstream content and its loss is not flagged)." The sibling
+      claim in `.claude/bin/sync-preflight-local-mods.mjs` — that mis-recognition
+      "fails toward OVER-reporting ... never toward silently missing a real loss"
+      — is NOT unqualified (an earlier draft said so; withdrawn): its antecedent
+      scopes it to the UNRECOGNIZED case. What is wrong is its TRAILING ABSOLUTE,
+      which reads as a global fail-direction guarantee. The converse — a LOCAL
+      commit whose subject MATCHES the pattern — is exactly a silent miss.
+      STRONGER INSTANCE, missed by an earlier draft: `check-local-fix-discard.sh`
+      contradicts ITSELF, asserting at :38-40 that it "OVER-reports — a false
+      at-risk, never a silent miss" eleven lines above the :51-52 header text
+      documenting exactly that silent miss. The leak class is LIVE here: of 31
+      `chore(coc):` subjects most are themselves syncs and roughly 6 are
+      genuinely local, of which three are unambiguous disclosure scrubs by
+      subject
       ("strip BUILD-internal packages/... paths", "strip residual sibling-SDK
       repo names"). Measured negative result, recorded honestly: inbound #150
       does NOT exploit this — `packages/kailash-` ours 8 files / incoming 8, and
       `workspaces/multi-cli-coc` 6/6, against a control showing the matcher
       discriminates (pre-scrub tree 25 files, post-scrub 0). The class is real
       and unexploited by THIS sync.
+      WHAT GATE A ACTUALLY GOT RIGHT, stated so this entry is not misread as
+      "the gate missed the regressions": its 17 flags INDEPENDENTLY include every
+      one of the five #150 subtraction surfaces — `vcs-azure-adapter.js` (282
+      lines dropped), `vcs-github-adapter.js` (213), `cross-repo-authorize.mjs`
+      (280), `sync-preflight-local-mods.mjs` (181) and
+      `upstream-issue-hygiene.md` (41). The failure is SCOPE and INFERENCE, not
+      DETECTION.
       THE ASK: replace the authorship-based safety inference with a
       CONTENT-based control-subtraction check. Provenance does not entail
       safety — loom shipping a control in sync N and removing it in sync N+1 has
@@ -9434,9 +9508,12 @@ changes:
       `/sync-to-use`. The TIER-WIDE fix is loom's: add `.wave-tracker.d/` to the
       managed block so every consumer gets it without a local patch.
     dedup_evidence: >-
-      `.claude/VERSION` file-key entries: 0 (44 body mentions, all citing VERSION
-      as evidence for other claims, none proposing a fix to its own staleness —
-      read, not counted). `wave-tracker` file-key entries: 0. The existing
+      `.claude/VERSION` file-key entries: 0 — the load-bearing figure, confirmed
+      independently. An earlier draft added "44 body mentions"; that number is
+      NOT REPRODUCIBLE by any instrument (`.claude/VERSION` occurs 28 times
+      pre-commit, bare `VERSION` 45) and is WITHDRAWN rather than re-stated. The
+      body mentions that do exist all cite VERSION as evidence for other claims;
+      none proposes a fix to its own staleness — read, not counted. `wave-tracker` file-key entries: 0. The existing
       `.gitignore` entry was read and covers a different path class; it does not
       name `.wave-tracker.d/`.
     reconciliation:
