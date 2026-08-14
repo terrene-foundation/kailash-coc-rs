@@ -9525,6 +9525,67 @@ changes:
         `52ee39e` (2026-08-04) is an ancestor of HEAD and changed a rule file.
         Gitignore gap confirmed by `git check-ignore -v` before and after the
         local fix, with a control path correctly remaining unignored.
+  - file: .claude/bin/codify-backlog.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    diff_lines: 'not authored here — this entry REPORTS a measured defect and names the guard shape; the patch is not written'
+    reason: >-
+      NET-NEW — THE CODIFY ANCHOR CAN BE STAMPED IN THE FUTURE, AND A FUTURE
+      ANCHOR SILENTLY SKIPS WORK. Found by measurement while advancing the anchor
+      at the end of this cycle, not by reading.
+      WHAT HAPPENED. `/codify` Step 1 instructs the agent to write
+      `learning-codified.json::last_codified` as "ISO ts = now". The value on
+      disk when this cycle started was `2026-08-14T11:40:00Z`. This operator's
+      commits are `+08:00`, and the prior codify's own merge landed at
+      `2026-08-14T10:44:35+08:00` = `02:44:35Z`. So the prior cycle wrote LOCAL
+      time carrying a `Z` suffix — an anchor roughly EIGHT HOURS IN THE FUTURE.
+      WHY THAT IS NOT COSMETIC. The anchor is the lower bound of the delta the
+      enumerator reports, and its completeness guarantee ("this list is the
+      COMPLETE delta since the durable anchor") is what `/codify` instructs the
+      agent to trust instead of session memory. An anchor in the future SILENTLY
+      SKIPS everything between the real time and the stamped time, and reports
+      `0 item(s) total` while doing it — indistinguishable from a genuinely empty
+      backlog. MEASURED: 40 of 692 rows in `observations.jsonl` fall inside the
+      03:40Z..11:40Z window that anchor would have skipped, INCLUDING this entire
+      session's. The direction of harm is the dangerous one: a backward anchor
+      re-surfaces done work (noisy, self-correcting), a forward anchor hides
+      undone work (silent, permanent).
+      THE ASK — a guard, not a convention. Writing the timestamp correctly is
+      already the instruction, and the instruction was followed in good faith;
+      what is missing is anything that FAILS when it is wrong. `codify-backlog.mjs`
+      reads the anchor and should REFUSE (or emit a loud, non-suppressible
+      warning) when `last_codified` is in the future relative to the system clock
+      beyond a small skew allowance — the same fail-direction logic the
+      cross-repo receipt reader already applies to a future-dated receipt
+      (`ts - nowMs > skewMs` -> not live). Optionally the same check belongs
+      wherever the anchor is WRITTEN, so a bad value never lands.
+      RELATIONSHIP TO THE ROOT-CAUSE ENTRY IN THIS SAME CYCLE, stated rather than
+      implied: this is NOT an instance of restatement-without-derivation. The
+      authority here is the system clock and there is only one copy of the value.
+      It is a distinct defect — a value written in the wrong FRAME (local time
+      wearing a UTC suffix) with a silent-skip failure mode — and it is filed
+      separately so Gate-1 does not fold it into the derived-not-restated class
+      it does not belong to.
+    dedup_evidence: >-
+      `codify-backlog.mjs` file-key entries in this manifest: 0 (parsed from
+      YAML, not grepped). Control: the same parse finds 1 entry for
+      `.claude/bin/validate-emit.mjs` and 2 for `.claude/bin/emit.mjs`, so the
+      file-key extractor fires on `.claude/bin/` paths and the zero is a true
+      negative. A separate pre-existing note records that this tool's VIOLATION
+      COUNT is inflated ~19x by two row shapes in `violations.jsonl`; that is a
+      different defect in the same file and is not superseded here.
+    reconciliation:
+      status: 'STILL-OPEN — net-new entry, first filed 2026-08-14; the bad anchor was corrected locally in this cycle, but nothing prevents the next one'
+      reconciled_at: 2026-08-14
+      evidence: >-
+        Prior anchor value read from disk before overwrite; the +08:00 offset
+        established from `git log --format=%aI` on the prior codify's own merge
+        commit; the 40-row overlap counted by parsing `observations.jsonl`
+        timestamps against the skipped window. The replacement anchor was
+        verified as real UTC against `date -u` (38s delta).
+
 
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
