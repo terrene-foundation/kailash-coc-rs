@@ -134,6 +134,72 @@ prototype-chain guard, and the `.gitignore` workspaces revert. Because
 `upflow-self-repo.js` survives byte-intact, repairing the fence is **re-wiring existing
 code, not rewriting it**.
 
+---
+
+## Reachability trace — this REORDERS the risk
+
+A follow-on lane traced who can actually reach the deleted controls. It changes the ranking,
+and two of its results cut AGAINST the earlier lanes.
+
+**Controls (1) and (2) — the `completeUpflowPR` fences and the prototype-chain guard —
+are UNREACHABLE-HERE (~90%).** `completeUpflowPR` has **zero production callers**: every hit
+is a definition, comment, export, or fixture. `vcs-provider.js` has **zero production
+requires** — all five references on main are comments. Decisively: **the same zero holds on
+OURS**, so #150 does not _change_ their reachability. Four matchers were validated against
+known-positives before any zero was trusted.
+
+That bounds the CRITICAL. The fence deletion is real and lands, but it disarms a fence
+nothing currently calls.
+
+**The attacker-input claim for (2) is HALF REFUTED.** `getProviderForRoster` /
+`getProviderForRecordContent` genuinely do read `roster.genesis.provider` and
+`content.provider` unfiltered — confirmed in code. But **nothing calls either wrapper**. The
+"attacker-authorable" claim traces back to a source COMMENT describing _intended_ wiring,
+which a prior lane repeated as if it described live code.
+
+**Control (4), `posture-gate.js`, is a STRENGTHENING — the earlier framing was inverted.**
+383 → 632 lines; severity goes **halt-and-report → `block`**; and the fence is hoisted ABOVE
+the posture branches so it applies at L3 **and below** — previously the two STRICTER postures
+carried the WEAKER fence. The shell-grouping regression remains unmeasured inference.
+
+### Control (3) is REACHABLE — and it is now the live risk
+
+The lane flagged this as its decisive open question. Answered here:
+
+`vcs-azure-adapter.js` sanitizer call sites: **OURS 62** (`reasonText` 29, `reasonOperand` 23,
+`reasonFromError` 10) → **THEIRS 0**. Scoped to the seven ceremony-invoked methods, five carry
+sanitized refusal operands in OURS and none in THEIRS:
+
+```
+OURS   fetchRepoOwner: `ADO git/repositories/${reasonText(repo)} → status
+       ${reasonOperand(r && r.status)} body ${reasonOperand(r && r.body)}`
+THEIRS fetchRepoOwner: `ADO git/repositories/${repo} → status
+       ${r && r.status} body ${JSON.stringify(r && r.body)}`
+```
+
+Control: the two pure predicates (`validatePrincipal`, `principalsEqual`, 4 lines each)
+return 0 in BOTH refs — the matcher discriminates rather than flagging everything.
+
+**These five are production-reachable**, called by the three operator ceremonies:
+
+| ceremony                   | reaches                                                                      |
+| -------------------------- | ---------------------------------------------------------------------------- |
+| `genesis-ceremony.js`      | `fetchCommitVerification` `fetchOrgAdmin` `fetchRepoOwner` `validateRepoRef` |
+| `owner-add-ceremony.js`    | `listCollaborators` `validateRepoRef`                                        |
+| `owner-depart-ceremony.js` | `listCollaborators` `validateRepoRef`                                        |
+
+`r.body` is a remote HTTP response body. `JSON.stringify` escapes only `"`, `\` and sub-0x20,
+leaving 0x7f, the C1 range (incl. U+009B CSI), U+2028/9 and bidi controls verbatim — into a
+string that is logged and that Step-7c may embed in a PR body a downstream agent reads.
+
+**Revised ranking: the sanitizer removal (3) outranks the fence deletion (1)** on reachability,
+even though (1) is the larger structural loss. Fix both; sequence (3) first.
+
+**An instrument failure worth recording.** The first attempt at this measurement reported a
+uniform "4" for five different functions — the whole-file count leaking through an awk that
+never scoped to the function body. Identical counts across distinct functions is the tell.
+Re-instrumented with a declaration-line index and verified against the two pure predicates.
+
 ## What this pass did NOT cover
 
 The ~350 changed `.md` files outside `rules/`/`commands/`/derived trees (token-swept, not
