@@ -9096,6 +9096,342 @@ changes:
         (validator-14 selection fix) — together they are the full
         emission-blocker chain: validator-14 was fixed locally, which unmasked
         validator-16, which only loom can resolve.
+  - file: .claude/rules/derived-not-restated.md
+    action: add
+    origin: downstream
+    via: kailash-coc-rs
+    suggested_tier: coc
+    base_version: "2.24.0"
+    rebase_required: false
+    source_issue: PR #155 (downstream Step-7c offer, inbox 2026-08-14-derived-not-restated.yaml)
+    reason: >-
+      NET-NEW ROOT-CAUSE ENTRY. Relayed from a downstream Step-7c offer, and
+      INDEPENDENTLY CORROBORATED at this template by six instances found in a
+      single session — which is why it is filed as the root cause rather than as
+      one more symptom entry.
+      THE CLASS: a value owned by one authority, RESTATED as a literal at another
+      surface, with nothing that fails mechanically when the two diverge. The
+      failure is always GREEN-WHILE-WRONG: every check passes, and the copy is
+      silently false.
+      THE SIX LOCAL INSTANCES, each measured this session, none inherited:
+      (1) `validate-bash-command.js` — the Layer-1/2 state-file `why` string
+      enumerates four protected files (posture.json, violations.jsonl,
+      coordination-log.jsonl, .initialized) and routes the operator to /posture.
+      `.claude/VERSION` carries `surfaces:{bash:true, layer3:true}` in the
+      `guard-path-scope.js` PROTECTED_PATHS registry, so a `> .claude/VERSION`
+      redirect takes that branch and is told it hit a file it did not, with a
+      ceremony that cannot resolve it. #1399 added the registry row AND updated
+      the Layer-3 prose; it did not update Layer-1/2. Registry is the authority;
+      the four-item list is the restatement.
+      (2) `.claude/VERSION::upstream.loom_sha` = `43167a54` (written by
+      `123870f`, 2026-08-02), while a LATER sync `52ee39e` (2026-08-04, loom
+      `f4b920cb1819`) landed and changed `rules/instrument-discipline.md`
+      (+21/-4) without touching VERSION. Commit history is the authority; the
+      literal is the restatement. Filed separately in this cycle.
+      (3) The 62/10/12 "SYNC-ONLY" partition of Gate A's 84 flags was computed
+      from a HAND-ROLLED reconstruction of Gate A's query that diverges from it
+      in four ways (ref, --no-merges, cap, filter order). Gate A's own query is
+      the authority. Filed separately in this cycle.
+      (4) `rules/burn-down-reporting.md` MUST-3 and `commands/wrapup.md` § Wave
+      tracker both describe wave detail as living in "the gitignored
+      `.wave-tracker.d/<display_id>.md`". `.gitignore` did not cover it, so the
+      asserted gitignore did not exist and a wave tracker sat unignored in a
+      PUBLIC template. `.gitignore` is the authority; the rule prose is the
+      restatement. Fixed locally this cycle; tier-wide fix filed separately.
+      (5) The offer's own `base_version: 2.45.5` contradicts its
+      `template_version: 2.24.0` in the same file, and matches neither of the
+      two values used by 105 of 105 precedents. A version literal restated at an
+      offer surface. Correction carried on this relay.
+      (6) The pre-existing 2026-08-12 root-cause finding already recorded at this
+      template: NINE of ELEVEN validate-emit checks that have ever failed here
+      were ONE duplicated fact, hand-reconciled. That work's remediation —
+      GENERATE the dependent copy (`gen-claude-md-sections.mjs`) and delete the
+      authorship that drifts — IS this rule's prescription, arrived at
+      independently before the offer was read.
+      SIX CORRECTIONS THE RELAY CARRIES (from the template-side ingest review):
+      (a) `base_version: 2.45.5` -> `2.24.0`, or state which number space it
+      denotes; as filed it is off-convention, absent from the repo, and
+      self-contradictory.
+      (b) BLOCKING — the offer's second half is a THIRD claimant on
+      `instrument-discipline.md`. Two STILL-OPEN entries in this manifest already
+      target that file and carry a standing "MUST be evaluated in ONE pass"
+      instruction. The offer does not acknowledge either (matcher control: the
+      same sibling-detection matcher fired 4x against the 2026-08-08 offer, so
+      the silence is real). The three claim DIFFERENT slots (MUST-1 extension
+      here; MUST-3(b) and MUST-4 in the siblings), so this is NOT a content
+      duplicate — it is a sequencing hazard the manifest already flagged.
+      (c) ADD A DERIVE-VS-COUPLE BOUNDARY CLAUSE. As drafted, "restating it as a
+      literal is BLOCKED unless a mechanical check fails when the two diverge"
+      condemns this template's own CORRECT Gate C fix (PR #152), which
+      deliberately STOPPED deriving a fixture date from live
+      `.claude/VERSION::upstream.synced_at` and pinned it instead. A hermetic
+      test MUST own its inputs. The rule needs: derive from the AUTHORITY; do
+      NOT couple to mutable LIVE STATE. Without this clause the rule
+      mis-adjudicates one of the three instances this template actually has.
+      (d) Record the true content base as loom `f4b920cb1819`, not `43167a54` —
+      the downstream faithfully copied this template's own stale value, which is
+      instance (2) propagating one hop.
+      (e) Add the hop-level-provenance header comment matching the 2026-08-08
+      offer's declared form, so absence of `source_repo` is deliberate-by-
+      declaration rather than by silence.
+      (f) Record that the disclosure scrub was HUMAN, not mechanical:
+      `.claude/.proposals/` is never-synced, so `scan-synced-disclosure.mjs`
+      prints "clean" for clean and leaking input alike. That non-discriminating
+      result is NOT cited as the scrub.
+      VERIFICATION POSTURE, stated honestly: of the offer's five claimed
+      instances, ONE was reproduced from scratch at this template (the
+      three-PR additive-merge count drift: each PR self-consistent and green
+      alone, all three merging cleanly, the count line silently wrong at 29 vs a
+      declared 27). The other FOUR occurred in the downstream repo and are
+      NOT VERIFIABLE HERE — reading that repo is blocked by
+      `repo-scope-discipline.md` and no authorization receipt exists. They are
+      relayed as NOT-INDEPENDENTLY-VERIFIED, not as plausible-therefore-true.
+      The class is corroborated by the six local instances above; the offer's
+      four unverified instances are not load-bearing for it.
+      TRUST POSTURE WIRING is the authoring repo's to complete at Gate-1 per
+      `trust-posture.md` MUST-8; this entry does not pre-author it.
+    dedup_evidence: >-
+      `grep 'derived-not-restated' latest.yaml` -> exit 1 (ABSENT). Control:
+      `grep -c 'instrument-discipline'` on the same file -> 34, so the matcher
+      fires and the empty result is a true negative. Rule-level sweep for an
+      existing single-authority/no-restatement claim returned seven hits, all
+      read rather than counted: `specs-authority.md` Rule 9 (workspace specs
+      only), `dataflow-pool.md` (pool size), `env-models.md` (.env),
+      `trust-posture.md` (posture-state file location), plus three incidental
+      matches not about restatement. NO existing rule carries the general claim.
+      The offer's own distinctness claim against `specs-authority.md` Rule 9 was
+      checked against the actual heading and is accurate.
+    reconciliation:
+      status: STILL-OPEN — net-new ROOT-CAUSE entry, first filed 2026-08-14; relayed from PR #155 with six corrections, and independently corroborated by six instances measured at this template
+      reconciled_at: 2026-08-14
+      evidence: >-
+        The six local instances were each measured this session with a named
+        falsifying result and a control, not carried forward from notes. The
+        offer's single reproducible instance was reproduced here; the other four
+        were explicitly NOT verified and are relayed as such.
+
+  - file: .claude/rules/artifact-flow.md
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reason: >-
+      NET-NEW ROOT-CAUSE ENTRY — THE REVERT LOOP. A correction this template
+      makes to a synced artifact is Class-A non-durable, and the Gate-1 entry
+      that would make it durable can sit STILL-OPEN indefinitely. Nothing
+      prevents a subsequent Gate-2 sync from shipping the canonical copy that
+      LACKS the fix. The result is a loop: discover -> fix locally -> file
+      upstream -> next sync reverts -> rediscover.
+      THIS IS NOT A PREDICTION. This manifest already carries TWO entries whose
+      own reconciliation text reads "ALREADY-SOLVED ON DISK ... but it has
+      ALREADY been reverted once by an inbound sync and manually restored, so
+      Gate-1 ingest is what makes it durable." Inbound PR #150 makes
+      `upstream-issue-hygiene.md` MUST-4 OCCURRENCE TWO, verified this session:
+      `grep -c 'Open, Never Complete'` -> ours 3, incoming 0, against a control
+      heading present in both (1/1). The rule file is byte-identical up to the
+      MUST-4 insertion point, so it is a clean revert of the whole 2026-08-03
+      landing including its wiring block and both MUST NOT bullets.
+      THE SAME LOOP, ONE TURN FURTHER, ON A SECURITY SURFACE. Issue #113 records
+      that sync `52ee39e` INTRODUCED a forged-authorization surface —
+      `readRepoClass` and its sink, `git log -S` naming that sync sole
+      introducer. This template then closed it locally with a positive charset
+      allowlist. Incoming #150 REMOVES that allowlist. So the cycle is:
+      sync introduces the vulnerability -> template fixes it -> next sync
+      removes the fix. Measured behaviorally, not lexically: this template's own
+      committed fixture suite run against both binaries through its `TOOL=` seam
+      gives ours PASS 47 / FAIL 0 and incoming PASS 34 / FAIL 13, and the
+      failing case reports verbatim "guard(evil/repo, write) -> true ...
+      a fully legitimate ceremony for acme/one silently minted write authority
+      over evil/repo for the whole window". `.claude/VERSION` is committed and
+      synced, so the payload is plantable upstream and detonates later in
+      another operator's session.
+      FIVE CONTROL-SUBTRACTIONS IN #150, all re-derived this session with
+      controls proving each instrument fires on the incoming blobs:
+      R1 both VCS adapters lose the own-repo derivation fence (842->616 lines /
+      21->0 fence symbols; 982->678 / 13->0; control `function` 17/17 and 17/16).
+      `upflow-self-repo.js` SURVIVES but is orphaned — no enforcing consumer
+      imports it, so a reader greps, finds it, and concludes the fence exists.
+      R2 MUST-4 deleted (above). R3 the sync-subject pattern stops matching
+      `chore(coc-sync):`, this repo's most common sync subject — discriminating
+      test with a negative control that correctly fails on both patterns; the
+      harm direction is FALSE POSITIVES, i.e. the 59-of-82 miscount the tool's
+      own header records having fixed, returning. R4 refusal-path sanitization
+      reverts to `JSON.stringify` (`reasonText|reasonOperand|reasonFromError`
+      55->0; `JSON.stringify` 2->21), which per ECMA-262 QuoteJSONString escapes
+      only `"`, `\` and sub-0x20 — leaving 0x7f, the C1 range including U+009B
+      CSI, U+2028/9 and bidi controls verbatim in error text, i.e. terminal
+      injection on a refusal path. R5 the escalation above.
+      THE PROPOSED ROOT-CAUSE FIX (loom's to design; the shape is the ask):
+      Gate-2 distribution MUST NOT ship a file that a STILL-OPEN Gate-1 entry
+      names in the REVERTING direction. Mechanically: `sync-tier-aware.mjs`
+      cross-references the target's `.claude/.proposals/latest.yaml` STILL-OPEN
+      set against the outbound file list, and refuses (or requires an explicit
+      per-file acknowledgement, the `ACK-DISCARD:` shape already in use) where
+      the canonical copy would remove content the open entry exists to land.
+      This converts an indefinite silent loop into a loud refusal at the
+      distribution boundary, and it is the only surface that sees both halves —
+      the target cannot fence a sync it has not received, and the entry cannot
+      fence anything while it sits unapplied.
+      HONEST CON: this couples Gate-2 to per-target proposal state, which is a
+      new dependency direction for the distributor, and a target with a stale or
+      over-broad STILL-OPEN set would over-refuse. The `ACK-DISCARD:` precedent
+      is the mitigation — refusal is acknowledgeable per file, not absolute.
+    dedup_evidence: >-
+      No existing entry proposes a distribution-side fence on open-entry state.
+      `check-local-fix-discard` file-key entries: 1 (Gate A, a DETECTION gate at
+      the consumer, not a distribution fence). The two "reverted once by an
+      inbound sync" entries DOCUMENT the loop in their reconciliation text but
+      propose no mechanism to break it; this entry supersedes neither and adds
+      the mechanism.
+    reconciliation:
+      status: STILL-OPEN — net-new ROOT-CAUSE entry, first filed 2026-08-14; the loop it names is now at OCCURRENCE TWO on MUST-4 and has completed a full introduce/fix/remove cycle on a security surface
+      reconciled_at: 2026-08-14
+      evidence: >-
+        All five subtractions re-derived this session against
+        `refs/adjudicate/sync-150`, each with a control establishing the
+        instrument fires on the incoming blob. R5 settled behaviorally by
+        executing this template's own fixture suite against both binaries, after
+        two prior sessions left it UNRESOLVED on keyword counts.
+
+  - file: .github/scripts/check-local-fix-discard.sh
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reason: >-
+      GATE A CANNOT DO WHAT IT CLAIMS — three structural defects, each confirmed
+      by reading the shipped script, not inferred. This EXTENDS issue #113 (which
+      records that Gate A has no coverage for what a sync ADDS) with the finding
+      that Gate A is ALSO incomplete at what it does claim to cover: content a
+      sync REMOVES.
+      DEFECT 1 — the "SYNC-ONLY is safe" inference is unfalsifiable by
+      construction. `had_local=1` (:169) is set ONLY when a commit subject does
+      NOT match the sync pattern, and `:182` gates the whole file on it. So Gate
+      A flags a file ONLY IF it already found a non-sync commit. For every one of
+      its 84 flags, "every authoring commit is a sync commit" is FALSE by
+      construction. A 62-file SYNC-ONLY bucket among those 84 is therefore not a
+      partition of Gate A's finding at all — it was computed from a hand-rolled
+      reconstruction diverging from Gate A's query in four ways (ref `main` vs
+      `$MERGE_BASE`; merges included vs `--no-merges`; uncapped vs capped;
+      filter-then-cap vs cap-then-filter). Consequence: 62 files were
+      dispositioned "safe" on an argument the gate's own semantics cannot
+      support, and they remain UNADJUDICATED.
+      DEFECT 2 — the cap is applied BEFORE the filter, and the variable is
+      misnamed. `--max-count="$MAX_LOCAL_COMMITS"` (:180) is handed to `git log`;
+      the sync-subject filter runs later, in the loop body. So the cap bounds the
+      50 most recent commits OF ANY KIND, not 50 local commits. The name and its
+      comment both assert otherwise, and the comment's justification ("shared
+      artifacts do not accumulate hundreds of local commits between syncs") would
+      hold only under the name's reading. In a repo where sync commits dominate
+      per-file history, syncs crowd local commits out of the window and the file
+      yields `had_local=0` -> never flagged, never examined.
+      DEFECT 3 — scope. `git diff --name-only "$MERGE_BASE" "$HEAD_REF" --
+      '.claude/'` (:135). On inbound #150 that is 348 of 600 changed files;
+      252 files received ZERO discard checking — the `.coc/`, `.codex/` and
+      `.gemini/` derived trees. A control-subtraction landing there is invisible.
+      DEFECT 4 (documented, not new) — Gate A's own header states: "A revert of
+      work committed under a SYNC-shaped subject (a fix landed as `chore(sync):`
+      is read as upstream content and its loss is not flagged)." This
+      CONTRADICTS the unqualified claim in `.claude/bin/sync-preflight-local-mods.mjs`
+      that mis-recognition "fails toward OVER-reporting ... never toward
+      silently missing a real loss." The preflight's argument covers only
+      UNRECOGNIZED sync subjects; the converse — a LOCAL commit whose subject
+      MATCHES the pattern — is exactly a silent miss, and the leak class is LIVE
+      here: 10+ local `chore(coc):` commits, four of them disclosure scrubs
+      ("strip BUILD-internal packages/... paths", "strip residual sibling-SDK
+      repo names"). Measured negative result, recorded honestly: inbound #150
+      does NOT exploit this — `packages/kailash-` ours 8 files / incoming 8, and
+      `workspaces/multi-cli-coc` 6/6, against a control showing the matcher
+      discriminates (pre-scrub tree 25 files, post-scrub 0). The class is real
+      and unexploited by THIS sync.
+      THE ASK: replace the authorship-based safety inference with a
+      CONTENT-based control-subtraction check. Provenance does not entail
+      safety — loom shipping a control in sync N and removing it in sync N+1 has
+      sync-only authorship at every step, which is the shape of all five #150
+      regressions. Minimum fixes: cap AFTER the subject filter (or drop the cap
+      and bound by `$MERGE_BASE`); widen scope beyond `.claude/`; and correct
+      the preflight's fail-direction claim to name the matching-subject case the
+      gate's own header already documents.
+    dedup_evidence: >-
+      `check-local-fix-discard` file-key entries: 1 (issue #113's ADDED-content
+      design question). Read rather than counted: that entry is scoped to what a
+      sync ADDS and explicitly declines to answer locally. The three defects here
+      are about what a sync REMOVES — Gate A's own stated purpose — and are not
+      named in it. Complementary, not duplicate.
+    reconciliation:
+      status: STILL-OPEN — net-new entry, first filed 2026-08-14; extends #113 from ADDED-content coverage to the REMOVED-content coverage Gate A already claims
+      reconciled_at: 2026-08-14
+      evidence: >-
+        All three defects confirmed by reading the shipped script at the cited
+        line anchors. Defect 3's blast radius measured on the live diff
+        (600 total / 348 in `.claude/` / 252 unchecked). Defect 4's leak class
+        confirmed live by enumerating local `chore(coc):` commits, and its
+        exploitation by #150 tested and found NEGATIVE with a discriminating
+        control.
+
+  - file: .claude/VERSION
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reason: >-
+      NET-NEW — an instance of the derived-not-restated class, in the file that
+      is the repo-CLASS root of trust, plus its paired gitignore sibling.
+      HALF 1 — `upstream.loom_sha` IS STALE. It reads `43167a54`, written by
+      `123870f` (2026-08-02). A LATER sync `52ee39e` (2026-08-04, loom
+      `f4b920cb1819`) landed on main and changed `rules/instrument-discipline.md`
+      (+21/-4) WITHOUT touching VERSION. Falsifying result named before the
+      check: a later sync appearing in `git log main -- .claude/VERSION` would
+      refute staleness; the newest entry there is `123870f`. `52ee39e` confirmed
+      an ancestor of HEAD. So the declared upstream base is one sync behind the
+      actual content base.
+      WHY IT MATTERS BEYOND BOOKKEEPING, three ways:
+      (a) A downstream consumer copied the stale value verbatim into its Step-7c
+      offer (PR #155 declares `loom_sha: 43167a54`), so the restatement
+      propagated one hop outward.
+      (b) Gate C's LIVE mode resolves its sync date from this same file's
+      `upstream.synced_at`, which is stamped `2026-08-02` — the same commit. A
+      date-resolution gate reading a field that a later sync did not advance is
+      the BUG-1 class this template already fixed once from the other direction.
+      (c) `.claude/VERSION::type` is read VERBATIM by `readRepoClass` with no
+      signature and no cross-check, and is the injection channel behind the R5
+      escalation filed in this cycle. A file this load-bearing should not be
+      hand-maintained.
+      THE ASK: derive the sync provenance fields rather than restate them. The
+      Gate-2 engine already knows `loom_sha`, `synced_at` and the platform
+      version at the moment it writes the tree — it should write them
+      unconditionally on every sync, and a check should fail when the newest
+      sync commit touching `.claude/` is newer than `upstream.synced_at`.
+      HALF 2 — `.wave-tracker.d/` was never gitignored. `rules/burn-down-reporting.md`
+      MUST-3 and `commands/wrapup.md` § Wave tracker both describe wave detail as
+      living in "the gitignored `.wave-tracker.d/<display_id>.md`". The
+      loom-managed `coc:gitignore_additions` block covers `.session-notes`,
+      `.session-notes.d/` and `.session-notes.shared.md` and NOT this sibling, so
+      the asserted gitignore did not exist and a wave tracker sat unignored in a
+      PUBLIC template repo carrying the same class of operator session detail as
+      `.session-notes.d/`. Found by measurement (`git check-ignore -v` returned
+      nothing where the rule predicted a match), not by reading. FIXED LOCALLY
+      this cycle in the repo-owned region above the managed markers, following
+      the two established same-class precedents already there
+      (`.session-notes.migrated`, `.claude/cross-repo-authz/`) — so it survives
+      `/sync-to-use`. The TIER-WIDE fix is loom's: add `.wave-tracker.d/` to the
+      managed block so every consumer gets it without a local patch.
+    dedup_evidence: >-
+      `.claude/VERSION` file-key entries: 0 (44 body mentions, all citing VERSION
+      as evidence for other claims, none proposing a fix to its own staleness —
+      read, not counted). `wave-tracker` file-key entries: 0. The existing
+      `.gitignore` entry was read and covers a different path class; it does not
+      name `.wave-tracker.d/`.
+    reconciliation:
+      status: STILL-OPEN — net-new entry, first filed 2026-08-14; half 2 fixed locally (Class-A non-durable, so tier-wide fix still required), half 1 unfixed
+      reconciled_at: 2026-08-14
+      evidence: >-
+        Staleness confirmed by commit ordering with a named falsifier: newest
+        commit touching `.claude/VERSION` is `123870f` (2026-08-02) while
+        `52ee39e` (2026-08-04) is an ancestor of HEAD and changed a rule file.
+        Gitignore gap confirmed by `git check-ignore -v` before and after the
+        local fix, with a control path correctly remaining unignored.
+
 
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
