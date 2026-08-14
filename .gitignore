@@ -80,6 +80,36 @@ compose.override.yml
 # .claude/.proposals/latest.yaml. Remove once the managed block covers it.
 .session-notes.migrated
 **/.session-notes.migrated
+# .wave-tracker.d/ holds the per-operator wave DETAIL that `commands/wrapup.md`
+# § Wave tracker and `rules/burn-down-reporting.md` MUST-3 both describe as
+# living in "the gitignored `.wave-tracker.d/<display_id>.md`" — but the
+# loom-managed coc:gitignore_additions block below covers .session-notes,
+# .session-notes.d/ and .session-notes.shared.md and NOT this sibling, so the
+# asserted gitignore did not exist and a wave tracker sat unignored in a PUBLIC
+# template repo. It carries operator session detail (agent IDs, launch ledger,
+# in-flight state) exactly as .session-notes.d/ does. Same class as the
+# .session-notes.migrated gap above: a fact asserted at the rule surface and
+# never enforced at the authority. Kept HERE (repo-owned region, above the
+# managed markers) so it is durable across /sync-to-use; the tier-wide fix is
+# proposed to loom in .claude/.proposals/latest.yaml. Remove once the managed
+# block covers it.
+.wave-tracker.d/
+**/.wave-tracker.d/
+
+# workspaces/<x>/journal/.pending/ is session-local SessionEnd auto-capture
+# staging, not committed institutional knowledge. `rules/journal.md` § "SessionEnd
+# Auto-Capture & Pending-Journal Hygiene" clause 1 is a MUST — "Every repo running
+# the SessionEnd auto-capture hook MUST carry a `**/journal/.pending/` ignore
+# pattern in the repo-root `.gitignore`" — and names the exact pattern. This
+# repo carried NO mention of `pending` at all, so the MUST was unsatisfied and the
+# rule's own stated consequence was live: an un-ignored `.pending/` sat in
+# `git status` across this entire session as dirty-tree noise that leaks into
+# unrelated PRs. Third same-class instance in this region: a fact owned by
+# .gitignore, asserted in rule prose, never enforced at the authority. Kept HERE
+# (repo-owned region, above the managed markers) so it is durable across
+# /sync-to-use; tier-wide fix proposed to loom in .claude/.proposals/latest.yaml.
+**/journal/.pending/
+
 # .claude/cross-repo-authz/ holds /cross-repo-authorize receipts, which carry
 # the authorizing operator's display_id (`requester:`) by design. The ceremony
 # (repo-scope-discipline.md § Affordance step 5) says to COMMIT them for
