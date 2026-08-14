@@ -9427,6 +9427,29 @@ changes:
       `workspaces/multi-cli-coc` 6/6, against a control showing the matcher
       discriminates (pre-scrub tree 25 files, post-scrub 0). The class is real
       and unexploited by THIS sync.
+      DEFECT 5 — A REPAIR-IN-PLACE IS INDISTINGUISHABLE FROM A REMOVAL, and the
+      only affordance is one that overstates what happened. Observed by running
+      the gate against the PR that files this entry. This PR added quotes to a
+      pre-existing `status:` scalar so that YAML would stop truncating it at a
+      ` #`; the author's text is byte-identical and now survives parsing. Gate A
+      compares line-presence between base and head, so a rewritten line reads as
+      a DROPPED line, and the sole escape hatch is `ACK-DISCARD: <path>` — an
+      operator acknowledging a DISCARD that did not occur. The gate's goal
+      ("not to make the discard impossible, but to make it impossible to do
+      SILENTLY") is met, but the recorded disposition is wrong in kind, and the
+      audit trail now carries an acknowledged discard where a repair happened.
+      Suggested: a second affordance (`ACK-REPAIR:` / `ACK-REWRITE:`) whose
+      semantics are "this line was rewritten, not removed", so the record
+      distinguishes the two. Low severity; it does not weaken the fence.
+      OPERATIONAL NOTE FOR ANY CONSUMER OF THIS GATE, since it cost a cycle here
+      and had already cost one on PR #130 (2026-08-09): `PR_BODY` comes from
+      `github.event.pull_request.body`, captured in the event payload at TRIGGER
+      time. `gh run rerun` replays that payload, so an `ACK-DISCARD:` added after
+      the triggering push is INVISIBLE and the gate reports `0 acknowledged`
+      identically. Only a new push (firing `synchronize`) carries the edited
+      body. The workflow documents this; it is repeated in the entry because the
+      failure presents as "my acknowledgement did not work" rather than as
+      "the gate read a stale body".
       WHAT GATE A ACTUALLY GOT RIGHT, stated so this entry is not misread as
       "the gate missed the regressions": its 17 flags INDEPENDENTLY include every
       one of the five #150 subtraction surfaces — `vcs-azure-adapter.js` (282
