@@ -7563,7 +7563,7 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — net-new entry, first filed 2026-08-10; census re-measured, supersedes the figure issue #112 carried
+      status: "STILL-OPEN — net-new entry, first filed 2026-08-10; census re-measured, supersedes the figure issue #112 carried"
       reconciled_at: 2026-08-10
       evidence: >-
         RE-MEASURED AT HEAD BY RUNNING THE VALIDATOR, not read from a prior
@@ -9097,13 +9097,14 @@ changes:
         emission-blocker chain: validator-14 was fixed locally, which unmasked
         validator-16, which only loom can resolve.
   - file: .claude/rules/derived-not-restated.md
-    action: add
+    action: create
     origin: downstream
     via: kailash-coc-rs
     suggested_tier: coc
     base_version: "2.24.0"
+    diff_lines: "not authored here — this entry PROPOSES the rule; loom authors the file at Gate-1, so no local line count exists to measure"
     rebase_required: false
-    source_issue: PR #155 (downstream Step-7c offer, inbox 2026-08-14-derived-not-restated.yaml)
+    source_issue: "PR #155 (downstream Step-7c offer). The inbox file 2026-08-14-derived-not-restated.yaml exists ONLY on that PR head (78c89d1) and is NOT on main — if #155 never merges the path dangles, so cite the PR number, not the path."
     reason: >-
       NET-NEW ROOT-CAUSE ENTRY. Relayed from a downstream Step-7c offer, and
       INDEPENDENTLY CORROBORATED at this template by six instances found in a
@@ -9190,6 +9191,18 @@ changes:
       four unverified instances are not load-bearing for it.
       TRUST POSTURE WIRING is the authoring repo's to complete at Gate-1 per
       `trust-posture.md` MUST-8; this entry does not pre-author it.
+      SECOND AUTHORING-REPO OBLIGATION, easy to miss because it sits in a
+      different rule: `self-referential-codify.md` Rule 2 requires that a new
+      rule under `.claude/rules/` governing codify-class behavior be added to
+      that rule's positive allowlist IN THE SAME `/codify` that lands it. This
+      rule qualifies as at minimum a boundary case — three of its six local
+      instances are COC artifacts, and its prescription is what
+      `specs-authority.md` Rule 9 already does for specs — and Rule 2's own
+      tiebreaker resolves boundary cases "in favor of the gate firing". loom
+      MUST therefore add `.claude/rules/derived-not-restated.md` to
+      `self-referential-codify.md` Rule 2's allowlist in the codify that lands
+      it. Recorded here because the obligation fires at loom, not at this
+      template, and an unstated handoff is how it gets missed.
     dedup_evidence: >-
       `grep 'derived-not-restated' latest.yaml` -> exit 1 (ABSENT). Control:
       `grep -c 'instrument-discipline'` on the same file -> 34, so the matcher
@@ -9202,7 +9215,7 @@ changes:
       The offer's own distinctness claim against `specs-authority.md` Rule 9 was
       checked against the actual heading and is accurate.
     reconciliation:
-      status: STILL-OPEN — net-new ROOT-CAUSE entry, first filed 2026-08-14; relayed from PR #155 with six corrections, and independently corroborated by six instances measured at this template
+      status: "STILL-OPEN — net-new ROOT-CAUSE entry, first filed 2026-08-14; relayed from PR #155 with six corrections, and independently corroborated by six instances measured at this template"
       reconciled_at: 2026-08-14
       evidence: >-
         The six local instances were each measured this session with a named
@@ -9215,6 +9228,7 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    diff_lines: "not authored here — this entry PROPOSES a distribution-side fence; the clause and its sync-tier-aware.mjs half are loom-side"
     reason: >-
       NET-NEW ROOT-CAUSE ENTRY — THE REVERT LOOP. A correction this template
       makes to a synced artifact is Class-A non-durable, and the Gate-1 entry
@@ -9298,6 +9312,7 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    diff_lines: "not authored here — this entry REPORTS three structural defects with line anchors; the fix shape is named, the patch is not written"
     reason: >-
       GATE A CANNOT DO WHAT IT CLAIMS — three structural defects, each confirmed
       by reading the shipped script, not inferred. This EXTENDS issue #113 (which
@@ -9306,7 +9321,8 @@ changes:
       sync REMOVES.
       DEFECT 1 — the "SYNC-ONLY is safe" inference is unfalsifiable by
       construction. `had_local=1` (:169) is set ONLY when a commit subject does
-      NOT match the sync pattern, and `:182` gates the whole file on it. So Gate
+      NOT match the sync pattern, and `[ "$had_local" -eq 1 ] || continue` (:182)
+      gates the whole file on it. So Gate
       A flags a file ONLY IF it already found a non-sync commit. For every one of
       its 84 flags, "every authoring commit is a sync commit" is FALSE by
       construction. A 62-file SYNC-ONLY bucket among those 84 is therefore not a
@@ -9359,7 +9375,7 @@ changes:
       are about what a sync REMOVES — Gate A's own stated purpose — and are not
       named in it. Complementary, not duplicate.
     reconciliation:
-      status: STILL-OPEN — net-new entry, first filed 2026-08-14; extends #113 from ADDED-content coverage to the REMOVED-content coverage Gate A already claims
+      status: "STILL-OPEN — net-new entry, first filed 2026-08-14; extends #113 from ADDED-content coverage to the REMOVED-content coverage Gate A already claims"
       reconciled_at: 2026-08-14
       evidence: >-
         All three defects confirmed by reading the shipped script at the cited
@@ -9374,6 +9390,7 @@ changes:
     origin: use-template
     suggested_tier: coc
     base_version: "2.24.0"
+    diff_lines: "not authored here for half 1 (derive the provenance fields = loom-side); half 2 landed locally as .gitignore +16 -0 in 369ce7b"
     reason: >-
       NET-NEW — an instance of the derived-not-restated class, in the file that
       is the repo-CLASS root of trust, plus its paired gitignore sibling.
@@ -9431,7 +9448,6 @@ changes:
         `52ee39e` (2026-08-04) is an ancestor of HEAD and changed a rule file.
         Gitignore gap confirmed by `git check-ignore -v` before and after the
         local fix, with a control path correctly remaining unignored.
-
 
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
