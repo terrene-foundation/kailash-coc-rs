@@ -9451,6 +9451,19 @@ changes:
     reconciliation:
       status: "STILL-OPEN — net-new entry, first filed 2026-08-14; extends #113 from ADDED-content coverage to the REMOVED-content coverage Gate A already claims"
       reconciled_at: 2026-08-14
+      pairing: >-
+        MUST be evaluated in ONE pass with the other
+        `.github/scripts/check-local-fix-discard.sh` entry (issue #113, filed
+        2026-08-10). They are COMPLEMENTARY, not duplicate, and landing either
+        alone leaves the gate half-fixed: #113 covers what a sync ADDS and
+        explicitly declines to answer locally; THIS entry covers what a sync
+        REMOVES — Gate A's own stated purpose — and reports three structural
+        defects (`had_local` file-level gating, cap-before-filter, and
+        `.claude/`-only scope). A fix for one does not touch the other, but both
+        edit the same script, so Gate-1 should sequence them together to avoid a
+        second-pass conflict. Recorded as a FIELD rather than only in
+        `dedup_evidence` prose because Gate C's ratchet reads the field, not the
+        prose — the coupling was stated and still would not have been seen.
       evidence: >-
         All three defects confirmed by reading the shipped script at the cited
         line anchors. Defect 3's blast radius measured on the live diff
