@@ -9756,6 +9756,377 @@ changes:
 # block). The remaining classifications below are STRUCTURAL EVIDENCE ONLY and
 # are labelled as such — an `already_solved_candidate` is a candidate, not a
 # verdict, and Gate-1 should confirm content before skipping any entry.
+  - file: .claude/bin/emit.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    reason: |
+      CORRECTION TO THE #125 CHAIN — not a new report of the defect.
+
+      The defect itself (validator 16 forbids `.claude/sync-manifest.yaml` in a
+      `coc-use-template` repo while validator 18 reads that same file through the
+      shared `loadExclusions()`) is unchanged and already carried by entries for
+      `emit.mjs` and `sync-manifest.yaml`. NO NEW ESCALATION ENTRY WAS FILED: a
+      structural scan of all 129 prior entries found #125 / validator-16 already
+      covered ten times over, and a sixth restatement would be permanent noise in
+      an append-only queue. Two facts a Gate-1 reader would otherwise take from
+      those entries are now FALSE at HEAD, and both change triage rather than
+      merely wording.
+
+      1. "#125 is latent, masked by validator 14." FALSE AT HEAD. Measured:
+         `node .claude/bin/emit.mjs --all --lang rs --dry-run` prints
+         `[validator-14] rule-frontmatter: PASS` immediately followed by
+         `[validator-16] manifest-yaml: FAIL (class:coc-use-template -> manifest
+         FORBIDDEN)`. Validator 16 is now the FIRST FAILING GATE and #125 is
+         ACTIVE, not latent. The entries that rest on the masking premise were
+         true when written and are stale now.
+
+      2. THE LINE CITATIONS HAVE DRIFTED. The chain cites
+         `_classifyManifestPresence, emit.mjs:2389-2405` and validator 18's
+         manifest read at `emit.mjs:1849`. Measured at HEAD:
+         `_classifyManifestPresence` is at :2366, its non-owner MUST-NOT branch
+         message at :2406, `validateManifestYaml` at :2436; `loadExclusions` is
+         imported at :93 (unchanged) and called at :1860.
+
+      WHY THIS MATTERS FOR TRIAGE. A reader who believes the defect sits masked
+      behind an earlier validator ranks it as latent cleanup. It is not: it is the
+      active first-failing gate, and it has blocked three dated cycles from
+      measuring their own Rule-10 headroom. The run halts before
+      `validateAggregateHeadroom` (defined emit.mjs:1244, sole production call
+      site :1513 inside `emitBaseline`, invoked only from the CLI loop AFTER the
+      validator-16 exit), and `validate-proximity-band.mjs` returns
+      `unrun_no_coverage` carrying the explicit banner "THIS RUN IS NOT
+      EVIDENCE". Rule 10's proximity-band gate therefore has NO COVERAGE AT ALL
+      at this template and cannot acquire any until #125 is resolved upstream.
+
+      THE FIX REMAINS LOOM'S. The class predicate keys on repo CLASS while loom's
+      `manifest_distribute: true` carve-out keys on template TYPE, and a
+      multi-CLI USE template is both. Deleting the local manifest to satisfy
+      validator 16 would empty validator 18's exclusion input (measured: the
+      manifest currently supplies 15 codex and 16 gemini exclusion globs to
+      `loadExclusions()`). That deletion counterfactual was NOT executed and is
+      recorded as a code-read inference, not a measurement.
+    dedup_evidence: >-
+      Structural scan of all 129 prior entries under `changes:` (parsed by
+      indentation, not grepped) found #125 / validator-16 already carried by ten
+      entries. Matcher control: a known-present string returned 129 hits and a
+      known-absent string returned 0 against the same file, so the empty results
+      for the two correction-specific claims are true negatives. Five of those
+      entries were then READ IN FULL rather than counted; their combined coverage
+      of the escalation framing is COMPLETE (the contradiction with path:line, the
+      consequence that baseline rules authored here are CC-only in practice, the
+      "still blocked this cycle" note, and the loom-only-resolvable routing). This
+      entry therefore carries ONLY the two net-new, decision-relevant facts.
+    reconciliation:
+      status: STILL-OPEN — correction-by-append; two premises in the #125 chain are stale at HEAD
+      reconciled_at: 2026-08-14
+      evidence: >-
+        Both corrections re-derived at HEAD in the session that filed them, not
+        carried from prior prose. Line numbers were read from the file at
+        measurement time and will drift; reproduce by SYMBOL
+        (`_classifyManifestPresence`, `validateManifestYaml`, `loadExclusions`),
+        not by line. Control: a known-absent string returns exit 1 against
+        `emit.mjs` while every citation above returns a real match.
+      disposition: >-
+        Filed as an APPEND that corrects, never as an edit to the entries it
+        corrects, per artifact-flow.md § "Append, Never Overwrite Unprocessed
+        Proposals" — the audit trail of what was believed and when is the point.
+
+  - file: .gitignore
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    reason: >-
+      THE MANAGED IGNORE BLOCK REVERTS A DATED OWNER DIRECTIVE AND MAKES THE
+      WORKSPACE INVISIBLE TO `git add`. This is a THIRD, INDEPENDENT defect in the
+      loom-managed gitignore block, and it is NOT among the five control-
+      subtractions the artifact-flow ROOT-CAUSE entry enumerates.
+      WHAT CHANGES. Ours carries, inside the managed block, a six-line rationale
+      ("workspaces/ IS tracked (owner directive 2026-08-07). The COC workspace —
+      briefs, specs, analysis, todos, journals, validation reports — is durable
+      project knowledge, and gitignoring it stranded every /sweep report and
+      workspace journal as local-only.") plus three secret-scoped rules
+      (`/workspaces/**/.env`, `/workspaces/**/.env.*`,
+      `!/workspaces/**/.env.example`). Incoming replaces all nine lines with a
+      blanket `/workspaces/*` and a single `!/workspaces/_template/` re-include.
+      MEASURED BEHAVIOURALLY, BOTH POLARITIES, NOT LEXICALLY. Each `.gitignore`
+      blob was extracted to an isolated scratch repo seeded with identical paths.
+      Under the MERGED tree's blob a workspace validation report and a workspace
+      journal entry are both IGNORED; under OURS both are TRACKED;
+      `workspaces/_template/` is tracked under both, and a `README.md` control is
+      tracked under both — so the instrument discriminates rather than ignoring
+      everything. Direct receipt under merged rules: `git add` of a new workspace
+      report prints "The following paths are ignored by one of your .gitignore
+      files" and stages nothing, while `git add README.md` stages normally.
+      SCOPE STATED HONESTLY, because an earlier framing overstated it: 91 files
+      are already tracked under `workspaces/` and `.gitignore` does NOT untrack
+      them. The loss is PROSPECTIVE — 82 of those tracked files sit outside
+      `workspaces/_template/`, and every NEW sweep report, plan and workspace
+      journal written after this merge silently fails to stage. Work looks
+      committed and is not. That is the exact failure mode the 2026-08-07
+      directive was issued to end.
+      WHY THIS CANNOT BE FIXED HERE — the structural fact that makes it
+      proposal-worthy. The rules sit BETWEEN the managed markers
+      (`coc:gitignore_additions — managed by loom /sync; do not edit between
+      markers`), so anything in that span is Class-A non-durable per
+      artifact-flow.md § Distribution-Durability Invariants and re-applying the
+      fix locally guarantees a fourth revert. The repo-owned region above the
+      markers is the only locally-durable surface, and splitting one ignore policy
+      across both regions is worse than either. Corroboration that the boundary is
+      real, from the same merge: the co-resident repo-owned additions
+      (`.wave-tracker.d/`, `**/journal/.pending/`) SURVIVED this merge untouched.
+      THE ASK: loom's emitted `coc:gitignore_additions` block for the
+      `coc-use-template` tier should carry the workspace-tracked policy — secrets
+      ignored, content tracked — rather than a blanket `/workspaces/*`. If loom
+      deliberately prefers the blanket form for OTHER templates, the tier needs a
+      per-template override, because this template's owner directive is dated and
+      specific and a silent blanket ignore overrides it with no decision surface.
+      OFFSETTING, recorded so the ask is not read as wholesale rejection: the same
+      regenerated block ADDS `.session-notes.aggregate.md`, `.session-notes.
+      migrated`, `.wave-tracker.d/`, `.claude/bin/*.local.json` and
+      `.claude/worktrees/` — the tier-wide fix this repo had proposed upstream has
+      landed. Only the `workspaces/` policy is at issue.
+    dedup_evidence: >-
+      Two `workspaces/*` hits exist in the manifest and NEITHER is this defect —
+      both were read rather than counted: one lists `workspaces/**` as a sync-time
+      PRESERVED path category (a different mechanism from `.gitignore`), the other
+      discusses widening a rule's `paths:` globs. Greps for `workspaces IS
+      tracked` and `owner directive 2026-08-07` return 0. Control:
+      `session-notes.migrated` returns 14 hits and `reasonOperand` returns 9 on
+      the same file, so the matcher fires and the zeros are true negatives. The
+      two existing `.gitignore` file-key entries were read in full, not matched by
+      title: neither mentions `workspaces/`. Gate-1 should ingest all three as ONE
+      managed-block revision, not three sequential edits.
+    reconciliation:
+      status: STILL-OPEN — net-new, filed 2026-08-14 from the PR #150 adjudication hold
+      reconciled_at: 2026-08-14
+      evidence: >-
+        Re-derived against the MERGE RESULT computed with `git merge-tree
+        --write-tree`, not a two-tree diff — a two-tree comparison answers a
+        different question and overturned three findings in the prior cycle.
+        Confirmed independently by a second lane whose separate merge computation
+        reached the same conclusion on this file. Marker line numbers drift;
+        reproduce by MARKER, not by line.
+
+  - file: .claude/audit-fixtures/sync-preflight-local-mods/run.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    reason: >-
+      SUPPLEMENT, NOT A RE-FILING. The `sync-from-template.md` entry already asks
+      Gate-1 to keep the #64 anti-recurrence lock "whatever shape it takes",
+      describing a parity test that parses the preserved list out of the markdown
+      and asserts set equality with the tool constant. That ask stands and is not
+      restated here.
+      WHAT THIS ADDS, AND WHY THE EXISTING ENTRY CANNOT COVER IT: that entry was
+      filed BEFORE inbound PR #150 was inspected, and it names the constant
+      `PRESERVED_PREFIXES`. THE INCOMING CANONICAL TOOL HAS NO SUCH CONSTANT. A
+      Gate-1 ingest that re-applies the parity test as written will not parse.
+      THREE MEASURED FACTS, each against the merge RESULT, not a two-tree diff.
+      (1) THE LOCK IS GONE. `PARITY` in the fixture runner: ours 1, merged 0. Read
+      rather than counted — the merged runner is a full rewrite (251 lines against
+      ours 218) with fourteen cases, and NONE reads `commands/sync-from-
+      template.md`. Ours asserts set equality between the command's "**Preserved**
+      (never modified by sync):" block and the tool constant; merged asserts only
+      behaviour.
+      (2) THE CONSTANT THE TEST TARGETS NO LONGER EXISTS. `PRESERVED_PREFIXES` on
+      the merged tool returns 0. Ours has a nine-entry `PRESERVED_PREFIXES` plus a
+      two-entry `PRESERVED_EXACT`; merged has `const PRESERVED_SUBDIRS =
+      ["project"];` and nothing else. Re-application is a REWRITE against a new
+      representation, not a restore.
+      (3) AN UNTESTED ASSERTION ARRIVES WITH THE DELETION — the sharpest part, and
+      it inverts the obvious reading. The merged tool ADDS the comment "Mirrors
+      the preserved set in `commands/sync-from-template.md` § Downstream Sync."
+      That comment is ABSENT from ours. So the incoming change deletes the
+      mechanical check AND introduces a prose claim that the property holds — the
+      exact class of a value owned by one authority, restated at another surface,
+      with nothing failing mechanically when the two diverge. #150 supplies a
+      fresh instance of that class in the same change that removes the only
+      instrument that would catch it.
+      WHAT THIS ENTRY DELIBERATELY DOES NOT CLAIM. A prior local assessment
+      recorded "no behavioural regression". That is NOT verified and is WITHDRAWN
+      here rather than repeated. Scan scope differs: ours scans agents, commands,
+      rules, skills, guides, team-memory; merged scans agents, commands, guides,
+      rules, skills, templates. Under merged, `learning/`, `.proposals/`,
+      `team-memory/`, `workspaces/`, `settings.local.json` and `CLAUDE.md` fall
+      outside the scanned set entirely, which the merged tool's own header records
+      as a residual ("is replaced with no warning from this tool. Check those by
+      hand"). Whether that is a regression or a different valid design was NOT
+      resolved and must not be asserted either way at Gate-1 without its own
+      measurement.
+      THE ASK, shaped to the incoming design rather than ours: whichever tool body
+      loom ships, its preserved-set constant MUST be mechanically reconciled
+      against the "**Preserved** (never modified by sync):" block in
+      `commands/sync-from-template.md`, and that reconciliation MUST live in the
+      committed fixture runner. The markdown side survives intact in the merged
+      tree (the heading returns 1 in BOTH refs), so only the code side and the
+      test need authoring. If loom instead decides the parity property no longer
+      holds under the `PRESERVED_SUBDIRS` design, the comment asserting it MUST be
+      deleted in the same change — an untested claim is worse than a stated
+      absence.
+    dedup_evidence: >-
+      `PRESERVED_SUBDIRS` returns 0 across the manifest. Control:
+      `PRESERVED_PREFIXES` returns 1, and that single hit was READ, not counted —
+      it is the `sync-from-template.md` entry's parity-test paragraph this entry
+      supplements. Five `#64`-adjacent hits were all read: two unrelated, three the
+      `sync-from-template.md` entry plus the index note mapping the issue to it.
+      None mentions the deletion, the rewrite, the constant rename, or the new
+      comment. No manifest entry carries the file key
+      `.claude/audit-fixtures/sync-preflight-local-mods/run.mjs`; the existing
+      declaration is for the DIRECTORY.
+    reconciliation:
+      status: STILL-OPEN — net-new supplement, filed 2026-08-14
+      reconciled_at: 2026-08-14
+      evidence: >-
+        All three facts re-derived against the merge result, with the fixture
+        runner and tool source read in full rather than matched by keyword — a
+        first attempt at case enumeration returned empty because the merged runner
+        uses a different harness idiom, and reporting that empty result as "no
+        cases" would have been a non-discriminating instrument.
+
+  - file: .claude/bin/deferred-quality-backlog.mjs
+    action: create
+    origin: use-template
+    suggested_tier: coc
+    reason: >-
+      THE /sweep-MANDATED ENUMERATOR IS UNBUILT AND, MORE IMPORTANTLY, UNFILED —
+      so building it locally would be deleted by the next sync.
+      The `sweep` skill § 4 mandates a convenience enumerator for the
+      deferred-quality backlog and carries it as "(deferred — dogfood)". The
+      script does not exist: a presence probe returns absent for
+      `.claude/bin/deferred-quality-backlog.mjs` while the control
+      `.claude/bin/codify-backlog.mjs` returns PRESENT in the same loop, so the
+      absence is a true negative rather than a broken probe.
+      THE LOAD-BEARING FACT IS THE MANIFEST GAP, NOT THE MISSING SCRIPT.
+      `deferred-quality` returns 0 hits across all 129 manifest entries, against a
+      control of 4 hits for `codify-backlog` on the same file — the matcher fires,
+      so the zero is real. This is not a timing artifact: the tracking issue was
+      created at 11:13Z and the manifest's most recent commit is later the same
+      day, so the manifest was edited AFTER the issue existed and still carries
+      nothing for it.
+      THE ASYMMETRY THAT MAKES THIS A LEAK: the manifest already carries an entry
+      for `.claude/bin/codify-backlog.mjs` — the SIBLING script this enumerator is
+      specified to mirror. The sibling is durably filed; this one is not. Under
+      artifact-flow.md the durable surface is the proposal, and `.claude/bin/**`
+      and `.claude/skills/**` are both REPLACED categories, so authoring the
+      enumerator locally without filing guarantees it is rebuilt away by the next
+      `/sync-to-use`.
+      VALUE-ANCHOR, RECORDED AS DELIBERATELY WEAK per value-prioritization.md
+      MUST-2: no source in the closed user-anchored allowlist names this. The only
+      anchor is the `/sweep` skill's own § 4 mandate, which is a COC artifact, not
+      a user-authored source. It is filed for DURABILITY (so the obligation is not
+      silently lost at the next sync), not as a priority claim.
+      THE ASK: either loom ships the enumerator alongside `codify-backlog.mjs`, or
+      the `sweep` skill's § 4 mandate is amended to name the direct `gh issue list
+      --label deferred-quality --state open` invocation as the sanctioned
+      instrument and drop the deferred-script framing. Both are acceptable; the
+      status quo — a mandate with no instrument and no durable record — is not.
+    dedup_evidence: >-
+      `deferred-quality` returns 0 across all 129 entries; control `codify-backlog`
+      returns 4 on the same file. `deferred-quality-backlog` returns 0. The
+      `codify-backlog.mjs` entry was read in full rather than matched by filename:
+      it concerns the codify enumerator only and makes no claim about the
+      deferred-quality sibling.
+    reconciliation:
+      status: STILL-OPEN — net-new, filed 2026-08-14; first durable record of this obligation
+      reconciled_at: 2026-08-14
+      evidence: >-
+        Presence probe with a firing control, plus a manifest scan with a firing
+        control, both run at HEAD in the session that filed this entry.
+
+  - file: .claude/bin/emit-cli-artifacts.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    reason: >-
+      NINE SKILL-CHANNEL RULES ARE ABSENT FROM THE DELIVERED RULES-REFERENCE
+      INDEX, AND FOUR OF THEM CANNOT BE EXPLAINED BY THE KNOWN FRONTMATTER
+      DEFECT. This is the same failure mode as the already-filed
+      no-frontmatter issue — a path-scoped rule reaching NEITHER the baseline nor
+      the skill channel on Codex and Gemini — at a file set nobody has
+      enumerated.
+      MEASURED. Validator 18 assigns 79 rules to the `skill-channel` lane; the
+      delivered `.codex/skills/rules-reference/SKILL.md` carries 70. The nine
+      absent: `build-cache-hygiene.md`, `build-speed.md`, `burn-down-reporting.md`,
+      `canon-incorporation.md`, `dataflow-null-typing.md`,
+      `llm-auth-strategy-hygiene.md`, `llm-deployment-coverage.md`, `release.md`,
+      `version-cadence.md`.
+      WHY THE OBVIOUS EXPLANATION IS REFUTED. Four of them —
+      `build-cache-hygiene`, `canon-incorporation`, `llm-deployment-coverage`,
+      `version-cadence` — carried COMPLETE and CORRECT `priority: 10` /
+      `scope: path-scoped` frontmatter at the last emission commit, identical in
+      shape to a sibling rule that IS in the index. Missing frontmatter therefore
+      does not explain them. The cause is INDETERMINATE from inside this template
+      (determining it means reading loom's global rule set, out of scope under
+      repo-scope-discipline.md), but the ABSENCE is measured and is not in
+      dispute.
+      WHY IT IS NOT THE ALREADY-FIXED DEFECT. The frontmatter root cause is
+      resolved at HEAD: `[validator-14] rule-frontmatter: PASS`, and
+      `validateCliDelivery()` returns pass with the previously-dropped rule
+      correctly assigned to `skill-channel`. The `if (!fm) continue` silent drop
+      no longer occurs. This is a SURVIVING, DISTINCT gap between the lane
+      assignment and the delivered index.
+      A CORRECTION WORTH CARRYING, since the related issue overstates the harm:
+      Codex and Gemini consumers do NOT "receive no guidance whatsoever" on the
+      pattern rules — the delivered rules-reference index carries that row, and
+      carried it before the frontmatter fix. The baseline files never inline
+      path-scoped rules at all (a baseline control string returns 1 there while
+      three path-scoped rules return 0), so absence from the baseline is correct
+      lane behaviour, not a drop. The real defect is narrower and is the nine
+      files above.
+      THE MECHANISM, LOCATED. `emit.mjs:3102-3105` asserts in a COMMENT that
+      "the skill-channel rules are now DELIVERED by
+      emit-cli-artifacts.mjs::emitRulesReferenceSkill, which resolves the SAME
+      lane set through the shared cli-delivery parser — the count below provably
+      equals the rule count in the emitted rules-reference index." That claim is
+      FALSE BY CONSTRUCTION. `emitRulesReferenceSkill`
+      (emit-cli-artifacts.mjs:625) receives `skippedContractFail` and
+      `skippedNoFrontmatter` from `buildRulesReferenceIndex`, and on a non-zero
+      skip it writes an ADVISORY to stderr (":640-646") and CONTINUES — it does
+      not fail, and it does not reconcile. So the emitted index is the lane set
+      MINUS the skips, while validator 18 reports the lane set. The two counts
+      can differ by construction, and the measured 79-vs-70 is that difference.
+      THE CLASS. This is a value owned by one authority (the emitter's actual
+      output) restated as a guarantee at another surface (a comment in the
+      validator), with nothing failing mechanically when the two diverge — the
+      same derived-not-restated class as the parity-lock entry filed alongside
+      this one. The comment is load-bearing precisely because it is what a
+      maintainer reads instead of measuring.
+      THE ASK: reconcile the skill-channel lane assignment against the emitted
+      rules-reference index MECHANICALLY, so a rule assigned to the lane but
+      absent from the delivered index fails emission rather than shipping behind
+      a stderr advisory. If loom's design intends skips to be tolerated, then the
+      "provably equals" comment MUST be deleted in the same change — an untested
+      guarantee in a comment is worse than a stated absence.
+    dedup_evidence: >-
+      Three of the nine — `canon-incorporation.md`, `llm-deployment-coverage.md`,
+      `version-cadence.md` — return 0 hits across all 129 entries, against a
+      control of 9 hits for `build-cache-hygiene.md` on the same file, so the
+      matcher fires and the zeros are true negatives. The five `rules-reference`
+      hits in the manifest were read rather than counted: they concern the skill's
+      DESCRIPTION text and its PASS reporting, plus the no-frontmatter case. NONE
+      asserts index MEMBERSHIP. The frontmatter-half entries were also read and
+      cover the lane assignment, not the delivered index.
+    reconciliation:
+      status: STILL-OPEN — net-new, filed 2026-08-14; surviving instance after the frontmatter root cause was fixed
+      reconciled_at: 2026-08-14
+      evidence: >-
+        Lane membership taken from a direct `validateCliDelivery()` invocation at
+        HEAD; index membership read from the delivered
+        `.codex/skills/rules-reference/SKILL.md`; frontmatter state of the four
+        unexplained files read from the last emission commit via `git cat-file`,
+        not from the working tree. The file key is the EMITTER, not a
+        `.claude/skills/rules-reference/SKILL.md` source file — that path does not
+        exist (`ls` returns absent for it while returning a real file for a
+        control), because the index is GENERATED into `.codex/` and `.gemini/`
+        only. RESIDUAL, stated rather than assumed: WHICH skip bucket
+        (`skippedContractFail` vs `skippedNoFrontmatter`) each of the nine falls
+        into was NOT measured, because emission halts at validator 16 before the
+        emitter runs — so the stderr advisory that would name them is
+        unobtainable at this template until #125 is resolved. The COUNT
+        discrepancy and the skip MECHANISM are both measured; the per-file
+        attribution is not.
+
 gate1_triage_2026_08_09:
   method: >-
     Entries indexed 0-93 in `changes` order. Target existence tested with
