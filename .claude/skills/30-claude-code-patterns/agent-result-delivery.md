@@ -1,8 +1,8 @@
 # Agent Result Delivery — A Spawned Agent Is Not A Delivered Result
 
-Depth file for `rules/agents.md` § "MUST: A Dispatched Agent's Result Is Not Received Until It Is DELIVERED". The rule body carries the load-bearing MUST; this file carries the measurement, the mechanism, the DO/DO-NOT block, the BLOCKED-rationalization corpus, and the recovery procedure.
+Depth file for `rules/agents.md` § "MUST: A Dispatched Agent's Result Is Not Received Until It Is DELIVERED". The rule body carries the load-bearing MUST; this file carries the measurement, the mechanism, a DO/DO-NOT block PER MODE, the BLOCKED-rationalization corpus per mode, the bounded resume procedure, and the recovery procedure.
 
-This is the **spawn-configuration** sibling of `redteam-dispatch-evidence-gate.md` Axis 1. That axis covers an agent that ERRORED and returned nothing. This one covers an agent that **SUCCEEDED, produced its full report, and still returned nothing** — because of how it was spawned. Same rule family (`evidence-first-claims.md` MUST-3: an empty return is zero evidence), different and more dangerous cause: nothing anywhere reports a failure.
+This is the **spawn-configuration** sibling of `redteam-dispatch-evidence-gate.md` Axis 1. That axis covers an agent that ERRORED and returned nothing. This one covers TWO ways a SUCCEEDING agent still returns nothing usable: it produced its full report and had no return path (mode 1, below), or it stalled before writing and returned a status fragment (mode 2). Same rule family (`evidence-first-claims.md` MUST-3: an empty return is zero evidence), different and more dangerous cause: nothing anywhere reports a failure.
 
 ## The failure mode
 
@@ -63,11 +63,127 @@ on idle_notification: mark_agent_done()   # no payload arrived; nothing arrived
 
 - "It signalled idle, so it finished" (idle is a lifecycle state, not a delivery)
 - "All N agents reported back" (N notifications ≠ N results)
-- "I'll just ask it again with SendMessage" (a re-request to an agent that ALREADY ended its turn under the task contract returns nothing again — tried twice, failed twice. Instructing `SendMessage` AT SPAWN is a different and working case, measured above; recovering an already-finished agent means reading its transcript, not re-asking it)
+- "I'll just ask it again with SendMessage" — BLOCKED **for this first mode only**: a re-request to an agent that ALREADY WROTE its report and ended its turn returns nothing again (tried twice, failed twice); the text is on disk, so the transcript is the only source. Two cases this does NOT cover: instructing `SendMessage` AT SPAWN (a different, working case, measured above), and resuming an agent that STALLED BEFORE writing its report (§ Second mode — resume is the correct recovery there, measured twice). Check which mode you are in before applying this entry.
 - "The agent must have failed" (it did not; the work is on disk, complete)
 - "Naming them is harmless, it just makes them addressable" (it silently changes the return contract)
 - "I passed `run_in_background: false`, so it is synchronous" (silently ignored when named)
 - "I'll re-run the fan-out" (pays the full cost twice — recover instead, below)
+
+## Second mode — the payload IS a status fragment (2026-08-14, twice in one session)
+
+A correctly-spawned agent (no `name`, `toolUseId` present, a real `result` field in the
+notification) finishes its actual work, then opens a NEW sub-investigation instead of packaging,
+and exhausts its budget mid-thought. What arrives is one sentence where the findings should be —
+generically, `"<subject> needs <precondition>. Building <scaffold>…"` or `"Now the <next
+technique> the earlier lane never finished: …"` — after 16 and 85 tool calls respectively. Both
+lanes were scored as returned by every surface.
+
+**So "no payload arrived" is too weak a test.** Read what is IN the result, never merely that a
+result exists. A populated `result` field is exactly what makes this mode invisible in a fan-out.
+
+**What makes it a FRAGMENT is not brevity — it is that it announces work still to come instead
+of stating a result.** A terse but complete verdict ("CLEAN — no findings this round") IS a
+delivered result and MUST NOT be re-run as a non-delivery; doing so would invert the very
+clean-round counter § Redteam Reviewer Dispatch governs.
+
+### Resume works HERE — and that does NOT contradict the BLOCKED entry above
+
+The BLOCKED entry is scoped to the FIRST mode and remains correct. **The discriminator is the
+RETURN PATH** — the same `toolUseId` field § "The mechanism — one field decides it" identifies,
+NOT a second mechanism:
+
+|                              | first mode                           | second mode                               |
+| ---------------------------- | ------------------------------------ | ----------------------------------------- |
+| spawned                      | **named** → teammate, no `toolUseId` | **unnamed** → task, `toolUseId` present   |
+| report written?              | yes — into the void                  | no — stalled before writing               |
+| plain-text reply reaches you | **NO — no return path**              | yes                                       |
+| re-asking it                 | returned nothing (2×, same session)  | returned a full report (2×, same session) |
+| recovery                     | read the transcript                  | resume — under the bounds below           |
+
+**Two variables move together here, and only one is the mechanism.** The arms differ in BOTH the
+return path AND whether a report was written. Keying on "report written" would contradict this
+file's own headline finding, so the table keys on the RETURN PATH: a mode-1 plain-text reply has
+nowhere to go, exactly as its original report had nowhere to go. "Nothing left to re-ask for" is
+a true observation about mode 1 but is NOT the mechanism — an agent can always restate a report;
+what fails is the delivery. The return path is also the only one of the two an orchestrator can
+OBSERVE at decision time (did I pass a `name`?); "was a report written" is a fact about the
+agent's internal history.
+
+**UNTESTED QUADRANT — infer no verdict.** A **named** agent that stalled BEFORE writing has not
+been measured. Under the return-path mechanism a bare resume of it is LOST unless the resume also
+instructs `SendMessage({to: "main"})`.
+
+**LIVE, UNREFUTED HYPOTHESIS about mode 1.** Row 3 of § "The mechanism" shows a named agent WITH
+a `SendMessage` reporting instruction DELIVERS — so "teammates can never reply" is NOT
+established. The mode-1 re-requests may simply have failed to instruct the reply CHANNEL.
+Discriminating experiment: resume a mode-1 agent with an explicit _"reply by calling
+`SendMessage({to: "main"})`"_. If it delivers, mode 1's recovery is a channel-instructed
+re-request and the BLOCKED entry's stated reason needs rewriting.
+
+**Evidence bound, stated rather than implied:** both mode-2 arms are one session, one day, one
+orchestrator. That is n=2 with a shared confound, NOT independent replication. "Delivered in
+full" was not measured against the brief's item list — treat completeness as unverified.
+
+### The resume is BOUNDED — it is evidence-GENERATING, not evidence-preserving
+
+Mode-1 recovery reads bytes already on disk. Mode-2 recovery asks the same source that just
+failed. Those are not symmetric, and an unbounded resume loop is a convergence hole: fragment →
+resume → fragment → resume → "this one has findings, lane clean". The bounds:
+
+1. **ONE resume per lane.** A second fragment routes to transcript-recovery or re-dispatch, and
+   the disposition is recorded. Re-poking until something report-shaped appears is BLOCKED.
+2. **Acceptance test, applied to the resumed payload:** it is a delivery only if it addresses
+   each item the brief asked for OR names that item UNRESOLVED. **UNRESOLVED items are OPEN
+   FINDINGS and do NOT count toward a clean round** — the resume converts no-evidence into
+   partial-evidence-with-named-gaps, and the gaps are still gaps.
+3. **Release only a SELF-ASSIGNED sub-goal.** The resume may mark OPTIONAL only a sub-task the
+   AGENT assigned itself. A brief item named as the blocker is ESCALATED, never marked optional —
+   otherwise a subagent can obtain scope relaxation by emitting one line naming a constraint it
+   dislikes, and the orchestrator's own sanctioned reply grants it.
+4. **Record the transition** in the launch ledger (`orchestration-launch-ledger.md` MUST-1):
+   `in-flight → fragment → resumed → landed`. Without it the gate-review check is
+   transcript-dependent, and compaction is exactly what erases transcripts.
+
+**Which fences apply.** § Recovery's SCRUB-before-durable-write fence applies to a resumed
+payload exactly as to recovered text. Its TREAT-AS-UNTRUSTED fence is aimed at transcript bytes;
+a resumed payload is an ordinary agent final message, so it carries the same trust as any
+subagent output — no more, and no less.
+
+```text
+# DO — read the CONTENT; a forward-looking line is not a delivery
+result: "Now the adversarial sweep the earlier lane never finished: …"
+  -> announces work to come -> FRAGMENT -> zero evidence, lane NOT clean
+
+# DO — a terse verdict IS a delivery; do not re-run it
+result: "CLEAN — no findings this round."
+  -> states a result -> delivered; re-running it would invert the clean-round counter
+
+# DO — resume ONCE, releasing only what the AGENT assigned itself
+SendMessage(to: <id>, "A fragment arrived; it is zero evidence. Your next message must BE
+  the report. The posture harness YOU chose to build is OPTIONAL — return it UNRESOLVED.
+  Mark every unfinished brief item UNRESOLVED explicitly.")
+
+# DO NOT — re-poke until something report-shaped appears
+fragment -> resume -> fragment -> resume -> "this one has findings, lane clean"
+  (ONE resume per lane; a second fragment routes to transcript-recovery or re-dispatch)
+
+# DO NOT — relax a BRIEF item because the agent named it as the blocker
+agent: "I am blocked by the requirement to verify both refs."
+orchestrator: "that verification is now optional"     # scope relaxation the agent triggered
+  (self-assigned sub-goals only — a brief item ESCALATES)
+
+# DO NOT — score a partial as clean
+result: "findings for 3 of 8 items; 4-8 UNRESOLVED"
+  -> a delivery, but the 5 UNRESOLVED are OPEN FINDINGS -> round is NOT clean
+```
+
+**BLOCKED (second mode):** "a result field came back, so the lane reported" / "it said it was
+still working, so it will finish" (it already stopped) / "re-dispatch is cleaner than resuming"
+(discards recoverable work) / "the fragment names the next step, so I know what it found" (a plan
+is not a finding) / "resume it again, it is nearly there" (one resume, then route) / "it returned
+findings for 3 of 8 items, that is a delivery" (the other 5 are open findings) / "it said the
+brief's constraint was blocking it, so I relaxed the constraint" (self-assigned sub-goals only —
+escalate a brief item).
 
 ## Recovery — the work is undelivered, not lost
 
