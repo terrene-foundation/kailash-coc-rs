@@ -10046,6 +10046,399 @@ changes:
         Presence probe with a firing control, plus a manifest scan with a firing
         control, both run at HEAD in the session that filed this entry.
 
+  - file: .claude/bin/emit-cli-artifacts.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reason: >-
+      THE RULES-REFERENCE INDEX AND THE DELIVERED RULE SET DIVERGE IN BOTH
+      DIRECTIONS, AND THE EMITTER'S OWN COMMENT ASSERTS THEY CANNOT.
+      `emit.mjs`, in the comment block immediately above its
+      `validateCliDelivery()` call site, states that the validator's
+      skill-channel count "provably equals the rule count in the emitted
+      rules-reference index". Measured against this template's tree, same run:
+      `validateCliDelivery()` reports 79 skill-channel rules while
+      `buildRulesReferenceIndex` under the rs tier filter returns 70 — a figure
+      re-measured a second time by the filing orchestrator, driving the
+      exported `buildRulesReferenceIndex` / `buildTierFilter` directly
+      (unfiltered 79, rs-filtered 70, delivered 73; control: the unfiltered set
+      contains artifact-flow.md). Note that this 70 is the TIER-FILTER OUTPUT
+      and is a distinct measurement from the 70-element set INTERSECTION cited
+      below; the two agree, but neither corroborates the other. The
+      equality cannot hold on any `--target`ed emit, and the reason is
+      structural rather than incidental — the validator enumerates every
+      `.claude/rules/*.md` with no filter, while the emitter additionally
+      applies loom_only, surface_roles and the tier filter. Cite by symbol, not
+      line: `validateCliDelivery` / `buildRulesReferenceIndex` /
+      `emitRulesReferenceSkill`.
+      THE DELIVERED ARTIFACT MEASURES 73 ROWS, NOT 70. An earlier internal
+      draft of this finding asserted 70 delivered; that figure was the
+      tier-filtered local derivation, not a reading of the shipped file, and it
+      is corrected here rather than carried forward. Structural parse of the
+      Read column of `.codex/skills/rules-reference/SKILL.md` returns 73
+      citations, matching the index's own declared tail line, and the gemini
+      lane's row set is identical. The set difference against the
+      locally-derived skill-channel set is bidirectional: 9 rules present on
+      disk are absent from the index, and 3 rows in the index resolve to no
+      file at all.
+      NINE RULES ARE UNREACHABLE ON THE ONLY CHANNEL THAT DELIVERS THEM.
+      build-cache-hygiene, build-speed, burn-down-reporting, canon-incorporation,
+      dataflow-null-typing, llm-auth-strategy-hygiene, llm-deployment-coverage,
+      release, version-cadence. All nine are on disk and ALL NINE carry
+      complete, lane-resolving frontmatter — `priority: 10` with
+      `scope: path-scoped`, which smart-defaults to skill-channel under
+      `deriveCliDelivery`, plus an explicit `cli_delivery: skill-channel` on
+      burn-down-reporting. An earlier draft claimed only four of the nine had
+      clean frontmatter; the frontmatter of all nine was read and that claim is
+      REFUTED — the absence is not a metadata defect. The refuted figure is
+      TRACEABLE, which is worth recording: issue #112's table names exactly
+      four rules — build-speed.md, dataflow-null-typing.md,
+      llm-auth-strategy-hygiene.md, release.md — as "missing `priority:` +
+      `scope:` — genuine gap". Those four have since been FIXED, so the earlier
+      draft was reading a stale #112 row rather than inventing a number. The emitter's own
+      counters agree: contractFail=0 and noFrontmatter=1, and the one
+      missing-frontmatter file is `ci-runners.operator.local.example.md`, a
+      values TEMPLATE already recorded elsewhere in this manifest as belonging
+      outside `rules/`, not one of the nine.
+      THE NINE ARE VARIANT-ORIGIN AND THE INDEX EMITTER IS VARIANT-BLIND.
+      Eight of the nine appear in the manifest ONLY as
+      `variants/rs/rules/<name>.md`; they land flattened into `.claude/rules/`
+      at the template, where the tier filter tests `rules/<name>.md` and
+      matches nothing. The generating condition is that
+      `emitRulesReferenceSkill` is the ONLY one of the five emitters that
+      receives no `lang` argument — emitCommands, emitSkills,
+      emitCodexAgentPrompts and emitGeminiAgents all take one — and
+      `buildRulesReferenceIndex` reads only `.claude/rules`, never the variant
+      overlay tree. INFERENCE, LABELLED AS SUCH AND NOT MEASURED: at loom the
+      eight presumably sit under `.claude/variants/rs/rules/` where the readdir
+      never sees them, so the tier filter is not even reached. Loom was not
+      read; only the flattened downstream route is measured. Both routes
+      produce the same omission and the same fix. The ninth,
+      burn-down-reporting, is a THIRD mechanism: it has zero manifest hits here
+      (control `sweep-completeness` fires), it landed 2026-08-04, and the sync
+      that delivered it touched ZERO files under `.codex/` — so the index was
+      never regenerated.
+      THREE INDEX ROWS POINT AT NOTHING, AND THE INDEX INSTRUCTS THE OPERATOR
+      TO OPEN THEM. coc-artifact-eval-coverage.md, cross-sdk-inspection.md and
+      documentation.md are cited as `.claude/rules/<name>.md`; none exists
+      anywhere in the tree (control: artifact-flow.md returns two paths from
+      the same finder). All three sit in the manifest's `use_exclude:` block,
+      documentation.md additionally in use_obsoleted. The emitter never reads
+      `use_exclude` — a grep returns nothing against a control of ten hits for
+      loom_only / surface_roles / cli_emit_exclusions in the same file — so
+      rules the USE lane deliberately withholds are indexed anyway. This is the
+      outward half of the divergence and it is NOT a skip at all: it comes from
+      a filter the emitter does not apply, which is why the shape cannot be a
+      skip-path story. The index body reads "read the cited
+      `.claude/rules/<name>.md` ... A path-scoped rule you have not read is a
+      rule you are not honoring", so a Codex or Gemini operator is directed to
+      open three files that do not exist.
+      WHY THE EXISTING CHECKS CANNOT SEE THIS. `validate-emit.mjs` part D
+      already asserts no-dangling-citation, and it is correct — but it
+      validates a FRESHLY RE-EMITTED index written to a temp directory (torn
+      down in its own `finally`) and resolves THAT index's citations against
+      the source root. It never opens the committed `.codex/` / `.gemini/`
+      artifact at all, so a STALE delivered index carrying citations the
+      current emit would no longer produce is outside its aperture entirely —
+      which is why part D passes and does not appear in the validator's
+      35-fail list. `validate-xref-integrity.mjs` never scans `.codex/` or
+      `.gemini/` at all: its scan roots are the four `.claude/` trees (control:
+      4 hits on `.claude/rules`, 0 on `.codex` and 0 on `.gemini`). Its EXIT
+      STATUS is orthogonal and is currently 1, for unrelated backtick findings
+      — an earlier revision of this entry asserted it "exits 0 here", which a
+      direct re-run REFUTES (`node .claude/bin/validate-xref-integrity.mjs` →
+      exit 1, 362 dangling refs). Corrected here rather than quietly dropped:
+      stating an exit status as measurement without re-running it is the same
+      defect class this manifest has removed an entry for before. Both
+      instruments are sound and both are structurally unable to emit the
+      falsifying result, which is why the divergence has survived.
+      A NOTE ON THE SOURCE ROOT, since an earlier revision overstated it. It is
+      NOT true at this template that "all 73 citations exist at the source
+      root": the same three named above are absent here too (measured). That
+      claim could only hold of LOOM's source root, which was not read, so it
+      has been replaced by the part-D aperture mechanism above, which is
+      measured locally and is the stronger argument anyway.
+      THE ASK, in priority order: (a) thread the variant axis into
+      `emitRulesReferenceSkill` / `buildRulesReferenceIndex` so variant-origin
+      rules are indexed on the lane that receives them — the load-bearing half,
+      closes the nine; (b) apply the USE-lane exclusion set to the index so it
+      never cites a rule the lane withholds — closes the three; (c) correct the
+      `emit.mjs` comment, which asserts an equality the two call sites cannot
+      hold, or make it true by giving the validator the emitter's filters; (d)
+      re-emit the CLI trees whenever a synced rule file changes, since the
+      2026-08-04 sync changed five rule files and regenerated no index.
+    dedup_evidence: >-
+      The membership divergence is NOT already carried. `rules-reference`
+      returns 5 hits across the manifest and all five were READ IN FULL rather
+      than counted: four concern the index SKILL.md's YAML FRONTMATTER VALIDITY
+      (an unquoted colon-space and an angle-bracket placeholder in the
+      generated description, which a strict YAML load rejects while the
+      emitter's lenient parser accepts), and the fifth concerns rs-variant
+      rules landing WITHOUT frontmatter and silently dropping from both the
+      CRIT baseline and this channel. That fifth entry is the nearest neighbour
+      and is DISTINCT: its mechanism is missing frontmatter, and it is
+      measurably resolved on this tree — all nine rules named here HAVE
+      frontmatter, validateCliDelivery passes with zero failures, and only one
+      file in `rules/` lacks a frontmatter block. This entry's mechanism is
+      variant-blindness plus an unapplied `use_exclude`, on rules whose
+      metadata is clean. `documentation.md` returns 0 hits and
+      `coc-artifact-eval-coverage` returns 1 (an unrelated allowlist mention).
+      The nearest inverse case — an entry noting that
+      `guides/rule-extracts/cross-sdk-inspection.md` ships while the rule does
+      not — was read in full; it records the orphaned extract and makes no
+      claim about the delivered index citing the absent rule. Matcher controls:
+      `reconciliation` returns 145 hits and a known-absent string returns 0
+      against the same file, so the zeroes are true negatives. All counts are
+      stated against `main` (pre-append), which is the correct dedup baseline;
+      against the working copy each necessarily rises by this entry's own
+      tokens.
+    ingest_note: >-
+      SIBLING PAIRING, disclosed rather than left for Gate-1 to discover. Exactly
+      ONE prior entry is keyed on this SAME file, `.claude/bin/emit-cli-artifacts.mjs`
+      (`base_version: "2.23.22"`). It is NOT a duplicate — it addresses the
+      generated index's FRONTMATTER VALIDITY (an unquoted colon-space and an
+      angle-bracket placeholder that a strict YAML load rejects), whereas this
+      entry addresses the index's ROW MEMBERSHIP. Three of the four
+      frontmatter-validity hits cited in `dedup_evidence` live inside that
+      entry, so its content was read; the shared `file:` key simply was not
+      disclosed, and is now. Gate-1 may wish to land them together — the two
+      fixes touch the same emitter.
+    reconciliation:
+      status: STILL-OPEN — net-new; first record of the index/delivered-set membership divergence
+      reconciled_at: 2026-08-15
+      evidence: >-
+        Every figure re-derived at HEAD in the session that filed this entry;
+        none carried from a prior report. The skill-channel set was enumerated
+        by importing the shipped `buildRulesReferenceIndex` and
+        `validateCliDelivery` rather than by grepping frontmatter, and the
+        delivered set by parsing the Read column structurally rather than
+        counting quote characters. The dangling-citation result was produced by
+        the shipped `extractRulesIndexCitations` matcher applied verbatim to
+        the delivered file. Each enumerator was first fired at a known-answer
+        case — `artifact-flow.md`, present in both sets — so an empty
+        difference would have been distinguishable from a broken instrument.
+        The orchestrator independently re-derived both directions before
+        filing: 73 delivered rows, 3 cited-but-absent, 9 on-disk-but-unindexed,
+        each with its own firing control. Line numbers are deliberately not
+        cited; reproduce by SYMBOL.
+      disposition: >-
+        Filed as an APPEND that corrects an earlier internal draft, never as an
+        edit to it, per artifact-flow.md "Append, Never Overwrite Unprocessed
+        Proposals". Two of that draft's claims did not survive measurement and
+        are recorded as refuted rather than quietly restated: "70 delivered"
+        (the delivered artifact measures 73; 70 is the tier-filtered local
+        derivation) and "four of the nine have complete frontmatter" (all nine
+        do). The fix is loom-side; a local edit to the emitter would be rebuilt
+        away by the next sync-to-use.
+      residual: >-
+        The loom-side mechanism for the eight variant rules is INFERRED, not
+        measured — loom was not read (repo-scope-discipline). If loom's tree
+        differs from the inference, the count and the fix are unchanged but the
+        causal sentence needs re-derivation. Separately, this repo's manifest
+        copy is dated two days earlier than the rules it classifies, so any
+        tier-membership claim derived from it describes the 2026-08-02
+        manifest, not loom's current one.
+
+  - file: .claude/audit-fixtures/validate-emit/run.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    reason: >-
+      AN INSTRUMENT MISMATCH IN THIS MANIFEST, PLUS THE DEFECT IT CONCEALED.
+      A manifest entry keyed `.claude/bin/validate-emit.mjs` — the one whose
+      evidence block opens "THE FIGURE IN CIRCULATION WAS STALE AND
+      UNDERSTATED. Issue #112 records this runner as 34 pass / 21 fail. At HEAD
+      it is 800 pass / 53 fail" — did not correct a stale number. It replaced a
+      measurement of one instrument with a measurement of a DIFFERENT one, and
+      then reported the delta as staleness ("off by a factor of ~23"). BOTH
+      FIGURES ARE CURRENT. They count different things.
+      THE TWO RUNNERS, RE-MEASURED THIS SESSION BY RUNNING BOTH.
+      `node .claude/audit-fixtures/validate-emit/run.mjs` exits 1 and prints
+      `validate-emit audit fixtures: 34 passed, 21 failed`. `node
+      .claude/bin/validate-emit.mjs` exits 1 and prints `summary: 801 pass / 35
+      fail / 0 fixture-needed / 84 skip — 35 blocking`. Exit codes read
+      directly, not through a pipe.
+      WHAT ONE UNIT IS IN EACH — the load-bearing part, and the part the
+      superseded entry never established. The FIXTURE RUNNER is a unit-test
+      harness for the validator's own exported functions: it imports
+      `checkHookEventDeclaration`, `checkClaudeMdSurfaceRoleParity`,
+      `parseHookEventMarkers` and `isMissingOwnSpecifier` from
+      `../../bin/validate-emit.mjs` and drives them against SYNTHETIC roots
+      built in a temp directory. One unit is ONE `check(name, condition)`
+      assertion; the denominator is 55, composed — read off the hits, not
+      tallied — of 24 numbered `fixture-01..24` (all PASS), 5
+      `fixture-claudeMdParity-*` (all PASS) and 26 `fixture-hookEvent-*` (5
+      PASS, 21 FAIL). It never touches the repo tree. THE VALIDATOR is the
+      pre-emit sweep gating sync, run over the real tree via
+      `findRepoRoot(process.cwd())`. One unit is ONE `(check-id, artifact)`
+      RESULT ROW statused pass/fail/fixture-needed/skip; the denominator is 920
+      rows across 31 check-ids. A ~23x "pass count" ratio is 920 rows against
+      55 assertions, not two readings of one surface.
+      THE DEFECT THE MISMATCH CONCEALED, and it is not cosmetic. The two
+      runners overlap at exactly ONE function, `checkHookEventDeclaration`, and
+      they disagree there. At this tier the check CANNOT RUN: the validator
+      lazily requires `./reconcile-settings-hooks.mjs`, which is ABSENT here
+      (loom-only; a presence loop printed ABSENT for it while printing PRESENT
+      for `bin/validate-emit.mjs` and `bin/emit.mjs` in the same pass), so the
+      catch returns a SINGLE SKIP row. Probed directly:
+      `checkHookEventDeclaration(process.cwd())` returns row count 1, statused
+      skip, detail "WARN: the shared settings.json registration recognizer
+      (reconcile-settings-hooks.mjs) is loom-only and not present". The
+      validator therefore reports one warn row and blocks nothing — which
+      `sync-manifest.yaml` declares is INTENDED ("consumers stay unaffected
+      because checkHookEventDeclaration degrades to SKIP twice over first").
+      But the FIXTURE SUITE for it shipped anyway: its `withRoot` helper calls
+      `checkHookEventDeclaration(root)` UN-INJECTED, so all 21 assertions
+      interrogate a row set holding one entry about a missing module. Four
+      print the tell verbatim — `status=null detail=` and `row=null detail=`.
+      The control is inside the suite:
+      `fixture-hookEvent-q-recognizerInjectable-PASS` calls the SAME function
+      with the loaders injected and PASSES.
+      WHY ISSUE #112 COULD NOT HAVE SEEN THIS, which is the transferable
+      lesson. #112 ruled the 21 out as absence-driven with
+      `grep -cE "ENOENT|Cannot find module|No such file"` over the output,
+      returning 0, plus a PRESENT check on `.claude/bin/validate-emit.mjs`.
+      Both readings are correct and the conclusion still does not follow: the
+      code CATCHES the resolution error and converts it to a WARN string, so
+      the graceful-degradation path emits none of the three tokens. No result
+      that grep could have produced would have falsified "not absence-driven" —
+      a non-discriminating instrument in the sense instrument-discipline MUST-1
+      names. And the PRESENT check was aimed at the SUBJECT, which does ship;
+      the absent artifact is a DEPENDENCY of one check family.
+      WHAT THIS ENTRY DELIBERATELY DOES NOT CLAIM. Whether any of the 21 would
+      ALSO fail with `reconcile-settings-hooks.mjs` present is UNRESOLVED. The
+      module is loom-only and cannot be supplied here, so the discriminating
+      run was not available and no verdict is asserted either way. What IS
+      established is that all 21 assert against rows that cannot exist at this
+      tier.
+      THE ASK, in two parts. (1) CORRECT THE RECORD: the superseded entry's
+      "stale and understated" framing, its ~23x factor, and its "anyone sizing
+      this work from #112 would have planned against a quarter of the real
+      surface" should be withdrawn — a Gate-1 reader sizing from it plans
+      against a merged denominator that describes neither instrument. #112
+      needs no re-measurement; its headline figure was correct when written and
+      is correct today. (2) DISPOSE OF THE 21: either `use_exclude` the
+      `.claude/audit-fixtures/validate-emit/` hookEvent family alongside the
+      loom-only dependency it exercises — the shape the existing
+      stranded-fixture entry already proposes for six sibling runners, this
+      being a seventh — or convert the `withRoot` helper to inject stub loaders,
+      so the family tests the check's LOGIC rather than its dependency's
+      distribution. Gate-1 picks; the second option keeps enforcement value at
+      consumer tiers, the first is one line per family.
+      ON THAT SECOND OPTION, one correction an earlier revision of this entry
+      got wrong: fixture (q) is NOT a template to copy. Its injected stub is
+      DEGENERATE — a single hardcoded registration row plus a
+      `normalizeMatcher` returning the empty string — and its own comment says
+      it only "proves the seam exists". It cannot drive the other 21
+      assertions, which need scenario-specific registrations. The fix is
+      nonetheless MORE tractable than that mistake suggests: `withRoot` ALREADY
+      receives each fixture's registration list as its second argument, so it
+      can feed that list straight into an injected `enumerateRegistrations`
+      without inventing any new test data.
+    dedup_evidence: >-
+      No manifest entry is keyed on this file: `audit-fixtures/validate-emit`
+      returns 0 across all entries, against a control of 77 hits for
+      `audit-fixtures/` on the same file — the matcher fires, so the zero is a
+      true negative. THREE sibling entries carry
+      `file: .claude/bin/validate-emit.mjs` (the remaining hits are prose, not
+      keys — a fourth when this entry was authored, a fifth now that this entry
+      itself cites the path) and all three were READ, not counted: the
+      preserved-project-SKILL.md / consumer-efficacy offer, the HEAD-census
+      entry this one corrects, and the 2026-08-12 "one fact, two artifacts"
+      root-cause reframe. None addresses the fixture-vs-validator instrument
+      distinction, and NONE OF THOSE THREE mentions
+      `reconcile-settings-hooks.mjs` — stated narrowly on purpose: the dedup
+      searched `validate-emit.mjs` and `audit-fixtures/validate-emit`, NOT
+      `reconcile-settings-hooks` (12 hits in main) or
+      `checkHookEventDeclaration` (3 hits), so a corpus-wide form of that
+      sentence would claim more than was tested. See `cross_reference` for the
+      fourth entry those wider searches surface. NOTE FOR THE INDEX: the census entry's
+      own ingest_note asserts "exactly TWO hits ... so the pair is real and
+      there is no third claimant". That was true when filed; the 2026-08-12
+      entry is now a third. The dedup was re-run here rather than inherited,
+      which is how the drift surfaced.
+    reconciliation:
+      status: STILL-OPEN — net-new correction entry, first filed 2026-08-15; supersedes the census entry's staleness FRAMING, not its measurement
+      reconciled_at: 2026-08-15
+      evidence: >-
+        Both runners executed in this session, neither figure carried forward
+        from any prior report. Each runner's DENOMINATOR was established from
+        its own source — the fixture harness's `check()` counter, the
+        validator's per-result tally loop — rather than inferred from the shape
+        of a summary line. The 55 assertions were grouped by family from the
+        result lines themselves after a first grouping attempt returned only 31
+        of them; reporting that partial grouping as the composition would have
+        been a tally standing in for the hits. The orchestrator independently
+        re-derived the crux before filing: the presence loop (ABSENT for
+        reconcile-settings-hooks.mjs, PRESENT for two siblings in the same
+        pass) and the single skip row with its verbatim WARN detail.
+      root_cause: >-
+        The census entry compared a figure it read from an issue against a
+        figure it measured from a command, without establishing that the issue
+        and the command named the same instrument. #112's table is a census of
+        `.claude/audit-fixtures/*/run.mjs` RUNNERS (its opening line
+        "Re-measured the audit-fixture enforcement layer at the same 150s
+        cap"), and its validate-emit row is the fixture runner. The entry read
+        that row as a reading of `.claude/bin/validate-emit.mjs`. The two names
+        are one token apart and the mistake is invisible without opening both.
+      correction_to_this_entrys_own_premise: >-
+        The brief that produced this entry asserted the census entry's figure
+        was uniformly stale. It is not: the entry states "800 pass / 53 fail"
+        in its headline and "Post-fix re-run: 801 pass / 35 fail" in a later
+        paragraph, and HEAD measures 801/35 today. The entry is INTERNALLY
+        INCONSISTENT rather than stale, and the defect is the framing, not the
+        arithmetic. Recorded rather than silently restated.
+      still_open: >-
+        The 21 hookEvent fixture failures, in full. The instrument-mismatch
+        half of this entry is a record correction and closes on Gate-1
+        accepting it; the 21 need a disposition (exclude the family, or inject
+        stub loaders in `withRoot`).
+      note_for_gate_1: >-
+        ONE THING IS DELIBERATELY NOT PRE-DECIDED, and the two options are not
+        equivalent. Excluding the family from consumer tiers matches the
+        precedent already proposed for six sibling runners and costs one
+        manifest line, but it removes the only mechanical coverage of
+        `checkHookEventDeclaration` from every consumer. Injecting stub loaders
+        in `withRoot` — feeding it the registration list it ALREADY receives as
+        its second argument, NOT copying fixture (q), whose stub is a
+        degenerate single hardcoded row — keeps that
+        coverage everywhere and tests the check's LOGIC rather than its
+        dependency's distribution, at the cost of a harness change. The second
+        is the better instrument; the first is the cheaper fix. Gate-1 decides
+        which property is worth the difference.
+      cross_reference: >-
+        READ FIRST with the entry keyed `.claude/bin/reconcile-settings-hooks.mjs`,
+        which already measured the SAME degradation this entry presents in its
+        `reason` — the single SKIP row, the verbatim WARN detail, and the
+        sync-manifest DECISION that consumers stay unaffected. It is NOT a
+        duplicate and the asks are disjoint: that entry proposes DISTRIBUTING
+        the module or amending `hook-event-selection.md`'s Detection text (and
+        its own `still_open` records that distribution was REFUSED), whereas
+        this entry proposes disposing of the 21 stranded FIXTURES — a third
+        lane. Surfaced here because this entry's dedup searched only
+        `validate-emit.mjs` and `audit-fixtures/validate-emit`; the wider
+        `reconcile-settings-hooks` search is what finds it, and Gate-1 should
+        see the pair together.
+        Read also with the stranded-fixture entry (the six shipped-fixture /
+        unshipped-subject runners): this is the same class one layer down — the
+        SUBJECT ships, a DEPENDENCY of one check family does not — so a
+        derivation of fixture distribution from the subject's tier would NOT
+        catch it, and Gate-1 should test any proposed derivation against this
+        case before adopting it. Also read with the census entry this corrects,
+        whose OTHER content stands: its ten-check breakdown of the 35, its
+        eighteen-fixed-at-this-template note, and its
+        paths-annotation-consistency non-decision are unaffected — only the
+        "stale and understated" framing is withdrawn.
+      issue_112_action: >-
+        #112's headline figure needs no re-measurement. One paragraph does need
+        a correcting comment: its root cause C calls the 21 "a real enforcement
+        defect rather than a distribution artifact". On the evidence above that
+        is inverted — it is the same distribution-artifact class as its own
+        root cause A, one layer down. Posting that comment is gated on the
+        owner authorizing issue comments as a class.
+
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
 # removed (artifact-flow.md § "Append, Never Overwrite Unprocessed Proposals").
