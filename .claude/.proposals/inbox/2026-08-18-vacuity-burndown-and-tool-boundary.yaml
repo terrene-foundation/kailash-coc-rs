@@ -1,0 +1,270 @@
+# Step-7c downstream upflow — inbox offer.
+#
+# NO source_repo, NO consumer identity: hop-level-only provenance per the Step-7c
+# schema (the lane head is template_slug). Free-text `reason:` bodies are the
+# human-scrub surface and are deliberately work-descriptive.
+#
+# Origin: a downstream consumer's whole-tree JS instrument-vacuity sweep. Nine of
+# these are DEFECTS IN TEMPLATE-OWNED TOOLING, already fixed downstream but
+# Class-A non-durable there (rules/, skills/, agents/, commands/, guides/ and
+# hooks/ are "Updated from template"), so upstream is the only durable home.
+# Two are not code defects: a sync-contract ambiguity and a new rule.
+#
+# READ FIRST, in this order — the two highest-value entries are not the biggest:
+#   1. .claude/hooks/lib/coc-emit.js       — /codify cannot complete from a git
+#                                            worktree (7 of 9 appendSink callers
+#                                            omit additionalRoots). Deadlocks
+#                                            against worktree-isolation.md.
+#   2. .claude/commands/sync-from-template.md — the merge-semantics ambiguity that
+#                                            makes a consumer's fix to
+#                                            .claude/bin/** of UNDETERMINED
+#                                            durability.
+origin: downstream
+codify_date: 2026-08-18
+codify_session: "sec(vacuity): whole-tree JS instrument-vacuity burn-down — 9 defects in template-owned tooling, 1 sync-contract ambiguity, 1 new rule (tool-boundary discipline), 1 worktree deadlock in the codify gates. Untriaged findings burned 40 pairs / 77 findings to 0 in the originating tree; every fix carries a paired RED/GREEN control."
+template_slug: kailash-coc-rs
+template_version: "2.24.0"
+loom_sha: "43167a54"
+changes:
+  - file: .claude/bin/scan-synced-disclosure.mjs
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      TWO defects in the Gate-2 disclosure fence, one of which meant a whole
+      directory tree had NEVER been scanned. (a) SYMLINKED-DIRECTORY WALK:
+      readdirSync(withFileTypes) reports the LINK, not its target, so a symlink to a
+      DIRECTORY has isDirectory() === false, falls through to the isSymbolicLink()
+      branch, and is pushed as a FILE; readFileSync then throws EISDIR and the catch
+      dropped it. collectFiles walks `.claude/` only, so for any consumer whose
+      `.claude/<name>` is a symlink to an out-of-`.claude` directory, that symlink is
+      the ONLY route its files have onto the scanned surface — and they never
+      arrived. Measured on one consumer: 2450 files scanned before, 2458 after, i.e.
+      8 files (including a policy JSON and a dump JSON) had never been disclosure-
+      scanned, while the tool printed "RESULT: clean — 0 findings. This is the
+      structural receipt that the #252 disclosure forest is closed on this surface."
+      Fix resolves a symlink with statSync (which follows) rather than trusting the
+      dirent, recurses into an in-tree symlinked directory, and applies
+      security.md § Path Containment — BOTH target and scan root through realpathSync
+      before comparison, an escaping link recorded as a finding rather than followed,
+      plus a WALKED_REAL_DIRS set so a link to an ancestor cannot recurse forever.
+      (b) TWO SWALLOWING CATCHES: walk()'s readdir and scanFile()'s readFile each did
+      a bare `return`, so an unreadable path left the scanned surface with no trace
+      while the "forest is closed" receipt still printed. Both now record into an
+      UNREADABLE accumulator, and a non-empty accumulator is a FATAL exit 2 evaluated
+      BEFORE either verdict path — the coverage assertion the sibling JS sweep already
+      has. A skipped path and a clean path are otherwise the same bytes downstream.
+    diff_lines: "+68"
+  - file: .claude/bin/lib/identity-scrub.mjs
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      TWO defects in the shared identity-extraction lib both fences depend on.
+      (a) readTextOrNull COLLAPSES "this file is binary, skip it by design" and "this
+      file could not be opened at all" into ONE null. Its only caller is
+      clean-instantiate's assertZero — the FAIL-CLOSED gate whose entire promise is
+      that ZERO canon trust-identity remains in a client clone — so an unreadable
+      carrier of canon identity was skipped and the ceremony still reported clean.
+      Adds readTextOrReason returning {text, reason: "ok"|"binary"|"unreadable",
+      error}; readTextOrNull is kept as a thin wrapper so no other caller changes.
+      Bipolar control on ordinary filenames: ok / binary(NUL) / EACCES / ENOENT all
+      classified correctly, binary vs unreadable DISTINGUISHED, back-compat unchanged.
+      (b) assertNoSymlinkEscape is an ORPHAN — `git grep` returns its definition and
+      NOTHING else, while its own docstring asserts "callers assert BEFORE their first
+      destructive/tree-walking step" and names the clean-instantiate CLEAR ceremony as
+      the case it closes. The two consumers it was written for do not exist in a
+      consumer tree at all. It was relocated into this lib by an earlier redteam fix
+      and has never run once. This is the vacuous-control class ONE LEVEL UP: not a
+      control that executes without checking, but a control that never executes. Worth
+      a register axis of its own — when auditing a guard, check REACHABILITY before
+      correctness.
+    diff_lines: "+34"
+  - file: .claude/bin/clean-instantiate.mjs
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      assertZero — the fail-closed gate certifying a client clone carries zero canon
+      identity — walks the tree with walkFiles, which resolves entries via statSync
+      and therefore FOLLOWS symlinks, and it never called the symlink-escape guard
+      written for exactly that call. Wiring it in produced an immediate real finding
+      on first execution: three symlinks escaping the tree (a language virtualenv
+      under a workspace, targeting the operator's home). So the gate had been reading
+      THROUGH those links, out of the tree it claims to be asserting about. Also
+      threads the readTextOrReason distinction through assertZero so an unreadable
+      file is a FINDING rather than a silent skip, reported in the DRY RUN with a
+      warning that the apply gate will fail — the operator learns before the
+      destructive pass, not during it. The guard originally surfaced as an uncaught
+      stack trace; now caught at the call site and reported as an actionable message
+      naming every link, its target, and the three remedies. Still exits non-zero —
+      the guard is NOT weakened, only made legible.
+    diff_lines: "+41"
+  - file: .claude/bin/validate-emit.mjs
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      The `.coc/` emit row pushed an UNCONDITIONAL STATUS.PASS with the record count
+      appearing ONLY inside the detail STRING, so an emit producing ZERO artifacts
+      reported "PASS — 0 artifacts". emit-coc guards each source directory with
+      existsSync, so a missing or unreadable rules directory silently yields an empty
+      emit and the validator certified it. Now FAILS when records === 0. Note the
+      placement: the count check belongs where the VERDICT is made, not where the
+      readdir happens — the sweep flags emit-coc's readdir, but patching there would
+      leave the unconditional PASS intact.
+    diff_lines: "+12"
+  - file: .claude/bin/validate-extraction-history.mjs
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      listJournalEntries returned [] when readdir threw, which reported "scanned 0
+      journal entries; 0 Rule-11-mandated" and EXIT 0 — a clean Rule-11 verdict over a
+      corpus the validator never read. Absence is ALREADY handled by an existsSync
+      guard that exits 2, so reaching that catch means the directory EXISTS and could
+      not be listed (permission, I/O). It now exits 2 saying so. Paired control with
+      exit codes taken WITHOUT a pipe: readable temp journal dir -> "scanned 1", exit
+      0; same dir with permissions removed -> "refusing to report clean", exit 2.
+    diff_lines: "+14"
+  - file: .claude/bin/validate-proximity-band.mjs
+    action: proposed
+    base_version: "2.24.0"
+    reason: >-
+      NOT FIXED in the originating lane, offered as a finding with its evidence.
+      isBaselineRule returns false when the rule file cannot be read, and false means
+      "not a baseline rule", which EXCLUDES it from Rule 10's proximity-band gate — an
+      unreadable rule silently ESCAPES the budget check it was supposed to face.
+      Fail-OPEN in a gate. Narrow in practice (existsSync already covers the absent
+      case, so the catch fires only on a permission/IO fault), and deliberately not
+      patched downstream: the tool REFUSES to run outside a loom-class checkout
+      ("missing sync-manifest / emit entrypoint"), so a consumer cannot exercise the
+      change end-to-end, and a fail-closed edit to a gate you cannot run is a guess.
+      Belongs upstream where the tool runs.
+    diff_lines: "0 (finding only)"
+  - file: .claude/audit-fixtures/validate-proximity-band/run.mjs
+    action: proposed
+    base_version: "2.24.0"
+    reason: >-
+      A fixture suite that CANNOT PASS in the repo class it ships to. 4 of its 10
+      fixtures fail in a coc-project consumer, all with the same cause: the fixture
+      builds a temp repo and the validator under test refuses it as "not a loom-class
+      checkout (missing sync-manifest / emit entrypoint)". Pre-existing and structural
+      — reproduced on a file the originating session never touched. This is the
+      inverse of the vacuous-control shape: not a test that can only pass, but one
+      that can only fail, and its 4 standing reds train a consumer to ignore the
+      suite. Suggested disposition upstream: SKIP with a stated reason when the repo
+      class cannot host the tool, rather than FAIL — a skip names the gap, a red
+      normalises it. Not patched downstream because a local edit to a synced artifact
+      is Class-A non-durable (artifact-flow.md).
+    diff_lines: "0 (finding only)"
+  - file: .claude/audit-fixtures/violation-patterns/detectStateFileMutation/test.mjs
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      runFixtureDir generates one test() per .txt fixture, so a fixture directory that
+      yields zero files generates ZERO tests and the suite passes having asserted
+      nothing. Renaming or moving the corpus would disarm the entire detector corpus
+      without a single red — the empty-denominator shape applied to the apparatus that
+      guards the detectors. Adds a corpus-non-empty assertion per fixture directory;
+      188 -> 190 tests, both new ones green.
+    diff_lines: "+11"
+  - file: .claude/bin/codify-backlog.mjs
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      An unreadable archive directory or archive file was indistinguishable from an
+      absent one, in the tool whose stated purpose is to NEVER MISS a rotated record —
+      so /codify could be handed a smaller backlog than it believes it has. The
+      counter pattern already existed (malformed, archives_read); adds
+      archives_skipped alongside it and surfaces it in the JSON projection. Also
+      surfaces a swallowed statSync in the workspace scan: the name came from a
+      readdir a moment earlier, so a failure there is a real fault (dangling symlink,
+      mid-walk unlink) and silently omitting the entry shrinks the backlog.
+    diff_lines: "+18"
+  - file: .claude/bin/cc-cost.mjs
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      Silently skipped unreadable directories, transcripts and usage lines, each skip
+      quietly REDUCING a dollar figure the operator reads as the total — and a lower
+      number is indistinguishable from lower usage. Now counted and reported as an
+      explicit UNDER-COUNT warning, with skipped_inputs in --json. Carries its own
+      cautionary tale worth reading upstream: the FIRST instrumented run reported 835
+      "unreadable" directories, every one of which was simply ABSENT (optional
+      per-session sub-agent directories several call sites probe by design). That is
+      the exact absent-vs-unreadable conflation the instrumentation was added to
+      expose, introduced by the fix itself. Corrected before landing — the counters
+      exclude ENOENT. A counter that cries wolf 835 times is worse than no counter.
+    diff_lines: "+29"
+  - file: .claude/commands/sync-from-template.md
+    action: proposed
+    base_version: "2.24.0"
+    reason: >-
+      CONTRACT AMBIGUITY that made this whole cycle's durability unknowable, and the
+      highest-value item in this batch. § "Merge Semantics" states the general rule
+      "If a file exists in BOTH the template and this repo, the template version
+      wins", while § 5 enumerates "Updated from template" as agents/, commands/,
+      rules/, skills/, guides/ and .claude/hooks/ — and names NEITHER
+      `.claude/bin/**` NOR `.claude/audit-fixtures/**`. The Preserved list ends with
+      "Any file/directory not present in the template", which does not resolve it
+      either. A consumer that fixes a defect in `.claude/bin/**` therefore cannot
+      tell whether the fix survives the next sync. Concretely: this cycle fixed eight
+      such files, and whether that work persists locally is UNDETERMINED by the
+      written contract. Requested: make § 5 exhaustive — state explicitly, for
+      `.claude/bin/**` and `.claude/audit-fixtures/**`, whether they are Updated or
+      Preserved. Either answer is workable; the ambiguity is not, because it decides
+      whether a consumer should fix-and-keep or fix-and-upflow, and getting it wrong
+      silently discards the work.
+    diff_lines: "0 (contract clarification)"
+  - file: .claude/hooks/lib/coc-emit.js
+    action: proposed
+    base_version: "2.24.0"
+    reason: >-
+      HIGHEST-SEVERITY ITEM IN THIS BATCH — /codify CANNOT COMPLETE FROM A GIT
+      WORKTREE, and the cause is an enforcement-surface-parity gap in the very
+      codebase that defines that rule. append-sink.js documents the mechanism in its
+      own JSDoc: "additionalRoots — Further LEGITIMATE roots this sink may live under.
+      Required for sinks that escape cwd BY DESIGN — trust-posture state I/O resolves
+      to the MAIN checkout, so a worktree session's repoDir is the wrong and
+      only-apparently-safer boundary (R2 F1)." Measured: of NINE appendSink callers,
+      only TWO pass additionalRoots (coc-append.js, learning-utils.js). SEVEN do not —
+      capability-ledger.js, coc-emit.js, derives-from-ledger.js, genesis-ceremony.js,
+      member-registry.js, provenance-ledger.js, upstream-canon-pointer.js. From a
+      worktree every one of those appends fails closed with "containment failed — sink
+      ancestor resolves to <main checkout>/.claude/learning, outside every declared
+      root". Reproduced this cycle: reserveJournalSlotSigned refused BOTH slots, so the
+      MANDATORY /codify journal gate could not be discharged; the same refusal blocks
+      the MANDATORY Step 3/4 derives_from[] provenance emission via
+      derives-from-ledger.js. This is a structural deadlock with worktree-isolation.md,
+      which MANDATES worktrees for parallel and compiling agents: the isolation rule
+      requires the configuration in which the codify gates cannot fire. The fix is
+      one-line-per-caller (thread the main-checkout root through, exactly as the two
+      compliant callers do) but it MUST land at all seven together — landing it at one
+      is how the gap arose. Note the shape: the additionalRoots parameter EXISTS, is
+      documented, and names this precise scenario; it simply was not plumbed to the
+      siblings. security.md § Enforcement-Surface Parity, in the repo that authors it.
+    diff_lines: "0 (finding only — 7 call sites)"
+  - file: .claude/rules/tool-boundary-discipline.md
+    action: proposed
+    base_version: "2.24.0"
+    reason: >-
+      NEW RULE proposed from six blocked tool calls in one session, five of which were
+      the guard being RIGHT. The state-protecting guards decide on the COMMAND STRING:
+      two are deliberately UNANCHORED (matching a protected path or file-util verb
+      anywhere in the string, because anchoring makes them bypassable) and one FAILS
+      CLOSED on a suffix when no git root resolves. That design is correct, and its
+      consequence is that PROSE DESCRIBING a protected operation is indistinguishable
+      from the operation, and a FIXTURE MIMICKING a protected shape is
+      indistinguishable from the real thing. Three MUSTs, each measured: (1) never
+      place prose in a Bash command body — author content with the file-write tool and
+      pass it by reference; a commit-message heredoc mentioning `chmod` and an
+      interpreter heredoc mentioning a roster path both blocked, and detailed commit
+      bodies make a match near-certain; (2) never build a fixture that recreates a
+      protected filename — the guard that protects the real file correctly fails
+      closed on the lookalike; (3) never truncate-read a continuity artifact. Plus the
+      meta-clause that is the most valuable part: WHEN REMEDIATING A BLOCK, NAME THE
+      CLASS, NOT THE INSTANCE. The originating session wrote down "never use an
+      interpreter heredoc to edit files", then was blocked again on a commit-message
+      heredoc — the identical defect the vacuous-control epic is about, committed
+      against its own remediation. Also proposes the default reading of a block:
+      first hypothesis is that you produced the shape the guard exists to stop, not
+      that it misfired. Trust-posture wiring to be authored at Gate-1 placement, since
+      severity and detection depend on which layer the template lands it in.
+    diff_lines: "new rule"
+status: pending_review
