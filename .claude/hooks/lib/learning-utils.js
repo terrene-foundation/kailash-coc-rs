@@ -8,7 +8,7 @@
 const fs = require("fs");
 const path = require("path");
 // loom#1349 — the ONE hardened append primitive; see append-sink.js for the six defenses.
-const { appendSinkLine } = require("./append-sink.js");
+const { appendSinkLine, mainCheckoutBoundaryRoots } = require("./append-sink.js");
 const os = require("os");
 
 /**
@@ -95,16 +95,11 @@ function _stateRoots(cwd) {
   //
   // `KAILASH_LEARNING_DIR` above is deliberately UNCHANGED: it is pushed raw as an
   // operator-declared location, a separate question from what an indeterminate git means.
-  try {
-    const { requireMainCheckout } = require(
-      path.join(__dirname, "state-resolver.js"),
-    );
-    const r = requireMainCheckout(cwd);
-    if (r.ok && r.repoDir) roots.push(r.repoDir);
-  } catch {
-    // Resolver unavailable — cwd remains the only root and a main-checkout sink fails CLOSED.
-    // Same disposition as an INDETERMINATE resolution above: no root is added either way.
-  }
+  // Delegated to the ONE derivation in append-sink.js. This was the THIRD
+  // open-coded copy of the idiom (the comment above recorded that as it happened);
+  // six further callers omitted it entirely, which is what broke /codify from a
+  // worktree. Same fail-closed disposition: [] when the resolver cannot answer.
+  roots.push(...mainCheckoutBoundaryRoots(cwd));
   return roots;
 }
 
