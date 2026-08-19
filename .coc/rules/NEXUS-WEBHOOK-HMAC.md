@@ -1,6 +1,6 @@
 ---
 id: "NEXUS-WEBHOOK-HMAC"
-paths: ["**/nexus/**", "**/webhook*", "**/*hmac*", "**/signature*"]
+paths: ["**/nexus/**", "**/webhook*", "**/*hmac*", "**/signature*", "**/*nexus*/**"]
 ---
 
 # Nexus Webhook HMAC Rules

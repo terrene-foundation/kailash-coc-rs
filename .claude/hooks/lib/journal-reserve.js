@@ -284,9 +284,37 @@ function _foldHighWater(repoDir, dirRel) {
   // guard answers a question about a different tree than the one whose slots it
   // is handing out. `resolveMainCheckout` is the same resolution the coordination
   // predicate already uses further down in this module.
-  const { resolveMainCheckout } = require("./state-resolver.js");
+  // `requireMainCheckout`, NOT the legacy `resolveMainCheckout` — and the
+  // difference is the whole point of the paragraph above rather than a style
+  // preference. The legacy accessor returns its own `startCwd` argument when git
+  // cannot answer (`state-resolver.js` § INDETERMINATE), so the idiom this
+  // replaced — `resolveMainCheckout(repoDir) || repoDir` — reads as defensive and
+  // CANNOT fire: the `||` fallback is dead code, and the silent result is the
+  // WORKTREE path, which is exactly the tree the paragraph above establishes we
+  // must not read the roster from.
+  //
+  // REFUSING is the fail-closed direction here, and it is worth stating which way
+  // that runs, because the two dispositions are not symmetric. Proceeding on an
+  // unverified tree reaches the ENOENT arm below, and ENOENT is the ONE input this
+  // function reads as "no roster, coordination is off, fold with null" — which
+  // empties `folded.accepted`, drives `high` to 0, and hands out a slot a sibling
+  // already reserved. So a fallback does not merely guess a path: it manufactures
+  // the exact evidence of absence that collapses the high-water. An indeterminate
+  // resolution is UNKNOWN, and this function already refuses on unknown — that is
+  // what the coordination-log read directly above does, for this same reason.
+  //
+  // The throw is the established shape, not a new one: `reserveJournalSlotSigned`
+  // catches it at `step: "fold-high-water"` and returns the typed
+  // `{ok:false, reason}` result whose message already names BOTH inputs.
+  const { requireMainCheckout } = require("./state-resolver.js");
+  const mainRes = requireMainCheckout(repoDir);
+  if (!mainRes.ok) {
+    throw new Error(
+      `main checkout unresolved, refusing to read the roster from an unverified tree: ${mainRes.reason}`,
+    );
+  }
   const rosterPath = path.join(
-    resolveMainCheckout(repoDir) || repoDir,
+    mainRes.repoDir,
     ".claude",
     "operators.roster.json",
   );
@@ -654,11 +682,46 @@ function reserveJournalSlotSigned(repoDir, opts) {
   // `journal-write-guard.js` reads it ON from main — reserving no record, then
   // halting the Write for "slot unreserved". That is issue #76's own failure class
   // re-opened on the worktree path by the fix for #76; caught by the Tier-1 redteam.
+  // Resolved through `requireMainCheckout` — the FAIL-CLOSED accessor — for the
+  // same reason `_foldHighWater` uses it, and this site is the more consequential
+  // of the two: the value below does not name a file, it GATES. The legacy
+  // `resolveMainCheckout(repoDir) || repoDir` idiom silently yields the WORKTREE
+  // when git cannot answer, and the paragraph above is precisely the record of
+  // what a worktree-resolved coordination read does — the gitignored tier-2
+  // override is ABSENT there, so a tier-2-enrolled repo reads OFF here while
+  // `journal-write-guard.js` reads it ON from main. That is issue #76's class
+  // reopened, and the `||` fallback cannot detect it: OFF is a legitimate answer
+  // for a solo repo, so the wrong verdict is indistinguishable from the right one.
+  //
+  // WHICH WAY fail-closed runs here, since both directions are defensible until
+  // the harm is named. Reading OFF when the repo is ON is SILENT: no signed record
+  // is emitted, the slot never enters the shared log, and a sibling clone hands
+  // out the same slot — the same high-water collapse `_foldHighWater` refuses for,
+  // reached by a different route. Refusing is LOUD and self-describing, and it is
+  // the disposition that AGREES with the guard downstream: `journal-write-guard.js`
+  // is in the `MUST_BLOCK_ON_INDETERMINATE` set of
+  // `tests/integration/multi-operator/trust-resolver-fail-closed-1471.test.js`, so
+  // on this same unresolvable tree it BLOCKS the journal Write outright. Handing
+  // back a reservation the guard is guaranteed to reject would be the substrate
+  // disagreeing with itself.
+  //
+  // NOT over-blocking the opt-in case, stated rather than assumed: a coordination-
+  // OFF solo repo is still a GIT repo, so it resolves DETERMINATELY and takes the
+  // `coordination-disabled` early return below exactly as before. Only "git could
+  // not identify a main checkout at all" refuses — the asymmetry
+  // `requireMainCheckout` exists to preserve (`state-resolver.js` § NOTE).
   const { isCoordinationEnabled } = require("./coordination-mode.js");
-  const { resolveMainCheckout } = require("./state-resolver.js");
-  const coordinationOn = isCoordinationEnabled(
-    resolveMainCheckout(repoDir) || repoDir,
-  );
+  const { requireMainCheckout } = require("./state-resolver.js");
+  const mainRes = requireMainCheckout(repoDir);
+  if (!mainRes.ok) {
+    return {
+      ok: false,
+      error: "main checkout unresolved",
+      reason: `refusing to read the coordination verdict from an unverified tree; a worktree-resolved OFF is indistinguishable from a genuine one and silently skips the signed reservation: ${mainRes.reason}`,
+      step: "coordination-mode",
+    };
+  }
+  const coordinationOn = isCoordinationEnabled(mainRes.repoDir);
 
   const absDir = path.join(repoDir, dirRel);
   let reservation;

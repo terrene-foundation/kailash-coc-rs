@@ -1,19 +1,41 @@
 # COC Sync Marker — kailash-coc-rs (rs lane, multi-CLI)
-timestamp: 2026-08-02T00:00:00Z
+timestamp: 2026-08-19T00:00:00Z
 source: loom/.claude
-loom_sha: 43167a54921f7454a3eb2573af0252ca7d16df2a
+loom_sha: 319083d60cabf74e7310a5c6504aaec604c48f35
 variant: rs
 clis: [claude, codex, gemini]
 visibility: public
 stats:
-  engine_changed: 497
-  engine_verify: "CONSISTENT — 2023/2023 delivered (62 content-equal after BUILD-internal strip, 1961 byte-equal)"
-  version_stamp: "loom-tracking -> 2.45.0 @ 43167a54 (own 2.23.23 -> 2.24.0)"
-  sdk_pins: "N/A — this template carries no dependency manifest (no pyproject.toml / Cargo.toml / Gemfile); Dockerfile ARG KAILASH_PY_PACKAGE is a package name, not a version. sdk_packages metadata refreshed to PyPI-latest (5 bumped); kailash-rs held at 4.40.0 because PyPI kailash-enterprise 4.43.0 ships no macosx_11_0_arm64 wheel and no sdist."
+  engine_changed: 851
+  engine_verify: "CONSISTENT (engine apply ran in STAGE; 851 files delivered)"
+  claude_axis_delta: { added: 180, modified: 246, deleted: 7 }
+  version_stamp: "loom-tracking -> 2.45.0 @ 319083d6 (own 2.24.0 -> 2.25.0)"
+  sdk_pins: "N/A — this template carries no dependency manifest (no pyproject.toml / Cargo.toml / Gemfile / package.json), so the pin-write and install-verify enrichment steps have no surface. upstream.sdk_packages is metadata-only and was HELD unchanged this cycle (no in-scope BUILD/PyPI read authorization); stamp-template-version.mjs preserves it by contract."
   baselines_emitted: { cc: 0, codex: 1, gemini: 1 }
+  baseline_emission_bytes:
+    block_cap_bytes: 65536
+    codex:
+      rules: 11
+      bytes: 59571
+      tier: WARN
+      headroom_pct: 9.1
+      floor_pct: 8.5 # declared rs lane exception, sync-manifest issue #1355, EXPIRES 2026-10-31
+    gemini:
+      rules: 11
+      bytes: 59571
+      tier: WARN
+      headroom_pct: 9.1
+      floor_pct: 8.5
   cli_artifacts:
-    codex: { prompts: 42, agent_prompts: 22, skills: 40 }
-    gemini: { commands: 42, skills: 40, agents: 22 }
-  coc_artifacts: { artifacts: 198, files: 200, coc_version: "1.0.0" }
-  codex_dispatcher: "bin/coc + 28 per-phase symlinks"
-  preserved: [CLAUDE.md, settings.json, Gemfile.user, Dockerfile.user, requirements-user.txt, "visibility:public"]
+    codex: { prompts: 42, agent_prompts: 22, skill_dirs: 41 }
+    gemini: { commands: 42, skill_dirs: 41, agents: 22 }
+  coc_artifacts:
+    { artifacts: 203, files: 205, coc_version: "1.0.0", lane: use, withheld_by_lane_fate: 7 }
+  codex_dispatcher: "bin/coc + 28 per-phase symlinks (0 stale)"
+  scaffold:
+    symlink: ".claude/codex-mcp-guard -> ../.codex-mcp-guard (resolves)"
+    manifest_distribute: "engine-emitted (loom#1777); byte-equal to loom source (cmp)"
+    mcp_guard_tree: "refreshed from loom .claude/codex-mcp-guard/"
+  preserved:
+    [CLAUDE.md, Gemfile.user, Dockerfile.user, requirements-user.txt, "visibility:public"]
+  dev_container: "DEFERRED — NOT distributed this cut; rs is D6-active (loom_distributed, registry_substitution:false, local-build) but distribution continues the standing fleet-level deferral. FLAGGED for orchestrator."

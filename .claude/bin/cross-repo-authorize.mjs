@@ -12,12 +12,15 @@
  * outside a codify session, and the exception was unsatisfiable in exactly the
  * sessions (normal downstream work) where it is needed.
  *
- * The receipt lives at `.claude/cross-repo-authz/<date>-<slug>-<digest>.md` — NOT
+ * The receipt lives at `.claude/cross-repo-authz/<date>-<slug>-<digest8>.md` — NOT
  * under `journal/`, NOT under the integrity-guarded `.claude/learning/`. It is a
  * working-tree file, greppable while it is INSIDE the guard's authorization
- * window (derived from the receipt's own `timestamp:` frontmatter, NOT from file
- * mtime and NOT from the filename's date — see `readReaderWindows` below);
- * ENFORCEMENT never consults git, so an uncommitted receipt clears
+ * window (`violation-patterns.js::_receiptTimestampMs` parses the receipt's own
+ * `timestamp:`/`date:` field; filesystem mtime is explicitly REPUDIATED there
+ * because git rewrites it on checkout / worktree-add / clone, and the filename's
+ * date carries no authorization weight either — see `readReaderWindows`, which
+ * reads the window from the guard's declaration site rather than re-declaring
+ * it here). ENFORCEMENT never consults git, so an uncommitted receipt clears
  * `repo-scope-discipline.md` condition 4 identically to a committed one.
  *
  * WHETHER to commit it is REPO-CLASS-dependent (2026-08-03, the LOCALITY axis —
@@ -56,7 +59,7 @@
 
 import fs from "fs";
 import path from "path";
-import crypto from "crypto";
+import { createHash } from "crypto";
 import { execFileSync } from "child_process";
 import { fileURLToPath } from "url";
 
@@ -109,16 +112,16 @@ function repoToplevel(startDir) {
 }
 
 // Deterministic date + slug — this is a normal node CLI (NOT a workflow
-// script), so Date is available. The filename's date is for HUMAN ORDERING and
+// script), so Date is available. The leading date is for HUMAN ordering and
 // (with the digest) for collision discrimination ONLY; it carries NO
-// authorization weight. The guard derives a receipt's age from the receipt's own
-// `timestamp:` frontmatter — not the filename, not file mtime (git rewrites
-// mtime on checkout/worktree-add/clone). See `readReaderWindows`.
+// authorization weight. The guard ages a receipt by its `timestamp:`
+// FRONTMATTER, never by the filename and never by filesystem mtime
+// (`violation-patterns.js::_receiptTimestampMs`).
 //
-// The two granularities DIFFER — filename is per-DAY, authorization is per-WINDOW
-// (6h at time of writing) — and that mismatch is load-bearing: a same-UTC-day
-// re-authorization after the window has expired needs a NEW receipt at a NEW
-// path. `writeReceiptImmutable` is what reconciles them.
+// The two granularities DIFFER — filename is per-DAY, authorization is
+// per-WINDOW (6h at time of writing) — and that mismatch is load-bearing: a
+// same-UTC-day re-authorization after the window has expired needs a NEW receipt
+// at a NEW path. `writeReceiptImmutable` is what reconciles them.
 function isoDateUTC(d) {
   return d.toISOString().slice(0, 10);
 }
@@ -131,61 +134,71 @@ function slugify(s) {
     .slice(0, 48);
 }
 
-// The slug is TRUNCATED to 48 chars for human readability, and truncation
-// discards exactly the discriminating tail: every Step-7c action opens with the
-// same words ("file a Step-7c upflow proposal PR to the template inbox for
-// ..."), so two genuinely distinct same-day authorizations against one target
-// collapsed to ONE filename. Before this discriminator the second write
-// SILENTLY DESTROYED the first receipt (`writeFileSync` with no `wx`), and a
-// receipt is the ONLY thing distinguishing an authorized cross-repo action from
-// an unauthorized one (`repo-scope-discipline.md` § User-Authorized Exception
-// condition 4 — "present = in-scope, absent = critical L1").
-//
-// The digest is taken over the FULL, UNTRUNCATED (target, action, mode) triple,
-// so it discriminates precisely where the slug stops. Consequences, both wanted:
-//   - distinct actions  -> distinct digests -> both receipts survive;
-//   - an identical re-run while the prior receipt is still LIVE -> identical
-//     digest -> same path -> refused, which is correct (that receipt really does
-//     still authorize the action, and overwriting would destroy an audit record);
-//   - an identical re-run after that receipt has EXPIRED -> a fresh receipt at a
-//     NEW path, because the expired one authorizes nothing (`writeReceiptImmutable`).
-// `mode` is in the triple because a read receipt and a write receipt for the
-// same action are DISTINCT authorizations at different tiers (a read receipt
-// must never clear a write), so they must never collide onto one filename.
-//
-// SCOPE — the digest discriminates FILENAMES by action. It does NOT scope
-// AUTHORITY by action, and nothing here does. The guard builds its marker regex
-// from (target, mode) ONLY (`violation-patterns.js::hasCrossRepoAuthorizationReceipt`,
-// ~L183-186); the action text never enters the authorization decision. So ONE
-// live receipt for (target, write) clears ANY cross-repo write against that
-// target for the whole window, whatever action it names.
-// `repo-scope-discipline.md` § User-Authorized Exception condition 5 ("only the
-// named action against only the named repo") is therefore ATTESTED in every
-// receipt and STRUCTURALLY UNENFORCED. Closing that is a reader-side change
-// (the marker would have to carry an action digest the guard also computes from
-// the intercepted command) and is deliberately NOT attempted here — do not read
-// this digest as if it already did it.
-//
-// 8 hex chars (32 bits) is sized for human-scannable filenames, not collision
-// resistance: this discriminates a handful of same-day receipts in one
-// directory, and a digest collision degrades to the pre-existing refusal (a
-// loud `wx` failure), never to a silent overwrite.
-function actionDigest(target, action, mode) {
-  return crypto
-    .createHash("sha256")
-    .update(`${target}\n${action}\n${mode}`, "utf8")
-    .digest("hex")
-    .slice(0, 8);
+/**
+ * 8-hex discriminator over the FULL, UNTRUNCATED `(target, action, mode)`
+ * triple. Two properties, both load-bearing (loom RS-71):
+ *
+ *  1. `mode` IS IN THE TRIPLE, DELIBERATELY. Without it a `read` receipt and a
+ *     `write` receipt for the same (target, action) resolve to ONE filename, so
+ *     writing the cheap read receipt DESTROYS the write authorization —
+ *     measured, not theorised: `hasCrossRepoAuthorizationReceipt(t, cwd,
+ *     "write")` went `true` → `false`. That is the ceremony's central tier
+ *     (repo-scope-discipline.md § Affordance, read/write tier D) defeated by the
+ *     filename alone, with exit 0 and no warning. Any future edit that drops
+ *     `mode` from this triple re-opens it; the fixture
+ *     `RS-71-tier-defeat-measured` is the tripwire.
+ *  2. It is computed over the UNTRUNCATED inputs, while `slugify` truncates at
+ *     48 chars. Two distinct actions sharing a 48-char prefix collide in the
+ *     slug and are separated only here. Truncation discards exactly the
+ *     discriminating tail — every Step-7c action opens with the same words — so
+ *     without this the second same-day authorization collapsed onto the first's
+ *     filename.
+ *
+ * The join is LENGTH-PREFIXED so it is injective: no delimiter can be forged
+ * from within a field (`a|b` and `a` + `|b` hash differently). This is the
+ * property that is retained over the plain separator-join (`${target}\n${action}
+ * \n${mode}`) the sibling USE-template lane carried: that form is injective ONLY
+ * while every field is known free of the separator, which makes the digest's
+ * correctness depend on a validator declared 300 lines away in `main`. Injective
+ * BY CONSTRUCTION does not decay when a future edit relaxes that validator —
+ * and a digest collision here silently merges two DISTINCT authorizations onto
+ * one filename, which is the RS-71 defect class. `run.mjs`
+ * `digest-injective-under-boundary-shift` is the tripwire.
+ *
+ * SCOPE — the digest discriminates FILENAMES by action. It does NOT scope
+ * AUTHORITY by action, and nothing here does. The guard builds its marker regex
+ * from (target, mode) ONLY (`violation-patterns.js::
+ * hasCrossRepoAuthorizationReceipt`); the action text never enters the
+ * authorization decision. So ONE live receipt for (target, write) clears ANY
+ * cross-repo write against that target for the whole window, whatever action it
+ * names. `repo-scope-discipline.md` § User-Authorized Exception condition 5
+ * ("only the named action against only the named repo") is therefore ATTESTED in
+ * every receipt and STRUCTURALLY UNENFORCED. Closing that is a reader-side change
+ * (the marker would have to carry an action digest the guard also computes from
+ * the intercepted command) and is deliberately NOT attempted here — do not read
+ * this digest as if it already did it.
+ *
+ * 8 hex chars (32 bits) is sized for human-scannable filenames, not collision
+ * resistance: this discriminates a handful of same-day receipts in one
+ * directory, and a digest collision degrades to the pre-existing behaviour (a
+ * loud `wx` miss handled by `writeReceiptImmutable`), never to a silent overwrite.
+ */
+function tripleDigest(target, action, mode) {
+  const parts = [target, action, mode].map((v) => {
+    const s = String(v);
+    return `${s.length}:${s}`;
+  });
+  return createHash("sha256").update(parts.join("|"), "utf8").digest("hex").slice(0, 8);
 }
 
 /**
  * The guard's authorization window + clock-skew tolerance, read from the ONE
  * place they are declared: `violation-patterns.js`. That module is CommonJS and
  * does NOT export either constant, so this parses the declaration site rather
- * than re-declaring the numbers here. Re-declaring is the drift class this repo
- * has been bitten by repeatedly: the writer and the reader would then each own a
- * copy of one invariant, and the failure mode of drift between them is exactly
- * the deadlock this function exists to prevent.
+ * than re-declaring the numbers here. Re-declaring is the drift class this
+ * ecosystem has been bitten by repeatedly: the writer and the reader would then
+ * each own a copy of one invariant, and the failure mode of drift between them is
+ * exactly the deadlock `writeReceiptImmutable` exists to prevent.
  *
  * Only sum-of-products of integer literals is accepted (`6 * 60 * 60 * 1000`);
  * anything else yields null. No eval — the character class is checked first, then
@@ -318,9 +331,10 @@ function tryCreateExclusive(filePath, body) {
  *
  * Immutability: an existing receipt is never opened for writing, truncated, or
  * removed. It is the sole distinguisher between an authorized cross-repo action
- * and an unauthorized one (`repo-scope-discipline.md` § User-Authorized Exception
- * condition 4), and the directory is gitignored outside loom — a clobbered
- * receipt has no reflog to recover from.
+ * and an unauthorized one (`repo-scope-discipline.md` condition 4: "present =
+ * in-scope, absent = critical L1"), and the directory is gitignored outside loom
+ * — a clobbered receipt has no reflog to recover from. Silently destroying one is
+ * the RS-71 defect.
  *
  * Refreshability: the filename is DATE-granular while authorization is
  * WINDOW-granular (6h). Refusing every same-day re-run therefore deadlocked the
@@ -332,23 +346,39 @@ function tryCreateExclusive(filePath, body) {
  * own false assurance: an unauthorized cross-repo action believed to be
  * authorized.
  *
+ * WITHDRAWN — the prior NAMED DEVIATION on this surface. This function replaces a
+ * `wx` + numeric-`-N`-suffix writer whose doc recorded a named deviation from
+ * RS-71's "create-or-fail", justified by "a hard failure would deadlock a
+ * legitimate re-authorization after the 6-hour window expires". That premise is
+ * now handled directly rather than worked around: the refusal is LIVENESS-AWARE,
+ * so it fires only against a receipt read from disk and confirmed still live, and
+ * an expired one is superseded by a fresh receipt at a time-suffixed path. The
+ * deviation's goal (never deadlock, never clobber) is met with a STRONGER
+ * guarantee — the numeric-suffix writer never deadlocked, but it also never told
+ * the operator when a live authorization already covered them, and it wrote a new
+ * receipt on every invocation. The old `-N` names remain matched by the family
+ * scan below, so receipts written by that predecessor are still found. Do NOT
+ * re-add a deviation note for a deadlock that no longer exists.
+ *
  * Note the trap in the history. BEFORE `wx`, the colliding write destroyed the
  * audit record but incidentally REFRESHED its timestamp, so authorization kept
  * working; `wx` protects the record and creates the deadlock. Both halves are
  * needed, and they stop being in tension once the FILENAME carries more than day
- * granularity — which is the whole content of the suffix below. Do NOT "fix" a
- * recurrence by widening the guard's window or by dropping `wx`.
+ * granularity — which is the whole content of the time suffix below. Do NOT "fix"
+ * a recurrence by widening the guard's window or by dropping `wx`.
  *
  * So: refuse ONLY against a receipt read from disk and confirmed LIVE; otherwise
  * write a fresh one at a non-colliding path.
  */
+const RECEIPT_TIME_SUFFIX_BUDGET = 32;
 function writeReceiptImmutable(dir, baseName, body, ctx) {
   const canonical = path.join(dir, `${baseName}.md`);
   if (tryCreateExclusive(canonical, body)) return { path: canonical };
 
   // Something already occupies the canonical path. Scan the whole family for
-  // this (date, target, action, mode) — the canonical name plus any time-suffixed
-  // siblings from earlier expiries today — and refuse only if one is still live.
+  // this (date, target, action, mode) — the canonical name, any time-suffixed
+  // siblings from earlier expiries today, and any legacy `-N` siblings from the
+  // predecessor writer — and refuse only if one is still live.
   //
   // REGULAR FILES ONLY, exactly as the guard scans (`violation-patterns.js`:
   // `readdirSync(d, {withFileTypes:true})` then `if (!f.isFile()) continue`).
@@ -360,7 +390,7 @@ function writeReceiptImmutable(dir, baseName, body, ctx) {
   // print "it DOES authorize this action right now — re-run not needed" for an
   // entry the guard skips entirely. The guard is halt-and-report, not block, so
   // that assurance is exactly what an agent rationalizes past. Same divergence
-  // shape as the defect this whole change exists to close, through another door.
+  // shape as the defect this whole function exists to close, through another door.
   const esc = baseName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const familyRe = new RegExp(`^${esc}(?:-[0-9]+(?:-[0-9]+)?)?\\.md$`);
   let entries = [];
@@ -383,7 +413,7 @@ function writeReceiptImmutable(dir, baseName, body, ctx) {
   // Nothing on disk authorizes this action right now. Add a time component so the
   // new receipt lands beside the dead ones instead of colliding with them.
   const hhmmss = ctx.iso.slice(11, 19).replace(/:/g, "");
-  for (let n = 1; n <= 32; n++) {
+  for (let n = 1; n <= RECEIPT_TIME_SUFFIX_BUDGET; n++) {
     const cand = path.join(
       dir,
       `${baseName}-${hhmmss}${n === 1 ? "" : `-${n}`}.md`,
@@ -526,9 +556,9 @@ function main() {
   // marker regex and this file's `receiptTimestampMs` use — genuinely breaks on
   // them, while `\r\n` alone does not match them. Today they are unexploitable
   // for the marker itself (the literal is blocked case-insensitively on its own),
-  // but the freshness check added above now reads an ANCHORED `^timestamp:` line
-  // back out of a receipt, so a smuggled line terminator in `action:` is one edit
-  // away from forging the field that decides whether a receipt is still live.
+  // but `receiptLiveness` now reads an ANCHORED `^timestamp:` line back out of a
+  // receipt, so a smuggled line terminator in `action:` is one edit away from
+  // forging the field that decides whether a receipt is still live.
   for (const [name, val] of [
     ["action", action],
     ["instruction", instruction],
@@ -552,8 +582,10 @@ function main() {
   const date = isoDateUTC(now);
   const ts = now.toISOString();
   const slug = slugify(`${target}-${action}`) || "cross-repo";
-  const digest = actionDigest(target, action, mode);
-  const baseName = `${date}-${slug}-${digest}`;
+  // `mode` is in the digest DELIBERATELY — see tripleDigest. Without it a read
+  // receipt and a write receipt for one (target, action) share a filename and
+  // the read silently revokes the write.
+  const baseName = `${date}-${slug}-${tripleDigest(target, action, mode)}`;
 
   // The marker line MUST match violation-patterns.js::
   // hasCrossRepoAuthorizationReceipt exactly: `cross-repo-authorized: <slug> <mode>`.
@@ -647,9 +679,11 @@ ${conditionsBlock.map((l) => `- ${l}`).join("\n")}
   (violation-patterns.js::hasCrossRepoAuthorizationReceipt) greps this file's
   marker line in the WORKING TREE — not in git — so enforcement does not depend
   on whether this file is committed. Authorization EXPIRES: the guard bounds a
-  receipt's age by the "timestamp:" field above (not file mtime, not the
-  filename's date), so it stops clearing anything once that window elapses. Re-run
-  the ceremony for a fresh one; it will not overwrite this record.
+  receipt's age by the "timestamp:" field above — NOT by filesystem mtime (git
+  rewrites mtime on checkout / worktree-add / clone) and NOT by the filename's
+  date — so it stops clearing anything once that window elapses. Editing that
+  timestamp: field is editing the authorization's expiry. Re-run the ceremony
+  for a fresh one; it will not overwrite this record.
 
   ${localityNote}
 -->
@@ -684,7 +718,9 @@ ${conditionsBlock.map((l) => `- ${l}`).join("\n")}
   }
   if (written.exhausted) {
     fail(
-      `could not find a free receipt filename under ${path.relative(root, dir)} for ${baseName} — 33 candidates all exist and none is live. Investigate before proceeding; do NOT delete receipts to make room.`,
+      `could not find a free receipt filename under ${path.relative(root, dir)} for ${baseName} — ` +
+        `${RECEIPT_TIME_SUFFIX_BUDGET + 1} candidates all exist and none is live. Investigate before ` +
+        `proceeding; do NOT delete receipts to make room.`,
     );
   }
   const filePath = written.path;

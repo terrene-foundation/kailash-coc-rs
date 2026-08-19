@@ -1,288 +1,463 @@
 #!/usr/bin/env node
 /**
- * sync-preflight-local-mods — enumerate shared artifacts a `/sync-from-template`
- * is about to REPLACE, and separate the ones that carry consumer-authored edits
- * from the ones that are merely stale.
+ * sync-preflight-local-mods.mjs — surface consumer-authored local modifications
+ * that `/sync-from-template` would REPLACE WHOLE, before the sync writes anything.
  *
- * WHY THIS EXISTS (issue #64). `/sync-from-template` § Merge Semantics opens
- * "This is a **merge**, not an overwrite" and then specifies, four lines later,
- * "If a file exists in BOTH the template and this repo, the template version
- * wins". The second sentence IS an overwrite. There is no per-file merge, no
- * three-way merge and no conflict surface anywhere in the command — preservation
- * is by PATH CATEGORY only (`agents/project/**`, `skills/project/**`,
- * `learning/**`, `.proposals/**`, `settings.local.json`, `workspaces/**`, root
- * `CLAUDE.md`). Every shared artifact outside those categories is replaced.
+ * `/sync-from-template` is a CATEGORY-BASED REPLACE, not a per-file merge
+ * (`commands/sync-from-template.md` § Downstream Sync). A path in a SHARED
+ * category is replaced whole by the template's copy — a local edit to it is
+ * discarded with no conflict marker and no diff to review. This tool finds those
+ * edits FIRST so a human can decide per file.
  *
- * That is survivable ONLY if the consumer never edits a shared artifact. But the
- * same command instructs downstream consumers to `/codify` locally, and there is
- * no `rules/project/` or `commands/project/` namespace — so a consumer who
- * codifies a rule has nowhere sanctioned to put it, and the edit is destroyed on
- * the next sync with no conflict, no warning and no record.
+ * THREE-VALUED EXIT — the third value is the load-bearing one:
  *
- * This tool does NOT change the merge semantics. It makes the loss VISIBLE
- * BEFORE it happens, which is the difference between a decision and an accident.
- * It answers exactly one question per shared artifact: *if the sync ran now,
- * would it discard work someone here authored?*
+ *   0  nothing at risk. The scan RAN and found no consumer-authored modification
+ *      in the scanned set.
+ *   2  at-risk modifications found. A HUMAN decides per file before the sync runs.
+ *   1  THE CHECK DID NOT RUN. Not a git repo, no `.claude/` at --root, a git
+ *      invocation failed, or a bad flag. This is the ABSENCE of a result, not a
+ *      clean result, and MUST NEVER be read as "safe" (`instrument-discipline.md`
+ *      MUST-1: a non-discriminating outcome is not evidence). Fix the invocation
+ *      and re-run; proceeding on a 1 is BLOCKED.
  *
- * The distinction it draws is deliberate and is the whole point:
- *   - DIFFERS + only sync-shaped commits  -> STALE. The template moved ahead;
- *     replacing it is the sync working correctly. Not reported as at-risk.
- *   - DIFFERS + >=1 consumer-authored commit -> AT RISK. Local institutional
- *     knowledge is about to be silently discarded.
- * Without that split the report is noise: on a healthy consumer nearly every
- * shared artifact differs from the template, so "differs" alone flags everything
- * and gets ignored — the alert-fatigue failure that makes a gate worthless.
+ * The 0/1 split is the whole point. A tool that returned 0 when it could not run
+ * would be indistinguishable, at the call site, from a tool that ran clean — the
+ * exact instrument failure this file exists to avoid reproducing.
  *
- * Authorship is judged by COMMIT SUBJECT, not by content: a sync lands as a
- * recognizable `chore(sync)` / `chore(coc-sync)` / `sync-from-template` commit,
- * and anything else touching a shared artifact was authored here. The pattern is
- * overridable (`--sync-subject-re`) because a consumer may land syncs under its
- * own convention; a consumer whose sync commits are NOT recognized sees its own
- * syncs counted as local authorship, which fails toward OVER-reporting (a
- * false at-risk), never toward silently missing a real loss.
+ * COVERAGE RESIDUAL (stated, not assumed away). Only the six SHARED_GLOB_DIRS
+ * below are scanned. `.claude/bin/`, `.claude/hooks/`, `.claude/audit-fixtures/`
+ * and files at the `.claude/` ROOT are NOT scanned, so a local modification there
+ * is replaced with no warning from this tool. Check those by hand (`git status`)
+ * until the scanned set widens.
  *
- * Exit codes are three-valued so this can gate a sync without conflating
- * "nothing at risk" with "the check could not run":
- *   0 = no shared artifact carries consumer-authored edits (safe to replace)
- *   2 = at least one does (a human decides before the sync runs)
- *   1 = usage / resolution error (the check did NOT run — never read as safe)
+ * DIRECTION OF FAILURE: the classifier over-reports (flags a sync-authored file
+ * as consumer-authored) rather than silently missing a real loss. A false exit 2
+ * costs a human read; a false exit 0 costs the edit.
  *
- * AUDIENCE CAVEAT, found by running this against real history rather than only
- * fixtures: the intended subject is a CONSUMER (`coc-project`) that pulls from a
- * template. Run inside a TEMPLATE repo it over-reports by construction, because a
- * template's own authoring commits are genuinely local authorship of files that
- * are, from its perspective, shared artifacts. That is not a defect and is not
- * worth "fixing" with a repo-class check — but a template-side operator reading a
- * large at-risk count should know why before treating it as alarming.
+ * Usage:
+ *   node .claude/bin/sync-preflight-local-mods.mjs [--root <dir>] [--json]
+ *                                                  [--sync-subject-re <regex>]
  */
 
-import fs from "fs";
-import path from "path";
-import { execFileSync } from "child_process";
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 
-// MUST mirror `/sync-from-template` § Merge Semantics → "Preserved" EXACTLY.
-// A file under any of these is never replaced, so it is never at risk and is
-// excluded from the scan.
-//
-// This list and the command's list are ONE contract in TWO places, which is the
-// exact drift shape issue #64 reports (a headline promising "merge" while the
-// rule below it specified "replace"). `test-64.mjs` § T9 parses the command's
-// list out of the markdown and asserts set equality with this constant, so the
-// two cannot silently diverge — reproducing #64 one layer down is the failure
-// mode that test exists to prevent.
-const PRESERVED_PREFIXES = [
-  ".claude/agents/project/",
-  ".claude/skills/project/",
-  ".claude/rules/project/",
-  ".claude/commands/project/",
-  ".claude/learning/",
-  ".claude/.proposals/",
-  ".claude/team-memory/",
-  ".claude/workspaces/",
-  "workspaces/",
-];
-const PRESERVED_EXACT = new Set([".claude/settings.local.json", "CLAUDE.md"]);
-
-// The shared-artifact surface the command lists as "Updated from template".
+/**
+ * The six shared directories a consumer receives from its USE template and may
+ * locally modify. FIXED — widening this set is a contract change that must also
+ * update the residual paragraph above and both `sync-from-template.md` bodies.
+ */
 const SHARED_GLOB_DIRS = [
-  ".claude/agents",
-  ".claude/commands",
-  ".claude/rules",
-  ".claude/skills",
-  ".claude/guides",
-  ".claude/team-memory",
+  "agents",
+  "commands",
+  "guides",
+  "rules",
+  "skills",
+  "templates",
 ];
 
-// DERIVED FROM OBSERVED HISTORY, not guessed. The first cut of this pattern
-// matched only `chore(sync)` / `chore(coc-sync)` / `sync:` and, run against a
-// real 25-commit window, misclassified 59 of 82 differing artifacts as
-// consumer-authored — because real syncs also land as `chore(coc):`,
-// `sync(loom):`, `sync(coc):` and `release(coc-template):`. That is the
-// alert-fatigue failure this tool exists to avoid, so the default is pinned to
-// the shapes actually present rather than to a plausible-looking guess.
-// Re-derive with:
-//   git log --format=%s -- .claude/rules/ | sed -E 's/[0-9]+/N/g' | sort | uniq -c | sort -rn
-// Genuine local work in that same window (`fix(upflow):`, `fix(security):`,
-// `feat(rules):`) is correctly NOT matched — the pattern must keep letting those
-// through, which is what the fixtures pin.
-// `first-sync from loom` is the bootstrap sync a consumer lands once, under a
-// `feat:` subject; it is unambiguously a sync and is matched anywhere in the
-// subject rather than at the start.
-const DEFAULT_SYNC_SUBJECT_RE =
-  "(^(chore\\((coc-)?sync\\)|chore\\(coc\\)|chore\\(sync-from-template\\)|sync\\([a-z-]+\\)|sync:|release\\(coc-template\\)|Merge pull request .* from .*sync)|first-sync from loom)";
+/**
+ * Paths INSIDE a shared dir that the sync PRESERVES (consumer-owned by category),
+ * so a local modification there is not at risk and must not be reported.
+ * Mirrors the preserved set in `commands/sync-from-template.md` § Downstream Sync.
+ */
+const PRESERVED_SUBDIRS = ["project"];
 
-function fail(msg) {
-  process.stderr.write(`sync-preflight-local-mods: ${msg}\n`);
-  process.exit(1);
+/**
+ * CONSUMER-OWNED files at the `.claude/` ROOT (loom#1729).
+ *
+ * These are shipped ONCE as a scaffold and thereafter WRITTEN BY THE CONSUMER.
+ * They are consumer-owned in exactly the sense `commands/sync-from-template.md`
+ * § Downstream Sync step 3 already names for `rules/project/` and `team-memory/**`
+ * — "MUST NEVER be overwritten" — but they live at the `.claude/` ROOT, which the
+ * six SHARED_GLOB_DIRS above do not reach. That is the whole gap: the category
+ * existed, the enforcement did not extend to this location.
+ *
+ * WHY A POST-CONDITION AND NOT ONLY A PRE-SCAN. The failure mode is silent LOSS,
+ * not a visible conflict: the registry returns to `{"deferrals": {}}` and the
+ * SessionStart surface then reports "✓ Verified Empty", which is INDISTINGUISHABLE
+ * from a consumer who never deferred anything. A pre-scan can only say what is at
+ * risk; nothing in the outcome discriminates survival from loss. `--snapshot` /
+ * `--verify` is that discriminator: it can only pass if the bytes actually survived.
+ */
+const CONSUMER_OWNED_ROOT_FILES = [".claude/deferrals.json"];
+
+/**
+ * Default matcher for a commit authored BY the sync rather than by the consumer.
+ * A file whose every touching commit matches this is template-authored; one with
+ * at least one non-matching commit carries a consumer edit.
+ *
+ * Deliberately broad: over-matching here would UNDER-report (the wrong direction),
+ * so the pattern is anchored on sync-verb vocabulary rather than on any single
+ * repo's commit style, and `--sync-subject-re` exists for repos whose sync commits
+ * do not use it.
+ */
+const DEFAULT_SYNC_SUBJECT_RE =
+  "(sync-from-template|sync-to-use|sync-to-build|/sync\\b|\\bcoc sync\\b|^(chore|sync)\\((coc|sync|template)\\))";
+
+class DidNotRun extends Error {
+  constructor(reason) {
+    super(reason);
+    this.name = "DidNotRun";
+  }
 }
 
 function parseArgs(argv) {
-  const out = {};
+  const opts = {
+    root: process.cwd(),
+    json: false,
+    syncSubjectRe: DEFAULT_SYNC_SUBJECT_RE,
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === "--json") {
-      out.json = true;
-      continue;
+    if (a === "--json") opts.json = true;
+    else if (a === "--root") {
+      if (!argv[i + 1]) throw new DidNotRun("--root requires a directory");
+      opts.root = argv[++i];
+    } else if (a === "--sync-subject-re") {
+      if (!argv[i + 1]) throw new DidNotRun("--sync-subject-re requires a regex");
+      opts.syncSubjectRe = argv[++i];
+    } else if (a === "--snapshot") {
+      if (!argv[i + 1]) throw new DidNotRun("--snapshot requires a receipt path");
+      opts.snapshot = argv[++i];
+    } else if (a === "--verify") {
+      if (!argv[i + 1]) throw new DidNotRun("--verify requires a receipt path");
+      opts.verify = argv[++i];
+    } else if (a === "--help" || a === "-h") {
+      opts.help = true;
+    } else {
+      throw new DidNotRun(`unrecognized flag: ${a}`);
     }
-    if (a.startsWith("--")) {
-      const k = a.slice(2);
-      const nxt = argv[i + 1];
-      if (nxt === undefined || nxt.startsWith("--")) out[k] = true;
-      else {
-        out[k] = nxt;
-        i++;
+  }
+  if (opts.snapshot && opts.verify) {
+    throw new DidNotRun("--snapshot and --verify are mutually exclusive");
+  }
+  return opts;
+}
+
+function git(root, args) {
+  try {
+    return execFileSync("git", ["-C", root, ...args], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (e) {
+    throw new DidNotRun(
+      `git ${args.join(" ")} failed: ${String(e.stderr || e.message).trim()}`,
+    );
+  }
+}
+
+/** Every file under the six shared dirs, minus the preserved subdirs. */
+function enumerateSharedFiles(root) {
+  const claude = path.join(root, ".claude");
+  if (!fs.existsSync(claude) || !fs.statSync(claude).isDirectory()) {
+    throw new DidNotRun(`no .claude/ directory under ${root}`);
+  }
+  const out = [];
+  for (const dir of SHARED_GLOB_DIRS) {
+    const abs = path.join(claude, dir);
+    if (!fs.existsSync(abs)) continue;
+    walk(abs);
+  }
+  return out.sort();
+
+  function walk(abs) {
+    for (const ent of fs.readdirSync(abs, { withFileTypes: true })) {
+      const child = path.join(abs, ent.name);
+      const rel = path.relative(root, child).split(path.sep).join("/");
+      if (ent.isDirectory()) {
+        if (PRESERVED_SUBDIRS.includes(ent.name)) continue;
+        walk(child);
+      } else if (ent.isFile()) {
+        out.push(rel);
       }
     }
   }
-  return out;
 }
 
-function gitTop(dir) {
+/**
+ * Classify one path. Returns {rel, atRisk, reason}.
+ *
+ * At risk when EITHER:
+ *   (a) the working tree carries an uncommitted modification to it, OR
+ *   (b) at least one commit touching it has a subject the sync-subject matcher
+ *       does NOT recognize — i.e. a consumer authored it.
+ */
+function classify(root, rel, syncRe, dirtySet) {
+  if (dirtySet.has(rel)) {
+    return { rel, atRisk: true, reason: "uncommitted local modification" };
+  }
+  const log = git(root, ["log", "--format=%s", "--", rel]).trim();
+  if (log === "") {
+    // Untracked-but-present, or no history: cannot show it is template-authored.
+    return { rel, atRisk: true, reason: "no commit history (untracked?)" };
+  }
+  const subjects = log.split("\n");
+  const consumerAuthored = subjects.filter((s) => !syncRe.test(s));
+  if (consumerAuthored.length === 0) {
+    return { rel, atRisk: false, reason: "all commits are sync-authored" };
+  }
+  return {
+    rel,
+    atRisk: true,
+    reason: `consumer-authored commit: ${consumerAuthored[0]}`,
+  };
+}
+
+/** Consumer-owned root files that EXIST under `root`, as repo-relative paths. */
+function enumerateConsumerOwnedRootFiles(root) {
+  return CONSUMER_OWNED_ROOT_FILES.filter((rel) => {
+    const abs = path.join(root, rel);
+    return fs.existsSync(abs) && fs.statSync(abs).isFile();
+  }).sort();
+}
+
+/** sha256 of a file's bytes. Throws DidNotRun if unreadable — never a fake digest. */
+function hashFile(abs) {
   try {
-    return execFileSync("git", ["rev-parse", "--show-toplevel"], {
-      cwd: dir,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-  } catch {
-    return null;
+    return createHash("sha256").update(fs.readFileSync(abs)).digest("hex");
+  } catch (e) {
+    throw new DidNotRun(`cannot read ${abs}: ${e.message}`);
   }
 }
 
-function walk(root, rel, acc) {
-  const abs = path.join(root, rel);
-  let entries;
+/**
+ * Record the pre-sync bytes of every EXISTING consumer-owned root file.
+ * A path that is absent is recorded as absent — so the "absent registry still
+ * receives the scaffold" case verifies clean rather than reading as a loss.
+ */
+function snapshotConsumerOwned(root) {
+  const entries = {};
+  for (const rel of CONSUMER_OWNED_ROOT_FILES) {
+    const abs = path.join(root, rel);
+    entries[rel] =
+      fs.existsSync(abs) && fs.statSync(abs).isFile()
+        ? { present: true, sha256: hashFile(abs) }
+        : { present: false, sha256: null };
+  }
+  return { version: 1, root, taken_at_sha: headSha(root), entries };
+}
+
+function headSha(root) {
   try {
-    entries = fs.readdirSync(abs, { withFileTypes: true });
+    return git(root, ["rev-parse", "HEAD"]).trim();
   } catch {
-    return acc;
+    return null; // a snapshot is still valid without one; never fabricate
   }
-  for (const e of entries) {
-    const r = path.posix.join(rel, e.name);
-    if (e.isDirectory()) walk(root, r, acc);
-    else if (e.isFile()) acc.push(r);
-  }
-  return acc;
 }
 
-function isPreserved(rel) {
-  if (PRESERVED_EXACT.has(rel)) return true;
-  return PRESERVED_PREFIXES.some((p) => rel.startsWith(p));
+/**
+ * Compare the CURRENT bytes against a snapshot. A violation is exactly:
+ *   - present-before → absent-after   (destroyed)
+ *   - present-before → different-after (overwritten)
+ * An absent-before path is unconstrained: receiving the scaffold is the
+ * create-if-absent case the mechanism exists to allow.
+ */
+function verifyConsumerOwned(root, snap) {
+  if (!snap || snap.version !== 1 || !snap.entries) {
+    throw new DidNotRun("snapshot receipt is malformed or not version 1");
+  }
+  const violations = [];
+  for (const [rel, before] of Object.entries(snap.entries)) {
+    if (!before.present) continue;
+    const abs = path.join(root, rel);
+    if (!fs.existsSync(abs)) {
+      violations.push({ path: rel, reason: "DESTROYED — present before the sync, absent after" });
+      continue;
+    }
+    const after = hashFile(abs);
+    if (after !== before.sha256) {
+      violations.push({
+        path: rel,
+        reason: `OVERWRITTEN — bytes changed (${before.sha256.slice(0, 12)} → ${after.slice(0, 12)})`,
+      });
+    }
+  }
+  return violations;
 }
 
-// Commits touching `rel`, split into sync-shaped vs consumer-authored by SUBJECT.
-function commitsFor(root, rel, syncRe) {
-  let out;
-  try {
-    out = execFileSync("git", ["log", "--format=%H%x1f%s", "--", rel], {
-      cwd: root,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-  } catch {
-    return { total: 0, local: 0, localSubjects: [] };
+function run(argv) {
+  const opts = parseArgs(argv);
+  if (opts.help) {
+    process.stdout.write(
+      "usage: sync-preflight-local-mods.mjs [--root <dir>] [--json] [--sync-subject-re <regex>]\n" +
+        "       sync-preflight-local-mods.mjs --snapshot <receipt>   (BEFORE the sync writes)\n" +
+        "       sync-preflight-local-mods.mjs --verify <receipt>     (AFTER the merge)\n" +
+        "exit 0 = nothing at risk · 2 = human decides · 1 = DID NOT RUN (never read as safe)\n",
+    );
+    return { exit: 0, report: null };
   }
-  const lines = out.split("\n").filter(Boolean);
-  const localSubjects = [];
-  for (const line of lines) {
-    const [, subject = ""] = line.split("\x1f");
-    if (!syncRe.test(subject)) localSubjects.push(subject);
+
+  if (opts.snapshot) {
+    const root = path.resolve(opts.root);
+    if (!fs.existsSync(root)) throw new DidNotRun(`--root does not exist: ${root}`);
+    const snap = snapshotConsumerOwned(root);
+    fs.writeFileSync(opts.snapshot, JSON.stringify(snap, null, 2) + "\n");
+    return { exit: 0, report: { mode: "snapshot", receipt: opts.snapshot, entries: snap.entries }, json: opts.json };
   }
-  return { total: lines.length, local: localSubjects.length, localSubjects };
-}
 
-function main() {
-  const args = parseArgs(process.argv.slice(2));
+  if (opts.verify) {
+    const root = path.resolve(opts.root);
+    if (!fs.existsSync(opts.verify)) {
+      throw new DidNotRun(`--verify receipt does not exist: ${opts.verify} (was --snapshot run?)`);
+    }
+    let snap;
+    try {
+      snap = JSON.parse(fs.readFileSync(opts.verify, "utf8"));
+    } catch (e) {
+      throw new DidNotRun(`--verify receipt is not readable JSON: ${e.message}`);
+    }
+    const violations = verifyConsumerOwned(root, snap);
+    return {
+      exit: violations.length > 0 ? 2 : 0,
+      report: { mode: "verify", receipt: opts.verify, checked: Object.keys(snap.entries).length, violations },
+      json: opts.json,
+    };
+  }
 
-  const templateArg = args.template || process.env.KAILASH_COC_TEMPLATE_PATH;
-  if (!templateArg || templateArg === true)
-    fail("missing --template <path-to-template-checkout> (or KAILASH_COC_TEMPLATE_PATH)");
-  const template = path.resolve(String(templateArg));
-  if (!fs.existsSync(path.join(template, ".claude")))
-    fail(`--template ${template} does not contain a .claude/ directory`);
-
-  const rootArg = args.root && args.root !== true ? String(args.root) : process.cwd();
-  const root = gitTop(rootArg);
-  if (!root) fail(`not inside a git working tree: ${rootArg}`);
+  const root = path.resolve(opts.root);
+  if (!fs.existsSync(root)) throw new DidNotRun(`--root does not exist: ${root}`);
 
   let syncRe;
   try {
-    syncRe = new RegExp(
-      args["sync-subject-re"] && args["sync-subject-re"] !== true
-        ? String(args["sync-subject-re"])
-        : DEFAULT_SYNC_SUBJECT_RE,
-    );
+    syncRe = new RegExp(opts.syncSubjectRe);
   } catch (e) {
-    fail(`--sync-subject-re is not a valid regex: ${e.message}`);
+    throw new DidNotRun(`--sync-subject-re is not a valid regex: ${e.message}`);
   }
 
-  // Candidate set = files present in BOTH trees (the command's "template version
-  // wins" case). Template-only files are ADDED (no loss); consumer-only files are
-  // PRESERVED by the "exists ONLY in this repo" clause (no loss).
-  const candidates = [];
-  for (const d of SHARED_GLOB_DIRS) {
-    for (const rel of walk(template, d, [])) {
-      if (isPreserved(rel)) continue;
-      if (fs.existsSync(path.join(root, rel))) candidates.push(rel);
-    }
-  }
-  candidates.sort();
+  // Establishes we are in a git work tree at all; throws DidNotRun otherwise.
+  git(root, ["rev-parse", "--is-inside-work-tree"]);
 
-  const atRisk = [];
-  const stale = [];
-  for (const rel of candidates) {
-    let same;
-    try {
-      same = fs.readFileSync(path.join(root, rel)).equals(fs.readFileSync(path.join(template, rel)));
-    } catch {
-      continue;
-    }
-    if (same) continue; // identical → replacing it changes nothing
-    const c = commitsFor(root, rel, syncRe);
-    const row = { path: rel, commits_total: c.total, commits_local: c.local, local_subjects: c.localSubjects.slice(0, 3) };
-    if (c.local > 0) atRisk.push(row);
-    else stale.push(row);
-  }
+  const dirty = new Set(
+    git(root, ["status", "--porcelain", "--", ".claude"])
+      .split("\n")
+      .filter(Boolean)
+      .map((l) => l.slice(3).trim())
+      .filter(Boolean),
+  );
 
-  const report = {
-    template,
-    root,
-    shared_in_both: candidates.length,
-    would_be_replaced: atRisk.length + stale.length,
-    at_risk_count: atRisk.length,
-    stale_count: stale.length,
-    at_risk: atRisk,
-    stale: stale.map((r) => r.path),
+  const files = enumerateSharedFiles(root);
+  const results = files.map((rel) => classify(root, rel, syncRe, dirty));
+  const atRisk = results.filter((r) => r.atRisk);
+
+  return {
+    exit: atRisk.length > 0 ? 2 : 0,
+    report: {
+      root,
+      scanned_dirs: SHARED_GLOB_DIRS,
+      // loom#1729 — the consumer-owned ROOT files are no longer in the unscanned
+      // residual: they are enumerated below and enforced by --snapshot/--verify.
+      // The rest of the residual stands and is stated rather than assumed away.
+      unscanned_note:
+        ".claude/bin, .claude/hooks and .claude/audit-fixtures are NOT scanned; " +
+        ".claude/ root files other than the consumer-owned set below are NOT scanned",
+      consumer_owned_root_files: CONSUMER_OWNED_ROOT_FILES,
+      consumer_owned_present: enumerateConsumerOwnedRootFiles(root),
+      sync_subject_re: opts.syncSubjectRe,
+      scanned: results.length,
+      at_risk: atRisk.map((r) => ({ path: r.rel, reason: r.reason })),
+    },
+    json: opts.json,
   };
-
-  if (args.json) {
-    process.stdout.write(JSON.stringify(report, null, 2) + "\n");
-  } else {
-    process.stdout.write(
-      `\n/sync-from-template preflight — local-modification report\n` +
-        `  template : ${template}\n` +
-        `  consumer : ${root}\n\n` +
-        `  shared artifacts present in BOTH trees : ${report.shared_in_both}\n` +
-        `  differing (WOULD BE REPLACED)          : ${report.would_be_replaced}\n` +
-        `    - stale only (template moved ahead)  : ${report.stale_count}\n` +
-        `    - CARRYING LOCAL EDITS (at risk)     : ${report.at_risk_count}\n\n`,
-    );
-    if (atRisk.length) {
-      process.stdout.write(`  These carry consumer-authored commits and WILL be discarded:\n`);
-      for (const r of atRisk) {
-        process.stdout.write(`    ${r.path}  (${r.commits_local} local of ${r.commits_total} commits)\n`);
-        for (const s of r.local_subjects) process.stdout.write(`        · ${s}\n`);
-      }
-      process.stdout.write(
-        `\n  Nothing has been changed. Disposition is yours: back the edits up, or\n` +
-          `  re-home them under a preserved path, before running the sync.\n\n`,
-      );
-    } else {
-      process.stdout.write(`  No shared artifact carries consumer-authored edits.\n\n`);
-    }
-  }
-
-  process.exit(atRisk.length > 0 ? 2 : 0);
 }
 
-main();
+function main() {
+  let outcome;
+  try {
+    outcome = run(process.argv.slice(2));
+  } catch (e) {
+    // EVERY failure path lands here and exits 1 — never 0. "Did not run" and
+    // "ran clean" must not be confusable at the call site.
+    const reason = e instanceof DidNotRun ? e.message : `unexpected: ${e.message}`;
+    process.stderr.write(
+      `sync-preflight-local-mods: DID NOT RUN — ${reason}\n` +
+        `exit 1 is the ABSENCE of a result, not a clean result. Do NOT proceed with the sync.\n`,
+    );
+    process.exit(1);
+  }
+
+  const { exit, report, json } = outcome;
+  if (!report) process.exit(exit);
+
+  if (json) {
+    process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+    process.exit(exit);
+  }
+
+  if (report.mode === "snapshot") {
+    const present = Object.entries(report.entries).filter(([, v]) => v.present);
+    process.stdout.write(
+      `Consumer-owned snapshot written: ${report.receipt}\n` +
+        `  recorded present: ${present.length} of ${Object.keys(report.entries).length}\n`,
+    );
+    for (const [rel, v] of Object.entries(report.entries)) {
+      process.stdout.write(
+        `  ${rel}  ${v.present ? v.sha256.slice(0, 12) : "(absent — scaffold may land)"}\n`,
+      );
+    }
+    process.exit(exit);
+  }
+
+  if (report.mode === "verify") {
+    if (report.violations.length === 0) {
+      process.stdout.write(
+        `Consumer-owned verify: ${report.checked} checked, 0 violations — every ` +
+          `pre-sync file survived byte-identical.\n`,
+      );
+    } else {
+      process.stdout.write(
+        `Consumer-owned verify: ${report.violations.length} VIOLATION(S) — the sync ` +
+          `destroyed or overwrote consumer-owned state. HALT; do not report success:\n`,
+      );
+      for (const v of report.violations) {
+        process.stdout.write(`  ${v.path}\n      ${v.reason}\n`);
+      }
+    }
+    process.exit(exit);
+  }
+
+  {
+    process.stdout.write(
+      `Scanned: ${report.scanned} files across ${report.scanned_dirs.length} shared dirs (${report.scanned_dirs.join(", ")})\n`,
+    );
+    process.stdout.write(`Not scanned: ${report.unscanned_note}\n`);
+    process.stdout.write(
+      `Consumer-owned (MUST survive the sync; enforce with --snapshot/--verify): ` +
+        `${report.consumer_owned_present.length} present of ${report.consumer_owned_root_files.length} declared` +
+        (report.consumer_owned_present.length
+          ? ` — ${report.consumer_owned_present.join(", ")}\n`
+          : `\n`),
+    );
+    if (report.at_risk.length === 0) {
+      process.stdout.write("At risk: 0 — nothing a sync would silently replace.\n");
+    } else {
+      process.stdout.write(
+        `At risk: ${report.at_risk.length} — a HUMAN decides each before the sync proceeds:\n`,
+      );
+      for (const r of report.at_risk) {
+        process.stdout.write(`  ${r.path}\n      ${r.reason}\n`);
+      }
+    }
+  }
+  process.exit(exit);
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) main();
+
+export {
+  SHARED_GLOB_DIRS,
+  PRESERVED_SUBDIRS,
+  CONSUMER_OWNED_ROOT_FILES,
+  DEFAULT_SYNC_SUBJECT_RE,
+  enumerateConsumerOwnedRootFiles,
+  snapshotConsumerOwned,
+  verifyConsumerOwned,
+  parseArgs,
+  enumerateSharedFiles,
+  classify,
+  run,
+  DidNotRun,
+};

@@ -1,6 +1,6 @@
 ---
 id: "CONNECTION-POOL"
-paths: ["**/db/**", "**/pool*", "**/database*", "**/infrastructure/**"]
+paths: ["**/db/**", "**/pool*", "**/database*", "**/infrastructure/**", "**/*dataflow*/**", "**/*pool*/**", "**/*connection*"]
 ---
 
 # Connection Pool Safety Rules

@@ -171,6 +171,8 @@ compose.override.yml
 .claude/learning/.session-end-cache*
 .claude/learning/derives-from/
 **/.claude/learning/derives-from/
+.claude/learning/dispatch-reconcile/
+.claude/learning/ci-cost-reach/
 .claude/learning/sessionend-release-lease-*
 .claude/learning/.tmp-sereleaselease-*
 .claude/learning/observations.archive/
@@ -186,21 +188,22 @@ compose.override.yml
 **/.claude/mesh/**/*.key
 **/.claude/mesh/**/*.pem
 **/.claude/mesh/**/*.secret
+.session-notes.aggregate.md
+.session-notes.migrated
+.session-notes.migrate.lock
+.wave-tracker.d/
+.wave-tracker.md
+.claude/bin/*.local.json
+.claude/worktrees/
 .claude/cross-repo-authz/
 .session-notes
 .session-notes.d/
 .session-notes.shared.md
-# workspaces/ IS tracked (owner directive 2026-08-07). The COC workspace —
-# briefs, specs, analysis, todos, journals, validation reports — is durable
-# project knowledge, and gitignoring it stranded every /sweep report and
-# workspace journal as local-only.
-# Secrets stay ignored: a workspace .env is a real credential surface, and
-# `security.md` § "No .env in Git" is not lifted by tracking the directory.
-/workspaces/**/.env
-/workspaces/**/.env.*
-!/workspaces/**/.env.example
+/workspaces/*
+!/workspaces/_template/
 !.claude/bin/lib/
 !.claude/hooks/lib/
 !.claude/test-harness/lib/
 !.claude/audit-fixtures/**
+.claude/audit-fixtures/**/.DS_Store
 # <<< coc:gitignore_additions <<<

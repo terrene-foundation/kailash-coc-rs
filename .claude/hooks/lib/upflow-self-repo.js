@@ -303,14 +303,39 @@ function _readPushRemote(cwd) {
   // fence then derived the upstream and authorized a merge on it — the exact
   // pre-guard behavior, for two of the three forms.
   //
-  // Precedence is git's own: branch.<current>.pushRemote, then
-  // remote.pushDefault, then `origin`.
+  // Precedence is git's own, and it has FOUR levels, not three. Quoting
+  // `git help config` under `remote.pushDefault` verbatim: "The remote to push
+  // to by default. Overrides branch.<name>.remote for all branches, and is
+  // overridden by branch.<name>.pushRemote for specific branches." So the chain
+  // is:
+  //     branch.<current>.pushRemote  →  remote.pushDefault
+  //       →  branch.<current>.remote  →  `origin`
+  //
+  // The third level was MISSING and its absence was a live bypass in the most
+  // ORDINARY fork layout there is — no attacker, no unusual config:
+  //     git clone <upstream>                     # origin = UPSTREAM
+  //     git remote add fork <my-fork>
+  //     git checkout -b upflow/x --track fork/upflow/x   # branch.<x>.remote=fork
+  // With pushRemote and pushDefault both unset, the resolver fell through to
+  // `origin`, `git remote get-url --push origin` returned the UPSTREAM, the
+  // pushurl matched the fetch url, the triangular check was SKIPPED, and the
+  // fence derived the UPSTREAM as self — authorizing a merge on it while real
+  // pushes from that tree went to the fork. That is byte-for-byte the scenario
+  // the triangular block above was written to refuse, reached one config key
+  // over. An earlier revision of this comment claimed the three-level chain WAS
+  // "git's own precedence"; that was false against git's own documentation and
+  // is corrected here rather than silently rewritten, because a comment
+  // asserting a completeness the code lacks is the defect class this file
+  // exists to stop.
   let remoteName = null;
   const branch = run(["rev-parse", "--abbrev-ref", "HEAD"]);
   if (branch && branch !== "HEAD") {
     remoteName = run(["config", "--get", `branch.${branch}.pushRemote`]);
   }
   if (!remoteName) remoteName = run(["config", "--get", "remote.pushDefault"]);
+  if (!remoteName && branch && branch !== "HEAD") {
+    remoteName = run(["config", "--get", `branch.${branch}.remote`]);
+  }
   if (!remoteName) remoteName = "origin";
 
   return run(["remote", "get-url", "--push", remoteName]);
@@ -624,7 +649,18 @@ function _parseAdo(host, segments) {
   if (!isAdoHost) return null;
 
   let segs = segments.slice();
-  if (segs[0] && segs[0].toLowerCase() === "v3") segs = segs.slice(1);
+  // SSH-FORM ONLY. `v3` is the ssh path prefix; stripping it on EVERY ado host
+  // permanently locked out a maintainer whose ADO ORG is literally named `v3`
+  // (valid under ADO_ORG_RE): `https://dev.azure.com/v3/proj/_git/repo` lost its
+  // org segment, fell to the `segs.length !== 3` guard and returned null. Fail-
+  // CLOSED, so a lockout not a bypass — but still a wrong answer, and gating the
+  // strip on the two ssh hosts costs nothing.
+  if (
+    (host === "ssh.dev.azure.com" || host === "vs-ssh.visualstudio.com") &&
+    segs[0] &&
+    segs[0].toLowerCase() === "v3"
+  )
+    segs = segs.slice(1);
   segs = segs.filter((p) => p.toLowerCase() !== "_git");
 
   // KNOWN DEFECT, NOT FIXED — recorded because the obvious fix is wrong and I
@@ -690,8 +726,17 @@ function _parseAdo(host, segments) {
   // The legacy TFS/VSTS collection, or null on every form that has no
   // collection slot. Declared here so both branches below can see it.
   let collection = null;
+  // EXACTLY three labels. `endsWith(".visualstudio.com")` alone also accepts a
+  // MULTI-label subdomain, and `org` is cut at the FIRST dot — so
+  // `victimorg.attacker.visualstudio.com` derived `org = "victimorg"`: a tree
+  // whose origin names a host the operator does not own derived an org they do
+  // not have, and the completion PATCH is addressed to `victimorg/...`.
+  // Reachability is low (needs a record at the second label), but "safe by
+  // accident" is the standard this file refuses everywhere else.
   const isOrgSubdomain =
-    host.endsWith(".visualstudio.com") && host !== "vs-ssh.visualstudio.com";
+    host.endsWith(".visualstudio.com") &&
+    host !== "vs-ssh.visualstudio.com" &&
+    host.split(".").length === 3;
   // EXACT counts, same reasoning as the GitHub branch above and the same
   // measured defect: the path is never cut at `#`/`?`, so
   // `.../realorg/realproj/_git/realrepo#/otherproj/otherrepo` filtered to
@@ -875,6 +920,24 @@ function _parseRemoteUrl(url) {
   const ado = _parseAdo(host, segments);
   if (ado) return { host, owner: ado.project, name: ado.repo, ado };
 
+  // AN ADO-FAMILY HOST THAT DID NOT PARSE AS ADO REFUSES — it does NOT fall
+  // through to the generic owner/name parse below. Without this, tightening
+  // `isOrgSubdomain` to exactly three labels merely CHANGED the wrong answer:
+  // `victimorg.attacker.visualstudio.com/proj/_git/repo` stopped deriving
+  // {org: victimorg} and instead derived {owner: "proj", name: "repo",
+  // ado: null} off the generic path — still a derived identity from a host the
+  // operator does not own, just wearing a different shape. Measured at both
+  // poles before and after this clause. An ADO-family host whose path is not
+  // ADO-shaped is unparseable, and unparseable is a REFUSAL here, never a
+  // fallback to a parser that was written for a different host family.
+  if (
+    host === "dev.azure.com" ||
+    host === "ssh.dev.azure.com" ||
+    host.endsWith(".visualstudio.com")
+  ) {
+    return null;
+  }
+
   // EXACTLY two segments, not "at least two, take the last two". Every GitHub
   // remote that resolves has exactly two path segments — `https://github.com/o/r[.git]`,
   // `git@github.com:o/r.git`, `ssh://git@github.com/o/r.git`. A "last two" rule
@@ -979,7 +1042,7 @@ function deriveSelfRepoRef(cwd) {
         "`git remote get-url origin` yielded no remote for this working tree " +
         `(no origin, not a git repo, dubious ownership, or git unavailable${
           _lastGitStderr
-            ? ` — git said: ${sanitizeForReason(_lastGitStderr)}`
+            ? ` — git said: ${reasonText(_lastGitStderr)}`
             : ""
         }); the live remote is the ` +
         "only authoritative self-identity and there is deliberately no directory-name " +
@@ -1053,8 +1116,15 @@ function deriveSelfRepoRef(cwd) {
   // bound this module already discloses, instead of inventing a refusal against
   // a repo the maintainer legitimately owns.
   if (pushParsed && !_sameDerivedIdentity(parsed, pushParsed)) {
+    // BOUNDED (`reasonText`), not merely sanitized. `_splitRemoteUrl` applies no
+    // length cap to `host`, and `sanitizeForReason` replaces one-for-one without
+    // shortening — so a megabyte authority produced a megabyte refusal reason,
+    // which is logged and which /codify Step-7c may embed in a PR body. This is
+    // the SAME defect the bounded `where` operand above documents fixing;
+    // bounding one site and not its sibling is exactly the asymmetry
+    // `security.md` § Enforcement-Surface Parity forbids.
     const describe = (d) =>
-      sanitizeForReason(
+      reasonText(
         d.ado
           ? `${d.host} ${d.ado.org}/${d.ado.project}/${d.ado.repo}`
           : `${d.host} ${d.owner}/${d.name}`,
@@ -1338,7 +1408,7 @@ function sanitizeForReason(text) {
     // \u2014 so an allowlist would mangle the diagnostic this text exists to provide.
     // The denylist is the right strategy for THIS operand and the wrong one for
     // that one; what was missing was completeness within the strategy.
-    /[\x00-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028\u2029\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufe00-\ufe0f\ufeff\u{e0000}-\u{e007f}]/gu,
+    /[\x00-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028\u2029\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufe00-\ufe0f\ufeff\u{e0000}-\u{e007f}\u{e0100}-\u{e01ef}\u00ad\u180e\u115f\u1160\u3164]/gu,
     "?",
   );
 }
@@ -1580,6 +1650,7 @@ function reasonFromError(err) {
 }
 
 module.exports = {
+  _ADO_DEFAULT_COLLECTION,
   deriveSelfRepoRef,
   isSelfRepo,
   isSelfRepoAdo,
