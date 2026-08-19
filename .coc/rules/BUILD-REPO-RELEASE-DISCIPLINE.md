@@ -1,6 +1,6 @@
 ---
 id: "BUILD-REPO-RELEASE-DISCIPLINE"
-paths: ["pyproject.toml", "packages/**/pyproject.toml", "CHANGELOG.md", "packages/**/CHANGELOG.md", "packages/**/__init__.py", "src/kailash/__init__.py", ".github/workflows/publish-pypi.yml", ".github/workflows/publish-*.yml", ".github/workflows/release*.yml", "deploy/deployment-config.md"]
+paths: ["pyproject.toml", "packages/**/pyproject.toml", "CHANGELOG.md", "packages/**/CHANGELOG.md", "packages/**/__init__.py", "src/kailash/__init__.py", ".github/workflows/publish-pypi.yml", ".github/workflows/publish-*.yml", ".github/workflows/release*.yml", "deploy/deployment-config.md", "Cargo.toml", "**/Cargo.toml"]
 ---
 
 # BUILD Repo Release Discipline

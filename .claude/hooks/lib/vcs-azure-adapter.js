@@ -930,6 +930,41 @@ function completeUpflowPR(transport, prRef) {
   //       only for a name whose existence is unconfirmed.
   // Every other difference from `repoRef` was already accepted as equal by the
   // check immediately above.
+  // COLLECTION IS PART OF THE AUTHORIZATION QUAD BUT NOT OF THIS PATH, so a
+  // non-default collection is REFUSED rather than silently dropped. The fence
+  // above authorizes on {org, project, repo, collection}; the PATCH below is
+  // addressed with only the first three, so on a legacy TFS/VSTS remote
+  // (`<org>.visualstudio.com/OtherCollection/<proj>/_git/<repo>`) the check
+  // would verify collection `othercollection` on both sides and ALLOW, while
+  // the request resolved under the DEFAULT collection — authorized for repo A,
+  // delivered to repo B. That is precisely the check-vs-use divergence the
+  // comment above claims to have eliminated by sourcing from `selfAdo`; the
+  // claim was true for three components and false for the fourth.
+  //
+  // Fail CLOSED until the legacy collection-scoped REST routing is verified.
+  // This costs nothing on the three modern forms, which all derive
+  // `collection === null`.
+  // NON-DEFAULT only. `_normalizeCollection` resolves an ABSENT collection to the
+  // DEFAULT one, so `collection === "defaultcollection"` is the ordinary modern
+  // case and IS addressable collection-free. An earlier cut of this guard
+  // refused on `!= null`, which reddened two fixture cases that must ALLOW
+  // (`ado/allow-own-repo-legacy-collection-form`,
+  // `ado/mixed-form-triangular-default-collection-allows`) — over-refusal is a
+  // failure too, and the fixtures caught it.
+  const _selfCollection =
+    selfAdo.collection === null || selfAdo.collection === undefined
+      ? selfRepo._ADO_DEFAULT_COLLECTION
+      : String(selfAdo.collection).toLowerCase();
+  if (_selfCollection !== selfRepo._ADO_DEFAULT_COLLECTION) {
+    return _fail(
+      "completeUpflowPR: non-default ADO collection unsupported",
+      `this tree derives collection ${reasonText(_selfCollection)}, and the ` +
+        `completion endpoint is addressed without a collection segment — so an authorization ` +
+        `granted for that collection would be delivered under the default one. Refusing ` +
+        `rather than mis-addressing (upstream-issue-hygiene.md MUST-4).`,
+    );
+  }
+
   const { org, project, repo } = selfAdo;
   let r;
   try {

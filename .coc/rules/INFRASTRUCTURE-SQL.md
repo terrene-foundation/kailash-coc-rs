@@ -1,6 +1,6 @@
 ---
 id: "INFRASTRUCTURE-SQL"
-paths: ["**/db/**", "**/infrastructure/**"]
+paths: ["**/db/**", "**/infrastructure/**", "**/*dataflow*/**", "**/*sql*/**", "**/migrations/**", "**/*dialect*"]
 ---
 
 # Infrastructure SQL Rules

@@ -1319,10 +1319,10 @@ for (const c of cases) {
   }
   if (err) {
     failed += 1;
-    console.log(`  ✗ ${c.name}`);
+    console.log(`  not ok ${c.name}`);
     console.log(`      ${err}`);
   } else {
-    console.log(`  ✓ ${c.name}`);
+    console.log(`  ok ${c.name}`);
   }
 }
 

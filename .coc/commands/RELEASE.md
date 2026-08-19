@@ -1,5 +1,7 @@
 ---
 id: "RELEASE"
+name: release
+description: "SDK release for the BUILD repo: crate publish, maturin wheels, CLI binaries, CI management."
 ---
 
 # /release - SDK Release Command

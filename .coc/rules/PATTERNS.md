@@ -1,6 +1,9 @@
 ---
 id: "PATTERNS"
+paths: ["**/*.py", "**/*.ts", "**/*.js", "**/*.rs"]
 ---
+
+# Kailash Pattern Rules
 
 ### 1. Runtime Execution Pattern
 

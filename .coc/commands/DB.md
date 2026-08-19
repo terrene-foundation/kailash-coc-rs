@@ -1,5 +1,7 @@
 ---
 id: "DB"
+name: db
+description: "DataFlow quick reference: DB, CRUD, bulk, migrations, multi-tenancy, fabric engine."
 ---
 
 # /db - DataFlow Quick Reference

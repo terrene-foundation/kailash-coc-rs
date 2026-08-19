@@ -1,6 +1,6 @@
 ---
 id: "TESTING"
-paths: ["tests/**", "**/*test*", "**/*spec*", "conftest.py", "**/.spec-coverage*", "**/.test-results*", "**/02-plans/**", "**/04-validate/**"]
+paths: ["tests/**", "**/*test*", "**/*spec*", "conftest.py", "**/.spec-coverage*", "**/.test-results*", "**/02-plans/**", "**/04-validate/**", "crates/**"]
 ---
 
 # Testing Rules

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * signing-mutation-guard — canonical fixture runner (#89 AC-3).
+ * signing-mutation-guard — canonical fixture runner (coc-rs#89 AC-3).
  *
  * WHY THIS EXISTS. `.claude/audit-fixtures/signing-mutation-guard/` shipped six
- * fixtures and no runner, so nothing executed them. #74 filed a suspected HIGH
+ * fixtures and no runner, so nothing executed them. coc-rs#74 filed a suspected HIGH
  * fail-open against this guard on the strength of a direct fixture invocation
  * that could not be trusted precisely because there was no canonical way to
- * drive one. #89 carved that out and named the runner as AC-3.
+ * drive one. coc-rs#89 carved that out and named the runner as AC-3.
  *
  * THE PRECONDITION IS THE WHOLE POINT. The guard gates its ENTIRE substrate —
  * both the §4.2 sibling-porcelain check and the degraded-mode block — behind
@@ -68,9 +68,16 @@ const { isCoordinationEnabled, _resetCache } = require_(
 
 let pass = 0,
   fail = 0;
+// Per-case lines MUST match run-audit-fixtures.mjs::CASE_PASS / CASE_FAIL
+// (/^[ \t]*(?:PASS|ok)[ \t]+\S/ and /^[ \t]*(?:FAIL|not ok)[ \t]+\S/). A "  ✓ <name>"
+// line matches NEITHER: the harness then counted ONE case here — the summary line —
+// against a declared min_cases of 44, so the runner passed when run directly and was
+// REJECTED by CI. Worse, with no parseable per-case line an ALL-FAILING run still
+// presents as 1p/0f. Keep this format aligned with audit-fixtures/delegation-default.
 function check(name, ok, detail, falsifier) {
+  const idx = String(pass + fail + 1).padStart(2, "0");
   ok ? pass++ : fail++;
-  console.log(`${ok ? "  ✓" : "  ✗"} ${name}`);
+  console.log(`${ok ? "PASS" : "FAIL"}  ${idx}  ${name}`);
   if (detail) console.log(`      ${detail}`);
   if (!ok) console.log(`      FALSIFIER: ${falsifier}`);
 }
@@ -80,7 +87,7 @@ function check(name, ok, detail, falsifier) {
 // HARNESS-ESTABLISHED PRECONDITIONS. `input.json::_env` carries what the fixture
 // injects; these are the preconditions the fixture's DECLARED PREDICATE requires
 // but does not itself spell out. Each carries a `why` printed with the check, so a
-// precondition failure is never mistaken for a guard failure (#89's whole lesson).
+// precondition failure is never mistaken for a guard failure (coc-rs#89's whole lesson).
 const PRECONDITIONS = {
   "01-halt-sibling-porcelain": {
     signingKey: true,
@@ -276,7 +283,7 @@ console.log("\n=== T1: every fixture on disk is driven by this runner ===");
     "no fixture on disk is left undriven by this runner",
     extra.length === 0,
     `undriven: ${JSON.stringify(extra)}`,
-    "non-empty = a fixture exists that this runner silently ignores — the #74 'could not be trusted' condition, reopened",
+    "non-empty = a fixture exists that this runner silently ignores — the coc-rs#74 'could not be trusted' condition, reopened",
   );
   for (const f of onDisk) {
     check(
@@ -339,7 +346,7 @@ const onRepo = mkrepo(true);
     "PRECONDITION — isCoordinationEnabled() is TRUE at the fixture repo",
     isCoordinationEnabled(onRepo) === true,
     `repo=${onRepo} via tier-2 .claude/learning/coordination-mode.json {"enabled":true}`,
-    "false = the substrate opt-in gate (signing-mutation-guard.js:398) short-circuits to passthrough BEFORE any predicate runs; every block/halt fixture below would then fail for a HARNESS reason, not a guard reason — the exact #89 defect",
+    "false = the substrate opt-in gate (signing-mutation-guard.js:398) short-circuits to passthrough BEFORE any predicate runs; every block/halt fixture below would then fail for a HARNESS reason, not a guard reason — the exact coc-rs#89 defect",
   );
 
   for (const name of EXPECTED_FIXTURES) {
@@ -423,7 +430,7 @@ console.log("\n=== T7: the loom#1323 asymmetry is locked in BOTH directions ==="
 // ---- T8: NEGATIVE CONTROL — the precondition is load-bearing ------------------
 // The instrument must be shown to DISCRIMINATE, not merely to have printed a
 // plausible value (instrument-discipline.md MUST-1/MUST-3). Driving the SAME
-// fixtures at a coordination-OFF repo reproduces #89's measured passthrough, so
+// fixtures at a coordination-OFF repo reproduces coc-rs#89's measured passthrough, so
 // T3's greens are attributable to the precondition rather than to luck.
 console.log("\n=== T8: NEGATIVE CONTROL — the same fixtures at coordination=OFF ===");
 const offRepo = mkrepo(false);
@@ -435,26 +442,46 @@ const offRepo = mkrepo(false);
     "true = the control repo is NOT actually coordination-OFF, so the rows below prove nothing about the precondition",
   );
 
-  for (const name of [
+  const T8_FIXTURES = [
     "01-halt-sibling-porcelain",
     "03-block-degraded-mode-mutation",
     "06-block-git-commit-degraded",
-  ]) {
+  ];
+
+  // exit/continue ALONE cannot separate a passthrough from a §4.2 finding: at
+  // coordination-ON, 01 emits [HALT-AND-REPORT] at exit 0 / continue true — byte-identical
+  // to 02's silent pass on both of those fields. Asserting the ABSENCE of any severity tag
+  // is what makes this row discriminate for 01 (instrument-discipline.md MUST-1).
+  const offDisposition = {};
+  for (const name of T8_FIXTURES) {
     const fx = loadFixture(name, offRepo, key.path);
     const r = driveGuard(fx.payload, fx.env);
+    const tag = (r.stderr.match(/\[(?:BLOCK|HALT-AND-REPORT|ADVISORY)\]/) || ["(none)"])[0];
+    offDisposition[name] = `exit=${r.code} continue=${r.json?.continue} tag=${tag}`;
     check(
-      `${name}: coordination OFF ⇒ designed passthrough (NOT a fail-open)`,
-      r.code === 0 && r.json?.continue === true,
-      `exit=${r.code} continue=${r.json?.continue} — matches #89's measurement`,
-      "a DENY here would mean the opt-in gate at signing-mutation-guard.js:398 stopped gating, so this fixture's ON-repo green would carry no information about the precondition at all",
+      `${name}: coordination OFF ⇒ SILENT passthrough (NOT a fail-open, NOT a finding)`,
+      r.code === 0 && r.json?.continue === true && tag === "(none)",
+      `${offDisposition[name]} — matches coc-rs#89's measurement`,
+      "a DENY here, or ANY severity tag on stderr, would mean the opt-in gate at signing-mutation-guard.js:398 stopped gating — and WITHOUT the tag leg this row reads identically whether the guard passed through or emitted the full §4.2 finding at exit 0",
     );
   }
-  check(
-    "the precondition therefore CHANGES the outcome (instrument discriminates)",
-    true,
-    "ON ⇒ deny/halt (T3, T7); OFF ⇒ passthrough (T8). Same fixtures, same guard, opposite dispositions.",
-    "n/a — this row summarizes the rows above",
-  );
+
+  // The discrimination claim, EVALUATED rather than asserted. The prior version of this
+  // row asserted the literal `true` with a falsifier reading "n/a": it printed green while
+  // evaluating nothing, and was counted in the CI floor. It now drives the SAME fixtures at
+  // the ON repo and requires each disposition to DIFFER from its OFF counterpart.
+  for (const name of T8_FIXTURES) {
+    const fx = loadFixture(name, onRepo, key.path);
+    const r = driveGuard(fx.payload, fx.env);
+    const tag = (r.stderr.match(/\[(?:BLOCK|HALT-AND-REPORT|ADVISORY)\]/) || ["(none)"])[0];
+    const onDisp = `exit=${r.code} continue=${r.json?.continue} tag=${tag}`;
+    check(
+      `${name}: the precondition CHANGES the disposition (instrument discriminates)`,
+      onDisp !== offDisposition[name],
+      `ON: ${onDisp}   OFF: ${offDisposition[name]}`,
+      "identical dispositions = the opt-in gate is NOT what produces the ON-repo verdict, so every T3/T7 green for this fixture carries no information about the precondition",
+    );
+  }
 }
 
 // ---- cleanup -----------------------------------------------------------------
@@ -462,5 +489,7 @@ fs.rmSync(onRepo, { recursive: true, force: true });
 fs.rmSync(offRepo, { recursive: true, force: true });
 fs.rmSync(key.dir, { recursive: true, force: true });
 
-console.log(`\n${"=".repeat(62)}\nPASS ${pass}   FAIL ${fail}\n${"=".repeat(62)}`);
+// NOT "PASS <n>" — that shape matches CASE_PASS and the harness would count the
+// summary as a 45th case. "SUMMARY:" matches neither case pattern.
+console.log(`\n${"=".repeat(62)}\nSUMMARY: ${pass} passed, ${fail} failed\n${"=".repeat(62)}`);
 process.exit(fail === 0 ? 0 : 1);

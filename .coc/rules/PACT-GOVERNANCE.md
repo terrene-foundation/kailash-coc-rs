@@ -1,6 +1,6 @@
 ---
 id: "PACT-GOVERNANCE"
-paths: ["**/pact/**", "**/governance/**"]
+paths: ["**/pact/**", "**/governance/**", "**/*pact*/**", "**/*governance*/**"]
 ---
 
 # PACT Governance Rules

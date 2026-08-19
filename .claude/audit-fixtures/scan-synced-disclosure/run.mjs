@@ -372,6 +372,37 @@ const CASES = [
     expectFindingCount: 1,
   },
   {
+    // GAP-C regression case (2026-08-16). Named for the finding it pins, per
+    // `coc-artifact-eval-coverage.md` MUST-2: a /redteam finding against a COC
+    // artifact lands a NAMED regression case, so the class fails loudly if a
+    // future edit re-opens it.
+    //
+    // The class: a NON-PUBLIC sibling system named inside a DISTRIBUTED
+    // rule-depth extract, together with its security-posture history. That
+    // shipped to consumers undetected because the token was first suppressed by
+    // a false positive-allowlist entry (GAP B) and then, after that entry was
+    // removed, simply unmatched by any shape — an allowlist REMOVAL un-suppresses
+    // but does not DETECT. This fixture locks the detector half.
+    //
+    // Bipolar by construction, and the poles are load-bearing in opposite
+    // directions: `leaky-extract.md` names the synthetic system alongside a
+    // fail-open→fail-closed history and MUST flag (efficacy); `clean-extract.md`
+    // carries the SAME lesson genericized and MUST NOT flag (no-false-positive,
+    // which is what stops a future "fix" from over-matching the generic
+    // vocabulary the scrub is supposed to leave behind).
+    //
+    // expectFindingCount: 1 locks BOTH poles at once — 2 findings means the
+    // genericized pole regressed into a token; 0 means the fixture-local
+    // denylist read or the shape itself regressed. The token `Synthguard` is
+    // SYNTHETIC and declared in this fixture's OWN denylist, so no real system
+    // name is committed to this (synced) fixture surface.
+    name: "gapc-guide-security-history",
+    dir: "gapc-guide-security-history",
+    expectExit: 1,
+    expectShapes: ["customer-identity-token"],
+    expectFindingCount: 1,
+  },
+  {
     // scenario-11 (sync-upflow Wave 2b todo 10): the consumer-owned half of the
     // sanctioned-local-preserve pair (`sync-preserve.local.yaml`) is never
     // synced — `isNeverSynced` skips it unconditionally, same class as
@@ -486,6 +517,80 @@ const CASES = [
   },
 ];
 
+// ── Fixture-INPUT inventory ──────────────────────────────────────────────
+// Per-case count of the payload files the case's directory MUST contain
+// (everything except README.md, recursively). Checked BEFORE the scanner is
+// invoked for that case.
+//
+// WHY A COUNT, AND WHY BEFORE THE SCAN. This guards a measured incident: a
+// commit deleted two fixture input payloads, the two affected cases scanned an
+// emptied directory, found nothing, and reported CLEAN — and the suite's
+// failure message blamed the SCANNER, which had not changed by a byte. The
+// session then went looking for a detector regression that did not exist.
+//
+// A missing payload and a broken detector are indistinguishable from the
+// scanner's output alone: both produce zero findings. So the discrimination
+// has to happen upstream of the verdict, on the INPUT, and the two outcomes
+// have to be reported in different words. `[FIXTURE INPUT MISSING]` is that
+// word.
+//
+// It is an EQUALITY check, not a floor, and deliberately so: an ADDED payload
+// is also a corpus change that silently shifts every `expectFindingCount` lock
+// in that case. Either direction is a reviewed registry edit, not a drift.
+//
+// Counts MEASURED against this tree — they are not inherited from the origin
+// repo, whose corpus is a subset of this one.
+const EXPECTED_PAYLOADS = {
+  "flag-each-shape": 1,
+  "clean-foundation-placeholder": 1,
+  "container-internal-home-allowlisted": 1,
+  "excluded-accepted-history": 2,
+  "own-org-allowed": 1,
+  "nonown-still-flagged": 1,
+  "r2-org-forms": 1,
+  "r2-allowlist-anchor": 1,
+  "r2-hostname-runner": 1,
+  "r2-exclusion-scoping": 2,
+  "r3-variant-surface": 2,
+  "operator-local-md-destination-flip": 1,
+  "r3-smuggle-closed": 2,
+  "r4-sdk-allowlist-anchor": 1,
+  "r5-refs-allowlist": 1,
+  "destination-local-json": 1,
+  "test-mjs-destination-flip": 1,
+  "f77-settings-good": 1,
+  "f77-settings-bad": 1,
+  "f77-settings-own-coords-still-flagged": 1,
+  "customer-identity-token": 3,
+  "gapc-guide-security-history": 3,
+  "sync-preserve-local-skipped": 1,
+  "cross-repo-authz-guard-source-only": 1,
+  "cross-repo-authz-arbitrary-org": 5,
+  "sync-preserve-yaml-scanned": 1,
+  "ecosystem-bare-org-slug": 1,
+  "ecosystem-example-clean": 1,
+};
+
+/** Recursively count payload files (everything but README.md) under a dir. */
+function countPayloads(dir) {
+  let n = 0;
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return -1; // the directory itself is gone
+  }
+  for (const e of entries) {
+    if (e.isDirectory()) {
+      const sub = countPayloads(path.join(dir, e.name));
+      if (sub > 0) n += sub;
+    } else if (e.name !== "README.md") {
+      n++;
+    }
+  }
+  return n;
+}
+
 function runScanner(root) {
   try {
     const out = execFileSync("node", [SCANNER, "--check", "--root", root], {
@@ -588,8 +693,40 @@ function runTrackingScenario() {
 }
 
 let failed = 0;
+let inputsMissing = 0;
 for (const c of CASES) {
   const root = path.join(HERE, c.dir);
+
+  // Precondition: the case's own INPUT must be present before any verdict is
+  // read off the scanner. A missing payload is a fixture-corpus defect, not a
+  // detector regression, and must never be reported as one.
+  const expectedPayloads = EXPECTED_PAYLOADS[c.name];
+  if (typeof expectedPayloads !== "number") {
+    failed++;
+    console.log(`FAIL  ${c.name}`);
+    console.log(
+      `        - no EXPECTED_PAYLOADS entry — every case must declare its input inventory`,
+    );
+    continue;
+  }
+  const actualPayloads = countPayloads(root);
+  if (actualPayloads !== expectedPayloads) {
+    failed++;
+    inputsMissing++;
+    console.log(`FAIL  ${c.name}  [FIXTURE INPUT MISSING]`);
+    console.log(
+      `        - payload files: ${actualPayloads === -1 ? "directory absent" : actualPayloads} ` +
+        `(expected ${expectedPayloads})`,
+    );
+    console.log(
+      `        - this is a MISSING-INPUT defect, NOT a scanner regression: the ` +
+        `scanner cannot flag what it was never given. Restore the payload ` +
+        `(git log --diff-filter=D -- ${path.posix.join(".claude/audit-fixtures/scan-synced-disclosure", c.dir)}) ` +
+        `before drawing any conclusion about the detector.`,
+    );
+    continue;
+  }
+
   const { exit, out } = runScanner(root);
   const findingMatches = [...out.matchAll(/\[SHAPE:([a-z-]+)\]/g)];
   const shapesSeen = new Set(findingMatches.map((m) => m[1]));
@@ -648,9 +785,133 @@ for (const c of CASES) {
   }
 }
 
+// ── Named regression cases (case name = finding id, per
+//    `coc-artifact-eval-coverage.md` MUST-2) ────────────────────────────────
+//
+// These do not need a fixture TREE — they assert properties of the scanner's
+// own run-shape, which is why they live here rather than as sibling dirs.
+{
+  // `os`, `fs`, `path` are imported at module top.
+  const named = [];
+  const add = (id, fn) => named.push({ id, fn });
+
+  // RS-16 / GAP B — the allowlist entry annotated "public PACT product" was
+  // FALSE (co-owner correction 2026-07-26: that product is NOT public) and
+  // suppressed the token on every scanned surface in every repo shipping the
+  // scanner. Entry removed. This case locks the removal: plant the token on a
+  // synthetic synced surface and require a finding. If someone re-adds the
+  // allowlist entry, this case reds.
+  add("RS-16-false-public-product-allowlist-entry-absent", () => {
+    // GAP B: the allowlist entry annotated "public PACT product" was FALSE
+    // (co-owner correction 2026-07-26 — that product is NOT public; the public
+    // one is the PACT *reference platform*). It is removed.
+    //
+    // This case asserts the SOURCE fact (the entry is gone), NOT a behavioural
+    // one, and that is deliberate. The first draft asserted "the token now
+    // flags" and RED-ed at exit 0 — which measured something worth recording:
+    // removing the allowlist is NECESSARY BUT NOT SUFFICIENT, because NO shape
+    // detects a bare product name in the first place. The allowlist entry was
+    // pre-empting a detector that does not exist. Detection would come from a
+    // `.claude/disclosure-tenant-denylist.json` entry (the customer-identity
+    // shape loads its denylist from the scanned root) — a ratification call
+    // that names a real internal product, deliberately NOT made here.
+    //
+    // Asserting the true property keeps the suite honest; asserting the
+    // behavioural one would have forced either a red suite or a re-added false
+    // allowlist entry, and both are worse than a recorded residual.
+    const src = fs.readFileSync(SCANNER, "utf8");
+    const rx = new RegExp(String.raw`/\\b` + ["Ae", "gis"].join("") + String.raw`\\b/i`);
+    return {
+      pass: !rx.test(src),
+      got: rx.test(src) ? "entry still present in the allowlist" : "entry absent",
+      want: "the false public-product allowlist entry is absent",
+    };
+  });
+
+  // MEASURED DEFECT 2026-08-10 — a `--root` at a NONEXISTENT path returned
+  // exit 0 with ZERO output, byte-identical to a clean scan, so a mistyped
+  // path silently PASSED the Gate-1 intake gate and /ecosystem-init's
+  // pre-write gate. Now exit 2 ("did not run").
+  add("root-nonexistent-is-2-not-0", () => {
+    const r = runScanner("/nonexistent/path/that/cannot/exist");
+    return { pass: r.exit === 2, got: `exit ${r.exit}`, want: "exit 2" };
+  });
+
+  add("root-without-synced-surface-is-2-not-0", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nosurface-"));
+    fs.writeFileSync(path.join(dir, "README.md"), "not a coc checkout\n");
+    const r = runScanner(dir);
+    return { pass: r.exit === 2, got: `exit ${r.exit}`, want: "exit 2" };
+  });
+
+  // The companion property: a clean exit 0 must now carry its own
+  // discriminating receipt, so 0-with-output and 0-with-nothing-scanned are
+  // no longer the same observation.
+  add("clean-check-emits-scanned-count", () => {
+    const dir = path.join(HERE, "clean-foundation-placeholder");
+    const r = runScanner(dir);
+    const out = String(r.out || "");
+    return {
+      pass: r.exit === 0 && /^Scanned: \d+ files/m.test(out),
+      got: `exit ${r.exit} :: ${out.trim().split("\n")[0] || "(no output)"}`,
+      want: "exit 0 with a 'Scanned: N files' line",
+    };
+  });
+
+  for (const c of named) {
+    let res;
+    try {
+      res = c.fn();
+    } catch (e) {
+      res = { pass: false, got: `threw: ${e.message}`, want: "no throw" };
+    }
+    if (res.pass) {
+      console.log(`PASS  ${c.id}  (${res.got})`);
+    } else {
+      failed++;
+      console.log(`FAIL  ${c.id}`);
+      console.log(`        - want: ${res.want}`);
+      console.log(`        - got:  ${res.got}`);
+    }
+  }
+}
+
+// Cross-check the inventory in the other direction: a case dir present on disk
+// but absent from CASES is an orphan that no assertion covers. The
+// EXPECTED_PAYLOADS check above closes "declared but gone"; this closes
+// "present but undeclared" — without it the corpus can grow surface that looks
+// covered and is not.
+let orphanDirs = 0;
+{
+  const declaredDirs = new Set(CASES.map((c) => c.dir));
+  for (const entry of fs.readdirSync(HERE, { withFileTypes: true })) {
+    if (!entry.isDirectory() || declaredDirs.has(entry.name)) continue;
+    failed++;
+    orphanDirs++;
+    console.log(`FAIL  ${entry.name}  [ORPHAN FIXTURE DIR]`);
+    console.log(
+      `        - present on disk but declared in no CASES entry — it asserts nothing`,
+    );
+  }
+}
+
 console.log("");
 if (failed) {
-  console.log(`${failed} fixture(s) FAILED — scanner regressed`);
+  // Attribute precisely. Reporting a corpus defect as "scanner regressed" is
+  // the exact mis-attribution the EXPECTED_PAYLOADS inventory exists to remove,
+  // so the summary must not re-introduce it one line further down.
+  const corpus = inputsMissing + orphanDirs;
+  if (corpus) {
+    const parts = [];
+    if (inputsMissing) parts.push(`${inputsMissing} for MISSING INPUT`);
+    if (orphanDirs) parts.push(`${orphanDirs} for an ORPHAN FIXTURE DIR`);
+    console.log(
+      `${failed} fixture(s) FAILED — ${parts.join(" and ")}, i.e. a FIXTURE-CORPUS ` +
+        `defect, NOT a scanner regression. Fix the corpus first, then re-read the rest.`,
+    );
+  } else {
+    console.log(`${failed} fixture(s) FAILED — scanner regressed`);
+  }
   process.exit(1);
 }
 console.log("all fixtures passed");

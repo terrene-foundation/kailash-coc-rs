@@ -1,6 +1,6 @@
 ---
 name: db
-description: "Loom command: db"
+description: "DataFlow quick reference: DB, CRUD, bulk, migrations, multi-tenancy, fabric engine."
 ---
 
 # /db - DataFlow Quick Reference
