@@ -10058,11 +10058,11 @@ changes:
       `validateCliDelivery()` call site, states that the validator's
       skill-channel count "provably equals the rule count in the emitted
       rules-reference index". Measured against this template's tree, same run:
-      `validateCliDelivery()` reports 79 skill-channel rules while
-      `buildRulesReferenceIndex` under the rs tier filter returns 70 — a figure
+      `validateCliDelivery()` reports 88 skill-channel rules while
+      `buildRulesReferenceIndex` under the rs tier filter returns 80 — a figure
       re-measured a second time by the filing orchestrator, driving the
       exported `buildRulesReferenceIndex` / `buildTierFilter` directly
-      (unfiltered 79, rs-filtered 70, delivered 73; control: the unfiltered set
+      (unfiltered 88, rs-filtered 80, delivered 83; control: the unfiltered set
       contains artifact-flow.md). Note that this 70 is the TIER-FILTER OUTPUT
       and is a distinct measurement from the 70-element set INTERSECTION cited
       below; the two agree, but neither corroborates the other. The
@@ -10072,25 +10072,24 @@ changes:
       applies loom_only, surface_roles and the tier filter. Cite by symbol, not
       line: `validateCliDelivery` / `buildRulesReferenceIndex` /
       `emitRulesReferenceSkill`.
-      THE DELIVERED ARTIFACT MEASURES 73 ROWS, NOT 70. An earlier internal
-      draft of this finding asserted 70 delivered; that figure was the
+      THE DELIVERED ARTIFACT MEASURES 83 ROWS, NOT 80. An earlier internal
+      draft of this finding asserted the tier-filtered count as delivered; that figure was the
       tier-filtered local derivation, not a reading of the shipped file, and it
       is corrected here rather than carried forward. Structural parse of the
-      Read column of `.codex/skills/rules-reference/SKILL.md` returns 73
+      Read column of `.codex/skills/rules-reference/SKILL.md` returns 83
       citations, matching the index's own declared tail line, and the gemini
       lane's row set is identical. The set difference against the
-      locally-derived skill-channel set is bidirectional: 9 rules present on
+      locally-derived skill-channel set is bidirectional: 8 rules present on
       disk are absent from the index, and 3 rows in the index resolve to no
       file at all.
-      NINE RULES ARE UNREACHABLE ON THE ONLY CHANNEL THAT DELIVERS THEM.
-      build-cache-hygiene, build-speed, burn-down-reporting, canon-incorporation,
+      EIGHT RULES ARE UNREACHABLE ON THE ONLY CHANNEL THAT DELIVERS THEM.
+      build-cache-hygiene, build-speed, canon-incorporation,
       dataflow-null-typing, llm-auth-strategy-hygiene, llm-deployment-coverage,
-      release, version-cadence. All nine are on disk and ALL NINE carry
+      release, version-cadence. All eight are on disk and ALL EIGHT carry
       complete, lane-resolving frontmatter — `priority: 10` with
       `scope: path-scoped`, which smart-defaults to skill-channel under
-      `deriveCliDelivery`, plus an explicit `cli_delivery: skill-channel` on
-      burn-down-reporting. An earlier draft claimed only four of the nine had
-      clean frontmatter; the frontmatter of all nine was read and that claim is
+      `deriveCliDelivery`. An earlier draft claimed only four of the then-nine
+      had clean frontmatter; the frontmatter of all of them was read and that claim is
       REFUTED — the absence is not a metadata defect. The refuted figure is
       TRACEABLE, which is worth recording: issue #112's table names exactly
       four rules — build-speed.md, dataflow-null-typing.md,
@@ -10101,8 +10100,8 @@ changes:
       missing-frontmatter file is `ci-runners.operator.local.example.md`, a
       values TEMPLATE already recorded elsewhere in this manifest as belonging
       outside `rules/`, not one of the nine.
-      THE NINE ARE VARIANT-ORIGIN AND THE INDEX EMITTER IS VARIANT-BLIND.
-      Eight of the nine appear in the manifest ONLY as
+      THE EIGHT ARE VARIANT-ORIGIN AND THE INDEX EMITTER IS VARIANT-BLIND.
+      All eight appear in the manifest ONLY as
       `variants/rs/rules/<name>.md`; they land flattened into `.claude/rules/`
       at the template, where the tier filter tests `rules/<name>.md` and
       matches nothing. The generating condition is that
@@ -10110,8 +10109,8 @@ changes:
       receives no `lang` argument — emitCommands, emitSkills,
       emitCodexAgentPrompts and emitGeminiAgents all take one — and
       `buildRulesReferenceIndex` reads only `.claude/rules`, never the variant
-      overlay tree. INFERENCE, LABELLED AS SUCH AND NOT MEASURED: at loom the
-      eight presumably sit under `.claude/variants/rs/rules/` where the readdir
+      overlay tree. INFERENCE, LABELLED AS SUCH AND NOT MEASURED: at loom they
+      presumably sit under `.claude/variants/rs/rules/` where the readdir
       never sees them, so the tier filter is not even reached. Loom was not
       read; only the flattened downstream route is measured. Both routes
       produce the same omission and the same fix. The ninth,
@@ -10206,7 +10205,28 @@ changes:
       fixes touch the same emitter.
     reconciliation:
       status: STILL-OPEN — net-new; first record of the index/delivered-set membership divergence
-      reconciled_at: 2026-08-15
+      reconciled_at: 2026-08-19
+      remeasured_after_sync: >-
+        RE-MEASURED 2026-08-19 against the loom Gate-2 sync (PR #172, loom
+        `319083d60cab`), which touched `.claude/bin/**` and `.codex/**` — the
+        exact surfaces this entry measures. EVERY figure moved and is corrected
+        inline above rather than left stale: unfiltered skill-channel 79 -> 88,
+        rs tier-filtered 70 -> 80, delivered rows 73 -> 83. THE DEFECT PERSISTS
+        WITH THE SAME STRUCTURE, re-based: 88 - 8 dropped = 80 = 83 - 3 phantom,
+        so both directions of the divergence remain live and the `emit.mjs`
+        "provably equal" comment is still false (88 != 83).
+        ONE OF THE NINE IS NOW FIXED, and that is worth recording as a PARTIAL
+        confirmation rather than a full one: `burn-down-reporting` IS now indexed.
+        It was the entry's THIRD mechanism — plain staleness, a rule that landed
+        after the index was last regenerated — so a sync that re-emitted the
+        index closed it exactly as the entry predicted. The other two mechanisms
+        did NOT close: the eight variant-origin rules are still tier-dropped, and
+        the same THREE phantom rows (coc-artifact-eval-coverage,
+        cross-sdk-inspection, documentation) are still cited-but-absent, byte for
+        byte. That the staleness half self-healed on a re-emit while the
+        variant-blindness and `use_exclude` halves did not is INDEPENDENT
+        EVIDENCE for the entry's three-mechanism claim — a single-mechanism
+        story could not have half-closed.
       evidence: >-
         Every figure re-derived at HEAD in the session that filed this entry;
         none carried from a prior report. The skill-channel set was enumerated
@@ -10257,9 +10277,9 @@ changes:
       THE TWO RUNNERS, RE-MEASURED THIS SESSION BY RUNNING BOTH.
       `node .claude/audit-fixtures/validate-emit/run.mjs` exits 1 and prints
       `validate-emit audit fixtures: 34 passed, 21 failed`. `node
-      .claude/bin/validate-emit.mjs` exits 1 and prints `summary: 801 pass / 35
-      fail / 0 fixture-needed / 84 skip — 35 blocking`. Exit codes read
-      directly, not through a pipe.
+      .claude/bin/validate-emit.mjs` prints `summary: 971 pass / 19 fail / 0
+      fixture-needed / 131 skip — 19 blocking`. Exit codes read directly, not
+      through a pipe.
       WHAT ONE UNIT IS IN EACH — the load-bearing part, and the part the
       superseded entry never established. The FIXTURE RUNNER is a unit-test
       harness for the validator's own exported functions: it imports
@@ -10273,9 +10293,9 @@ changes:
       PASS, 21 FAIL). It never touches the repo tree. THE VALIDATOR is the
       pre-emit sweep gating sync, run over the real tree via
       `findRepoRoot(process.cwd())`. One unit is ONE `(check-id, artifact)`
-      RESULT ROW statused pass/fail/fixture-needed/skip; the denominator is 920
-      rows across 31 check-ids. A ~23x "pass count" ratio is 920 rows against
-      55 assertions, not two readings of one surface.
+      RESULT ROW statused pass/fail/fixture-needed/skip; the denominator is 1121
+      rows. A large "pass count" ratio is ~1121 rows against 55 assertions,
+      not two readings of one surface.
       THE DEFECT THE MISMATCH CONCEALED, and it is not cosmetic. The two
       runners overlap at exactly ONE function, `checkHookEventDeclaration`, and
       they disagree there. At this tier the check CANNOT RUN: the validator
@@ -10361,7 +10381,25 @@ changes:
       which is how the drift surfaced.
     reconciliation:
       status: STILL-OPEN — net-new correction entry, first filed 2026-08-15; supersedes the census entry's staleness FRAMING, not its measurement
-      reconciled_at: 2026-08-15
+      reconciled_at: 2026-08-19
+      remeasured_after_sync: >-
+        RE-MEASURED 2026-08-19 against the loom Gate-2 sync (PR #172, loom
+        `319083d60cab`). The validator's figures moved and are corrected inline
+        above: 801 pass / 35 fail / 84 skip -> 971 / 19 / 131, denominator 920 ->
+        1121. The FIXTURE RUNNER DID NOT MOVE AT ALL: still exactly
+        `34 passed, 21 failed`, denominator 55.
+        THAT DIVERGENCE IS THE ENTRY'S OWN THESIS, CONFIRMED BY AN EVENT RATHER
+        THAN AN ARGUMENT. The two runners were claimed to measure DIFFERENT
+        populations; a sync that changed the real tree moved one denominator by
+        201 rows and left the other untouched to the assertion. Two readings of
+        one surface cannot do that. This is stronger evidence than the original
+        entry offered, which had to argue the distinction from source rather
+        than observe it.
+        The concealed defect ALSO persists unchanged:
+        `.claude/bin/reconcile-settings-hooks.mjs` is STILL ABSENT at this tier
+        (presence loop, same pass: PRESENT for `validate-emit.mjs`), so all 21
+        hookEvent fixtures still assert against a row set that cannot exist here.
+        The ask is unchanged.
       evidence: >-
         Both runners executed in this session, neither figure carried forward
         from any prior report. Each runner's DENOMINATOR was established from
