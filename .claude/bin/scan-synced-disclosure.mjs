@@ -551,6 +551,17 @@ function isExcluded(relPath) {
   return false;
 }
 
+// Entries the scan could NOT read. A silently-skipped file or directory shrinks
+// the denominator without shrinking the CLAIM: this tool exits 0 saying "the #252
+// disclosure forest is closed on this surface", which is false for any path it
+// never opened. A dangling symlink, a permission error and a transient FS fault
+// all land here and are all indistinguishable from "clean" downstream. Reported
+// and fail-closed at the exit, never dropped.
+const UNREADABLE = [];
+// Realpaths of symlinked directories already walked — a link to an ancestor would
+// otherwise recurse forever.
+const WALKED_REAL_DIRS = new Set();
+
 function isProbablyBinary(buf) {
   // NUL byte in the first 8KB → treat as binary, skip.
   const n = Math.min(buf.length, 8192);
@@ -562,7 +573,9 @@ function walk(dir, acc) {
   let entries;
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true });
-  } catch {
+  } catch (err) {
+    // NOT a skip: an unreadable directory is a hole in the scanned surface.
+    UNREADABLE.push({ path: path.relative(REPO_ROOT_ACTIVE, dir), why: err.code || String(err) });
     return;
   }
   for (const e of entries) {
@@ -571,7 +584,45 @@ function walk(dir, acc) {
     if (isExcluded(rel)) continue;
     if (e.isDirectory()) {
       walk(full, acc);
-    } else if (e.isFile() || e.isSymbolicLink()) {
+    } else if (e.isSymbolicLink()) {
+      // `withFileTypes` reports the LINK, never its target — so a symlink to a
+      // DIRECTORY has isDirectory() === false and fell through to be pushed as a
+      // FILE, where readFileSync failed EISDIR and the failure was swallowed. Net
+      // effect: the target tree left the scanned surface entirely and the scan
+      // still reported clean. Measured on one consumer whose
+      // `.claude/<name> -> ../<dir>` symlink was the ONLY route its files had onto
+      // this surface (collectFiles walks `.claude/` only): 2450 -> 2458 files.
+      let st;
+      let real;
+      try {
+        real = fs.realpathSync(full);
+        st = fs.statSync(full); // FOLLOWS the link, unlike the dirent
+      } catch (err) {
+        UNREADABLE.push({ path: rel, why: `unresolvable symlink (${err.code || err})` });
+        continue;
+      }
+      // Containment per security.md § Path Containment: resolve BOTH sides through
+      // the same resolver before comparing. A link whose target leaves the scanned
+      // root would pull out-of-tree content onto the synced surface.
+      let rootReal;
+      try {
+        rootReal = fs.realpathSync(REPO_ROOT_ACTIVE);
+      } catch (err) {
+        UNREADABLE.push({ path: rel, why: `scan root unresolvable (${err.code || err})` });
+        continue;
+      }
+      if (real !== rootReal && !real.startsWith(rootReal + path.sep)) {
+        UNREADABLE.push({ path: rel, why: `symlink escapes the scanned root -> ${real}` });
+        continue;
+      }
+      if (st.isDirectory()) {
+        if (WALKED_REAL_DIRS.has(real)) continue; // loop guard
+        WALKED_REAL_DIRS.add(real);
+        walk(full, acc);
+      } else {
+        acc.push(full);
+      }
+    } else if (e.isFile()) {
       acc.push(full);
     }
   }
@@ -1385,7 +1436,9 @@ function scanFile(file, findings, shapes, allowSyntheticFixtureHomes = false) {
   let buf;
   try {
     buf = fs.readFileSync(file);
-  } catch {
+  } catch (err) {
+    // NOT a skip — see UNREADABLE above. An unopened file cannot be clean.
+    UNREADABLE.push({ path: path.relative(REPO_ROOT_ACTIVE, file), why: err.code || String(err) });
     return;
   }
   if (isProbablyBinary(buf)) return;
@@ -1533,6 +1586,22 @@ const activeShapes = [
 ];
 const findings = [];
 for (const f of files) scanFile(f, findings, activeShapes, args.allowSyntheticFixtureHomes);
+
+// COVERAGE ASSERTION — before any verdict. A "clean" result over a partially-read
+// surface reads as a statement about the whole surface. Fail closed: an unreadable
+// path is an UNKNOWN, never an absence of findings.
+if (UNREADABLE.length > 0) {
+  console.error(
+    `scan-synced-disclosure: FATAL — ${UNREADABLE.length} path(s) could not be read, ` +
+      `so this scan cannot speak for the surface it was pointed at:`,
+  );
+  for (const u of UNREADABLE) console.error(`  ${u.path}  (${u.why})`);
+  console.error(
+    `A skipped path and a clean path are the same bytes downstream. Fix the ` +
+      `unreadable path (dangling symlink? permissions?) or exclude it explicitly.`,
+  );
+  process.exit(2);
+}
 
 if (args.mode === "check") {
   if (findings.length > 0) {

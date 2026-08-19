@@ -292,10 +292,19 @@ function resolveRepoRoot(cwd, cache) {
   return root;
 }
 
+// Inputs this run could NOT read. Every skip silently REDUCES a dollar figure the
+// operator reads as the total, and an under-count is indistinguishable from
+// genuinely-lower usage. ENOENT is deliberately EXCLUDED: several call sites probe
+// an OPTIONAL directory, so counting absence as "unreadable" reports a hole where
+// there is none — the very conflation this counter exists to expose (measured: 835
+// false "unreadable" directories on the first instrumented run, every one absent).
+const SKIPPED = { dirs: 0, transcripts: 0, lines: 0 };
+
 function listDir(p) {
   try {
     return readdirSync(p, { withFileTypes: true });
-  } catch {
+  } catch (e) {
+    if (e.code !== "ENOENT") SKIPPED.dirs++;
     return [];
   }
 }

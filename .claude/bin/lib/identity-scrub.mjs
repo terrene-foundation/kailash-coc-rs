@@ -62,11 +62,31 @@ import path from "node:path";
  * Redteam PR#438 closed the prior isText() extension-allowlist blind spot.
  */
 export function readTextOrNull(f) {
+  return readTextOrReason(f).text;
+}
+
+/**
+ * Same read as `readTextOrNull`, but DISTINGUISHES why the text is absent.
+ * `readTextOrNull` collapses "this file is binary, skip it by design" and "this
+ * file could not be read at all" into ONE null, so a caller scanning for residual
+ * identity tokens cannot tell a legitimate skip from a hole in its own coverage —
+ * the two are the same bytes downstream. Its caller is clean-instantiate's
+ * assertZero, the FAIL-CLOSED gate whose entire promise is that ZERO canon
+ * trust-identity remains, so an unreadable carrier was skipped while the ceremony
+ * still reported clean. A fail-closed gate MUST be able to tell them apart.
+ *
+ * @returns {{text: string|null, reason: "ok"|"binary"|"unreadable", error?: string}}
+ */
+export function readTextOrReason(f) {
   let buf;
-  try { buf = readFileSync(f); } catch { return null; }
+  try {
+    buf = readFileSync(f);
+  } catch (err) {
+    return { text: null, reason: "unreadable", error: err.code || String(err) };
+  }
   const n = Math.min(buf.length, 8192);
-  for (let i = 0; i < n; i++) if (buf[i] === 0) return null; // binary → skip
-  return buf.toString("utf8");
+  for (let i = 0; i < n; i++) if (buf[i] === 0) return { text: null, reason: "binary" };
+  return { text: buf.toString("utf8"), reason: "ok" };
 }
 
 /**
