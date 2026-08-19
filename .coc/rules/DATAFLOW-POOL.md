@@ -1,6 +1,6 @@
 ---
 id: "DATAFLOW-POOL"
-paths: ["**/dataflow/**"]
+paths: ["**/dataflow/**", "**/*dataflow*/**"]
 ---
 
 # DataFlow Pool Configuration Rules

@@ -21,9 +21,28 @@
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync, chmodSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, writeFileSync, chmodSync, rmSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { requireRepoClass } from "../_lib/repo-class.mjs";
+
+// `.claude/codex-templates/` is loom-internal emitter SOURCE and is deliberately
+// NOT distributed — `sync-manifest.yaml` lists the whole tree under `obsoleted:`
+// ("loom-internal Codex emitter SOURCE tree … NEVER belongs on a consumer
+// surface"), so every consumer is actively purged of it. The dispatcher is
+// EMITTED from here into each USE template's `.codex/bin/coc` at Gate 2; no
+// consumer repo hosts the source this suite exercises.
+//
+// Gated on repo CLASS, not on dispatcher existence — at loom, a missing
+// dispatcher must still fail loudly rather than skip. (Unlike its sibling
+// suites this one would not ERR_MODULE_NOT_FOUND: it spawns the dispatcher
+// rather than importing it, so a consumer got eight bash-not-found FAILs — a
+// false regression report, which is the same defect wearing a louder mask.)
+requireRepoClass(
+  ["coc-source"],
+  "the Codex phase dispatcher lives in .claude/codex-templates/, loom-internal emitter source that is declared obsoleted for every consumer and never synced.",
+);
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -34,12 +53,50 @@ const DISPATCHER = path.resolve(REPO_ROOT, ".claude/codex-templates/bin/coc");
 // every case that successfully reaches `exec codex exec ...` produces
 // the marker and exits 0; cases that exit before exec produce the
 // dispatcher's own error/usage text without the marker.
-const STUB_DIR = path.join(HERE, ".tmp-stub");
+// PER-INVOCATION temp dir, NOT a fixed path under HERE. It was
+// `path.join(HERE, ".tmp-stub")` — a single shared location that every
+// concurrent invocation wrote to, while `setupStub()` unconditionally
+// `rmSync`'d it and `teardownStub()` deleted it at exit. Two instances
+// running at once therefore destroyed each other's stub: measured 6/6
+// trials, exactly one of two concurrent runs failing every time, with
+// the loser crashing at case 07 (`ln` hits EEXIST, the `cp` fallback
+// then aborts with "are identical (not copied)" and throws out of
+// `execFileSync`). Nothing in the tooling runs two instances today —
+// `registration-preflight` uses `--closure-only`, which returns before
+// the execution loop — so this was latent, not active. It is fixed
+// because parallel gate work is the direction of travel.
+//
+// `mkdtempSync` rather than a pid suffix: pids collide across containers
+// and are reused after wraparound, so a pid-named dir is only probably
+// unique. `mkdtempSync` is collision-free by construction.
+const STUB_DIR = mkdtempSync(path.join(tmpdir(), "coc-dispatcher-stub-"));
 const STUB_PATH = path.join(STUB_DIR, "codex");
 
+// Teardown MUST survive the abnormal-exit path. `teardownStub()` is called
+// after the case loop, so any throw inside the loop skipped it and leaked
+// the directory — a per-invocation dir that leaks is a slower version of
+// the same problem. `exit` fires on normal return AND after an uncaught
+// exception; the signal handlers cover Ctrl-C / SIGTERM, which do not.
+let stubRemoved = false;
+function removeStubDir() {
+  if (stubRemoved) return;
+  stubRemoved = true;
+  try {
+    rmSync(STUB_DIR, { recursive: true, force: true });
+  } catch {
+    // Best-effort: the dir is under the OS temp root, so a failure here
+    // leaks one empty directory rather than corrupting the repo.
+  }
+}
+process.on("exit", removeStubDir);
+for (const sig of ["SIGINT", "SIGTERM"]) {
+  process.on(sig, () => {
+    removeStubDir();
+    process.exit(130);
+  });
+}
+
 function setupStub() {
-  if (existsSync(STUB_DIR)) rmSync(STUB_DIR, { recursive: true, force: true });
-  mkdirSync(STUB_DIR, { recursive: true });
   writeFileSync(
     STUB_PATH,
     [
@@ -52,7 +109,7 @@ function setupStub() {
   chmodSync(STUB_PATH, 0o755);
 }
 function teardownStub() {
-  if (existsSync(STUB_DIR)) rmSync(STUB_DIR, { recursive: true, force: true });
+  removeStubDir();
 }
 
 function run(args, { input, tty } = {}) {
@@ -64,7 +121,17 @@ function run(args, { input, tty } = {}) {
     cwd: REPO_ROOT,
     env,
     encoding: "utf-8",
-    timeout: 5_000,
+    // 30s, raised from 5s (loom#1777). The timeout is a HANG fence, not a
+    // performance assertion — no case here asserts anything about duration, so
+    // a bound tight enough to fire on a cold cache turns this runner into an
+    // instrument that reds on machine speed rather than on dispatcher
+    // behaviour (`instrument-discipline.md`: a check whose result does not
+    // track the proposition). MEASURED: `03-valid-phase-argv-tty` failed once
+    // at 5.6s wall for the runner — the 5s bound firing on the first spawn of
+    // a cold node/bash cache — and passed at 0.3-0.4s on six subsequent runs of
+    // the same tree, with the same tree's base green. A genuine hang still
+    // fails, 25s later.
+    timeout: 30_000,
   };
   if (input !== undefined) opts.input = input;
   const r = spawnSync("bash", [DISPATCHER, ...args], opts);
@@ -155,10 +222,10 @@ for (const c of CASES) {
     if (existsSync(shim)) rmSync(shim);
     try {
       // Use a symlink so basename(argv[0]) == "coc-analyze"
-      execFileSync("ln", ["-s", DISPATCHER, shim]);
+      execFileSync("ln", ["-s", DISPATCHER, shim], { timeout: 30_000 });
     } catch {
       // Fallback: cp + chmod (still preserves basename)
-      execFileSync("cp", [DISPATCHER, shim]);
+      execFileSync("cp", [DISPATCHER, shim], { timeout: 30_000 });
       chmodSync(shim, 0o755);
     }
     const env = { ...process.env, PATH: `${STUB_DIR}:${process.env.PATH}` };
@@ -166,7 +233,20 @@ for (const c of CASES) {
       cwd: REPO_ROOT,
       env,
       encoding: "utf-8",
-      timeout: 5_000,
+      // SAME bound, and for the SAME reason, as the `run()` site above. This
+      // branch does NOT route through `run()` — case 07 builds its own shim and
+      // spawns it directly — so raising only that one left THIS site on exactly
+      // the 5s cliff the other site's comment declares unsafe. Demonstrated, not
+      // argued: under a deterministic stall injected at case 07, a tree with only
+      // the `run()` bound raised still FAILS 07 while passing 03.
+      //
+      // The two `execFileSync` calls above carried NO timeout at all — a genuine
+      // hang there was bounded only by the harness's 300s outer cap. Every spawn
+      // site in this fixture now carries the same fence (`security.md`
+      // § Multi-Site Kwarg Plumbing, in its general form: every call site in the
+      // same change, because the sibling left unqualified ships the exact failure
+      // mode the fix exists to close).
+      timeout: 30_000,
     });
     result = {
       status: r.status ?? -1,

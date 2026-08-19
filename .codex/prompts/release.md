@@ -1,6 +1,6 @@
 ---
 name: release
-description: "Loom command: release"
+description: "SDK release for the BUILD repo: crate publish, maturin wheels, CLI binaries, CI management."
 ---
 
 # /release - SDK Release Command

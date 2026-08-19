@@ -1773,11 +1773,11 @@ for (const c of cases) {
       reasonAbsentOk &&
       endpointOk;
     if (pass) {
-      console.log(`  ✓ ${c.name}`);
+      console.log(`  ok ${c.name}`);
     } else {
       failed++;
       console.log(
-        `  ✗ ${c.name}` +
+        `  not ok ${c.name}` +
           `\n      expected ok=${c.expect.ok} fired=${c.expect.fired} error=null` +
           (c.expectReason === undefined
             ? ""
@@ -1793,7 +1793,7 @@ for (const c of cases) {
     }
   } catch (err) {
     failed++;
-    console.log(`  ✗ ${c.name} — THREW: ${err && err.message}`);
+    console.log(`  not ok ${c.name} — THREW: ${err && err.message}`);
   } finally {
     if (made) fs.rmSync(made.root, { recursive: true, force: true });
     if (decoy) fs.rmSync(decoy.root, { recursive: true, force: true });

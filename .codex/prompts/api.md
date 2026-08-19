@@ -1,6 +1,6 @@
 ---
 name: api
-description: "Loom command: api"
+description: "Nexus quick reference: API+CLI+MCP platform; workflow deploy, sessions, K8s, OpenAPI, CSRF."
 ---
 
 # /api - Nexus Quick Reference
