@@ -9904,6 +9904,59 @@ changes:
         Confirmed independently by a second lane whose separate merge computation
         reached the same conclusion on this file. Marker line numbers drift;
         reproduce by MARKER, not by line.
+      remeasured_after_sync: >-
+        THE PREDICTED REVERT HAS LANDED, AND NOT VIA THE PR THIS ENTRY WAS
+        FILED AGAINST. This entry was filed 2026-08-14 from the PR #150
+        adjudication hold; #150 is STILL open and unmerged. The same managed-block
+        rewrite arrived instead through the 2026-08-19 Gate-2 sync (PR #172, loom
+        `319083d60cab`), which merged to main. Every behavioural prediction above
+        is now confirmed ON MAIN rather than in a scratch merge: a new
+        `workspaces/**/04-validate/*.md` and a new `workspaces/**/journal/*.md`
+        are both IGNORED, `workspaces/_template/.env.production` is COMMITTABLE,
+        and `workspaces/docker-dev-environment/.env` stays IGNORED (control — the
+        instrument still discriminates). The tracked-file count is 92 (this entry
+        said 91 at filing; the delta is ordinary workspace growth, not a
+        correction to its reasoning).
+        THE LOSS IS NO LONGER PROSPECTIVE. This entry correctly scoped the harm
+        as future-only because git does not untrack on a gitignore change. That
+        remains true — the 92 tracked files are safe — but the future arrived:
+        the next `/sweep` report or journal entry written in this repo now
+        silently fails to stage. The ask below is unchanged and more urgent.
+        ROOT CAUSE, TRACED SINCE FILING, and it EXONERATES loom. `git log -S` on
+        `.gitignore` identifies commit `a6db846` — a LOCAL commit (`chore(workspaces):`,
+        not `chore(sync):`) — as the author of the override, placed INSIDE the
+        managed markers. `sync-manifest.yaml::owned_surfaces` grants loom the
+        managed block ONLY and requires every byte outside it untouched; the
+        removed lines sat at 193-201 inside a block spanning 155-206. Loom
+        rewrote its own declared region, within its grant. An initial reading of
+        this incident was that loom had exceeded the bound; that is REFUTED and
+        recorded rather than dropped. The upstream source is
+        `visibility_gitignore_additions.public`, which ships `/workspaces/*` +
+        `!/workspaces/_template/` as loom's deliberate default — so the conflict
+        is a POLICY disagreement with no per-target expression, exactly what the
+        ask above requests.
+        A LOCAL INTERIM IS NOW IN PLACE, AND IT CONTRADICTS THIS ENTRY'S OWN
+        JUDGMENT — disclosed rather than quietly done. This entry argued that
+        "splitting one ignore policy across both regions is worse than either",
+        and a target-owned override has now been added OUTSIDE the markers
+        anyway. The disposition changed because the premise did: that judgment
+        was made while the revert was hypothetical and #150 was held, and it is
+        now live and stranding real work. The split IS worse as architecture;
+        it is better than silently losing every new sweep report while Gate-1
+        decides. Gate-1 should treat the interim as a symptom of the missing
+        per-target election, not as a competing fix, and this template should
+        drop it the moment the upstream policy lands.
+        THE INTERIM HAD TO BE NARROW, which is itself evidence for the ask. A
+        bare `!/workspaces/**` was MEASURED to defeat ALL 13 global ignores under
+        `workspaces/` — `.env`, `.env.local`, `node_modules/`, `.venv/`,
+        `target/`, `__pycache__/`, `.DS_Store`, `.session-notes`,
+        `.session-notes.shared.md`, `journal/.pending/` among them — because
+        re-including the directories lets git descend past every directory-scoped
+        ignore. The landed override therefore re-includes directories plus
+        `*.md` only and re-ignores the rest; 17/17 cases verified in an isolated
+        scratch repo against the real shipped `.gitignore`. A per-repo policy
+        that requires a hand-tuned twenty-line counter-block at each consumer is
+        the argument for expressing it once, upstream.
 
   - file: .claude/audit-fixtures/sync-preflight-local-mods/run.mjs
     action: modify
