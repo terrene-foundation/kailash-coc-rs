@@ -1,0 +1,38 @@
+{
+  "_note": "Outstanding-work register for kailash-coc-rs. DECLARED source, never a directory glob — adding an item is a reviewable diff. Status values are the closed burndown vocabulary (rules/burndown-integrity.md); `done`/`complete`/`remaining` are BLOCKED as labels because each named at least two different buckets in prior reports.",
+  "_generated": "2026-08-20",
+  "_authority": "owner",
+  "_id_convention": "REG-NN-PAGE — greppable; NN is the register ordinal, PAGE is stable across renames.",
+  "_generation": 1,
+  "_generation_note": "Generation 1: every item below is `from the original register`. `arrived since` is 0 BY CONSTRUCTION, not by measurement — the growth split becomes informative from the next sweep onward.",
+  "items": [
+    { "id": "REG-01-ISS", "page": "Issues", "status": "Signed off",      "ref": "#64",  "title": "/sync-from-template said merge, specified replace" },
+    { "id": "REG-02-ISS", "page": "Issues", "status": "Signed off",      "ref": "#78",  "title": ".coc-obsoleted listed paths the release still shipped" },
+    { "id": "REG-03-ISS", "page": "Issues", "status": "Signed off",      "ref": "#159", "title": "deferred-quality enumerator (closed as not-wanted, owner-ratified)" },
+    { "id": "REG-04-ISS", "page": "Issues", "status": "Blocked on you",  "ref": "#79",  "title": "cross-repo.md never ships; always-loaded rule cites it — pick inline carve-out vs consumer stub" },
+    { "id": "REG-05-ISS", "page": "Issues", "status": "In progress",     "ref": "#112", "title": "enforcement census — re-scoped to 3 lanes, 19 blocking findings" },
+    { "id": "REG-06-ISS", "page": "Issues", "status": "Blocked on you",  "ref": "#113", "title": "Gate A has no coverage for sync-ADDED content — design question" },
+    { "id": "REG-07-ISS", "page": "Issues", "status": "In progress",     "ref": "#119", "title": "rs-variant rules land without frontmatter — loom-side" },
+    { "id": "REG-08-ISS", "page": "Issues", "status": "In progress",     "ref": "#125", "title": "emit.mjs validator 16 vs 18 — blocks Codex/Gemini emission, 5th cycle" },
+    { "id": "REG-09-ISS", "page": "Issues", "status": "Not started",     "ref": "#169", "title": "instrument-discipline governs cited evidence but not shipped controls" },
+
+    { "id": "REG-10-PR",  "page": "Pull requests", "status": "Signed off",     "ref": "#167", "title": "the disclosure scrub cannot report a negative" },
+    { "id": "REG-11-PR",  "page": "Pull requests", "status": "Signed off",     "ref": "#168", "title": "dangerous-pattern anchoring + stale-tree guard pair" },
+    { "id": "REG-12-PR",  "page": "Pull requests", "status": "Signed off",     "ref": "#170", "title": "JS instrument-vacuity burn-down (13 entries)" },
+    { "id": "REG-13-PR",  "page": "Pull requests", "status": "Built-not-walked","ref": "#173", "title": "133-entry re-reconciliation + .gitignore upstream entry" },
+    { "id": "REG-14-PR",  "page": "Pull requests", "status": "In progress",    "ref": "#171", "title": "/codify broken from every worktree — rebased locally, fixture RED, unpushed" },
+    { "id": "REG-15-PR",  "page": "Pull requests", "status": "Not started",    "ref": "#166", "title": "seven Step-7c entries and the 2-to-10 clause density" },
+    { "id": "REG-16-PR",  "page": "Pull requests", "status": "Not started",    "ref": "#155", "title": "five green-while-wrong defects resolve to TWO classes" },
+    { "id": "REG-17-PR",  "page": "Pull requests", "status": "Blocked on you", "ref": "#150", "title": "Gate-2 use rs sync from loom — held 6d" },
+
+    { "id": "REG-18-BR",  "page": "Branch hygiene", "status": "Not started", "ref": "origin/proposal/2026-08-16-scan-discrimination", "title": "merged, reapable" },
+    { "id": "REG-19-BR",  "page": "Branch hygiene", "status": "Not started", "ref": "origin/proposal/2026-08-16-hook-anchoring-and-stale-tree-guards", "title": "merged, reapable" },
+    { "id": "REG-20-BR",  "page": "Branch hygiene", "status": "Not started", "ref": "origin/upflow/2026-08-18-vacuity-burndown-and-tool-boundary", "title": "merged, reapable" },
+    { "id": "REG-21-BR",  "page": "Branch hygiene", "status": "Not started", "ref": "pr150-check", "title": "stale local ref, re-fetchable" },
+    { "id": "REG-22-BR",  "page": "Branch hygiene", "status": "Not started", "ref": "sync/2026-08-13-loom-use-rs", "title": "stale local ref" },
+    { "id": "REG-23-BR",  "page": "Branch hygiene", "status": "Not started", "ref": "sync/2026-08-19-loom-use-rs", "title": "stale local ref; the sync landed via origin/main" },
+
+    { "id": "REG-24-UP",  "page": "Upstream asks", "status": "In progress", "ref": "entry-136", "title": ".gitignore workspace fence — filed upstream, awaiting loom" },
+    { "id": "REG-25-UP",  "page": "Upstream asks", "status": "Not started", "ref": "#171-repro", "title": "runtime worktree reproduction — static predicate REFUTED" }
+  ]
+}
