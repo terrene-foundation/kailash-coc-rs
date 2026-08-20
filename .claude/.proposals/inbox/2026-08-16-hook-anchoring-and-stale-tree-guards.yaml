@@ -1,0 +1,162 @@
+# Step-7c downstream upflow — hop-level-only provenance.
+# NO source_repo: the consumer is deliberately NOT identified.
+origin: downstream
+codify_date: 2026-08-16
+codify_session: "two safety-hook offerings. (1) A TEMPLATE-OWNED hook this template has PARTIALLY fixed already: five of seven dangerous patterns are still unanchored upstream, and a root-delete terminator still lets two real invocations pass a block-severity gate. (2) A new guard pair for the stale-checkout class, with its rule and 39 real-git fixtures. FOUR further CI-flood artifacts were considered and are deliberately NOT offered; see the closing note."
+template_slug: kailash-coc-rs
+changes:
+  - file: .claude/hooks/validate-bash-command.js
+    action: modified
+    reason: >-
+      READ THIS FIRST, because half of it is already done here and the offer is
+      scoped to the half that is not. This template has ALREADY anchored the two
+      `rm` patterns, with a correct explanatory comment noting that `/` is a
+      non-word char so the anchor still fires for a path-qualified form. That work
+      is not being re-proposed. Measured against the current template copy, TWO
+      gaps remain. FIRST, five of the seven command-word patterns are still
+      UNANCHORED here (mkfs, dd, chmod, curl, wget), against seven of seven
+      anchored downstream. Unanchored, a pattern matches its command word EMBEDDED
+      IN AN ORDINARY WORD, so a block fires on text containing no command at all.
+      The concrete live one is dd. The pattern for a block-device write matches the
+      substring inside `add if=...`, which is ordinary shell and ordinary prose.
+      The originating downstream incident was the same shape on a pattern this
+      template has since fixed. A read-only analysis heredoc containing the word
+      "perform" was BLOCKED under "rm on root filesystem", because the root-delete
+      clause matched inside `perfo[rm /]`. Neither that command nor the probe of it
+      contained a delete. Anchoring the remaining five is a two-character change
+      each and costs nothing. Measured downstream. ZERO detections lost. Root
+      deletes with and without flags, under sudo, after a separator, the long-flag
+      forms, mkfs, a block-device write, a recursive chmod on root, and a pipe from
+      curl or wget into a shell all still block. Four false positives removed.
+      SECOND, and this one is a real miss rather than an annoyance. The root-delete
+      terminator here still admits only end-of-string, whitespace, or a star. It
+      REJECTS A FOLLOWING QUOTE, so the two shapes that wrap a root delete in
+      `sh -c` or `bash -c` with a quoted argument PASS SILENTLY through a
+      block-severity gate today. Adding a quote branch to that terminator catches
+      both and was verified independently of the anchoring change. This is the half
+      that matters. ONE ACCEPTED FALSE POSITIVE TRAVELS WITH THE FIX, and it must
+      not be quietly removed. A quoted MENTION of a root delete in ordinary text
+      still blocks. Removing that annoyance requires quote-context parsing, and
+      stripping quoted spans would RE-OPEN the `sh -c` hole the terminator just
+      closed, trading a cosmetic irritation for a real miss. The fixture suite is
+      deliberately ORDERED so that trade turns the coverage cases red first. A
+      consumer who fixes the irritation without the fixture re-opens the miss.
+      Consumer configuration required. NONE. Drop-in. Both fixes were
+      mutation-tested independently downstream. Removing the anchor turned four
+      fixtures red, removing the terminator turned three red, restoring gave 36
+      green, with the subject committed BEFORE the mutations and restored with a
+      commit-qualified checkout so the mutation could not survive its own removal.
+  - file: .claude/audit-fixtures/dangerous-pattern-anchoring/test.mjs
+    action: added
+    reason: >-
+      The paired fixture suite, and it MUST travel with the hook change rather than
+      follow it. It is the only thing that makes the one accepted false positive a
+      deliberate trade instead of an oversight, because it pins that case and orders
+      the suite so a naive fix reddens the coverage cases first. 36 fixtures,
+      re-derived green at the time of writing rather than carried from an earlier
+      session. 36 passed, 0 failed. Its notable property is that it PARSES THE LIVE
+      PATTERN TABLE OUT OF THE HOOK SOURCE instead of re-declaring a copy, so it
+      cannot drift from the hook it guards. It uses only paths relative to its own
+      location, so it is portable with no edits. Ships with one CI step invoking it.
+  - file: .claude/hooks/stale-tree-guard.js
+    action: added
+    reason: >-
+      PreToolUse on Edit, Write and NotebookEdit, severity BLOCK. Refuses a write to
+      a file the remote trunk has committed to since this tree diverged, above a
+      configurable drift floor. THE DEFECT IS GIT-MECHANICAL AND UNIVERSAL. A stale
+      checkout is INDISTINGUISHABLE from a fresh one by inspection. Every file is
+      present, every path resolves, every edit applies, so nothing signals the
+      staleness until the content ships. In the originating incident a session wrote
+      hooks, a rule and fixtures into a primary checkout 1,574 commits behind the
+      remote trunk, and edited the harness settings file there. The destination copy
+      of that settings file carried two hook registrations the stale copy lacked, so
+      copying it forward would have SILENTLY DELETED TWO SECURITY GUARDS. It was
+      caught by a diff run on a hunch. No control existed that would have caught it.
+      WHY BLOCK SEVERITY IS DEFENSIBLE, AND WHY THAT REASONING MUST TRAVEL WITH IT.
+      Every input is git PROCESS STATE, namely rev-list counts and cat-file and
+      diff-quiet exit codes, not a regex over a command string and not prose. That
+      is the bar the hook-output-discipline rule sets for block. Its sibling below
+      is deliberately NOT block for exactly the opposite reason. Offering the pair
+      without that distinction invites a consumer to promote the wrong one. THE
+      THREE GUARD-AUTHORING BUGS ARE THE MOST VALUABLE PART OF THIS PAYLOAD. All
+      three were found by the fixtures and NONE by review, and a consumer
+      re-implementing this from the description alone would hit each one. First, the
+      whole-hook time budget was anchored at MODULE LOAD, so it could expire before
+      the evaluation function was ever called, producing a guard that fails open for
+      reasons unrelated to its own check. It must be per-invocation. Second, the
+      containment test compared the symlink-resolved repository root against an
+      UNRESOLVED candidate path, so the relative path began with a parent traversal
+      and the guard SILENTLY FAILED OPEN on macOS for any repository whose path
+      crosses a symlink. Both sides must go through the same resolver, per the
+      path-containment discipline. Third, and worst, THE PREDICATE ITSELF WAS WRONG
+      ON THE FIRST ATTEMPT. It asked whether the file differs from the trunk AND the
+      current branch has NOT touched it, treating a branch-touched file as
+      work-in-progress. Run against the actual incident it FAILED OPEN, allowing the
+      exact edit it existed to prevent, because the stale branch HAD touched the
+      file. Both sides having touched a file is DIVERGENCE, which is strictly more
+      dangerous than a one-sided difference. The corrected predicate asks only
+      whether the trunk holds commits to that file which this tree lacks.
+      CONSUMER CONFIGURATION REQUIRED, and a consumer who skips it gets a guard that
+      never fires. The trunk ref is currently a hardcoded origin-main string and
+      must become resolved or configurable, since a consumer on a differently-named
+      trunk or remote silently gets nothing. The drift floor is a measured local
+      value and each consumer must set their own, because too low fires on normal
+      work and too high misses the case it exists for. An environment-variable
+      override already exists and should be documented, since a guard with no escape
+      hatch gets commented out of the settings file the first time someone genuinely
+      needs it off, and after that it protects nothing.
+  - file: .claude/hooks/trunk-worktree-guard.js
+    action: added
+    reason: >-
+      PreToolUse on Bash, severity halt-and-report and deliberately NOT block, because
+      its signal is a PARSED COMMAND STRING, which the hook-output-discipline rule
+      forbids from carrying block on the grounds that shell expansion is invisible
+      before execution. It surfaces a worktree-add that would attach the trunk BRANCH,
+      and names the two correct forms, a detached checkout of the remote trunk for
+      inspection and a new branch cut from the remote trunk for work. THIS IS THE ROOT
+      CAUSE BENEATH THE STALE-TREE SYMPTOM, which is why the pair ships together. Git
+      enforces one-branch-one-worktree, so a worktree holding the trunk branch makes
+      the primary checkout STRUCTURALLY UNABLE to be on the trunk. Checking out the
+      trunk there fails with a message naming the holding worktree, so the primary
+      parks on a feature branch and drifts from then on. Three further defects
+      compound it and are recorded in the rule. A local trunk branch can track the
+      WRONG upstream ref, so even a pull on the trunk fetches a different branch.
+      Nothing measures the staleness of the tree being WRITTEN INTO, and an
+      accumulation census is a different axis that cannot catch it. And enough
+      accumulated worktrees and unmerged commits make the parked branch LOOK like
+      legitimate work. The static trunk-name set is already generic. Consumer
+      configuration required. None.
+  - file: .claude/rules/stale-tree-discipline.md
+    action: added
+    reason: >-
+      The paired rule for the two guards above. The guards enforce the first and third
+      clauses structurally, the second and fourth are gate-review. Four clauses. ONE, a
+      worktree must not hold the trunk branch, since both correct forms give identical
+      tree contents without taking the branch hostage. TWO, the primary checkout stays
+      on the trunk, current and clean, verified at session start by three commands,
+      namely the current branch, the branch's configured upstream ref, and a count of
+      commits the remote trunk holds that this tree lacks. The upstream-ref check is
+      there because it is the one defect that survives a pull. THREE, verify the tree
+      BEFORE writing into it rather than after, because the presence of a file says
+      nothing whatever about its version. FOUR, copying a file between trees IS A MERGE
+      and must be treated as one. Diff both versions and reconcile deliberately, or
+      move the work by branch and merge, which is what the tool is for. The fourth
+      clause is the one that would have prevented the actual damage. The edit itself
+      was harmless; the copy forward is what would have deleted two security guards.
+      Each clause carries its own worked example, its blocked-rationalization corpus
+      and its rationale, and the file closes with a map distinguishing it from the
+      accumulation census, from interpreter-resolution wrong-tree failures, from the
+      path-containment resolver requirement, and from the same staleness class at the
+      merge boundary, which is strictly later than the write boundary this covers.
+  - file: .claude/audit-fixtures/stale-tree-guard/test.mjs
+    action: added
+    reason: >-
+      The paired fixture suite for the two guards, and it MUST travel with them. All
+      three guard-authoring bugs recorded above were found HERE, by these fixtures,
+      and none by review, so a consumer who takes the guards without the fixtures
+      inherits the guards without the thing that found their defects. 39
+      decision-branch fixtures, re-derived green at the time of writing rather than
+      carried from an earlier session. 39 passed, 0 failed. They BUILD REAL GIT
+      REPOSITORIES rather than mocking git, and that is deliberate rather than
+      thorough. The predicate IS git process state, so a mocked git would test the
+      mock. Includes a mutation section. Ships with one CI step invoking it.
