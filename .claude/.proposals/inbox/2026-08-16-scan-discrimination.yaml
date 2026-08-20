@@ -1,0 +1,87 @@
+origin: downstream
+codify_date: '2026-08-16'
+codify_session: 'codify(instrument-discipline): a scan may not report clean until shown able to report not-clean'
+template_slug: kailash-coc-rs
+template_version: 2.24.0
+changes:
+  - file: .claude/bin/scan-synced-disclosure.mjs
+    action: modified
+    base_version: 2.24.0
+    reason: >
+      `--check` mode reports CLEAN over an empty file set, and the two cases are not merely similar
+      — they are BYTE-IDENTICAL. Measured at a consumer, both poles, same binary: `--check --root
+      <empty-dir>` produces 0 bytes of output and exit 0; `--check` over the real synced surface
+      produces 0 bytes of output and exit 0. The human-mode run of the same scanner over that
+      surface prints "Scanned: 2297 files", so the denominator EXISTS and is simply not surfaced on
+      the check path. There is no result this instrument could have produced that would distinguish
+      "the surface is clean" from "the scan examined nothing", which is the predicate
+      `instrument-discipline.md` MUST-1 makes the condition for citing any check as evidence. WHY
+      THIS ONE MATTERS MOST. This is not an advisory lint — it is the DISCLOSURE RECEIPT.
+      `artifact-flow.md` § Intake Disclosure Scrub mandates it at Gate-1 with `--root
+      <inbound-repo-path>` and treats non-zero as HALT, so a mistyped root, a moved inbound path, or
+      a `collectFiles` predicate that stops matching yields a clean intake verdict that was never
+      earned. It is ALSO fence (4) of `/codify` Step 7c — the consumer scrub gating this very
+      proposal's submission — so the instrument guarding the upflow is the instrument being
+      reported, and a consumer whose scrub silently examined nothing would ship an unscrubbed
+      proposal while believing the fence had passed. Proposed disposition: in `--check`, refuse when
+      the collected file set is empty — exit 2 with a one-line reason naming the root and the count,
+      reserving exit 0 for a scan that actually walked files, and surface `Scanned: N` on the check
+      path as the human path already does. Exit 2 is the right code rather than a new one because
+      every existing caller already treats it as did-not-produce-a-verdict (see entry 14), so the
+      fix propagates without a caller change. This is the arity half of a two-half predicate; the
+      control half is a separate obligation and is NOT claimed to be closed by this entry.
+    diff_lines: '~+8 (an empty-set refusal in the --check branch + a Scanned: N line on that path)'
+  - file: .claude/hooks/lib/cross-ecosystem-disclosure-scanfn.js
+    action: modified
+    base_version: 2.24.0
+    reason: >
+      `scanForkIdentifyingContent` is a PreToolUse write guard on the fork-canon disclosure
+      boundary, and its ARITY half is already sound and deliberately so — it returns `{ran:false}`
+      on an empty span set, and its catch branch fails CLOSED on exit 2, a spawn failure, or a
+      timeout, citing `evidence-first-claims.md` MUST-3 by name for why an errored detector is not
+      an all-clear. That reasoning is correct and this entry does not disturb it. TWO GAPS REMAIN,
+      and they are of different kinds. FIRST, AND IT CLOSES FOR FREE: the success branch reads exit
+      0 from `scan-synced-disclosure.mjs --check` as "a real scan ran clean" and returns `{ran:true,
+      findings:[]}` — but per entry 13 that exit code is byte-identically what the scanner emits
+      having scanned NOTHING. So if the staged temp surfaces ever stop matching the scanner's
+      `fileScope`, this guard positively asserts a clean scan over an empty one. That is not
+      hypothetical here: this file's own comments record exactly that having happened once, where an
+      `.md` rules-dir staging did not match a shape's fileScope and a bare slug rode through. No
+      change is needed in THIS file to close it — entry 13 converts that silent 0 into a 2, which
+      this function's existing catch branch already maps to `{ran:false}` and treats as UNVERIFIED.
+      It is recorded here so the dependency is explicit and so this file is not separately patched
+      for it. SECOND, AND IT DOES NEED THIS FILE: there is no CONTROL. The guard stages real
+      surfaces and reads the scanner's verdict without ever planting an input the scanner MUST flag,
+      so a fileScope or denylist regression that silences the scanner is indistinguishable from a
+      genuinely clean write — the same predicate failure as entry 13, at the other half. Proposed
+      disposition: stage one synthetic canary token alongside the real surfaces, assert it appears
+      in the findings, and subtract it before returning; if the canary does not appear, fail closed
+      via the existing `{ran:false}` path rather than returning an empty findings array.
+    diff_lines: >-
+      ~+14 (canary staged into the temp root, asserted, then subtracted; no change to the arity or
+      catch branches)
+  - file: .claude/rules/sync-completeness.md
+    action: modified
+    base_version: 2.24.0
+    reason: >
+      PORTABILITY HARDENING, NOT A DEFECT — and the distinction is stated first because the original
+      sweep finding overstated it and the correction is the point. Both sites (`for t in $TEMPLATES;
+      do` in the Rule-1 DO block and again in the per-target receipt block) sit inside ```bash
+      fences, and under bash the form is CORRECT: measured, bash iterates 3 times over a three-word
+      variable. So as specified, for the shell named, the guidance works and no bug is being
+      reported. THE RESIDUAL HAZARD IS THE COPY-PASTE PATH. Measured in the same session, zsh
+      iterates ONCE over the identical variable — zsh does not word-split an unquoted parameter
+      expansion. zsh is the default interactive shell on macOS, so an operator following a
+      ```bash-fenced runbook by pasting it into their own terminal gets a loop that runs once,
+      distributes to a single target whose name is the whole concatenated string, and reports
+      success. The failure is silent and shaped exactly like the class this batch is about: a wrong
+      COUNT that produces plausible output, where the correct and incorrect forms are visually
+      identical. Proposed disposition: switch both sites to a form that is correct in BOTH shells —
+      `while IFS= read -r t; do ... done <<< "$TEMPLATES"`, or emit the manifest query NUL-separated
+      and read it that way — so the snippet's correctness stops depending on which shell the reader
+      happens to be in. The mirror at `.coc/rules/SYNC-COMPLETENESS.md` carries the same two sites
+      and is re-emitted from this file, so it needs no separate edit. Filing this at all is a
+      judgment call, and the honest framing is that the corpus serves multi-shell operators while
+      the snippet is only correct for one of them.
+    diff_lines: ~+4 (two loop forms replaced; mirror re-emitted, not hand-edited)
+status: pending_review
