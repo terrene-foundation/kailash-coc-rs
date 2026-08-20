@@ -22,6 +22,7 @@ const { resolveGitBinary, gitEnv } = require("./git-subprocess-env.js");
 // the oracle itself does the filesystem resolution. Adds no file to the shipped
 // closure (`.claude/hooks/**` is ALWAYS_INCLUDE).
 const { protectedPathTokens } = require("./state-target-scope.js");
+const { enumerateSiblingWorktrees } = require("./sibling-porcelain.js");
 
 /**
  * scopedPathHit — the SCOPE-AWARE replacement for a bare `pathRx.test(text)`.
@@ -206,6 +207,38 @@ function _receiptTimestampMs(content) {
  *
  * Scans the non-codify-gated `.claude/cross-repo-authz/` (RC6 break, journal/0488)
  * FIRST, then repo-root journal/ + workspace journals for codify-authored receipts.
+ *
+ * WORKTREE-WIDE (#174). The search covers EVERY worktree of this repo, not only
+ * the cwd's toplevel. The session cwd and the cwd the guarded command runs in
+ * are routinely DIFFERENT worktrees of one repo — the normal shape of parallel
+ * lane work — so a correctly-formed receipt written by the sanctioned
+ * `/cross-repo-authorize` affordance was invisible to the guard that demands it.
+ * An operator who followed the ceremony exactly was still halted, and the
+ * natural next move is to override, which is what the ceremony exists to stop.
+ *
+ * Every worktree of a repo shares one `.git` and one operator, so a receipt in
+ * any of them is equally authoritative. `enumerateSiblingWorktrees` is reused
+ * rather than open-coding `git worktree list`: it already verifies each
+ * candidate's `git-common-dir` matches our own, so a planted porcelain entry
+ * cannot aim the search outside this repo.
+ *
+ * OWN ROOT IS SCANNED FIRST, AND THE SIBLING SWEEP IS ONLY REACHED IF IT MISSES
+ * — this ordering is load-bearing for COST, not neatness. Measured on a
+ * 72-worktree forest: `enumerateSiblingWorktrees` alone costs ~710ms (per-
+ * sibling git subprocesses) while the whole filesystem scan is ~1ms. Enumerating
+ * up front therefore taxed EVERY call, including the overwhelmingly common one
+ * where the receipt sits in the caller's own tree, which is exactly where the
+ * affordance writes it. Deferring it keeps that path at its pre-#174 cost and
+ * spends the sweep only on the case that previously failed outright.
+ *
+ * FAIL-CLOSED IS PRESERVED IN BOTH DIRECTIONS. Widening the search can only
+ * find MORE receipts, never authorize without one — absent a receipt in every
+ * worktree the answer is still `false`. And when enumeration CANNOT ANSWER
+ * (`ok:false` — no git binary, a `safe.directory` refusal) the own-root result
+ * still stands, so behaviour is never worse than before the fix; the narrowing
+ * is reported on stderr rather than collapsed into "no siblings", which is the
+ * precise conflation sibling-porcelain.js's result-object contract exists to
+ * prevent (`rules/zero-tolerance.md` Rule 3 — no silent fallbacks).
  */
 function hasCrossRepoAuthorizationReceipt(targetSlug, cwd, requiredMode) {
   if (!targetSlug) return false;
@@ -224,25 +257,32 @@ function hasCrossRepoAuthorizationReceipt(targetSlug, cwd, requiredMode) {
     "m",
   );
   const now = Date.now();
-  const dirs = [
-    path.join(root, ".claude", "cross-repo-authz"),
-    path.join(root, "journal"),
-  ];
-  try {
-    const wsRoot = path.join(root, "workspaces");
-    for (const e of fs.readdirSync(wsRoot, { withFileTypes: true })) {
-      if (
-        e.isDirectory() &&
-        e.name !== "instructions" &&
-        !e.name.startsWith("_")
-      ) {
-        dirs.push(path.join(wsRoot, e.name, "journal"));
-        dirs.push(path.join(wsRoot, e.name, "journal", ".pending"));
+
+  /** The receipt-bearing directories inside ONE worktree root. */
+  const dirsFor = (r) => {
+    const out = [
+      path.join(r, ".claude", "cross-repo-authz"),
+      path.join(r, "journal"),
+    ];
+    try {
+      const wsRoot = path.join(r, "workspaces");
+      for (const e of fs.readdirSync(wsRoot, { withFileTypes: true })) {
+        if (
+          e.isDirectory() &&
+          e.name !== "instructions" &&
+          !e.name.startsWith("_")
+        ) {
+          out.push(path.join(wsRoot, e.name, "journal"));
+          out.push(path.join(wsRoot, e.name, "journal", ".pending"));
+        }
       }
+    } catch {
+      /* no workspaces/ in this worktree — its repo-root journal/ only */
     }
-  } catch {
-    /* no workspaces/ — repo-root journal/ only */
-  }
+    return out;
+  };
+
+  const dirs = dirsFor(root);
   for (const d of dirs) {
     let entries;
     try {
@@ -270,6 +310,52 @@ function hasCrossRepoAuthorizationReceipt(targetSlug, cwd, requiredMode) {
         return true;
       } catch {
         continue;
+      }
+    }
+  }
+
+  // Own root had no live receipt. Only NOW pay for enumeration (~710ms at 72
+  // worktrees, measured) and sweep the rest of the forest.
+  const sib = enumerateSiblingWorktrees(root);
+  if (!sib.ok) {
+    // NOT collapsed to "no siblings" — that conflation is what the result-object
+    // contract exists to prevent. The own-root answer above still stands, so
+    // this is never worse than the pre-#174 behaviour; it is a NARROWED search
+    // and it says so rather than failing silently.
+    process.stderr.write(
+      `[cross-repo-authz] worktree enumeration could not answer (${sib.reason}) — ` +
+        `receipt search narrowed to ${root}. A receipt in a sibling worktree will NOT be seen.\n`,
+    );
+    return false;
+  }
+  for (const s of sib.siblings) {
+    const sibRoot = typeof s === "string" ? s : s && s.path;
+    if (!sibRoot || sibRoot === root) continue;
+    for (const d of dirsFor(sibRoot)) {
+      let entries;
+      try {
+        entries = fs.readdirSync(d, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      for (const f of entries) {
+        if (!f.isFile() || !f.name.endsWith(".md")) continue;
+        try {
+          const content = fs.readFileSync(path.join(d, f.name), "utf8");
+          if (!markerRe.test(content)) continue;
+          // Same two-sided age bound as the own-root scan: widening WHERE we
+          // look must not widen WHEN a receipt is valid.
+          const ts = _receiptTimestampMs(content);
+          if (
+            ts === null ||
+            now - ts > CROSS_REPO_RECEIPT_WINDOW_MS ||
+            ts - now > CROSS_REPO_RECEIPT_SKEW_MS
+          )
+            continue;
+          return true;
+        } catch {
+          continue;
+        }
       }
     }
   }
@@ -1245,7 +1331,10 @@ function ghCloseSegment(command, anchorRe) {
   // this verb, including this detector's own fixture generator. Same skeleton
   // substitution `heredocBodiesAreInertData` above already uses, so the two
   // treat a heredoc the same way.
-  command = command.replace(/<<-?\s*(['"]?)([A-Za-z_]\w*)\1[\s\S]*?^[ \t]*\2\s*$/gm, " <<HEREDOC ");
+  command = command.replace(
+    /<<-?\s*(['"]?)([A-Za-z_]\w*)\1[\s\S]*?^[ \t]*\2\s*$/gm,
+    " <<HEREDOC ",
+  );
   for (const line of command.split("\n")) {
     for (const seg of splitShellSegments(line)) {
       const s = String(seg).trim();
@@ -1294,7 +1383,9 @@ function detectGhIssueCloseWithoutEvidence(command) {
       rule_id: "git/issue-closure-evidence",
       outcome: "violation",
       severity: "halt-and-report",
-      evidence: command.match(/\bgh\s+issue\s+close\b[^|;&\n]{0,120}/i)[0].trim(),
+      evidence: command
+        .match(/\bgh\s+issue\s+close\b[^|;&\n]{0,120}/i)[0]
+        .trim(),
       detection_layer: "lexical",
       mode: "bash",
     };
@@ -1316,7 +1407,8 @@ function detectGhIssueCloseWithoutEvidence(command) {
     // recovered-from-the-wrong-command body would be a FALSE CLEAN — the one
     // failure direction this change must not introduce.
     const flags = unsegmented.match(/(?:--comment|--body|\s-c)[=\s]+/gi) || [];
-    const recovered = flags.length === 1 ? unsegmented.match(GH_CLOSE_COMMENT_RE) : null;
+    const recovered =
+      flags.length === 1 ? unsegmented.match(GH_CLOSE_COMMENT_RE) : null;
     body =
       recovered && (recovered[1] !== undefined || recovered[2] !== undefined)
         ? (recovered[1] ?? recovered[2])
@@ -1554,9 +1646,7 @@ const STATE_INTERP_WRITE_SOURCES = [
   String.raw`\b(?:__import__\s*\(\s*['"](?:os|shutil|subprocess|io|pathlib|tempfile)['"]|getattr\s*\(\s*(?:os|io|shutil|pathlib|builtins|__import__)\b)`,
   String.raw`\b(?:File|IO|FileUtils|Kernel|Object|Module)\.(?:send|public_send)\s*\(`,
 ];
-const STATE_INTERP_WRITE_RX = new RegExp(
-  STATE_INTERP_WRITE_SOURCES.join("|"),
-);
+const STATE_INTERP_WRITE_RX = new RegExp(STATE_INTERP_WRITE_SOURCES.join("|"));
 // Global twin of the above, used ONLY to COUNT how many write/mutation verbs a
 // body contains. The target resolver (`resolveInterpreterWriteTargets`) can only
 // resolve the open/write family — it has no grammar for `os.remove`,
@@ -1613,7 +1703,10 @@ const CONCAT_FOLD_RX = /(['"])([^'"]{0,64})\1\s*\+\s*(['"])([^'"]{0,64})\3/g;
 function foldConcatenatedLiterals(text) {
   let out = text;
   for (let round = 0; round < 8; round++) {
-    const next = out.replace(CONCAT_FOLD_RX, (_m, q, a, _q2, b) => q + a + b + q);
+    const next = out.replace(
+      CONCAT_FOLD_RX,
+      (_m, q, a, _q2, b) => q + a + b + q,
+    );
     if (next === out) break;
     out = next;
   }
@@ -1806,7 +1899,9 @@ const ANY_EXEC_TOKEN_RX =
 
 function heredocBodiesAreInertData(command, pathRx) {
   if (!command) return false;
-  const targets = [...command.matchAll(HEREDOC_REDIRECT_TARGET_RX)].map((m) => m[1]);
+  const targets = [...command.matchAll(HEREDOC_REDIRECT_TARGET_RX)].map(
+    (m) => m[1],
+  );
   if (targets.length === 0) return false; // stdin-fed heredoc = code, not data
   for (const t of targets) {
     if (/[$`]/.test(t)) return false; // unresolved expansion — fail closed
@@ -1830,7 +1925,10 @@ function heredocBodiesAreInertData(command, pathRx) {
   // stripper now closes EARLIER than bash — it strips LESS, leaving more text in
   // the skeleton, which can only ADD exec-token matches and RETAIN a flag. Same
   // doctrine as ANY_EXEC_TOKEN_RX's own deliberate over-breadth above.
-  const skeleton = command.replace(/<<-?\s*(['"]?)([A-Za-z_]\w*)\1[\s\S]*?^[ \t]*\2\s*$/gm, " <<HEREDOC ");
+  const skeleton = command.replace(
+    /<<-?\s*(['"]?)([A-Za-z_]\w*)\1[\s\S]*?^[ \t]*\2\s*$/gm,
+    " <<HEREDOC ",
+  );
   return !ANY_EXEC_TOKEN_RX.test(skeleton);
 }
 
@@ -2692,7 +2790,14 @@ function _heredocOwner(cmd, openerIdx) {
   let last = 0;
   for (let k = openerIdx - 1; k >= 0; k--) {
     const c = cmd[k];
-    if (c === ";" || c === "\n" || c === "&" || c === "|" || c === "(" || c === "`") {
+    if (
+      c === ";" ||
+      c === "\n" ||
+      c === "&" ||
+      c === "|" ||
+      c === "(" ||
+      c === "`"
+    ) {
       last = k + 1;
       break;
     }
@@ -4688,7 +4793,9 @@ function readRefDivergenceFromOrigin(ref, cwd, opts = {}) {
         env: gitEnv(),
       },
     );
-    const m = String(out).trim().match(/^(\d+)\s+(\d+)$/);
+    const m = String(out)
+      .trim()
+      .match(/^(\d+)\s+(\d+)$/);
     if (!m) return null;
     return { ahead: Number(m[1]), behind: Number(m[2]) };
   } catch {
@@ -4768,7 +4875,8 @@ function detectWorktreeStaleBaseRef(args, cwd, opts = {}) {
  * antipattern in rule text and skills, and a content-only scan would fire on
  * every one of those files, including the rule that defines the violation.
  */
-const DOCKERFILE_BASENAME_RE = /^(Dockerfile|Containerfile)(\..+)?$|\.(Dockerfile|Containerfile)$/i;
+const DOCKERFILE_BASENAME_RE =
+  /^(Dockerfile|Containerfile)(\..+)?$|\.(Dockerfile|Containerfile)$/i;
 
 /**
  * Document extensions that DEFEAT the `Dockerfile.<suffix>` arm above.
@@ -4822,7 +4930,8 @@ function detectDockerfileWholeContextCopy(filePath, content) {
   const base = filePath.split("/").pop() || "";
   // STRUCTURAL gate first: a non-Dockerfile can never violate a Dockerfile
   // clause, and this is read straight off the tool call's own parameter.
-  if (!DOCKERFILE_BASENAME_RE.test(base) || DOC_SUFFIX_RE.test(base)) return null;
+  if (!DOCKERFILE_BASENAME_RE.test(base) || DOC_SUFFIX_RE.test(base))
+    return null;
 
   // Join continuation lines before parsing: `COPY \\\n  . .` is ONE instruction,
   // and a line-at-a-time scan reads its second physical line as a bare `. .`
@@ -4846,7 +4955,8 @@ function detectDockerfileWholeContextCopy(filePath, content) {
       const u = s.replace(/^["']|["']$/g, "");
       return u === "." || u === "./" || u === "/" || u === "*";
     });
-    if (whole.length > 0) hits.push(line.length > 100 ? `${line.slice(0, 100)}…` : line);
+    if (whole.length > 0)
+      hits.push(line.length > 100 ? `${line.slice(0, 100)}…` : line);
   }
   if (hits.length === 0) return null;
 
