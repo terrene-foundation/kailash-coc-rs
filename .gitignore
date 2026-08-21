@@ -207,3 +207,38 @@ compose.override.yml
 !.claude/audit-fixtures/**
 .claude/audit-fixtures/**/.DS_Store
 # <<< coc:gitignore_additions <<<
+
+# ── TARGET-OWNED — outside the loom-managed block above ────────────────────
+# workspaces/ IS tracked (owner directive 2026-08-07). The COC workspace —
+# briefs, specs, analysis, todos, journals, validation reports — is durable
+# project knowledge, and gitignoring it strands every /sweep report and
+# workspace journal as local-only.
+#
+# PLACEMENT IS LOAD-BEARING. This override previously lived INSIDE the
+# `coc:gitignore_additions` markers and the 2026-08-19 sync rebuilt it away
+# (loom ships `/workspaces/*` from sync-manifest.yaml::visibility_gitignore_
+# additions.public). `owned_surfaces:` grants loom that managed block ONLY and
+# requires every byte outside it untouched — so bytes HERE survive a sync.
+# This is an INTERIM local override; the durable fix is the two upstream
+# proposal entries (loom-side .env fence + per-target workspaces election).
+#
+# Shape note: the re-include must be NARROW. A bare `!/workspaces/**` was
+# measured to defeat ALL 13 global ignores under workspaces/ (.env,
+# node_modules, .venv, target, __pycache__, .DS_Store, .session-notes,
+# journal/.pending). Directories are re-included so git can descend; only
+# *.md files are re-included; everything else is re-ignored below.
+!/workspaces/**/
+!/workspaces/**/*.md
+# Re-ignores MUST follow the re-include (last match wins).
+/workspaces/**/node_modules/
+/workspaces/**/.venv/
+/workspaces/**/venv/
+/workspaces/**/target/
+/workspaces/**/__pycache__/
+/workspaces/**/.session-notes*
+/workspaces/**/journal/.pending/
+# A workspace .env is a real credential surface; `security.md` § "No .env in
+# Git" is not lifted by tracking the directory.
+/workspaces/**/.env
+/workspaces/**/.env.*
+!/workspaces/**/.env.example

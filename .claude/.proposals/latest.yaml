@@ -32,8 +32,8 @@ changes:
     action: create
     suggested_tier: coc
     reconciliation:
-      status: ALREADY-SOLVED — no Gate-1 action required
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: no Gate-1 action required"
+      reconciled_at: 2026-08-19
       restamped_note: >-
         Date advanced 2026-07-26 -> 2026-08-09: every claim below was re-derived
         against the post-sync tree, not carried forward. Frontmatter is exact
@@ -124,8 +124,8 @@ changes:
     action: modify
     suggested_tier: coc
     reconciliation:
-      status: ALREADY-SOLVED — no Gate-1 action required
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: no Gate-1 action required"
+      reconciled_at: 2026-08-19
       restamped_note: >-
         Date advanced 2026-07-26 -> 2026-08-09: both halves re-read on the
         post-sync tree. `commands/codify.md:51` still carries the proposed
@@ -183,8 +183,8 @@ changes:
     action: modify
     suggested_tier: coc
     reconciliation:
-      status: "ALREADY-SOLVED — no Gate-1 action required"
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: no Gate-1 action required"
+      reconciled_at: 2026-08-19
       evidence: >-
         BOTH halves this entry tracked have landed. The local stopgap it describes is on disk:
         CLAUDE.md:118 carries the heading '## GitHub Issue Triage → Upflow Routing (always-loaded)'
@@ -235,8 +235,8 @@ changes:
     action: modify
     suggested_tier: coc
     reconciliation:
-      status: PARTIALLY-SOLVED — gitignore half landed; policy half still open
-      reconciled_at: 2026-08-09
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: gitignore half landed; policy half still open"
+      reconciled_at: 2026-08-19
       restamped_note: >-
         Date advanced 2026-07-26 -> 2026-08-09 because BOTH halves were
         re-verified this session, not merely re-read: `git check-ignore -v
@@ -322,8 +322,8 @@ changes:
     action: create
     suggested_tier: coc
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis unchanged from 2026-07-26
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis unchanged from 2026-07-26"
+      reconciled_at: 2026-08-19
       restamped_note: >-
         Date advanced 2026-07-26 -> 2026-08-09: absence re-confirmed this
         session (`ls .claude/operators.roster.README.md` -> "No such file or
@@ -387,8 +387,8 @@ changes:
     action: create
     suggested_tier: coc
     reconciliation:
-      status: ALREADY-SOLVED — no Gate-1 action required
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: no Gate-1 action required"
+      reconciled_at: 2026-08-19
       evidence: >-
         The entry's central claim — "an agent/operator at a template has the
         machinery and no documented, guard-compatible way to drive it" — is NO
@@ -446,8 +446,8 @@ changes:
     action: modify
     suggested_tier: coc
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis narrowed
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis narrowed"
+      reconciled_at: 2026-08-19
       evidence: >-
         The command still carries NO repo-class branch. Instrument fired here
         first: `grep -c "enroll-genesis" .claude/commands/whoami.md` → 2 (the
@@ -550,8 +550,8 @@ changes:
     suggested_tier: coc
     base_version: "2.23.22"
     reconciliation:
-      status: ALREADY-SOLVED — no Gate-1 action required
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: no Gate-1 action required"
+      reconciled_at: 2026-08-19
       evidence: >-
         The proposed clause LANDED, in full, and its Origin names this exact
         filing. `.claude/rules/schema-migration.md:126` is now
@@ -623,8 +623,8 @@ changes:
     suggested_tier: coc
     base_version: "2.23.22"
     reconciliation:
-      status: ALREADY-SOLVED — no Gate-1 action required
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: no Gate-1 action required"
+      reconciled_at: 2026-08-19
       evidence: >-
         The clause LANDED and the entry's dedup_evidence is now FALSE. The
         entry claimed: "a grep for approver|decider|server-derived|
@@ -700,8 +700,8 @@ changes:
     suggested_tier: coc
     base_version: "2.23.22"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, headroom constraint TIGHTER than the entry measured
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, headroom constraint TIGHTER than the entry measured"
+      reconciled_at: 2026-08-19
       evidence: >-
         The gap persists exactly as filed. Control fired first:
         `grep -cniE "reviewer|dispatch|zzznotpresent" .claude/rules/agents.md`
@@ -818,8 +818,8 @@ changes:
     suggested_tier: coc
     base_version: "2.23.22"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis unchanged and accurate
-      reconciled_at: 2026-08-09
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis unchanged and accurate"
+      reconciled_at: 2026-08-19
       evidence: >-
         Both the dedup claim and the sizing claim re-verify. Control fired
         first: `grep -niE "reviv|presumed.dead|force.push|ledger" .claude/rules/orchestration-launch-ledger.md`
@@ -895,8 +895,8 @@ changes:
     suggested_tier: coc
     base_version: "2.23.22"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis unchanged
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis unchanged"
+      reconciled_at: 2026-08-19
       evidence: >-
         The skill still documents exactly three axes and has no idle treatment.
         Control fired first — `grep -nE "^#+.*Axis|Axis [0-9]"` on the file
@@ -959,8 +959,8 @@ changes:
     action: modify
     suggested_tier: coc
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, cited line numbers have drifted
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, cited line numbers have drifted"
+      reconciled_at: 2026-08-19
       evidence: >-
         The tier-wide fix has NOT landed; only this template's own interim fix
         holds the line. Control first: `git check-ignore -v
@@ -1056,8 +1056,8 @@ changes:
     action: modify
     suggested_tier: coc
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, both defects persist; second defect sharpened
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, both defects persist; second defect sharpened"
+      reconciled_at: 2026-08-19
       evidence: >-
         DEFECT 1 (no field for a cross-cutting constraint or an inter-entry
         dependency) — unfixed. Control first: `grep -cn "Step 7c\|Downstream
@@ -1190,8 +1190,8 @@ changes:
     action: modify
     suggested_tier: coc
     reconciliation:
-      status: PARTIALLY-SOLVED — the receipt now names its surface; the instantiation MODE never landed
-      reconciled_at: 2026-08-09
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: the receipt now names its surface; the instantiation MODE never landed"
+      reconciled_at: 2026-08-19
       evidence: >-
         THE CORE ASK IS UNFIXED. Control first: `grep -cn "isNeverSynced"
         .claude/bin/scan-synced-disclosure.mjs` → 3 (the matcher reads this
@@ -1279,8 +1279,8 @@ changes:
     action: modify
     suggested_tier: coc
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis SHARPENED (the entry names the wrong primary file)
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis SHARPENED (the entry names the wrong primary file)"
+      reconciled_at: 2026-08-19
       evidence: >-
         The false assertion is intact. The fixture is 24 lines; its line 9 still
         reads a bare "Public PACT product: <token>." under the header at :1
@@ -1366,8 +1366,8 @@ changes:
     action: modify
     suggested_tier: coc
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, all six sites persist; three cited line numbers have drifted
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, all six sites persist; three cited line numbers have drifted"
+      reconciled_at: 2026-08-19
       evidence: >-
         Nothing was scrubbed. Control first: `grep -ciE "cache"
         .claude/rules/build-cache-hygiene.md` → 33 (the case-insensitive matcher
@@ -1452,8 +1452,8 @@ changes:
     action: modify
     suggested_tier: coc
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, documentation-only ask unfulfilled; cited line numbers drifted
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, documentation-only ask unfulfilled; cited line numbers drifted"
+      reconciled_at: 2026-08-19
       evidence: >-
         The documentation extension was never made. Control first: `grep -c
         "Option-1"` → 6 in `.claude/bin/scan-synced-disclosure.mjs` and 7 in
@@ -1556,8 +1556,8 @@ changes:
     action: modify
     suggested_tier: coc
     reconciliation:
-      status: PARTIALLY-SOLVED — both named FIX halves landed; a third surface still carries the un-branched claim
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: both named FIX halves landed; a third surface still carries the un-branched claim"
+      reconciled_at: 2026-08-19
       evidence: >-
         FIX (a) LANDED, tier-wide. `git check-ignore -v
         .claude/cross-repo-authz/x.md` → `.gitignore:159`, and 159 sits INSIDE
@@ -1694,8 +1694,8 @@ changes:
     action: modify
     suggested_tier: coc
     reconciliation:
-      status: PARTIALLY-SOLVED — the contract contradiction and team-memory are fixed; TWO residuals are the exact things this entry told Gate-1 not to do
-      reconciled_at: 2026-08-09
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: the contract contradiction and team-memory are fixed; TWO residuals are the exact things this entry told Gate-1 not to do"
+      reconciled_at: 2026-08-19
       evidence: >-
         FIX (a) LANDED, on the honest-replace fork. The entry quoted § "Merge
         Semantics" (line 27) as "This is a **merge**, not an overwrite." It now
@@ -1885,8 +1885,8 @@ changes:
     action: modify
     suggested_tier: coc
     reconciliation:
-      status: ALREADY-SOLVED — no Gate-1 action required
-      reconciled_at: 2026-08-03
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: no Gate-1 action required"
+      reconciled_at: 2026-08-19
       evidence: >-
         Superseded by the loom Gate-2 sync landed 2026-08-02 (loom
         43167a54921f). In the incoming emit.mjs, `validateTierCompleteness`
@@ -2061,8 +2061,8 @@ changes:
     action: modify
     suggested_tier: coc
     reconciliation:
-      status: "STILL-OPEN — re-verified 2026-08-09, defect reproduced verbatim; two of the entry's own cited coordinates have drifted"
-      reconciled_at: 2026-08-09
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, defect reproduced verbatim; two of the entry's own cited coordinates have drifted"
+      reconciled_at: 2026-08-19
       evidence: >-
         The gate is UNCHANGED and the defect REPRODUCES. sweep.md:141 still opens with an unconditional
         dynamic import and a raw-message catch: `import("./.claude/bin/lib/loom-links.mjs").then(...)
@@ -2184,8 +2184,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: PARTIALLY-SOLVED — the generated artifact was repaired AND a CI gate now enforces the invariant; the manifest source is untouched
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: the generated artifact was repaired AND a CI gate now enforces the invariant; the manifest source is untouched"
+      reconciled_at: 2026-08-19
       evidence: >-
         The entry's central re-verified claim — that
         `.claude/hooks/lib/o1-citation-check.js`,
@@ -2267,8 +2267,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: "STILL-OPEN — re-verified 2026-08-09, blast radius corrected upward ~12x and the 'implicit exclusion' half is WRONG"
-      reconciled_at: 2026-08-09
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, blast radius corrected upward ~12x and the 'implicit exclusion' half is WRONG"
+      reconciled_at: 2026-08-19
       evidence: >-
         Core claim HOLDS: `.claude/rules/cross-repo.md` does not exist (`ls` → 'No such file or
         directory'; control `ls .claude/rules/git.md` → present, so the probe discriminates), and no
@@ -2344,8 +2344,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: "STILL-OPEN — re-verified 2026-08-09, diagnosis narrowed: the citation is on the OFFLINE-FALLBACK branch, not the primary resolution path"
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis narrowed: the citation is on the OFFLINE-FALLBACK branch, not the primary resolution path"
+      reconciled_at: 2026-08-19
       evidence: >-
         The citation is present and points at a purged module. sync-from-template.md:72, verbatim:
         "4. **Offline fallback only** — local sibling resolved via `bin/lib/loom-links.mjs`
@@ -2391,8 +2391,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis narrowed from a tree to a single file
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis narrowed from a tree to a single file"
+      reconciled_at: 2026-08-19
       evidence: >-
         The defect stands: `.claude/rules/git.md` cites
         `guides/rule-extracts/git.md` at TWO sites (line 8 header pointer, line
@@ -2445,8 +2445,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis unchanged and line-exact
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis unchanged and line-exact"
+      reconciled_at: 2026-08-19
       evidence: >-
         The cited defect is intact at the cited LINE NUMBER. `awk 'NR==65' .claude/commands/doctor.md`
         returns verbatim: "  unit tests at `.claude/bin/loom-doctor.test.mjs` drive every check + repair
@@ -2481,8 +2481,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened; the entry's own DISPOSITION QUESTION now has an answer, and it splits the two cited path classes
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis sharpened; the entry's own DISPOSITION QUESTION now has an answer, and it splits the two cited path classes"
+      reconciled_at: 2026-08-19
       evidence: >-
         Every cited line number still holds exactly. `grep -n 'ecosystem\.json' .claude/commands/ecosystem-init.md`
         returns 8 hits, of which the four backticked `.claude/bin/ecosystem.json` citations are at lines
@@ -2552,8 +2552,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, and the debt the entry measured has GROWN; the adoption obstacle it flagged is now larger, not smaller
-      reconciled_at: 2026-08-09
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, and the debt the entry measured has GROWN; the adoption obstacle it flagged is now larger, not smaller"
+      reconciled_at: 2026-08-19
       evidence: >-
         The proposed clause did NOT land. `grep -n -i 'xref\|validate-xref' .claude/rules/sync-completeness.md`
         returns ZERO hits; the same file returns 55 hits for `MUST`, so the matcher demonstrably fires
@@ -2634,8 +2634,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: ALREADY-SOLVED — no Gate-1 action required; BOTH the primary regression and the secondary Rule-9 gap are closed, and the root cause turned out to be narrower than the entry inferred
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: no Gate-1 action required; BOTH the primary regression and the secondary Rule-9 gap are closed, and the root cause turned out to be narrower than the entry inferred"
+      reconciled_at: 2026-08-19
       evidence: >-
         SECONDARY GAP CLOSED FIRST (it is the one that makes the primary verifiable). The entry stated
         "there is NO canonical runner for the `signing-mutation-guard/` fixture directory, unlike the
@@ -2725,8 +2725,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: ALREADY-SOLVED ON DISK — but the fix is a LOCAL edit to a synced artifact, so Gate-1 ingest is still required for durability; this entry is the FILING half of a filed/fixed pair with entry 42
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: but the fix is a LOCAL edit to a synced artifact, so Gate-1 ingest is still required for durability; this entry is the FILING half of a filed/fixed pair with entry 42"
+      reconciled_at: 2026-08-19
       evidence: >-
         The entry's own instrument now returns the OPPOSITE result. It stated: "`node -e
         'import(\"./.claude/bin/sync-from-canon-fetch.mjs\")'` throws `ERR_MODULE_NOT_FOUND` for
@@ -2808,8 +2808,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: ALREADY-SOLVED ON DISK — the proposed degrade landed verbatim AND was hardened further; but it has already been reverted once by an inbound sync, so Gate-1 ingest is what makes it stick
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: the proposed degrade landed verbatim AND was hardened further; but it has already been reverted once by an inbound sync, so Gate-1 ingest is what makes it stick"
+      reconciled_at: 2026-08-19
       evidence: >-
         The entry's own mechanical instrument has flipped. It stated: "VERIFIED MECHANICALLY AT THIS
         TEMPLATE: `grep -cE 'isCoordinationEnabled|coordination-mode|coordinationEnabled'` returns 4 in
@@ -2988,8 +2988,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, and the entry's own durability prediction has since COME TRUE with a dated reversion; this is now the highest-confidence STILL-OPEN in the shard
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, and the entry's own durability prediction has since COME TRUE with a dated reversion; this is now the highest-confidence STILL-OPEN in the shard"
+      reconciled_at: 2026-08-19
       evidence: >-
         The allowlist row is ABSENT, exactly as at 2.24.0. `grep -c upstream-issue-hygiene
         .claude/rules/self-referential-codify.md` → 0, while the control `grep -c issue-triage-routing`
@@ -3053,8 +3053,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: ALREADY-SOLVED ON DISK — MUST-4 landed in full including its severity routing; but it has ALREADY been reverted once by an inbound sync and manually restored, so Gate-1 ingest is what makes it durable
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: MUST-4 landed in full including its severity routing; but it has ALREADY been reverted once by an inbound sync and manually restored, so Gate-1 ingest is what makes it durable"
+      reconciled_at: 2026-08-19
       evidence: >-
         MUST-4 exists with the proposed title verbatim. `.claude/rules/upstream-issue-hygiene.md:196`
         reads "### 4. Open, Never Complete — A Downstream Upflow OPENS A PR And STOPS". `grep -c 'Open,
@@ -3141,8 +3141,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09; diff_lines still EXACT
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09; diff_lines still EXACT"
+      reconciled_at: 2026-08-19
       evidence: >-
         File present, 842 lines. `git diff --numstat 93551cb..HEAD` →
         **269 43**, matching the claimed "+269 -43" EXACTLY (one of only five
@@ -3208,8 +3208,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diff_lines re-derived
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diff_lines re-derived"
+      reconciled_at: 2026-08-19
       evidence: >-
         File present, 982 lines. `git diff --numstat 93551cb..HEAD` →
         **348 44**; claimed "+341 -44". Seven added lines have landed since
@@ -3248,8 +3248,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09; every named fix is present on disk, diff_lines re-derived
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09; every named fix is present on disk, diff_lines re-derived"
+      reconciled_at: 2026-08-19
       evidence: >-
         File present, 1593 lines. The three fixes the entry singles out as
         "newer than every 33-39 entry" are each locatable:
@@ -3308,8 +3308,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diff_lines re-derived
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diff_lines re-derived"
+      reconciled_at: 2026-08-19
       evidence: >-
         File present, 812 lines. `git diff --numstat 93551cb..HEAD` → **812 0**;
         claimed "+795 -0".
@@ -3348,8 +3348,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09 by EXECUTION; case count and diff_lines both re-derived upward
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09 by EXECUTION; case count and diff_lines both re-derived upward"
+      reconciled_at: 2026-08-19
       evidence: >-
         EXECUTED, not counted statically: `node
         .claude/audit-fixtures/upflow-open-never-complete/run.mjs` → final line
@@ -3415,8 +3415,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: ALREADY-SOLVED — no Gate-1 action required
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: no Gate-1 action required"
+      reconciled_at: 2026-08-19
       evidence: >-
         All four elements this entry proposed are on disk verbatim.
         `sync-flow.md:233` now reads "the consumer lane has EXACTLY TWO methods"
@@ -3467,8 +3467,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, and it is now the ONLY unlanded half of a landed pair
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, and it is now the ONLY unlanded half of a landed pair"
+      reconciled_at: 2026-08-19
       evidence: >-
         The gap this entry reports is unchanged. `commands/codify.md:129` Step
         7c(5) still reads "HUMAN-GATED offer (`upstream-issue-hygiene.md`
@@ -3520,8 +3520,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09
-      reconciled_at: 2026-08-09
+      status: "UNRESOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09"
+      reconciled_at: 2026-08-19
       evidence: >-
         dedup_evidence CONFIRMED verbatim. `git show 93551cb:.claude/.proposals/inbox/README.md`
         (base_version 2.24.0 merge-base) prints a § Contract of exactly four bullets — One file
@@ -3560,8 +3560,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened (diff_lines understated)
-      reconciled_at: 2026-08-09
+      status: "UNRESOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis sharpened (diff_lines understated)"
+      reconciled_at: 2026-08-19
       evidence: >-
         Every substantive claim holds. (a) The 2.24.0 defect is real: `git show
         93551cb:.claude/bin/sync-from-canon-fetch.mjs` line 67 is
@@ -3615,8 +3615,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09; the FIX claim holds, but the entry's DEDUP INSTRUMENT is wrong and is corrected here
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09; the FIX claim holds, but the entry's DEDUP INSTRUMENT is wrong and is corrected here"
+      reconciled_at: 2026-08-19
       evidence: >-
         The fix is on disk: `journal-reserve.js:231` `if (err && err.code ===
         "ENOENT") return 0;` inside the roster arm, with the semantics comment at
@@ -3672,8 +3672,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened (diff_lines wrong in BOTH directions)
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis sharpened (diff_lines wrong in BOTH directions)"
+      reconciled_at: 2026-08-19
       evidence: >-
         The RETRACTION of entry 30 is re-confirmed, and the fix is present and green.
         (a) The guard needs no change and its gate PREDATES 2.24.0:
@@ -3743,8 +3743,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: PARTIALLY-SOLVED — the proposed README content is ALREADY AUTHORED at this template; only loom canonicalization is open
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: the proposed README content is ALREADY AUTHORED at this template; only loom canonicalization is open"
+      reconciled_at: 2026-08-19
       evidence: >-
         The change this entry PROPOSES has already landed locally. HEAD's README
         is 155 lines and its second section is verbatim the proposed lead:
@@ -3794,8 +3794,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened; the defect is MATERIALLY WORSE than filed
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis sharpened; the defect is MATERIALLY WORSE than filed"
+      reconciled_at: 2026-08-19
       evidence: >-
         The sink is UNCHANGED and still hardcoded:
         `.codex-mcp-guard/server.js:78` reads
@@ -3880,8 +3880,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: ALREADY-SOLVED — no Gate-1 action required
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: no Gate-1 action required"
+      reconciled_at: 2026-08-19
       evidence: >-
         The contradiction the entry reports no longer exists, and the whole class is closed —
         not merely the three named instances. (a) All three named paths are GONE from the
@@ -3946,8 +3946,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: PARTIALLY-SOLVED — the "silently cannot fire" half is closed and the entry's flagged INFERENCE is now MEASURED; the rule-text half is untouched
-      reconciled_at: 2026-08-09
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: the \"silently cannot fire\" half is closed and the entry's flagged INFERENCE is now MEASURED; the rule-text half is untouched"
+      reconciled_at: 2026-08-19
       evidence: >-
         The absence still holds: `.claude/bin/reconcile-settings-hooks.mjs` is
         ABSENT on disk and UNTRACKED — `git ls-files --error-unmatch` returns
@@ -4031,8 +4031,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, all three sub-claims exact
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, all three sub-claims exact"
+      reconciled_at: 2026-08-19
       evidence: >-
         (a) `codify-lease.js:82-85` — `const MANDATORY_SCOPE = Object.freeze([
         ".claude/learning/learning-codified.json",
@@ -4098,8 +4098,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, all three cited line numbers still EXACT
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, all three cited line numbers still EXACT"
+      reconciled_at: 2026-08-19
       evidence: >-
         `coc-sync-landing.md:32` verbatim: "After CI green or path-filter
         auto-skip, run `gh pr merge <N> --admin --merge --delete-branch`.
@@ -4225,8 +4225,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened (diff_lines grew; every named fix confirmed on disk)
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis sharpened (diff_lines grew; every named fix confirmed on disk)"
+      reconciled_at: 2026-08-19
       evidence: >-
         dedup_evidence CONFIRMED: `git cat-file -e 93551cb:.claude/hooks/lib/upflow-self-repo.js`
         exits non-zero (ABSENT at the merge-base), while the same probe against
@@ -4312,8 +4312,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, PROVEN un-ingested upstream; dedup_evidence instrument corrected
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, PROVEN un-ingested upstream; dedup_evidence instrument corrected"
+      reconciled_at: 2026-08-19
       evidence: >-
         MEASURED PROOF OF NON-INGESTION. The inbound Gate-2 sync 52ee39e ("chore(sync): Gate-2 use
         rs from loom f4b920cb1819") REVERTED this file to its pre-proposal state: `git diff
@@ -4390,8 +4390,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, PROVEN un-ingested upstream; two cited instruments corrected
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, PROVEN un-ingested upstream; two cited instruments corrected"
+      reconciled_at: 2026-08-19
       evidence: >-
         SAME MEASURED PROOF OF NON-INGESTION as its GitHub sibling: `git diff --numstat 3292bd3
         52ee39e -- <file>` returns `44  341` — the exact inverse of the claimed `+341 -44` — and
@@ -4467,8 +4467,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09; both fixes present, diff_lines EXACT
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09; both fixes present, diff_lines EXACT"
+      reconciled_at: 2026-08-19
       evidence: >-
         File present, 131 lines. `git diff --numstat 93551cb..HEAD` → **23 2**,
         matching "+23 -2" exactly.
@@ -4513,8 +4513,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09; diff_lines EXACT
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09; diff_lines EXACT"
+      reconciled_at: 2026-08-19
       evidence: >-
         File present, 179 lines. `git diff --numstat 93551cb..HEAD` → **10 0**,
         matching "+10 -0" exactly.
@@ -4551,8 +4551,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, PROVEN un-ingested upstream; dedup_evidence instrument corrected, diagnosis intact
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, PROVEN un-ingested upstream; dedup_evidence instrument corrected, diagnosis intact"
+      reconciled_at: 2026-08-19
       evidence: >-
         MEASURED PROOF OF NON-INGESTION, third instance: `git diff --numstat 3292bd3 52ee39e --
         <file>` returns `15  183` — the exact inverse of the claimed `+183 -15` — and the
@@ -4614,8 +4614,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened (case count and diff_lines both grew)
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis sharpened (case count and diff_lines both grew)"
+      reconciled_at: 2026-08-19
       evidence: >-
         dedup_evidence CONFIRMED: `git cat-file -e 93551cb:<path>` exits non-zero (ABSENT at the
         merge-base); the same probe against a path known present at 93551cb exits 0.
@@ -4673,8 +4673,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened (diff_lines stale)
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis sharpened (diff_lines stale)"
+      reconciled_at: 2026-08-19
       evidence: >-
         dedup_evidence CONFIRMED: `git cat-file -e 93551cb:<path>` exits non-zero (ABSENT at the
         merge-base). Both load-bearing claims are on disk and quoted.
@@ -4732,8 +4732,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09; diff_lines EXACT
-      reconciled_at: 2026-08-09
+      status: "UNRESOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09; diff_lines EXACT"
+      reconciled_at: 2026-08-19
       evidence: >-
         File present, 199 lines. `git diff --numstat 93551cb..HEAD` → **199 0**,
         matching "+199 -0" exactly.
@@ -4772,8 +4772,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09 by EXECUTION; case count CONFIRMED at 11
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09 by EXECUTION; case count CONFIRMED at 11"
+      reconciled_at: 2026-08-19
       evidence: >-
         EXECUTED: `node .claude/audit-fixtures/upflow-self-repo-helpers/run.mjs`
         → `upflow-self-repo-helpers: 11/11 PASS`, exit 0, tree unchanged. The
@@ -4820,8 +4820,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09; diff_lines EXACT
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09; diff_lines EXACT"
+      reconciled_at: 2026-08-19
       evidence: >-
         File present, 113 lines. `git diff --numstat 93551cb..HEAD` → **113 0**,
         matching "+113 -0" exactly.
@@ -4857,8 +4857,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09 by EXECUTION; case count and diff_lines both materially higher than filed
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09 by EXECUTION; case count and diff_lines both materially higher than filed"
+      reconciled_at: 2026-08-19
       evidence: >-
         EXECUTED: `node
         .claude/audit-fixtures/upflow-refusal-operand-sanitization/run.mjs` →
@@ -4905,8 +4905,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diff_lines re-derived
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diff_lines re-derived"
+      reconciled_at: 2026-08-19
       evidence: >-
         File present, 227 lines. `git diff --numstat 93551cb..HEAD` → **227 0**;
         claimed "+177 -0".
@@ -4936,8 +4936,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09 by EXECUTION; case count nearly DOUBLE the filed figure
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09 by EXECUTION; case count nearly DOUBLE the filed figure"
+      reconciled_at: 2026-08-19
       evidence: >-
         EXECUTED: `node
         .claude/audit-fixtures/journal-reserve-coordination-gate/run.mjs` →
@@ -4985,8 +4985,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diff_lines re-derived
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diff_lines re-derived"
+      reconciled_at: 2026-08-19
       evidence: >-
         File present, 212 lines. `git diff --numstat 93551cb..HEAD` → **212 0**;
         claimed "+175 -0".
@@ -5029,8 +5029,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened; the SOURCE lists are untouched while the SYMPTOM has been locally masked
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis sharpened; the SOURCE lists are untouched while the SYMPTOM has been locally masked"
+      reconciled_at: 2026-08-19
       evidence: >-
         The manifest defect is INTACT and now line-pinned. All five paths are
         still named in the obsoleted/use_obsoleted lists:
@@ -5105,8 +5105,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, blast radius corrected upward
-      reconciled_at: 2026-08-09
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, blast radius corrected upward"
+      reconciled_at: 2026-08-19
       evidence: >-
         The defect stands: `.claude/rules/cross-repo.md` is still absent
         (`ls .claude/rules/cross-repo.md` → "No such file or directory"; control:
@@ -5258,8 +5258,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09; every dedup claim re-tested and all hold
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09; every dedup claim re-tested and all hold"
+      reconciled_at: 2026-08-19
       evidence: >-
         `.claude/rules/generated-artifact-divergence.md` is still ABSENT from the
         delivered tree (falsifying result: a present file; the same existence
@@ -5425,8 +5425,8 @@ changes:
     suggested_tier: cc
     base_version: "2.24.0"
     reconciliation:
-      status: PARTIALLY-SOLVED — AC3, the entry's whole live gap, is SOLVED locally; the case count is wrong at HEAD; only loom canonicalization and CI wiring remain
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: AC3, the entry's whole live gap, is SOLVED locally; the case count is wrong at HEAD; only loom canonicalization and CI wiring remain"
+      reconciled_at: 2026-08-19
       evidence: >-
         THE ENTRY'S CENTRAL MEASURED CLAIM IS NO LONGER TRUE. It states "ALL
         SEVEN fixture cases are read by NO RUNNER AT ALL ... Nothing anywhere
@@ -5575,8 +5575,8 @@ changes:
     suggested_tier: cc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis sharpened"
+      reconciled_at: 2026-08-19
       evidence: >-
         Both halves of the proposed fix are present ON DISK: `fs.openSync(filePath,
         "wx", 0o644)` at `.claude/bin/cross-repo-authorize.mjs:292` with the EEXIST
@@ -5669,8 +5669,8 @@ changes:
     suggested_tier: cc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened
-      reconciled_at: 2026-08-09
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis sharpened"
+      reconciled_at: 2026-08-19
       evidence: >-
         Every proposed edit is present ON DISK. `:27` reads "This is a
         **category-based replace**, NOT a per-file merge. … there is no three-way
@@ -5790,8 +5790,8 @@ changes:
     suggested_tier: cc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, one internal claim now STALE
-      reconciled_at: 2026-08-09
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, one internal claim now STALE"
+      reconciled_at: 2026-08-19
       evidence: >-
         The file exists at `.claude/bin/sync-preflight-local-mods.mjs`, 288 lines —
         matching the entry's `diff_lines: "+288 -0"` exactly. Its fixture runner is
@@ -5869,8 +5869,8 @@ changes:
     suggested_tier: cc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09"
+      reconciled_at: 2026-08-19
       evidence: >-
         Directory present with exactly the two declared files: `run.mjs` 218 lines +
         `README.md` 89 lines = 307, matching `diff_lines: "+307 -0"` to the line.
@@ -5912,8 +5912,8 @@ changes:
     suggested_tier: cc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened (entry figures STALE)
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis sharpened (entry figures STALE)"
+      reconciled_at: 2026-08-19
       evidence: >-
         Directory present and the suite is green at HEAD: exit 0,
         `PASS 47 FAIL 0`. The README still records the discriminating measurement
@@ -5978,8 +5978,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened (citer set is WIDER)
-      reconciled_at: 2026-08-09
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis sharpened (citer set is WIDER)"
+      reconciled_at: 2026-08-19
       evidence: >-
         Every pin in the entry reproduces verbatim. The module is absent —
         `ls .claude/bin/lib/loom-links.mjs` → "No such file or directory", while the
@@ -6174,8 +6174,8 @@ changes:
     suggested_tier: cc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, one internal claim now STALE
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, one internal claim now STALE"
+      reconciled_at: 2026-08-19
       evidence: >-
         The runner exists (466 lines) and reproduces the entry's measurement exactly:
         `node .claude/audit-fixtures/signing-mutation-guard/run.mjs` → exit 0,
@@ -6234,8 +6234,8 @@ changes:
     suggested_tier: cc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, evidence strengthened
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, evidence strengthened"
+      reconciled_at: 2026-08-19
       evidence: >-
         The directory is absent locally — `ls .claude/audit-fixtures/signing-mutation-guard/`
         returns `01-halt-sibling-porcelain` and five siblings, and no `01-block-*`.
@@ -6283,8 +6283,8 @@ changes:
     suggested_tier: cc
     base_version: "2.24.0"
     reconciliation:
-      status: PARTIALLY-SOLVED — the canonical-invocation half landed locally; the FALSE CLAIM SURVIVES, demoted not removed
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: the canonical-invocation half landed locally; the FALSE CLAIM SURVIVES, demoted not removed"
+      reconciled_at: 2026-08-19
       evidence: >-
         LANDED: `README.md:25-30` now reads "### Canonical invocation / The canonical
         runner is **`run.mjs`** in this directory (#89 AC-3)…" — the correction the
@@ -6374,8 +6374,8 @@ changes:
     suggested_tier: cc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened (FIVE sites, not four)
-      reconciled_at: 2026-08-09
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis sharpened (FIVE sites, not four)"
+      reconciled_at: 2026-08-19
       evidence: >-
         All four cited sites reproduce at the exact lines given: `:146`
         ("NEVER a positional ~/repos/<sister> guess, per cross-repo.md MUST-1"),
@@ -6431,8 +6431,8 @@ changes:
     suggested_tier: cc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09"
+      reconciled_at: 2026-08-19
       evidence: >-
         `:385` reproduces verbatim, at the stated line: "Any coordination-substrate
         tool (hook, agent, command, lib helper) that needs another repo's on-disk
@@ -6474,8 +6474,8 @@ changes:
     suggested_tier: cc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09"
+      reconciled_at: 2026-08-19
       evidence: >-
         `:51` reproduces at the stated line, citing `cross-repo.md` § "Canonical
         Sublayout (Recommended — F61)" for the `~/repos/kailash/{build,use}/<slug>`
@@ -6534,8 +6534,8 @@ changes:
     suggested_tier: cc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, measurement reproduces exactly
-      reconciled_at: 2026-08-09
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, measurement reproduces exactly"
+      reconciled_at: 2026-08-19
       evidence: >-
         Re-run at HEAD 695366f: `node .claude/audit-fixtures/scan-synced-disclosure/run.mjs`
         → exit 1, "3 fixture(s) FAILED — scanner regressed", and the three are the
@@ -6615,8 +6615,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, every pin holds
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, every pin holds"
+      reconciled_at: 2026-08-19
       evidence: >-
         All four coordinates reproduce at the exact lines:
           :75  const COC_ROOT = resolveCocRoot(HERE);
@@ -6695,8 +6695,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09
-      reconciled_at: 2026-08-09
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09"
+      reconciled_at: 2026-08-19
       evidence: >-
         The gap is exactly as relayed. `agents.md:89` carries the INPUT-side clause
         only: "**Read-only reviewer materialization (INCREMENTAL):** `security-reviewer`
@@ -6780,8 +6780,8 @@ changes:
     suggested_tier: coc
     base_version: "2.23.22"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened to the code site
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis sharpened to the code site"
+      reconciled_at: 2026-08-19
       evidence: >-
         The offer's central claim — that a green check proves only the freshly-emitted
         temporary tree — is confirmed AT THE SOURCE, not inferred. `checkConsumerEfficacy`
@@ -6838,8 +6838,8 @@ changes:
     suggested_tier: coc
     base_version: "2.23.22"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09"
+      reconciled_at: 2026-08-19
       evidence: >-
         No post-merge source gate exists in the command. A grep over
         `.claude/commands/sync-from-template.md` for `frontmatter|parse-load|SKILL.md`
@@ -6879,8 +6879,8 @@ changes:
     suggested_tier: coc
     base_version: "2.23.22"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09"
+      reconciled_at: 2026-08-19
       evidence: >-
         The preserved-overlay parse-load contract is absent. A grep over
         `sync-flow.md` for `frontmatter|parse-load|preserved overlay|installed-tree`
@@ -6906,8 +6906,8 @@ changes:
     suggested_tier: coc
     base_version: "2.23.22"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, measurement reproduces to the digit
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, measurement reproduces to the digit"
+      reconciled_at: 2026-08-19
       evidence: >-
         `node .claude/bin/validate-emit.mjs --check consumer-efficacy --json` at HEAD
         exits 1 with `"tally": {"pass": 216, "fail": 2}`, `"blocking": 2` — the exact
@@ -6972,8 +6972,8 @@ changes:
     suggested_tier: coc
     base_version: "2.23.22"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09, diagnosis sharpened from "missing" to "contradicted by a documented design decision"
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09, diagnosis sharpened from \"missing\" to \"contradicted by a documented design decision\""
+      reconciled_at: 2026-08-19
       evidence: >-
         The offer is not merely unimplemented — the file documents the OPPOSITE as
         deliberate. `emit-coc.mjs:94-107` reads: "…artifact declares it (the producer
@@ -7012,8 +7012,8 @@ changes:
     suggested_tier: coc
     base_version: "2.23.22"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09"
+      reconciled_at: 2026-08-19
       evidence: >-
         `grep -n 'validate-emit' .claude/commands/cc-audit.md` returns NOTHING (rc=1);
         CONTROL `grep -c 'audit'` on the same file fires 4×, so the empty result is a
@@ -7042,8 +7042,8 @@ changes:
     suggested_tier: coc
     base_version: "2.23.22"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09; the entry's own rebase_required warning is CONFIRMED CURRENT
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09; the entry's own rebase_required warning is CONFIRMED CURRENT"
+      reconciled_at: 2026-08-19
       evidence: >-
         The restructure the `rebase_required` note describes is exactly the shape at
         HEAD. `.github/workflows/validate.yml` carries two jobs — `validate` (:34) and
@@ -7086,8 +7086,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09; PAIRED with the entry at anchor 4398
-      reconciled_at: 2026-08-09
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09; PAIRED with the entry at anchor 4398"
+      reconciled_at: 2026-08-19
       evidence: >-
         Nothing has landed. `grep -nE '^### [0-9]+\.' .claude/rules/instrument-discipline.md`
         returns exactly THREE hits — `:17` "1. Name The Falsifying Result Before Citing
@@ -7169,8 +7169,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — re-verified 2026-08-09; PAIRED with the entry at anchor 4338
-      reconciled_at: 2026-08-09
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: re-verified 2026-08-09; PAIRED with the entry at anchor 4338"
+      reconciled_at: 2026-08-19
       evidence: >-
         The numbering premise this entry rests on is confirmed at HEAD: the rule
         carries exactly MUST-1, MUST-2 and MUST-3 (`grep -nE '^### [0-9]+\.'` → 3 hits
@@ -7284,8 +7284,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — net-new entry, first filed 2026-08-10
-      reconciled_at: 2026-08-10
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new entry, first filed 2026-08-10"
+      reconciled_at: 2026-08-19
       evidence: >-
         Filed as issue #125 at this template 2026-08-09 with the emit log
         inline; appended here 2026-08-10 because no manifest entry carried it
@@ -7348,8 +7348,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — net-new entry, first filed 2026-08-10
-      reconciled_at: 2026-08-10
+      status: "UNRESOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new entry, first filed 2026-08-10"
+      reconciled_at: 2026-08-19
       evidence: >-
         Filed as issue #119 at this template 2026-08-09; appended here
         2026-08-10 because NO manifest entry carried it. Dedup was run, not
@@ -7420,8 +7420,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — net-new entry, first filed 2026-08-10; a DESIGN QUESTION, deliberately not answered locally
-      reconciled_at: 2026-08-10
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new entry, first filed 2026-08-10; a DESIGN QUESTION, deliberately not answered locally"
+      reconciled_at: 2026-08-19
       evidence: >-
         Filed as issue #113 at this template 2026-08-07 (ledger item G5);
         appended here 2026-08-10 because no manifest entry carried it — a scan
@@ -7478,8 +7478,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — net-new entry, first filed 2026-08-10
-      reconciled_at: 2026-08-10
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new entry, first filed 2026-08-10"
+      reconciled_at: 2026-08-19
       evidence: >-
         Filed as issue #112 at this template 2026-08-07 (enforcement-census
         correction, full working in the workspace census file); appended here
@@ -7563,8 +7563,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: "STILL-OPEN — net-new entry, first filed 2026-08-10; census re-measured, supersedes the figure issue #112 carried"
-      reconciled_at: 2026-08-10
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new entry, first filed 2026-08-10; census re-measured, supersedes the figure issue #112 carried"
+      reconciled_at: 2026-08-19
       evidence: >-
         RE-MEASURED AT HEAD BY RUNNING THE VALIDATOR, not read from a prior
         census: `node .claude/bin/validate-emit.mjs` exits 1 and prints
@@ -7684,8 +7684,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — relayed 2026-08-11; the offer's claim was re-verified at this template, not inherited
-      reconciled_at: 2026-08-11
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: relayed 2026-08-11; the offer's claim was re-verified at this template, not inherited"
+      reconciled_at: 2026-08-19
       evidence: >-
         THE ENDORSEMENT IS PRESENT AT HEAD, verbatim, and the quote in the offer
         is exact: `.claude/rules/git.md:60` reads "Prefer `git reset --keep
@@ -7748,8 +7748,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — relayed 2026-08-11; numbering premise and recovery procedure both re-verified here
-      reconciled_at: 2026-08-11
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: relayed 2026-08-11; numbering premise and recovery procedure both re-verified here"
+      reconciled_at: 2026-08-19
       evidence: >-
         THE NUMBERING PREMISE HOLDS AT HEAD: the rule's highest numbered
         heading is `### 8. Creation Owns Teardown — Reap On Evidence, Never
@@ -7830,8 +7830,8 @@ changes:
     base_version: "2.24.0"
     rebase_required: true
     reconciliation:
-      status: STILL-OPEN — relayed 2026-08-11; target absence re-verified here, base_version rebased 2.23.22 -> 2.24.0
-      reconciled_at: 2026-08-11
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: relayed 2026-08-11; target absence re-verified here, base_version rebased 2.23.22 -> 2.24.0"
+      reconciled_at: 2026-08-19
       evidence: >-
         TARGET IS GENUINELY NET-NEW: `.claude/rules/session-notes-continuity.md`
         does not exist at this template, against a control confirming the same
@@ -7882,8 +7882,8 @@ changes:
     base_version: "2.24.0"
     rebase_required: true
     reconciliation:
-      status: STILL-OPEN — relayed 2026-08-11; target absence + cited precedent both re-verified here
-      reconciled_at: 2026-08-11
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: relayed 2026-08-11; target absence + cited precedent both re-verified here"
+      reconciled_at: 2026-08-19
       evidence: >-
         TARGET ABSENT at this template (same control as the paired rule entry),
         so `create` is correct.
@@ -7923,8 +7923,8 @@ changes:
     base_version: "2.24.0"
     rebase_required: true
     reconciliation:
-      status: STILL-OPEN — relayed 2026-08-11; target absence re-verified here
-      reconciled_at: 2026-08-11
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: relayed 2026-08-11; target absence re-verified here"
+      reconciled_at: 2026-08-19
       evidence: >-
         TARGET ABSENT at this template, so `create` is correct. The fixture set
         arrives WITH its detector, which is what `cc-artifacts.md` Rule 9
@@ -7983,8 +7983,8 @@ changes:
     base_version: "2.24.0"
     rebase_required: true
     reconciliation:
-      status: PARTIALLY-SOLVED — the WORKTREE half is already Rule 8 at HEAD; only the BRANCH-reaping half survives, and its root cause is corrected here
-      reconciled_at: 2026-08-11
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: the WORKTREE half is already Rule 8 at HEAD; only the BRANCH-reaping half survives, and its root cause is corrected here"
+      reconciled_at: 2026-08-19
       evidence: >-
         THE OFFER'S CENTRAL PREMISE IS REFUTED BY HEAD. It states "Rules 1-8
         govern creating, isolating, placing and pushing FROM a worktree. NONE
@@ -8059,8 +8059,8 @@ changes:
     base_version: "2.24.0"
     rebase_required: true
     reconciliation:
-      status: STILL-OPEN — but the offer's CLAIM IS REFUTED; relayed with the corrected statement, and MUST NOT land as the offer words it
-      reconciled_at: 2026-08-11
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: but the offer's CLAIM IS REFUTED; relayed with the corrected statement, and MUST NOT land as the offer words it"
+      reconciled_at: 2026-08-19
       evidence: >-
         THE OFFER'S CLAIM, QUOTED IN FULL SO THE CORRECTION IS AUDITABLE:
         "That flag deletes the REMOTE branch only; the local branch survives.
@@ -8133,8 +8133,8 @@ changes:
     base_version: "2.24.0"
     rebase_required: true
     reconciliation:
-      status: STILL-OPEN — target absent (create correct); the hook's VALUE survives the refutation, its TRIGGER RATIONALE does not
-      reconciled_at: 2026-08-11
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: target absent (create correct); the hook's VALUE survives the refutation, its TRIGGER RATIONALE does not"
+      reconciled_at: 2026-08-19
       evidence: >-
         TARGET GENUINELY ABSENT at this template, against a control confirming
         the same check reports PRESENT for an existing hook — so `create` is
@@ -8178,8 +8178,8 @@ changes:
     base_version: "2.24.0"
     rebase_required: true
     reconciliation:
-      status: STILL-OPEN — target absent (create correct); fixtures ship WITH their detector, which is the part most entries in this manifest cannot claim
-      reconciled_at: 2026-08-11
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: target absent (create correct); fixtures ship WITH their detector, which is the part most entries in this manifest cannot claim"
+      reconciled_at: 2026-08-19
       evidence: >-
         TARGET ABSENT at this template, so `create` is correct.
         THE FIXTURE SET COVERS THE RIGHT SHAPE — one per scope-restriction
@@ -8225,8 +8225,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — net-new ROOT-CAUSE entry, first filed 2026-08-12; supersedes nothing, but reframes the ten symptom clusters already in this manifest
-      reconciled_at: 2026-08-12
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new ROOT-CAUSE entry, first filed 2026-08-12; supersedes nothing, but reframes the ten symptom clusters already in this manifest"
+      reconciled_at: 2026-08-19
       evidence: >-
         MEASURED BY CLASSIFYING EVERY CHECK THAT HAS EVER FAILED HERE, not by
         impression. Of the eleven, NINE are "one fact, two artifacts, hand-
@@ -8304,8 +8304,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — net-new entry, first filed 2026-08-12; the masking is measured here, not inferred from the issue
-      reconciled_at: 2026-08-12
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new entry, first filed 2026-08-12; the masking is measured here, not inferred from the issue"
+      reconciled_at: 2026-08-19
       evidence: >-
         VALIDATOR 14 EXITS BEFORE ITS SUCCESSORS RUN, so the emitter's own
         output understates its findings by half. Measured at HEAD: a normal
@@ -8354,8 +8354,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — net-new entry, first filed 2026-08-12; the waste is measured across three real offers
-      reconciled_at: 2026-08-12
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new entry, first filed 2026-08-12; the waste is measured across three real offers"
+      reconciled_at: 2026-08-19
       evidence: >-
         ALL THREE DOWNSTREAM OFFERS INGESTED AT THIS TEMPLATE THIS WEEK WERE
         AUTHORED AGAINST A STALE BASE, and it is measured rather than sampled:
@@ -8434,8 +8434,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — relayed 2026-08-12; the slot asymmetry and the byte-level consequence are both CONFIRMED at this template
-      reconciled_at: 2026-08-12
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: relayed 2026-08-12; the slot asymmetry and the byte-level consequence are both CONFIRMED at this template"
+      reconciled_at: 2026-08-19
       evidence: >-
         THE SLOT ASYMMETRY IS REAL AND MEASURED HERE. `.claude/rules/security.md`
         declares TWO slots — `neutral-body` (12-222) and
@@ -8546,8 +8546,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — relayed 2026-08-12; NOT verifiable at this hop and said so, since `.claude/variants/` does not exist at this tier
-      reconciled_at: 2026-08-12
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: relayed 2026-08-12; NOT verifiable at this hop and said so, since `.claude/variants/` does not exist at this tier"
+      reconciled_at: 2026-08-19
       evidence: >-
         NOT VERIFIED HERE, AND THE REASON IS STRUCTURAL: `.claude/variants/`
         does not exist at a USE template — emit.mjs says so itself ("lane 'rs'
@@ -8595,8 +8595,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — relayed 2026-08-12; PROPHYLACTIC (nothing has drifted yet), and the offer says so plainly
-      reconciled_at: 2026-08-12
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: relayed 2026-08-12; PROPHYLACTIC (nothing has drifted yet), and the offer says so plainly"
+      reconciled_at: 2026-08-19
       evidence: >-
         THE SLOT ASYMMETRY IS CONFIRMED HERE: `.claude/rules/connection-pool.md`
         declares ONLY `neutral-body` (14-120) — no extension slot — exactly as
@@ -8631,8 +8631,8 @@ changes:
     suggested_tier: coc
     base_version: "2.24.0"
     reconciliation:
-      status: STILL-OPEN — relayed 2026-08-12; NOT verifiable at this hop (`.claude/variants/` absent at this tier)
-      reconciled_at: 2026-08-12
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: relayed 2026-08-12; NOT verifiable at this hop (`.claude/variants/` absent at this tier)"
+      reconciled_at: 2026-08-19
       evidence: >-
         NOT VERIFIED HERE, same structural reason as the patterns.md variant:
         `.claude/variants/` does not exist at a USE template. Relayed as the
@@ -8690,8 +8690,8 @@ changes:
       passes, reads as enforcement).
     diff_lines: "+40 -16"
     reconciliation:
-      status: STILL-OPEN — authored 2026-08-13 at this template; not yet ingested upstream
-      reconciled_at: 2026-08-13
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: authored 2026-08-13 at this template; not yet ingested upstream"
+      reconciled_at: 2026-08-19
       evidence: >-
         Root-caused from the session's own `subagents/*.meta.json`
         (`taskKind` / `toolUseId` / `spawnDepth`) and confirmed by a THREE-ARM
@@ -8798,8 +8798,8 @@ changes:
       INSTRUCTED destroys the output of an otherwise-correct run.
     diff_lines: "+108 -0"
     reconciliation:
-      status: STILL-OPEN — authored 2026-08-13 at this template; not yet ingested upstream
-      reconciled_at: 2026-08-13
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: authored 2026-08-13 at this template; not yet ingested upstream"
+      reconciled_at: 2026-08-19
       evidence: >-
         Recovery procedure is EXERCISED, not theorized: it recovered 9 reports /
         145,855 characters (~36k tokens) of completed adjudication + research in
@@ -8841,8 +8841,8 @@ changes:
       OUTPUT-QUALITY defect, not merely budget hygiene.
     diff_lines: "+52 -0"
     reconciliation:
-      status: STILL-OPEN — authored 2026-08-13 at this template; not yet ingested upstream
-      reconciled_at: 2026-08-13
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: authored 2026-08-13 at this template; not yet ingested upstream"
+      reconciled_at: 2026-08-19
       evidence: >-
         Byte accounting measured against `git show HEAD:` for the rule file:
         15922 -> 17367, net +1445 from a +5308 addition (3863 B relocated).
@@ -8887,8 +8887,8 @@ changes:
       rebuilds away).
     diff_lines: "+11 -1"
     reconciliation:
-      status: STILL-OPEN — local fix applied 2026-08-13; durable fix is loom-side
-      reconciled_at: 2026-08-13
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: local fix applied 2026-08-13; durable fix is loom-side"
+      reconciled_at: 2026-08-19
       evidence: >-
         Before, verbatim and complete (six files, ten lines): "[validator-14]
         rule-frontmatter: FAIL / VALIDATOR 14 FAIL (rule-authoring.md Rule 7): /
@@ -8935,8 +8935,8 @@ changes:
       than self-decided mid-codify.
     diff_lines: "+0 -0"
     reconciliation:
-      status: STILL-OPEN — surfaced 2026-08-13; disposition deliberately deferred to Gate-1
-      reconciled_at: 2026-08-13
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: surfaced 2026-08-13; disposition deliberately deferred to Gate-1"
+      reconciled_at: 2026-08-19
       evidence: >-
         `node .claude/bin/emit.mjs --all --dry-run` (exit captured by redirect,
         REAL_EXIT=1): "[validator-14] rule-frontmatter: PASS / [validator-16]
@@ -8997,8 +8997,8 @@ changes:
       it is the corpus-level disposition Rule 11 requires, for Gate-1 to decide.
     diff_lines: "+0 -0"
     reconciliation:
-      status: STILL-OPEN — Rule-11 (a') disposition filed 2026-08-14; the emission change is loom's to make
-      reconciled_at: 2026-08-14
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: Rule-11 (a') disposition filed 2026-08-14; the emission change is loom's to make"
+      reconciled_at: 2026-08-19
       evidence: >-
         Byte measurement scripted over `.claude/rules/*.md`, selecting on
         frontmatter `priority: 0` + `scope: baseline` and summing each
@@ -9077,8 +9077,8 @@ changes:
       `GEMINI.md` for exactly this reason.
     diff_lines: "+0 -0"
     reconciliation:
-      status: STILL-OPEN — disposition CORRECTED 2026-08-14 from "deferred" to "do not delete; fix upstream"
-      reconciled_at: 2026-08-14
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: disposition CORRECTED 2026-08-14 from \"deferred\" to \"do not delete; fix upstream\""
+      reconciled_at: 2026-08-19
       evidence: >-
         `git log --diff-filter=A -- .claude/sync-manifest.yaml` → added by
         `fd27074` (a Gate-2 sync). `git cat-file -e
@@ -9215,8 +9215,8 @@ changes:
       The offer's own distinctness claim against `specs-authority.md` Rule 9 was
       checked against the actual heading and is accurate.
     reconciliation:
-      status: "STILL-OPEN — net-new ROOT-CAUSE entry, first filed 2026-08-14; relayed from PR #155 with six corrections, and independently corroborated by six instances measured at this template"
-      reconciled_at: 2026-08-14
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new ROOT-CAUSE entry, first filed 2026-08-14; relayed from PR #155 with six corrections, and independently corroborated by six instances measured at this template"
+      reconciled_at: 2026-08-19
       evidence: >-
         The six local instances were each measured this session with a named
         falsifying result and a control, not carried forward from notes. The
@@ -9345,8 +9345,8 @@ changes:
       propose no mechanism to break it; this entry supersedes neither and adds
       the mechanism.
     reconciliation:
-      status: STILL-OPEN — net-new ROOT-CAUSE entry, first filed 2026-08-14; the loop it names is now at OCCURRENCE TWO on MUST-4 and has completed a full introduce/fix/remove cycle on a security surface
-      reconciled_at: 2026-08-14
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new ROOT-CAUSE entry, first filed 2026-08-14; the loop it names is now at OCCURRENCE TWO on MUST-4 and has completed a full introduce/fix/remove cycle on a security surface"
+      reconciled_at: 2026-08-19
       evidence: >-
         All five subtractions re-derived this session against
         `refs/adjudicate/sync-150`, each with a control establishing the
@@ -9472,8 +9472,8 @@ changes:
       are about what a sync REMOVES — Gate A's own stated purpose — and are not
       named in it. Complementary, not duplicate.
     reconciliation:
-      status: "STILL-OPEN — net-new entry, first filed 2026-08-14; extends #113 from ADDED-content coverage to the REMOVED-content coverage Gate A already claims"
-      reconciled_at: 2026-08-14
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new entry, first filed 2026-08-14; extends #113 from ADDED-content coverage to the REMOVED-content coverage Gate A already claims"
+      reconciled_at: 2026-08-19
       pairing: >-
         MUST be evaluated in ONE pass with the other
         `.github/scripts/check-local-fix-discard.sh` entry (issue #113, filed
@@ -9553,8 +9553,8 @@ changes:
       `.gitignore` entry was read and covers a different path class; it does not
       name `.wave-tracker.d/`.
     reconciliation:
-      status: STILL-OPEN — net-new entry, first filed 2026-08-14; half 2 fixed locally (Class-A non-durable, so tier-wide fix still required), half 1 unfixed
-      reconciled_at: 2026-08-14
+      status: "PARTIALLY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new entry, first filed 2026-08-14; half 2 fixed locally (Class-A non-durable, so tier-wide fix still required), half 1 unfixed"
+      reconciled_at: 2026-08-19
       evidence: >-
         Staleness confirmed by commit ordering with a named falsifier: newest
         commit touching `.claude/VERSION` is `123870f` (2026-08-02) while
@@ -9613,8 +9613,8 @@ changes:
       COUNT is inflated ~19x by two row shapes in `violations.jsonl`; that is a
       different defect in the same file and is not superseded here.
     reconciliation:
-      status: 'STILL-OPEN — net-new entry, first filed 2026-08-14; the bad anchor was corrected locally in this cycle, but nothing prevents the next one'
-      reconciled_at: 2026-08-14
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new entry, first filed 2026-08-14; the bad anchor was corrected locally in this cycle, but nothing prevents the next one"
+      reconciled_at: 2026-08-19
       evidence: >-
         Prior anchor value read from disk before overwrite; the +08:00 offset
         established from `git log --format=%aI` on the prior codify's own merge
@@ -9684,8 +9684,8 @@ changes:
       downstream-relayed reviewer-dispatch items, one is the 2026-08-13 first-mode
       clause, one is the Rule-11 (a') disposition. None covers the fragment mode.
     reconciliation:
-      status: "STILL-OPEN — net-new second-mode extension, filed 2026-08-14 after a Tier-1 three-arm redteam returned DO-NOT-LAND-AS-IS and the findings were applied"
-      reconciled_at: 2026-08-14
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new second-mode extension, filed 2026-08-14 after a Tier-1 three-arm redteam returned DO-NOT-LAND-AS-IS and the findings were applied"
+      reconciled_at: 2026-08-19
       evidence: >-
         Both fragment instances are from this session and are quoted generically
         in the paired skill (the verbatim lines named internal WIP and the skill
@@ -9729,8 +9729,8 @@ changes:
       `agent-result-delivery`, so the matcher fires and the zero is a true
       negative.
     reconciliation:
-      status: "STILL-OPEN — net-new second-mode depth, filed 2026-08-14 alongside the rule clause it pairs with"
-      reconciled_at: 2026-08-14
+      status: "ALREADY-SOLVED — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new second-mode depth, filed 2026-08-14 alongside the rule clause it pairs with"
+      reconciled_at: 2026-08-19
       evidence: >-
         Rule-to-skill redirect verified to resolve to a CLAUSE, not merely a
         file: the rule cites per-mode DO/DO-NOT, and a `^# DO` sweep over the
@@ -9804,8 +9804,8 @@ changes:
       "still blocked this cycle" note, and the loom-only-resolvable routing). This
       entry therefore carries ONLY the two net-new, decision-relevant facts.
     reconciliation:
-      status: STILL-OPEN — correction-by-append; two premises in the #125 chain are stale at HEAD
-      reconciled_at: 2026-08-14
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: correction-by-append; two premises in the #125 chain are stale at HEAD"
+      reconciled_at: 2026-08-19
       evidence: >-
         Both corrections re-derived at HEAD in the session that filed them, not
         carried from prior prose. Line numbers were read from the file at
@@ -9895,8 +9895,8 @@ changes:
       title: neither mentions `workspaces/`. Gate-1 should ingest all three as ONE
       managed-block revision, not three sequential edits.
     reconciliation:
-      status: STILL-OPEN — net-new, filed 2026-08-14 from the PR #150 adjudication hold
-      reconciled_at: 2026-08-14
+      status: STILL-OPEN — net-new, filed 2026-08-14 from the PR #150 adjudication hold; CONFIRMED LIVE on main 2026-08-19
+      reconciled_at: 2026-08-19
       evidence: >-
         Re-derived against the MERGE RESULT computed with `git merge-tree
         --write-tree`, not a two-tree diff — a two-tree comparison answers a
@@ -9904,6 +9904,59 @@ changes:
         Confirmed independently by a second lane whose separate merge computation
         reached the same conclusion on this file. Marker line numbers drift;
         reproduce by MARKER, not by line.
+      remeasured_after_sync: >-
+        THE PREDICTED REVERT HAS LANDED, AND NOT VIA THE PR THIS ENTRY WAS
+        FILED AGAINST. This entry was filed 2026-08-14 from the PR #150
+        adjudication hold; #150 is STILL open and unmerged. The same managed-block
+        rewrite arrived instead through the 2026-08-19 Gate-2 sync (PR #172, loom
+        `319083d60cab`), which merged to main. Every behavioural prediction above
+        is now confirmed ON MAIN rather than in a scratch merge: a new
+        `workspaces/**/04-validate/*.md` and a new `workspaces/**/journal/*.md`
+        are both IGNORED, `workspaces/_template/.env.production` is COMMITTABLE,
+        and `workspaces/docker-dev-environment/.env` stays IGNORED (control — the
+        instrument still discriminates). The tracked-file count is 92 (this entry
+        said 91 at filing; the delta is ordinary workspace growth, not a
+        correction to its reasoning).
+        THE LOSS IS NO LONGER PROSPECTIVE. This entry correctly scoped the harm
+        as future-only because git does not untrack on a gitignore change. That
+        remains true — the 92 tracked files are safe — but the future arrived:
+        the next `/sweep` report or journal entry written in this repo now
+        silently fails to stage. The ask below is unchanged and more urgent.
+        ROOT CAUSE, TRACED SINCE FILING, and it EXONERATES loom. `git log -S` on
+        `.gitignore` identifies commit `a6db846` — a LOCAL commit (`chore(workspaces):`,
+        not `chore(sync):`) — as the author of the override, placed INSIDE the
+        managed markers. `sync-manifest.yaml::owned_surfaces` grants loom the
+        managed block ONLY and requires every byte outside it untouched; the
+        removed lines sat at 193-201 inside a block spanning 155-206. Loom
+        rewrote its own declared region, within its grant. An initial reading of
+        this incident was that loom had exceeded the bound; that is REFUTED and
+        recorded rather than dropped. The upstream source is
+        `visibility_gitignore_additions.public`, which ships `/workspaces/*` +
+        `!/workspaces/_template/` as loom's deliberate default — so the conflict
+        is a POLICY disagreement with no per-target expression, exactly what the
+        ask above requests.
+        A LOCAL INTERIM IS NOW IN PLACE, AND IT CONTRADICTS THIS ENTRY'S OWN
+        JUDGMENT — disclosed rather than quietly done. This entry argued that
+        "splitting one ignore policy across both regions is worse than either",
+        and a target-owned override has now been added OUTSIDE the markers
+        anyway. The disposition changed because the premise did: that judgment
+        was made while the revert was hypothetical and #150 was held, and it is
+        now live and stranding real work. The split IS worse as architecture;
+        it is better than silently losing every new sweep report while Gate-1
+        decides. Gate-1 should treat the interim as a symptom of the missing
+        per-target election, not as a competing fix, and this template should
+        drop it the moment the upstream policy lands.
+        THE INTERIM HAD TO BE NARROW, which is itself evidence for the ask. A
+        bare `!/workspaces/**` was MEASURED to defeat ALL 13 global ignores under
+        `workspaces/` — `.env`, `.env.local`, `node_modules/`, `.venv/`,
+        `target/`, `__pycache__/`, `.DS_Store`, `.session-notes`,
+        `.session-notes.shared.md`, `journal/.pending/` among them — because
+        re-including the directories lets git descend past every directory-scoped
+        ignore. The landed override therefore re-includes directories plus
+        `*.md` only and re-ignores the rest; 17/17 cases verified in an isolated
+        scratch repo against the real shipped `.gitignore`. A per-repo policy
+        that requires a hand-tuned twenty-line counter-block at each consumer is
+        the argument for expressing it once, upstream.
 
   - file: .claude/audit-fixtures/sync-preflight-local-mods/run.mjs
     action: modify
@@ -9977,8 +10030,8 @@ changes:
       `.claude/audit-fixtures/sync-preflight-local-mods/run.mjs`; the existing
       declaration is for the DIRECTORY.
     reconciliation:
-      status: STILL-OPEN — net-new supplement, filed 2026-08-14
-      reconciled_at: 2026-08-14
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new supplement, filed 2026-08-14"
+      reconciled_at: 2026-08-19
       evidence: >-
         All three facts re-derived against the merge result, with the fixture
         runner and tool source read in full rather than matched by keyword — a
@@ -10040,11 +10093,567 @@ changes:
       it concerns the codify enumerator only and makes no claim about the
       deferred-quality sibling.
     reconciliation:
-      status: STILL-OPEN — net-new, filed 2026-08-14; first durable record of this obligation
-      reconciled_at: 2026-08-14
+      status: "STILL-OPEN — RE-MEASURED 2026-08-19 against loom sync 319083d60cab | prior: net-new, filed 2026-08-14; first durable record of this obligation"
+      reconciled_at: 2026-08-19
       evidence: >-
         Presence probe with a firing control, plus a manifest scan with a firing
         control, both run at HEAD in the session that filed this entry.
+
+  - file: .claude/bin/emit-cli-artifacts.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: coc
+    base_version: "2.24.0"
+    reason: >-
+      THE RULES-REFERENCE INDEX AND THE DELIVERED RULE SET DIVERGE IN BOTH
+      DIRECTIONS, AND THE EMITTER'S OWN COMMENT ASSERTS THEY CANNOT.
+      `emit.mjs`, in the comment block immediately above its
+      `validateCliDelivery()` call site, states that the validator's
+      skill-channel count "provably equals the rule count in the emitted
+      rules-reference index". Measured against this template's tree, same run:
+      `validateCliDelivery()` reports 88 skill-channel rules while
+      `buildRulesReferenceIndex` under the rs tier filter returns 80 — a figure
+      re-measured a second time by the filing orchestrator, driving the
+      exported `buildRulesReferenceIndex` / `buildTierFilter` directly
+      (unfiltered 88, rs-filtered 80, delivered 83; control: the unfiltered set
+      contains artifact-flow.md). Note that this 70 is the TIER-FILTER OUTPUT
+      and is a distinct measurement from the 70-element set INTERSECTION cited
+      below; the two agree, but neither corroborates the other. The
+      equality cannot hold on any `--target`ed emit, and the reason is
+      structural rather than incidental — the validator enumerates every
+      `.claude/rules/*.md` with no filter, while the emitter additionally
+      applies loom_only, surface_roles and the tier filter. Cite by symbol, not
+      line: `validateCliDelivery` / `buildRulesReferenceIndex` /
+      `emitRulesReferenceSkill`.
+      THE DELIVERED ARTIFACT MEASURES 83 ROWS, NOT 80. An earlier internal
+      draft of this finding asserted the tier-filtered count as delivered; that figure was the
+      tier-filtered local derivation, not a reading of the shipped file, and it
+      is corrected here rather than carried forward. Structural parse of the
+      Read column of `.codex/skills/rules-reference/SKILL.md` returns 83
+      citations, matching the index's own declared tail line, and the gemini
+      lane's row set is identical. The set difference against the
+      locally-derived skill-channel set is bidirectional: 8 rules present on
+      disk are absent from the index, and 3 rows in the index resolve to no
+      file at all.
+      EIGHT RULES ARE UNREACHABLE ON THE ONLY CHANNEL THAT DELIVERS THEM.
+      build-cache-hygiene, build-speed, canon-incorporation,
+      dataflow-null-typing, llm-auth-strategy-hygiene, llm-deployment-coverage,
+      release, version-cadence. All eight are on disk and ALL EIGHT carry
+      complete, lane-resolving frontmatter — `priority: 10` with
+      `scope: path-scoped`, which smart-defaults to skill-channel under
+      `deriveCliDelivery`. An earlier draft claimed only four of the then-nine
+      had clean frontmatter; the frontmatter of all of them was read and that claim is
+      REFUTED — the absence is not a metadata defect. The refuted figure is
+      TRACEABLE, which is worth recording: issue #112's table names exactly
+      four rules — build-speed.md, dataflow-null-typing.md,
+      llm-auth-strategy-hygiene.md, release.md — as "missing `priority:` +
+      `scope:` — genuine gap". Those four have since been FIXED, so the earlier
+      draft was reading a stale #112 row rather than inventing a number. The emitter's own
+      counters agree: contractFail=0 and noFrontmatter=1, and the one
+      missing-frontmatter file is `ci-runners.operator.local.example.md`, a
+      values TEMPLATE already recorded elsewhere in this manifest as belonging
+      outside `rules/`, not one of the nine.
+      THE EIGHT ARE VARIANT-ORIGIN AND THE INDEX EMITTER IS VARIANT-BLIND.
+      All eight appear in the manifest ONLY as
+      `variants/rs/rules/<name>.md`; they land flattened into `.claude/rules/`
+      at the template, where the tier filter tests `rules/<name>.md` and
+      matches nothing. The generating condition is that
+      `emitRulesReferenceSkill` is the ONLY one of the five emitters that
+      receives no `lang` argument — emitCommands, emitSkills,
+      emitCodexAgentPrompts and emitGeminiAgents all take one — and
+      `buildRulesReferenceIndex` reads only `.claude/rules`, never the variant
+      overlay tree. INFERENCE, LABELLED AS SUCH AND NOT MEASURED: at loom they
+      presumably sit under `.claude/variants/rs/rules/` where the readdir
+      never sees them, so the tier filter is not even reached. Loom was not
+      read; only the flattened downstream route is measured. Both routes
+      produce the same omission and the same fix. The ninth,
+      burn-down-reporting, is a THIRD mechanism: it has zero manifest hits here
+      (control `sweep-completeness` fires), it landed 2026-08-04, and the sync
+      that delivered it touched ZERO files under `.codex/` — so the index was
+      never regenerated.
+      THREE INDEX ROWS POINT AT NOTHING, AND THE INDEX INSTRUCTS THE OPERATOR
+      TO OPEN THEM. coc-artifact-eval-coverage.md, cross-sdk-inspection.md and
+      documentation.md are cited as `.claude/rules/<name>.md`; none exists
+      anywhere in the tree (control: artifact-flow.md returns two paths from
+      the same finder). All three sit in the manifest's `use_exclude:` block,
+      documentation.md additionally in use_obsoleted. The emitter never reads
+      `use_exclude` — a grep returns nothing against a control of ten hits for
+      loom_only / surface_roles / cli_emit_exclusions in the same file — so
+      rules the USE lane deliberately withholds are indexed anyway. This is the
+      outward half of the divergence and it is NOT a skip at all: it comes from
+      a filter the emitter does not apply, which is why the shape cannot be a
+      skip-path story. The index body reads "read the cited
+      `.claude/rules/<name>.md` ... A path-scoped rule you have not read is a
+      rule you are not honoring", so a Codex or Gemini operator is directed to
+      open three files that do not exist.
+      WHY THE EXISTING CHECKS CANNOT SEE THIS. `validate-emit.mjs` part D
+      already asserts no-dangling-citation, and it is correct — but it
+      validates a FRESHLY RE-EMITTED index written to a temp directory (torn
+      down in its own `finally`) and resolves THAT index's citations against
+      the source root. It never opens the committed `.codex/` / `.gemini/`
+      artifact at all, so a STALE delivered index carrying citations the
+      current emit would no longer produce is outside its aperture entirely —
+      which is why part D passes and does not appear in the validator's
+      35-fail list. `validate-xref-integrity.mjs` never scans `.codex/` or
+      `.gemini/` at all: its scan roots are the four `.claude/` trees (control:
+      4 hits on `.claude/rules`, 0 on `.codex` and 0 on `.gemini`). Its EXIT
+      STATUS is orthogonal and is currently 1, for unrelated backtick findings
+      — an earlier revision of this entry asserted it "exits 0 here", which a
+      direct re-run REFUTES (`node .claude/bin/validate-xref-integrity.mjs` →
+      exit 1, 362 dangling refs). Corrected here rather than quietly dropped:
+      stating an exit status as measurement without re-running it is the same
+      defect class this manifest has removed an entry for before. Both
+      instruments are sound and both are structurally unable to emit the
+      falsifying result, which is why the divergence has survived.
+      A NOTE ON THE SOURCE ROOT, since an earlier revision overstated it. It is
+      NOT true at this template that "all 73 citations exist at the source
+      root": the same three named above are absent here too (measured). That
+      claim could only hold of LOOM's source root, which was not read, so it
+      has been replaced by the part-D aperture mechanism above, which is
+      measured locally and is the stronger argument anyway.
+      THE ASK, in priority order: (a) thread the variant axis into
+      `emitRulesReferenceSkill` / `buildRulesReferenceIndex` so variant-origin
+      rules are indexed on the lane that receives them — the load-bearing half,
+      closes the nine; (b) apply the USE-lane exclusion set to the index so it
+      never cites a rule the lane withholds — closes the three; (c) correct the
+      `emit.mjs` comment, which asserts an equality the two call sites cannot
+      hold, or make it true by giving the validator the emitter's filters; (d)
+      re-emit the CLI trees whenever a synced rule file changes, since the
+      2026-08-04 sync changed five rule files and regenerated no index.
+    dedup_evidence: >-
+      The membership divergence is NOT already carried. `rules-reference`
+      returns 5 hits across the manifest and all five were READ IN FULL rather
+      than counted: four concern the index SKILL.md's YAML FRONTMATTER VALIDITY
+      (an unquoted colon-space and an angle-bracket placeholder in the
+      generated description, which a strict YAML load rejects while the
+      emitter's lenient parser accepts), and the fifth concerns rs-variant
+      rules landing WITHOUT frontmatter and silently dropping from both the
+      CRIT baseline and this channel. That fifth entry is the nearest neighbour
+      and is DISTINCT: its mechanism is missing frontmatter, and it is
+      measurably resolved on this tree — all nine rules named here HAVE
+      frontmatter, validateCliDelivery passes with zero failures, and only one
+      file in `rules/` lacks a frontmatter block. This entry's mechanism is
+      variant-blindness plus an unapplied `use_exclude`, on rules whose
+      metadata is clean. `documentation.md` returns 0 hits and
+      `coc-artifact-eval-coverage` returns 1 (an unrelated allowlist mention).
+      The nearest inverse case — an entry noting that
+      `guides/rule-extracts/cross-sdk-inspection.md` ships while the rule does
+      not — was read in full; it records the orphaned extract and makes no
+      claim about the delivered index citing the absent rule. Matcher controls:
+      `reconciliation` returns 145 hits and a known-absent string returns 0
+      against the same file, so the zeroes are true negatives. All counts are
+      stated against `main` (pre-append), which is the correct dedup baseline;
+      against the working copy each necessarily rises by this entry's own
+      tokens.
+    ingest_note: >-
+      SIBLING PAIRING, disclosed rather than left for Gate-1 to discover. Exactly
+      ONE prior entry is keyed on this SAME file, `.claude/bin/emit-cli-artifacts.mjs`
+      (`base_version: "2.23.22"`). It is NOT a duplicate — it addresses the
+      generated index's FRONTMATTER VALIDITY (an unquoted colon-space and an
+      angle-bracket placeholder that a strict YAML load rejects), whereas this
+      entry addresses the index's ROW MEMBERSHIP. Three of the four
+      frontmatter-validity hits cited in `dedup_evidence` live inside that
+      entry, so its content was read; the shared `file:` key simply was not
+      disclosed, and is now. Gate-1 may wish to land them together — the two
+      fixes touch the same emitter.
+    reconciliation:
+      status: STILL-OPEN — net-new; first record of the index/delivered-set membership divergence
+      reconciled_at: 2026-08-19
+      remeasured_after_sync: >-
+        RE-MEASURED 2026-08-19 against the loom Gate-2 sync (PR #172, loom
+        `319083d60cab`), which touched `.claude/bin/**` and `.codex/**` — the
+        exact surfaces this entry measures. EVERY figure moved and is corrected
+        inline above rather than left stale: unfiltered skill-channel 79 -> 88,
+        rs tier-filtered 70 -> 80, delivered rows 73 -> 83. THE DEFECT PERSISTS
+        WITH THE SAME STRUCTURE, re-based: 88 - 8 dropped = 80 = 83 - 3 phantom,
+        so both directions of the divergence remain live and the `emit.mjs`
+        "provably equal" comment is still false (88 != 83).
+        ONE OF THE NINE IS NOW FIXED, and that is worth recording as a PARTIAL
+        confirmation rather than a full one: `burn-down-reporting` IS now indexed.
+        It was the entry's THIRD mechanism — plain staleness, a rule that landed
+        after the index was last regenerated — so a sync that re-emitted the
+        index closed it exactly as the entry predicted. The other two mechanisms
+        did NOT close: the eight variant-origin rules are still tier-dropped, and
+        the same THREE phantom rows (coc-artifact-eval-coverage,
+        cross-sdk-inspection, documentation) are still cited-but-absent, byte for
+        byte. That the staleness half self-healed on a re-emit while the
+        variant-blindness and `use_exclude` halves did not is INDEPENDENT
+        EVIDENCE for the entry's three-mechanism claim — a single-mechanism
+        story could not have half-closed.
+      evidence: >-
+        Every figure re-derived at HEAD in the session that filed this entry;
+        none carried from a prior report. The skill-channel set was enumerated
+        by importing the shipped `buildRulesReferenceIndex` and
+        `validateCliDelivery` rather than by grepping frontmatter, and the
+        delivered set by parsing the Read column structurally rather than
+        counting quote characters. The dangling-citation result was produced by
+        the shipped `extractRulesIndexCitations` matcher applied verbatim to
+        the delivered file. Each enumerator was first fired at a known-answer
+        case — `artifact-flow.md`, present in both sets — so an empty
+        difference would have been distinguishable from a broken instrument.
+        The orchestrator independently re-derived both directions before
+        filing: 73 delivered rows, 3 cited-but-absent, 9 on-disk-but-unindexed,
+        each with its own firing control. Line numbers are deliberately not
+        cited; reproduce by SYMBOL.
+      disposition: >-
+        Filed as an APPEND that corrects an earlier internal draft, never as an
+        edit to it, per artifact-flow.md "Append, Never Overwrite Unprocessed
+        Proposals". Two of that draft's claims did not survive measurement and
+        are recorded as refuted rather than quietly restated: "70 delivered"
+        (the delivered artifact measures 73; 70 is the tier-filtered local
+        derivation) and "four of the nine have complete frontmatter" (all nine
+        do). The fix is loom-side; a local edit to the emitter would be rebuilt
+        away by the next sync-to-use.
+      residual: >-
+        The loom-side mechanism for the eight variant rules is INFERRED, not
+        measured — loom was not read (repo-scope-discipline). If loom's tree
+        differs from the inference, the count and the fix are unchanged but the
+        causal sentence needs re-derivation. Separately, this repo's manifest
+        copy is dated two days earlier than the rules it classifies, so any
+        tier-membership claim derived from it describes the 2026-08-02
+        manifest, not loom's current one.
+
+  - file: .claude/audit-fixtures/validate-emit/run.mjs
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.24.0"
+    reason: >-
+      AN INSTRUMENT MISMATCH IN THIS MANIFEST, PLUS THE DEFECT IT CONCEALED.
+      A manifest entry keyed `.claude/bin/validate-emit.mjs` — the one whose
+      evidence block opens "THE FIGURE IN CIRCULATION WAS STALE AND
+      UNDERSTATED. Issue #112 records this runner as 34 pass / 21 fail. At HEAD
+      it is 800 pass / 53 fail" — did not correct a stale number. It replaced a
+      measurement of one instrument with a measurement of a DIFFERENT one, and
+      then reported the delta as staleness ("off by a factor of ~23"). BOTH
+      FIGURES ARE CURRENT. They count different things.
+      THE TWO RUNNERS, RE-MEASURED THIS SESSION BY RUNNING BOTH.
+      `node .claude/audit-fixtures/validate-emit/run.mjs` exits 1 and prints
+      `validate-emit audit fixtures: 34 passed, 21 failed`. `node
+      .claude/bin/validate-emit.mjs` prints `summary: 971 pass / 19 fail / 0
+      fixture-needed / 131 skip — 19 blocking`. Exit codes read directly, not
+      through a pipe.
+      WHAT ONE UNIT IS IN EACH — the load-bearing part, and the part the
+      superseded entry never established. The FIXTURE RUNNER is a unit-test
+      harness for the validator's own exported functions: it imports
+      `checkHookEventDeclaration`, `checkClaudeMdSurfaceRoleParity`,
+      `parseHookEventMarkers` and `isMissingOwnSpecifier` from
+      `../../bin/validate-emit.mjs` and drives them against SYNTHETIC roots
+      built in a temp directory. One unit is ONE `check(name, condition)`
+      assertion; the denominator is 55, composed — read off the hits, not
+      tallied — of 24 numbered `fixture-01..24` (all PASS), 5
+      `fixture-claudeMdParity-*` (all PASS) and 26 `fixture-hookEvent-*` (5
+      PASS, 21 FAIL). It never touches the repo tree. THE VALIDATOR is the
+      pre-emit sweep gating sync, run over the real tree via
+      `findRepoRoot(process.cwd())`. One unit is ONE `(check-id, artifact)`
+      RESULT ROW statused pass/fail/fixture-needed/skip; the denominator is 1121
+      rows. A large "pass count" ratio is ~1121 rows against 55 assertions,
+      not two readings of one surface.
+      THE DEFECT THE MISMATCH CONCEALED, and it is not cosmetic. The two
+      runners overlap at exactly ONE function, `checkHookEventDeclaration`, and
+      they disagree there. At this tier the check CANNOT RUN: the validator
+      lazily requires `./reconcile-settings-hooks.mjs`, which is ABSENT here
+      (loom-only; a presence loop printed ABSENT for it while printing PRESENT
+      for `bin/validate-emit.mjs` and `bin/emit.mjs` in the same pass), so the
+      catch returns a SINGLE SKIP row. Probed directly:
+      `checkHookEventDeclaration(process.cwd())` returns row count 1, statused
+      skip, detail "WARN: the shared settings.json registration recognizer
+      (reconcile-settings-hooks.mjs) is loom-only and not present". The
+      validator therefore reports one warn row and blocks nothing — which
+      `sync-manifest.yaml` declares is INTENDED ("consumers stay unaffected
+      because checkHookEventDeclaration degrades to SKIP twice over first").
+      But the FIXTURE SUITE for it shipped anyway: its `withRoot` helper calls
+      `checkHookEventDeclaration(root)` UN-INJECTED, so all 21 assertions
+      interrogate a row set holding one entry about a missing module. Four
+      print the tell verbatim — `status=null detail=` and `row=null detail=`.
+      The control is inside the suite:
+      `fixture-hookEvent-q-recognizerInjectable-PASS` calls the SAME function
+      with the loaders injected and PASSES.
+      WHY ISSUE #112 COULD NOT HAVE SEEN THIS, which is the transferable
+      lesson. #112 ruled the 21 out as absence-driven with
+      `grep -cE "ENOENT|Cannot find module|No such file"` over the output,
+      returning 0, plus a PRESENT check on `.claude/bin/validate-emit.mjs`.
+      Both readings are correct and the conclusion still does not follow: the
+      code CATCHES the resolution error and converts it to a WARN string, so
+      the graceful-degradation path emits none of the three tokens. No result
+      that grep could have produced would have falsified "not absence-driven" —
+      a non-discriminating instrument in the sense instrument-discipline MUST-1
+      names. And the PRESENT check was aimed at the SUBJECT, which does ship;
+      the absent artifact is a DEPENDENCY of one check family.
+      WHAT THIS ENTRY DELIBERATELY DOES NOT CLAIM. Whether any of the 21 would
+      ALSO fail with `reconcile-settings-hooks.mjs` present is UNRESOLVED. The
+      module is loom-only and cannot be supplied here, so the discriminating
+      run was not available and no verdict is asserted either way. What IS
+      established is that all 21 assert against rows that cannot exist at this
+      tier.
+      THE ASK, in two parts. (1) CORRECT THE RECORD: the superseded entry's
+      "stale and understated" framing, its ~23x factor, and its "anyone sizing
+      this work from #112 would have planned against a quarter of the real
+      surface" should be withdrawn — a Gate-1 reader sizing from it plans
+      against a merged denominator that describes neither instrument. #112
+      needs no re-measurement; its headline figure was correct when written and
+      is correct today. (2) DISPOSE OF THE 21: either `use_exclude` the
+      `.claude/audit-fixtures/validate-emit/` hookEvent family alongside the
+      loom-only dependency it exercises — the shape the existing
+      stranded-fixture entry already proposes for six sibling runners, this
+      being a seventh — or convert the `withRoot` helper to inject stub loaders,
+      so the family tests the check's LOGIC rather than its dependency's
+      distribution. Gate-1 picks; the second option keeps enforcement value at
+      consumer tiers, the first is one line per family.
+      ON THAT SECOND OPTION, one correction an earlier revision of this entry
+      got wrong: fixture (q) is NOT a template to copy. Its injected stub is
+      DEGENERATE — a single hardcoded registration row plus a
+      `normalizeMatcher` returning the empty string — and its own comment says
+      it only "proves the seam exists". It cannot drive the other 21
+      assertions, which need scenario-specific registrations. The fix is
+      nonetheless MORE tractable than that mistake suggests: `withRoot` ALREADY
+      receives each fixture's registration list as its second argument, so it
+      can feed that list straight into an injected `enumerateRegistrations`
+      without inventing any new test data.
+    dedup_evidence: >-
+      No manifest entry is keyed on this file: `audit-fixtures/validate-emit`
+      returns 0 across all entries, against a control of 77 hits for
+      `audit-fixtures/` on the same file — the matcher fires, so the zero is a
+      true negative. THREE sibling entries carry
+      `file: .claude/bin/validate-emit.mjs` (the remaining hits are prose, not
+      keys — a fourth when this entry was authored, a fifth now that this entry
+      itself cites the path) and all three were READ, not counted: the
+      preserved-project-SKILL.md / consumer-efficacy offer, the HEAD-census
+      entry this one corrects, and the 2026-08-12 "one fact, two artifacts"
+      root-cause reframe. None addresses the fixture-vs-validator instrument
+      distinction, and NONE OF THOSE THREE mentions
+      `reconcile-settings-hooks.mjs` — stated narrowly on purpose: the dedup
+      searched `validate-emit.mjs` and `audit-fixtures/validate-emit`, NOT
+      `reconcile-settings-hooks` (12 hits in main) or
+      `checkHookEventDeclaration` (3 hits), so a corpus-wide form of that
+      sentence would claim more than was tested. See `cross_reference` for the
+      fourth entry those wider searches surface. NOTE FOR THE INDEX: the census entry's
+      own ingest_note asserts "exactly TWO hits ... so the pair is real and
+      there is no third claimant". That was true when filed; the 2026-08-12
+      entry is now a third. The dedup was re-run here rather than inherited,
+      which is how the drift surfaced.
+    reconciliation:
+      status: STILL-OPEN — net-new correction entry, first filed 2026-08-15; supersedes the census entry's staleness FRAMING, not its measurement
+      reconciled_at: 2026-08-19
+      remeasured_after_sync: >-
+        RE-MEASURED 2026-08-19 against the loom Gate-2 sync (PR #172, loom
+        `319083d60cab`). The validator's figures moved and are corrected inline
+        above: 801 pass / 35 fail / 84 skip -> 971 / 19 / 131, denominator 920 ->
+        1121. The FIXTURE RUNNER DID NOT MOVE AT ALL: still exactly
+        `34 passed, 21 failed`, denominator 55.
+        THAT DIVERGENCE IS THE ENTRY'S OWN THESIS, CONFIRMED BY AN EVENT RATHER
+        THAN AN ARGUMENT. The two runners were claimed to measure DIFFERENT
+        populations; a sync that changed the real tree moved one denominator by
+        201 rows and left the other untouched to the assertion. Two readings of
+        one surface cannot do that. This is stronger evidence than the original
+        entry offered, which had to argue the distinction from source rather
+        than observe it.
+        The concealed defect ALSO persists unchanged:
+        `.claude/bin/reconcile-settings-hooks.mjs` is STILL ABSENT at this tier
+        (presence loop, same pass: PRESENT for `validate-emit.mjs`), so all 21
+        hookEvent fixtures still assert against a row set that cannot exist here.
+        The ask is unchanged.
+      evidence: >-
+        Both runners executed in this session, neither figure carried forward
+        from any prior report. Each runner's DENOMINATOR was established from
+        its own source — the fixture harness's `check()` counter, the
+        validator's per-result tally loop — rather than inferred from the shape
+        of a summary line. The 55 assertions were grouped by family from the
+        result lines themselves after a first grouping attempt returned only 31
+        of them; reporting that partial grouping as the composition would have
+        been a tally standing in for the hits. The orchestrator independently
+        re-derived the crux before filing: the presence loop (ABSENT for
+        reconcile-settings-hooks.mjs, PRESENT for two siblings in the same
+        pass) and the single skip row with its verbatim WARN detail.
+      root_cause: >-
+        The census entry compared a figure it read from an issue against a
+        figure it measured from a command, without establishing that the issue
+        and the command named the same instrument. #112's table is a census of
+        `.claude/audit-fixtures/*/run.mjs` RUNNERS (its opening line
+        "Re-measured the audit-fixture enforcement layer at the same 150s
+        cap"), and its validate-emit row is the fixture runner. The entry read
+        that row as a reading of `.claude/bin/validate-emit.mjs`. The two names
+        are one token apart and the mistake is invisible without opening both.
+      correction_to_this_entrys_own_premise: >-
+        The brief that produced this entry asserted the census entry's figure
+        was uniformly stale. It is not: the entry states "800 pass / 53 fail"
+        in its headline and "Post-fix re-run: 801 pass / 35 fail" in a later
+        paragraph, and HEAD measures 801/35 today. The entry is INTERNALLY
+        INCONSISTENT rather than stale, and the defect is the framing, not the
+        arithmetic. Recorded rather than silently restated.
+      still_open: >-
+        The 21 hookEvent fixture failures, in full. The instrument-mismatch
+        half of this entry is a record correction and closes on Gate-1
+        accepting it; the 21 need a disposition (exclude the family, or inject
+        stub loaders in `withRoot`).
+      note_for_gate_1: >-
+        ONE THING IS DELIBERATELY NOT PRE-DECIDED, and the two options are not
+        equivalent. Excluding the family from consumer tiers matches the
+        precedent already proposed for six sibling runners and costs one
+        manifest line, but it removes the only mechanical coverage of
+        `checkHookEventDeclaration` from every consumer. Injecting stub loaders
+        in `withRoot` — feeding it the registration list it ALREADY receives as
+        its second argument, NOT copying fixture (q), whose stub is a
+        degenerate single hardcoded row — keeps that
+        coverage everywhere and tests the check's LOGIC rather than its
+        dependency's distribution, at the cost of a harness change. The second
+        is the better instrument; the first is the cheaper fix. Gate-1 decides
+        which property is worth the difference.
+      cross_reference: >-
+        READ FIRST with the entry keyed `.claude/bin/reconcile-settings-hooks.mjs`,
+        which already measured the SAME degradation this entry presents in its
+        `reason` — the single SKIP row, the verbatim WARN detail, and the
+        sync-manifest DECISION that consumers stay unaffected. It is NOT a
+        duplicate and the asks are disjoint: that entry proposes DISTRIBUTING
+        the module or amending `hook-event-selection.md`'s Detection text (and
+        its own `still_open` records that distribution was REFUSED), whereas
+        this entry proposes disposing of the 21 stranded FIXTURES — a third
+        lane. Surfaced here because this entry's dedup searched only
+        `validate-emit.mjs` and `audit-fixtures/validate-emit`; the wider
+        `reconcile-settings-hooks` search is what finds it, and Gate-1 should
+        see the pair together.
+        Read also with the stranded-fixture entry (the six shipped-fixture /
+        unshipped-subject runners): this is the same class one layer down — the
+        SUBJECT ships, a DEPENDENCY of one check family does not — so a
+        derivation of fixture distribution from the subject's tier would NOT
+        catch it, and Gate-1 should test any proposed derivation against this
+        case before adopting it. Also read with the census entry this corrects,
+        whose OTHER content stands: its ten-check breakdown of the 35, its
+        eighteen-fixed-at-this-template note, and its
+        paths-annotation-consistency non-decision are unaffected — only the
+        "stale and understated" framing is withdrawn.
+      issue_112_action: >-
+        #112's headline figure needs no re-measurement. One paragraph does need
+        a correcting comment: its root cause C calls the 21 "a real enforcement
+        defect rather than a distribution artifact". On the evidence above that
+        is inverted — it is the same distribution-artifact class as its own
+        root cause A, one layer down. Posting that comment is gated on the
+        owner authorizing issue comments as a class.
+  - file: .gitignore
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.25.0"
+    reason: >-
+      THE INTERIM FIX WORKS AND CANNOT BE MADE DURABLE HERE. Workspace tracking
+      under `workspaces/` was lost to the loom-managed gitignore block, and was
+      restored at this template by writing the re-include OUTSIDE the
+      `coc:gitignore_additions` markers (commit `d49e322`, 17/17 paths verified
+      tracked). That placement is deliberate and is the only placement that
+      survives: bytes written INSIDE the markers are regenerated by the next
+      `/sync-to-use`, which is exactly how the 2026-08-07 owner directive was
+      reverted once already. So the interim holds — but every consumer that hits
+      this must independently rediscover both the defect and the
+      outside-the-markers placement rule, which is the definition of a fix that
+      belongs upstream.
+      THE ASK. Ship the workspace fence from loom, inside the managed block,
+      so the target-owned local override can be retired rather than replicated.
+      WHAT THE FENCE MUST NOT DO, measured. A bare `!/workspaces/**` re-include
+      was tested and DEFEATS ALL 13 global ignores beneath `workspaces/` —
+      `.env`, `node_modules`, `.venv`, `target`, `__pycache__`, `.DS_Store`,
+      `.session-notes`, and `journal/.pending` among them. On a PUBLIC template
+      that is a credential-fence regression, not merely a policy disagreement.
+      The landed local form re-includes DIRECTORIES plus `*.md` only and then
+      re-ignores the remainder; any upstream fence must preserve that shape.
+      Simplifying it is the failure mode, not the cleanup.
+      RETIREMENT SIGNAL, stated so the consumer can verify rather than assume:
+      `grep -c 'workspaces/\*\*/.env' .claude/sync-manifest.yaml` returning
+      non-zero means loom has shipped the fence and the local interim can come
+      out. Until then the override stays.
+    reconciliation: >-
+      STILL-OPEN as of 2026-08-20, and open by construction rather than by
+      neglect — this is an ARCHITECTURAL ask, the class the 133-entry
+      re-reconciliation identified as the one a content sync structurally cannot
+      carry. The local half is DONE and verified (`d49e322`, 17/17 tracked); the
+      upstream half is loom's. Owner-gated 2026-08-20: the operator chose to
+      file upstream rather than carry the interim indefinitely, on the grounds
+      that every consumer otherwise repeats the same rediscovery. No prior entry
+      in this manifest carries the `.gitignore` workspace fence as an upstream
+      ask — the existing `.gitignore`-keyed entry covers the re-anchoring of the
+      managed block, which is a different defect.
+  - file: .claude/hooks/lib/violation-patterns.js
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.25.0"
+    source_issue: 174
+    reason: >-
+      A CROSS-REPO AUTHORIZATION RECEIPT IS INVISIBLE TO THE GUARD THAT DEMANDS
+      IT, FROM ANY WORKTREE BUT THE ONE IT WAS WRITTEN IN.
+      `hasCrossRepoAuthorizationReceipt` builds its ENTIRE search list from
+      `repoRoot(cwd)` — a single worktree's toplevel. The session cwd and the cwd
+      a guarded command executes in are routinely DIFFERENT worktrees of one
+      repo; that is the normal shape of parallel lane work. So an operator runs
+      the sanctioned `/cross-repo-authorize` affordance, holds a correctly-formed
+      receipt, and is halted anyway by the guard that required it.
+      WHY THIS IS LOAD-BEARING AND NOT COSMETIC. `repo-scope-discipline.md` calls
+      the receipt "the ONLY distinguisher between an authorized and unauthorized
+      cross-repo action", and its absence routes to critical L1 under
+      `trust-posture.md` MUST-4. A guard that cannot see a valid receipt teaches
+      operators that the halt is noise and that overriding is routine — precisely
+      the outcome the ceremony exists to prevent. It is non-catastrophic today
+      only by luck of severity: this guard is `halt-and-report`, so the command
+      still runs. The identical resolution bug behind a `block`-severity guard
+      would be UNBYPASSABLE with a valid authorization in hand.
+      REPRODUCED AT THE TEMPLATE, NOT INHERITED. Two real sibling worktrees, one
+      byte-identical receipt in worktree A: called from A returns true (the
+      positive control — the matcher works), from sibling B false, from the main
+      checkout false. The downstream reporter measured the same shape on a forest
+      of 71 worktrees sharing one `.git`.
+      THE REPORTER'S SECOND UNVERIFIED ITEM IS NOW ANSWERED AND NEGATIVE.
+      They flagged, without enumerating, that other consumers of `repoRoot(cwd)`
+      might share the exposure. Measured: `repoRoot` has EXACTLY ONE call site in
+      the file — this one. No other consumer is affected.
+      THE FIX. Search every worktree of the repo, reusing the existing
+      `enumerateSiblingWorktrees` (`hooks/lib/sibling-porcelain.js`) rather than
+      open-coding `git worktree list`: it already verifies each candidate's
+      `git-common-dir` matches our own, so a planted porcelain entry cannot aim
+      the search outside the repo, and it returns a result object separating
+      "could not answer" from "answered: none". Every worktree shares one `.git`
+      and one operator, so a receipt in any of them is equally authoritative.
+      FAIL-CLOSED IS PRESERVED IN BOTH DIRECTIONS. Widening the search can only
+      find MORE receipts, never authorize without one. On `ok:false` (no git
+      binary, a `safe.directory` refusal) the own-root result still stands —
+      never worse than the pre-fix behaviour — and the narrowing is reported on
+      stderr rather than collapsed into "no siblings", the exact conflation
+      `sibling-porcelain.js`'s result-object contract exists to prevent.
+      COST, MEASURED — AND THE ORDERING IT DICTATES. Own root is scanned FIRST and
+      the sibling sweep reached only on a miss. This is not neatness: on a
+      72-worktree forest `enumerateSiblingWorktrees` alone costs ~710ms
+      (per-sibling git subprocesses) while the whole filesystem scan is ~1ms. A
+      first revision of this fix enumerated up front and was measured at ~900ms on
+      EVERY call including the common self-hit — where the affordance actually
+      writes the receipt. Deferring brings self-hit to 9ms; sibling-hit 661ms;
+      full-sweep denial 693ms, against a declared 5000ms hook budget (~14%),
+      scaling ~10ms per worktree. NAMED RESIDUAL: the DENY path is now the slow
+      one and hooks fail OPEN on timeout, so the budget is the number to watch if
+      a forest grows an order of magnitude (~500 worktrees at this rate).
+      SECOND INSTANCE OF A CLASS, WHICH IS THE REAL ARGUMENT FOR FIXING IT
+      UPSTREAM. The 2026-08-18 upflow reported `/codify` unable to complete from a
+      worktree because the shared learning tree resolves to the main checkout
+      while the worktree supplies its own `repoDir` as the containment boundary.
+      Same shape, different directory: a per-worktree write a differently-rooted
+      reader cannot see. Two independent instances in one artifact surface argue
+      the defect is the cwd-rooted-resolution PATTERN, not either call site.
+    dedup_evidence: >-
+      No prior entry in this manifest names `violation-patterns.js` for worktree
+      receipt resolution; the pre-existing `repo-scope-discipline` entries concern
+      the receipt LOCATION (the RC6 `.claude/cross-repo-authz/` break) and the
+      read/write tier, not the ROOT the search resolves from. Grepped the entry
+      set for `hasCrossRepoAuthorizationReceipt` and for `worktree` in the same
+      file context before appending.
+    reconciliation: >-
+      STILL-OPEN upstream as of 2026-08-21. The local half is DONE and verified:
+      fixed at the template with a paired-control fixture
+      (`.claude/audit-fixtures/cross-repo-authz-worktree/run.mjs`) that exits 1
+      against the PRE-FIX lib with exactly the two worktree rows failing while
+      every safety row still passes, and 10/10 exit 0 against the fixed lib.
+      `violation-patterns.js` is loom-owned (last three commits all `chore(sync)`,
+      against a control showing local commits on non-loom-owned paths), so the
+      local fix is Class-A NON-DURABLE and the next `/sync-to-use` rebuilds it
+      away. THIS ENTRY IS THE DURABLE SURFACE. Filed from GitHub issue #174, a
+      Route-A downstream filing, routed per `issue-triage-routing.md` for a repo
+      whose declared class is `coc-use-template`: the origination node.
 
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or

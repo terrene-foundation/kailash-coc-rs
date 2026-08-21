@@ -1,0 +1,9 @@
+{
+  "_schema": "burndown-manifest/v1",
+  "_note": "kailash-coc-rs outstanding-work tracker. DECLARED source list, never a directory glob: adding a source is a reviewable diff. The generator refuses (exit 2) if any declared path is missing, untracked, or modified against HEAD.",
+  "target": "workspaces/docker-dev-environment/04-validate/sweep-2026-08-20b.md",
+  "pages": ["Issues", "Pull requests", "Branch hygiene", "Upstream asks"],
+  "sources": [
+    { "path": "workspaces/docker-dev-environment/04-validate/burndown/register.json", "kind": "register", "precedence": 0 }
+  ]
+}
