@@ -1,0 +1,313 @@
+# NO source_repo — hop-level-only provenance per the Step-7c schema: the
+# downstream consumer is deliberately NOT identified. Lane head is template_slug.
+#
+# =====================================================================
+# READ THIS BEFORE TRIAGING THE FOUR instrument-discipline ENTRIES BELOW.
+# =====================================================================
+#
+# This filing carries SEVEN entries. Four of them target ONE rule that ships
+# TWO MUST clauses today, and they are not the only ones in flight for it.
+# The proposing lane is naming that density itself, and offering a split,
+# rather than leaving Gate-1 to discover the need for one.
+#
+# COUNTED, not estimated. Every figure below is checkable from this repo at
+# template 2.24.0 — `grep -cE '^### [0-9]+\.' .claude/rules/instrument-discipline.md`
+# for the base, and the inbox filenames for the rest.
+#
+#   `.claude/rules/instrument-discipline.md` ships                     2 clauses
+#   + 2026-08-08-instrument-scope.yaml            (already in inbox)   1
+#   + 2026-08-09-instrument-cannot-measure-case.yaml (already in inbox) 1
+#   + THIS filing                                                      4
+#   + staged downstream, not yet filed (2 further proposals; one of
+#     them also amends existing MUST-2(b))                             2
+#                                                                   ------
+#   full acceptance, across four cycles                               10 clauses
+#
+# A five-fold clause increase on one rule. The risk is NOT that any individual
+# clause is unsound — each was reviewed on its own merits, and the four here
+# were authored against distinct, separately observed failures. It is that the
+# clauses already carrying the rule's weight get DILUTED by the ones added
+# around them: an output-quality regression in every consuming agent that loads
+# the rule, independent of per-clause correctness.
+#
+# THE SPLIT THIS LANE PROPOSES (Gate-1 can override it; it should not have to
+# discover the need for one):
+#
+#   LAND WHOLE — no collision with anything in this inbox:
+#     - the `.claude/rules/user-flow-validation.md` MUST-6 detection entry.
+#       No other inbox filing targets that file. It proposes DETECTION for an
+#       existing clause rather than a new obligation, which makes it the
+#       cheapest entry here to accept.
+#     - the `.claude/rules/testing.md` frozen-vs-derived entry. No other inbox
+#       filing targets testing.md either.
+#     - the `.claude/commands/worktree.md` half of the worktree entry.
+#
+#   SEQUENCE ACROSS CYCLES — the instrument-discipline entries. Suggested
+#   ordering by independence, over the four filed here only:
+#     (1) presence-vs-payload and (2) the mutating-check clause are MECHANICAL
+#         — decidable by reading a pipeline, no domain knowledge needed.
+#     (3) the lexical positive-control and (4) the detector-doc carrier clause
+#         are JUDGMENT-BEARING and benefit from landing after the mechanical
+#         pair has settled the rule's shape.
+#   This lane offers NO ordering opinion on the two already in the inbox or the
+#   two still staged — it did not author them and has not reviewed their evidence.
+#
+#   EXTRACT DEPTH — where a clause's worked example, evidence, or rationale
+#   exceeds what a rule body needs, route it to the paired
+#   `.claude/guides/rule-extracts/instrument-discipline.md` rather than inline.
+#   Several of these entries carry more worked detail than a rule body should
+#   hold; the presence-vs-payload entry says so in its own diff_lines.
+#
+# TWO ADJACENCIES worth seeing together, surfaced rather than left to be found:
+#   - The lexical positive-control entry's failure mode (a miss falling through
+#     to `unknown`/`skip`/empty and reading as benign) is close to the SILENT
+#     PASS half of `2026-08-09-instrument-cannot-measure-case.yaml`. Different
+#     remedies — that one pins a third self-test outcome, this one asserts the
+#     matcher still matches — but a maintainer should read them as a pair.
+#   - The presence-vs-payload entry's core defect (collapsing FOUND-BUT-EMPTY
+#     into NOT-FOUND) is the same conflation of "no" with "I could not look"
+#     that the same 2026-08-09 filing names. Adjacent, not duplicate.
+#
+# A SECOND, SMALLER COLLISION — `.claude/rules/worktree-isolation.md`. That file
+# ends at Rule 7 at 2.24.0. Two filings already in this inbox each propose the
+# NEXT rule on it (`2026-08-10-git-stash-shared-checkout-hazard.yaml` and
+# `2026-08-11-worktree-teardown-discipline.yaml`, which both write "Rule 9"),
+# and the worktree entry below adds a third companion clause. The three are
+# distinct hazards — a shared stash stack, absent teardown, and a forced second
+# checkout of one branch — not duplicates. But their NUMBERS collide and Gate-1
+# should assign all three together.
+#
+# CLAUSE NUMBERS ARE DELIBERATELY LEFT UNPINNED on every entry in this file.
+# The proposing lane has no visibility into what this template has ingested
+# since its last pull, so assigning numbers here would collide. Gate-1 assigns.
+#
+# NOT FILED, deliberately: one draft in the originating cycle exists as an
+# identical blob on two downstream branches, one of which was abandoned. It is
+# represented here exactly once. Three further lessons from the same cycle are
+# held for the next cycle and are not in this file.
+origin: downstream
+codify_date: 2026-08-15
+codify_session: "codify(upflow): four instrument-discipline clauses, a frozen-vs-derived test convention, a MUST-6 detection replacement, and a worktree forced-checkout hazard"
+template_slug: kailash-coc-rs
+template_version: "2.24.0"
+loom_sha: "43167a54"
+changes:
+  - file: .claude/rules/testing.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >
+      Proposes a new clause under § Regression Testing, beside the existing "Behavioral
+      Regression Tests Over Source-Grep" and "`__all__` … Structural Enumeration": A TEST
+      LITERAL THAT MIRRORS CONTENT LIVING ELSEWHERE EITHER DERIVES IT OR STATES WHY IT IS
+      FROZEN. When a test expectation enumerates something that lives outside the test — a
+      count of routes, a list of files in a directory, the membership of a registry, the id
+      set a document declares — the test MUST either DERIVE the expectation from that source
+      at run time, or carry an inline statement of why it is deliberately FROZEN. An
+      unexplained mirrored literal is BLOCKED — not because hardcoding is wrong, but because
+      the next reader cannot tell which of the two it is, and the two demand OPPOSITE
+      maintenance. The discriminator the clause turns on is what SHOULD happen when the
+      mirrored content changes: if the change needs a HUMAN JUDGMENT before it is safe, FREEZE
+      the literal and the resulting red IS the review trigger ("stop and classify this"); if
+      the change is routine growth needing nothing, DERIVE the expectation, because a red
+      there is noise and noise is what gets tests deleted. A freeze is correct exactly when
+      someone must LOOK — a new entry in an authorization surface, an added key on an egress
+      payload, a new file in a directory a fence sweeps — each is a decision, and the failing
+      test is the only thing that forces it to be made rather than assumed. Deriving those
+      silently converts a decision into an assumption. The failure this closes is not a wrong
+      literal; it is an UNLABELLED one, where a maintainer facing a red cannot tell whether to
+      update the number or to stop and think, and the cheap move (update the number) is always
+      available.
+    diff_lines: "~+14 (new MUST clause + discriminator table + DO/DO-NOT + BLOCKED corpus + Why)"
+
+  - file: .claude/rules/instrument-discipline.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >
+      Proposes a new clause (NUMBER UNPINNED — see the sequencing note at the head of
+      this file): A CHECK THAT MUTATES THE ARTIFACT IT MEASURES CANNOT REPORT
+      ON IT. When a check regenerates, normalizes, formats, or otherwise WRITES the artifact it
+      is also measuring, it DESTROYS its own finding — the post-state it observes is the state
+      it just created, not the state it was asked to judge. The check then reports clean on
+      exactly the condition it exists to detect, and reports clean every subsequent run,
+      because the first run repaired the evidence. This is distinct from the already-staged
+      scope clause (an instrument built for question A reused for question B): here there is
+      ONE question and ONE instrument built for it, and the instrument still cannot
+      discriminate, because the act of measuring changed the measured. The remedy named
+      in-clause is to SEPARATE the two acts — measure into a scratch location and compare, or
+      run the check in an explicitly read-only mode and let a separate step perform the write.
+      The proposal also carries a SCOPE WIDENING to `.claude/rules/testing.md`: its existing
+      clause "Every Test-Only / Canary Export Greps To A CI Invocation" states in its own Why
+      that the principle "is global", but the clause HEADING binds it to one language's FFI
+      surface, so a reader on any other runtime concludes it does not apply. The widening
+      re-heads the clause to its stated scope without changing its content. Two further
+      findings from the originating sweep are deliberately NOT re-proposed — a determinism
+      check read as a correctness check (already covered by the staged scope clause, and
+      offered as a worked instance of it) and an instrument that never executes (already owned
+      by the testing.md clause above) — because proposing them again would inflate the corpus
+      for no coverage.
+    diff_lines: "~+12 (new MUST clause + DO/DO-NOT + BLOCKED corpus + Why) + ~+2 (testing.md clause-heading scope widening)"
+
+  - file: .claude/rules/instrument-discipline.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >
+      Proposes a new clause (NUMBER UNPINNED — see the sequencing note at the head of this file): A
+      DOCUMENT THAT EXPLAINS A DETECTOR IS INSIDE THAT DETECTOR'S SCOPE. Before writing prose
+      that explains what a detector, guard, scanner, or fence matches — a report, a docblock, a
+      commit body, a rule draft — the author MUST determine whether the artifact being written
+      lands within that detector's own scanned scope. Where it does, the trigger MUST appear in
+      a NON-TRIGGERING form, and the author MUST run the detector against their own artifact
+      BEFORE stating that it passes. Quoting a live trigger inside the detector's scope does
+      not DESCRIBE an instance; it CREATES one. The failure mode is named in-clause as an
+      INSTINCT rather than an oversight: the natural way to explain a detector is to quote what
+      it caught, that quote is the carrier, and the clearer the explanation the more faithfully
+      it reproduces the trigger — so the better-written the document, the worse the leak. The
+      discriminator the clause supplies is what the author writes INSTEAD: the CLASS and the
+      FILE rather than the matched string. PLACEMENT NOTE from the proposing lane, offered so
+      Gate-1 can re-home rather than reject: instrument-discipline is proposed because the
+      obligation attaches to writing ABOUT an instrument. Two alternatives were considered and
+      rejected — `user-flow-validation.md` MUST-6 covers scrubbing RECEIPTS, and one of the
+      three observed instances is not a disclosure case at all; `self-referential-codify.md`
+      governs review DEPTH on artifacts that govern codification, not the content of an
+      explanation. Re-homing is a legitimate Gate-1 outcome and the proposing lane does not
+      contest it.
+    diff_lines: "~+14 (new MUST clause + discriminator table + DO/DO-NOT + BLOCKED corpus + Why)"
+
+  - file: .claude/rules/instrument-discipline.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >
+      Proposes a new clause (NUMBER UNPINNED — see the sequencing note at the head of this file): a SCOPED
+      POSITIVE-CONTROL requirement for lexical matchers run against output the repo does NOT
+      control — an external CLI's prose, a tool banner, a subprocess diagnostic, an error
+      message. The upstream owner rewords these on their own release schedule with no
+      obligation to anyone matching on them. The clause is careful about what the defect
+      actually is: the failure that matters is NOT that the pattern is brittle, because every
+      such pattern is brittle. It is what happens on a MISS. A matcher that is LOUD on miss —
+      where the miss routes to an explicit error or refusal state that fails the run — is fine
+      and needs nothing; the pattern still rots, but the rot announces itself. The defect is
+      SILENT DEGRADATION: a miss that falls through to `indeterminate`, `unknown`, `skip`,
+      empty, or a default branch that reads as benign. There, upstream rewording silently
+      converts the check into one that reports nothing wrong while seeing nothing at all, and
+      it does not rot once — it rots on every upstream rewording, each time invisibly, until
+      some second instrument disagrees. The remedy is a POSITIVE CONTROL: an assertion that the
+      matcher still matches something it must match, so a rewording surfaces as a failing
+      control rather than as a silently-benign verdict. Deliberately scoped to the
+      silent-degrading class, and deliberately non-overlapping with the already-staged scope
+      clause: that one covers an instrument REUSED for a second question; this one covers a
+      matcher whose SUBJECT drifts underneath it while the question stays fixed. Different
+      failure, complementary clause.
+    diff_lines: "~+13 (new MUST clause + DO/DO-NOT + BLOCKED corpus + Why)"
+
+  - file: .claude/rules/instrument-discipline.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >
+      Proposes a new clause (NUMBER UNPINNED — see the sequencing note at the head of this file): A
+      PRESENCE QUESTION MUST BE ANSWERED BY PRESENCE OF A RESULT, NEVER BY A NON-EMPTY FIELD.
+      When the question is whether a thing EXISTS — is this object reachable, is this key
+      registered, is this record present, did this scan match — the instrument MUST test
+      whether the query RETURNED A ROW, not whether a field extracted from that row is
+      non-empty. Any extract-then-default form (a shell pipeline through `cut` read through a
+      `${var:-NONE}` default; a `// "none"` JSON fallback; a printf-formatted find piped to an
+      emptiness test) collapses FOUND-WITH-AN-EMPTY-FIELD into NOT-FOUND, and MUST NOT be cited
+      as evidence of absence. Where a payload IS genuinely needed, presence and payload are TWO
+      reads: assert the row exists, then extract from it. Concrete distribution-tracked shape,
+      so it generalizes to every consumer rather than to one project's schema: a
+      version-control object store enumerates reachable objects as `<id> <path>` rows, and an
+      object reachable ONLY through a reference pointing DIRECTLY at it — rather than through
+      the containing tree of a commit — is emitted with its id, the separator, and an EMPTY
+      path, because in that reachability chain the object genuinely has no path. It is fully
+      reachable and fully protected from collection; it simply has no name. A checker
+      extracting the path field and defaulting on emptiness printed the SAME token for
+      "reachable but pathless" (one row returned) and for "genuinely absent" (zero rows) — same
+      output, opposite truth, zero information under MUST-1. Why this is not already covered by
+      MUST-1, stated because the distinction is the whole point of proposing it: the author of a
+      payload-based check DOES name a falsifying result, and gets a CORRECT one ("if absent, the
+      extraction is empty and it prints NONE"). The defect is that the POSITIVE case has a
+      second, unconsidered form producing identical output, and MUST-1's question as phrased
+      never prompts anyone to enumerate the forms of the positive. Naming the pattern converts
+      the reviewer's question from "was a falsifying result named?" (it was) into the mechanical
+      "is this presence question answered by a row or by a field?" — decidable by looking at the
+      pipeline, needing no domain knowledge of the store being queried. The error DIRECTION is
+      what earns it corpus weight: it reports ABSENT for something PRESENT, which licenses the
+      destructive remedy — recreate it, re-fetch it, commit it, declare the loss real. Observed
+      consequence in the originating context: content deliberately withheld from a commit, and
+      pinned by a rescue reference created for exactly one purpose (to make it reachable so
+      routine garbage collection could not drop it), was reported "genuinely unrecoverable —
+      commit it immediately." The pin was working precisely as designed. Acting on the report
+      would have committed work that had been deliberately withheld.
+    diff_lines: "~+13 (new MUST clause + DO/DO-NOT + BLOCKED corpus + Why); worked example and evidence proposed for the paired guide extract rather than the rule body"
+
+  - file: .claude/rules/user-flow-validation.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >
+      Proposes REPLACING MUST-6's Detection-mechanism wiring. The MUST-6 clause BODY is
+      unchanged and correct — this is a detection proposal, not a new obligation, which makes
+      it the cheapest entry in this manifest to accept. MUST-6 requires a verbatim receipt to
+      be scrubbed of secrets and downstream-context tokens before it is embedded in an artifact
+      that may reach a public surface. Its DETECTION does not match the SHAPE of the obligation,
+      in two independent ways that compose into the observed failure. FIRST: the obligation is
+      DECIDABLE, the detection is JUDGMENT. MUST-6's wiring routes to the semantic gate-level
+      reviewer, alongside MUST-1/2's "does this claim carry a receipt at all", which genuinely
+      IS a judgment call. But "does this text contain an absolute home path, a machine hostname,
+      or a personal email address" is not a judgment call — it is a decidable property of the
+      bytes. Everything decidable that is enforced only by judgment is enforced
+      probabilistically, and the probability compounds against the corpus. SECOND: the
+      obligation attaches at WRITE time, and nothing ever RE-READS the corpus. A reviewer sees
+      the DIFF. An unscrubbed token in a receipt written six months ago is in no diff under
+      review, so no reviewer is ever asked about it. That is what makes the class
+      SELF-SUSTAINING rather than merely recurring: each instance becomes individually invisible
+      the moment the PR introducing it merges. The composition was observed directly — a corpus
+      audit found operator-local coordinates across dozens of tracked ledgers (home paths,
+      machine hostnames, personal addresses) and NOT ONE was introduced by a recent change.
+      Every one had passed a review that was looking at something else. The reviewer was not
+      negligent; the reviewer was structurally unable to see it. Proposed disposition: pair the
+      existing semantic gate-review with a MECHANICAL, corpus-wide (not diff-scoped) scan for
+      the decidable token classes, so the write-time obligation acquires a detection that can
+      fire on artifacts no current diff touches.
+    diff_lines: "~+8 (MUST-6 Detection-mechanism wiring replaced; clause body unchanged)"
+
+  - file: .claude/commands/worktree.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >
+      Proposes replacing the trailing comment on the step-2 worktree-creation line, which
+      currently offers "or omit -b to enter an existing branch" as an unqualified alternative.
+      Git permits that form ONLY when the branch is checked out NOWHERE ELSE — but this corpus
+      MANDATES worktree isolation for parallel work (`agents.md` § Worktree Orchestration +
+      `worktree-isolation.md` Rule 7 both require it), so the branches that matter are exactly
+      the ones already checked out somewhere. The offered mode therefore fails precisely in the
+      situation the corpus itself creates, and the comment gives the reader no signal that it
+      will. THE DEFECT IS AN ASYMMETRY, AND THE REFUSAL IS NOT THE PROBLEM — this framing is
+      load-bearing and was reached by measurement, after an initial draft proposed a pre-check
+      and the measurement removed it. Git's refusal is GOOD: it exits 128, names the branch AND
+      the absolute path of the conflicting worktree, creates no directory, and registers
+      nothing. It is loud, informative, and debris-free, so a `git worktree list` pre-check
+      would harden the one path that is ALREADY SAFE — and the proposal deliberately does NOT
+      ask for one. The defect is what happens on the very next line: given `--force`, the same
+      command exits 0 and prints two routine lines, mentioning neither that the branch is now
+      checked out twice nor the tree it just stranded. An operator who reads the informative
+      refusal and forces past it has been ACTIVELY TOLD NOTHING IS WRONG — worse than an
+      unhelpful error, because the loud refusal builds confidence that the tool is watching this
+      surface and the silent success spends it. The adjacent documented use of the same flag in
+      the same file is benign (`worktree remove --force`), so it reads as routine before it is
+      ever typed. MECHANISM: worktrees of one clone share `.git` and therefore the branch ref,
+      but each keeps its OWN index. The forced second tree commits; the shared ref moves; the
+      FIRST tree's HEAD follows it automatically while its INDEX does not; `git status` there
+      compares a stale index against a newer HEAD, so every file the advance ADDED is present in
+      HEAD and absent from the index — which git reports as a STAGED DELETION. Nobody touched
+      the first tree. A routine commit from it then records those deletions as INTENT, with no
+      warning and no conflict. SEVERITY SCOPED HONESTLY: nothing is lost from the object store
+      (the content remains reachable through the prior commit) — the damage is that a deletion
+      nobody chose is recorded as a decision somebody made, and every later reviewer reads it
+      that way. Proposed: replace the comment so it always directs to `-b`, and add a companion
+      MUST clause to `worktree-isolation.md` blocking `--force` as the response to the
+      "already used by worktree" refusal, with the remedy being to branch FROM the existing
+      branch rather than force a second checkout OF it. Recovery is also worth stating because
+      the natural first move does not work: a mixed reset only DE-stages (the paths remain
+      absent from the tree), and in a shared tree the index-restoring commands are already
+      BLOCKED by `git.md` § Destructive Working-Tree Ops.
+    diff_lines: "~+3 (commands/worktree.md step-2 comment) + ~+10 (worktree-isolation.md companion MUST clause + DO/DO-NOT + BLOCKED corpus + Why) + clause-scoped Wiring"
+status: pending_review
