@@ -10571,6 +10571,89 @@ changes:
       in this manifest carries the `.gitignore` workspace fence as an upstream
       ask — the existing `.gitignore`-keyed entry covers the re-anchoring of the
       managed block, which is a different defect.
+  - file: .claude/hooks/lib/violation-patterns.js
+    action: modify
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.25.0"
+    source_issue: 174
+    reason: >-
+      A CROSS-REPO AUTHORIZATION RECEIPT IS INVISIBLE TO THE GUARD THAT DEMANDS
+      IT, FROM ANY WORKTREE BUT THE ONE IT WAS WRITTEN IN.
+      `hasCrossRepoAuthorizationReceipt` builds its ENTIRE search list from
+      `repoRoot(cwd)` — a single worktree's toplevel. The session cwd and the cwd
+      a guarded command executes in are routinely DIFFERENT worktrees of one
+      repo; that is the normal shape of parallel lane work. So an operator runs
+      the sanctioned `/cross-repo-authorize` affordance, holds a correctly-formed
+      receipt, and is halted anyway by the guard that required it.
+      WHY THIS IS LOAD-BEARING AND NOT COSMETIC. `repo-scope-discipline.md` calls
+      the receipt "the ONLY distinguisher between an authorized and unauthorized
+      cross-repo action", and its absence routes to critical L1 under
+      `trust-posture.md` MUST-4. A guard that cannot see a valid receipt teaches
+      operators that the halt is noise and that overriding is routine — precisely
+      the outcome the ceremony exists to prevent. It is non-catastrophic today
+      only by luck of severity: this guard is `halt-and-report`, so the command
+      still runs. The identical resolution bug behind a `block`-severity guard
+      would be UNBYPASSABLE with a valid authorization in hand.
+      REPRODUCED AT THE TEMPLATE, NOT INHERITED. Two real sibling worktrees, one
+      byte-identical receipt in worktree A: called from A returns true (the
+      positive control — the matcher works), from sibling B false, from the main
+      checkout false. The downstream reporter measured the same shape on a forest
+      of 71 worktrees sharing one `.git`.
+      THE REPORTER'S SECOND UNVERIFIED ITEM IS NOW ANSWERED AND NEGATIVE.
+      They flagged, without enumerating, that other consumers of `repoRoot(cwd)`
+      might share the exposure. Measured: `repoRoot` has EXACTLY ONE call site in
+      the file — this one. No other consumer is affected.
+      THE FIX. Search every worktree of the repo, reusing the existing
+      `enumerateSiblingWorktrees` (`hooks/lib/sibling-porcelain.js`) rather than
+      open-coding `git worktree list`: it already verifies each candidate's
+      `git-common-dir` matches our own, so a planted porcelain entry cannot aim
+      the search outside the repo, and it returns a result object separating
+      "could not answer" from "answered: none". Every worktree shares one `.git`
+      and one operator, so a receipt in any of them is equally authoritative.
+      FAIL-CLOSED IS PRESERVED IN BOTH DIRECTIONS. Widening the search can only
+      find MORE receipts, never authorize without one. On `ok:false` (no git
+      binary, a `safe.directory` refusal) the own-root result still stands —
+      never worse than the pre-fix behaviour — and the narrowing is reported on
+      stderr rather than collapsed into "no siblings", the exact conflation
+      `sibling-porcelain.js`'s result-object contract exists to prevent.
+      COST, MEASURED — AND THE ORDERING IT DICTATES. Own root is scanned FIRST and
+      the sibling sweep reached only on a miss. This is not neatness: on a
+      72-worktree forest `enumerateSiblingWorktrees` alone costs ~710ms
+      (per-sibling git subprocesses) while the whole filesystem scan is ~1ms. A
+      first revision of this fix enumerated up front and was measured at ~900ms on
+      EVERY call including the common self-hit — where the affordance actually
+      writes the receipt. Deferring brings self-hit to 9ms; sibling-hit 661ms;
+      full-sweep denial 693ms, against a declared 5000ms hook budget (~14%),
+      scaling ~10ms per worktree. NAMED RESIDUAL: the DENY path is now the slow
+      one and hooks fail OPEN on timeout, so the budget is the number to watch if
+      a forest grows an order of magnitude (~500 worktrees at this rate).
+      SECOND INSTANCE OF A CLASS, WHICH IS THE REAL ARGUMENT FOR FIXING IT
+      UPSTREAM. The 2026-08-18 upflow reported `/codify` unable to complete from a
+      worktree because the shared learning tree resolves to the main checkout
+      while the worktree supplies its own `repoDir` as the containment boundary.
+      Same shape, different directory: a per-worktree write a differently-rooted
+      reader cannot see. Two independent instances in one artifact surface argue
+      the defect is the cwd-rooted-resolution PATTERN, not either call site.
+    dedup_evidence: >-
+      No prior entry in this manifest names `violation-patterns.js` for worktree
+      receipt resolution; the pre-existing `repo-scope-discipline` entries concern
+      the receipt LOCATION (the RC6 `.claude/cross-repo-authz/` break) and the
+      read/write tier, not the ROOT the search resolves from. Grepped the entry
+      set for `hasCrossRepoAuthorizationReceipt` and for `worktree` in the same
+      file context before appending.
+    reconciliation: >-
+      STILL-OPEN upstream as of 2026-08-21. The local half is DONE and verified:
+      fixed at the template with a paired-control fixture
+      (`.claude/audit-fixtures/cross-repo-authz-worktree/run.mjs`) that exits 1
+      against the PRE-FIX lib with exactly the two worktree rows failing while
+      every safety row still passes, and 10/10 exit 0 against the fixed lib.
+      `violation-patterns.js` is loom-owned (last three commits all `chore(sync)`,
+      against a control showing local commits on non-loom-owned paths), so the
+      local fix is Class-A NON-DURABLE and the next `/sync-to-use` rebuilds it
+      away. THIS ENTRY IS THE DURABLE SURFACE. Filed from GitHub issue #174, a
+      Route-A downstream filing, routed per `issue-triage-routing.md` for a repo
+      whose declared class is `coc-use-template`: the origination node.
 
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
