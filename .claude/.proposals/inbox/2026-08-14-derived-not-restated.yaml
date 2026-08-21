@@ -1,0 +1,62 @@
+origin: downstream
+codify_date: '2026-08-14'
+codify_session: 'codify(defect-class): five green-while-wrong defects resolve to TWO classes — restatement-without-derivation,
+  and a proxy adopted for a property'
+template_slug: kailash-coc-rs
+template_version: 2.24.0
+loom_sha: 43167a54
+changes:
+- file: .claude/rules/derived-not-restated.md
+  action: created
+  base_version: 2.45.5
+  reason: 'Proposes a NEW rule for a defect class measured FIVE times in a single session, in five unrelated
+    subsystems, every instance GREEN while wrong. Three of the five share one precise shape and no existing
+    rule covers them: a value or claim is OWNED by one artifact, RESTATED at another surface, and nothing
+    enforces that the copy tracks the original. (a) A test pinned an exact importer count by hand; three
+    independent PRs each incremented it off the same base; their path-list additions merged additively
+    while the count line, being byte-identical on all three sides, merged SILENTLY to the wrong value
+    — each PR correct and green alone, no individual PR''s CI able to see it. (b) Nine code comments cited
+    sections of other files that do not exist, three of four audited making the code look SAFER than it
+    was, and the seventh instance was created BY THE REPAIR of the sixth, in the same branch, by an author
+    already briefed on the class. (c) A dependency floor declared in a manifest was hardcoded as a literal
+    in a test in another language, alongside a SECOND comparator with different semantics, so the two
+    enforcement surfaces silently disagreed about which versions satisfy one contract. Proposed MUST-
+    a value, count, constant, or claim owned by an authority (manifest, schema, generator, or the source
+    file that defines it) MUST be DERIVED at build or run time, or CONSUMED as that authority''s verdict,
+    at every other surface that needs it; restating it as a literal is BLOCKED unless a mechanical check
+    fails when the two diverge. The generalizable correction is one decider per contract- every other
+    surface consumes, and where a second implementation genuinely must exist it is derived from the first
+    rather than written beside it. This is distinct from artifact-flow''s distribution mechanics (which
+    govern WHERE artifacts travel) and from specs-authority Rule 9 (which forbids workspace specs restating
+    canonical artifacts) — this governs any VALUE or CLAIM with more than one enforcement surface, in
+    code, tests, manifests, and comments alike.
+
+    '
+  diff_lines: ~+120 (new rule- the MUST, the one-decider correction, DO/DO-NOT per instance, BLOCKED corpus,
+    Trust Posture Wiring)
+- file: .claude/rules/instrument-discipline.md
+  action: modified
+  base_version: 2.45.5
+  reason: 'Proposes extending the falsifying-result test from the moment a check is CITED to the moment
+    a durable check is AUTHORED. The existing MUST-1 governs citing an instrument as evidence, which leaves
+    a committed check nobody is currently citing outside its scope — and that is where the other two instances
+    of the session''s five landed. (a) A host-vs-sidecar parity assertion was DIRECTIONAL (host masks
+    at least as much as sidecar), so it could only fail when the host disclosed something the sidecar
+    masked; a live credential leak sat behind it, green, and a fix to the host silently WIDENED the divergence
+    the check could not report. Proving it blind required stubbing the fix and observing 92 sibling rows
+    red while that assertion red zero times. (b) An owner-ratified acceptance criterion required only
+    that no mask artifact sit beside a live credential — which returning the input completely untouched
+    satisfies, because then there is no artifact at all. The suite passed identically before and after
+    a fix for two real cleartext credential leaks. Six of that list''s ten criteria were later found to
+    admit a passing leak. Both are the same shape- a PROXY was adopted for a property and nothing bound
+    the proxy to it, so the proxy passed while the property failed. Proposed clause- authoring a durable
+    check, fixture, pin, or acceptance criterion MUST state what result it produces when the property
+    it stands for is FALSE, and that result MUST be demonstrated at least once; where the check cannot
+    produce it, the check does not establish the property and must not be cited as though it does. Complements
+    completion-criterion MUST-1 (which governs how an acceptance list is authored and ratified) by governing
+    whether an individual criterion IMPLIES the property it grades.
+
+    '
+  diff_lines: ~+45 (one clause extending MUST-1 to authoring-time, two worked instances, BLOCKED corpus,
+    clause-scoped Wiring)
+status: pending_review
