@@ -48,7 +48,7 @@
 const fs = require("fs");
 const path = require("path");
 // loom#1349 — the ONE hardened append primitive; see append-sink.js for the six defenses.
-const { appendSinkLine } = require("./append-sink.js");
+const { appendSinkLine, mainCheckoutBoundaryRoots } = require("./append-sink.js");
 
 const cocSign = require(path.join(__dirname, "coc-sign.js"));
 const coordinationLog = require(path.join(__dirname, "coordination-log.js"));
@@ -192,40 +192,9 @@ function _defaultAppend(repoDir, record) {
   //
   // `repoDir` stays the value stamped into the signed record; only the boundary widens.
   //
-  // Resolved through `requireMainCheckout` — the FAIL-CLOSED accessor — not the legacy
-  // `resolveMainCheckout`, because what is being declared here is a CONTAINMENT ROOT. The legacy
-  // accessor silently returns its own `cwd` argument when git cannot identify a main checkout
-  // (`state-resolver.js` § INDETERMINATE), so a caller that widens a trust boundary with it widens
-  // it with an unverified value. State the equivalence honestly rather than over-claiming a fix:
-  // at THIS call site the argument is `repoDir`, which `appendSinkLine` already declares as root[0]
-  // and `_resolveRoots` realpath-dedupes, so the indeterminate branch contributed a NO-OP DUPLICATE
-  // and the boundary never actually widened. Measured on a non-git dir: `indeterminate=true`,
-  // legacy path `=== repoDir` argument, `requireMainCheckout().ok === false`.
-  //
-  // The migration is therefore behaviour-preserving TODAY, and is made anyway for two reasons the
-  // no-op does not cover. (1) That safety holds only by the coincidence that the value passed in
-  // equals the value fallen back to — a two-hop invariant no reader re-derives, which silently
-  // breaks the moment this call is handed a session cwd instead of `repoDir`. (2) The alternative
-  // was a `LEGACY_ALLOWED` entry in
-  // `tests/integration/multi-operator/trust-resolver-fail-closed-1471.test.js`, which would have
-  // recorded the weakness in a ledger meant to SHRINK rather than removing it.
-  //
-  // The `!ok` branch declares NOTHING, which is the same fail-closed shape as the catch below: a
-  // sink outside `repoDir` is refused rather than written somewhere unverified, while a sink INSIDE
-  // `repoDir` — the legitimate non-git / unresolvable-git case — still lands. Refusing the whole
-  // append on `!ok` would over-block that path; both halves are pinned by
-  // `append-sink-worktree-state.test.js` § "git cannot answer".
-  const boundaryRoots = [];
-  try {
-    const { requireMainCheckout } = require(
-      path.join(__dirname, "state-resolver.js"),
-    );
-    const mainCheckout = requireMainCheckout(repoDir);
-    if (mainCheckout.ok) boundaryRoots.push(mainCheckout.repoDir);
-  } catch {
-    // Resolver unavailable — `repoDir` remains the only root and a main-checkout sink fails
-    // CLOSED (loudly, to the caller) rather than being written somewhere unverified.
-  }
+  // Containment roots for a state-dir sink: derived by the ONE helper in
+  // append-sink.js (see its doc for the fail-closed resolver rationale).
+  const boundaryRoots = mainCheckoutBoundaryRoots(repoDir);
   const w = appendSinkLine({
     repoDir,
     additionalRoots: boundaryRoots,

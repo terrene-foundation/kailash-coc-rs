@@ -50,7 +50,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  deriveDynamicTokens, walkFiles, readTextOrNull, synthHex, makeScrubber, SCRUB_MODES, assertNoSymlinkEscape,
+  deriveDynamicTokens, walkFiles, readTextOrNull, readTextOrReason, synthHex, makeScrubber, SCRUB_MODES, assertNoSymlinkEscape,
 } from "./lib/identity-scrub.mjs";
 // clause-e.2 key basenames/suffixes — SAME source the runtime tripwire scans, so the
 // clean-instantiate DELETE fence and the committed-key tripwire never drift (redteam #965 R3).
@@ -642,6 +642,10 @@ function neutralizeWholeTree(root, scrubPairs) {
 function assertZero(root, canonTokens, opts = {}) {
   const lc = canonTokens.map((t) => t.toLowerCase());
   const hits = [];
+  // Files this gate could not OPEN. Distinct from the binary skip below, which is
+  // deliberate: `readTextOrNull` collapsed the two into one null, so an unreadable
+  // carrier of canon identity was skipped and the ceremony still reported clean.
+  const unreadable = [];
   const ECO_REL = path.join(".claude", "bin", "ecosystem.json");
   walkFiles(root, (f) => {
     if (f.includes(`${path.sep}.git${path.sep}`)) return; // skip the .git object store
@@ -655,7 +659,13 @@ function assertZero(root, canonTokens, opts = {}) {
     // blocked — acceptable because emit is the PRIMARY M1 source-prevention path and the client owns
     // their tree's binaries. A raw NUL-corrupted SOURCE reads as binary here too, but the emit LAYER 3
     // is the fence that catches that class at the source (the client-template is built by emit, not clean).
-    let txt = readTextOrNull(f); if (txt === null) return;
+    const { text: txt0, reason: readReason, error: readErr } = readTextOrReason(f);
+    if (readReason === "unreadable") {
+      unreadable.push(`${path.relative(root, f)}  (${readErr})`);
+      return;
+    }
+    let txt = txt0;
+    if (txt === null) return; // binary — the deliberate, documented skip above
     const rel = path.relative(root, f);
     // MO-OPT holistic post-multi-wave redteam (MO-OPT-1): the ceremony's OWN
     // placeholder ecosystem.json legitimately carries upstream_canon.url = the
@@ -718,6 +728,7 @@ function assertZero(root, canonTokens, opts = {}) {
   }
   return {
     hits,
+    unreadable,
     scannerOk: !scannerErrored && scannerFindings.length === 0,
     scannerOut: scannerErrored
       ? "structural scanner exited WITHOUT emitting any [SHAPE:] findings -- it did NOT run to " +
@@ -889,9 +900,13 @@ function main() {
   const neutralized = neutralizeWholeTree(root, scrubPairs);
   console.log(`  ✓ whole-tree neutralize → ${neutralized} file(s) rewritten`);
 
-  const { hits, scannerOk, scannerOut } = assertZero(root, canonTokens, { scannerPath: a.scannerPath });
+  const { hits, unreadable, scannerOk, scannerOut } = assertZero(root, canonTokens, { scannerPath: a.scannerPath });
   console.log("");
-  if (hits.length || !scannerOk) {
+  if (unreadable && unreadable.length) {
+    console.error(`✗ ASSERT-ZERO CANNOT SPEAK — ${unreadable.length} file(s) could not be read, so "zero canon identity remains" is unproven for them:`);
+    for (const u of unreadable.slice(0, 40)) console.error("   " + u);
+  }
+  if (hits.length || !scannerOk || (unreadable && unreadable.length)) {
     console.error(`✗ ASSERT-ZERO FAILED — residual canon identity remains in the WORKING TREE (nothing is "clean"):`);
     for (const h of hits.slice(0, 40)) console.error("   " + h);
     if (!scannerOk) { console.error("   structural scanner findings:"); console.error(scannerOut); }

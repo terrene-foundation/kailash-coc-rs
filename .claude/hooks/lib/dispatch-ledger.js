@@ -104,7 +104,10 @@ const path = require("path");
 
 // The ONE hardened append primitive (loom#1349) — six defenses, symlink/hardlink/FIFO refusal,
 // 0o600. A direct `fs.appendFileSync` here would be a second, un-hardened sink.
-const { appendSinkLine } = require("./append-sink.js");
+const {
+  appendSinkLine,
+  mainCheckoutBoundaryRoots,
+} = require("./append-sink.js");
 
 /**
  * Stream version. Independent of `activation_schema_version` and deliberately NOT pinned to 0:
@@ -122,7 +125,12 @@ const LEDGER_SCHEMA_VERSION = 1;
 const MAIN_GENERATION = "(main-agent)";
 
 /** Closed record vocabulary. An unrecognized `kind` is ignored by the reader, never guessed at. */
-const RECORD_KINDS = Object.freeze(["launch", "delivery", "declared", "reconcile"]);
+const RECORD_KINDS = Object.freeze([
+  "launch",
+  "delivery",
+  "declared",
+  "reconcile",
+]);
 
 /** Reconcile verdict states. Three, never two — see the tri-state note in the header. */
 const RECONCILE_STATES = Object.freeze(["RESOLVED", "UNRESOLVED"]);
@@ -157,10 +165,23 @@ function _isNonEmptyString(v) {
  * other) is avoided by never normalizing an absent session anywhere but this function.
  */
 function _sinkPath(repoDir, session) {
-  const raw = _isNonEmptyString(session) && session.trim().length > 0 ? session : "unknown-session";
+  const raw =
+    _isNonEmptyString(session) && session.trim().length > 0
+      ? session
+      : "unknown-session";
   const safe = raw.replace(/[^A-Za-z0-9._-]/g, "_");
-  const suffix = crypto.createHash("sha256").update(raw, "utf8").digest("hex").slice(0, 8);
-  return path.join(repoDir, ".claude", "learning", "dispatch-reconcile", `${safe}-${suffix}.jsonl`);
+  const suffix = crypto
+    .createHash("sha256")
+    .update(raw, "utf8")
+    .digest("hex")
+    .slice(0, 8);
+  return path.join(
+    repoDir,
+    ".claude",
+    "learning",
+    "dispatch-reconcile",
+    `${safe}-${suffix}.jsonl`,
+  );
 }
 
 /**
@@ -309,7 +330,10 @@ function buildDeliveryRecord(a) {
 /** @returns {object} a `declared` record carrying only the COUNT — never the prompt text. */
 function buildDeclaredRecord(a) {
   const r = _base("declared", a.sessionId, a.generation, a.nowIso);
-  r.declared_subparts = Number.isInteger(a.declaredSubparts) && a.declaredSubparts >= 0 ? a.declaredSubparts : 0;
+  r.declared_subparts =
+    Number.isInteger(a.declaredSubparts) && a.declaredSubparts >= 0
+      ? a.declaredSubparts
+      : 0;
   return r;
 }
 
@@ -319,9 +343,13 @@ function buildReconcileRecord(a) {
   const v = a.verdict && typeof a.verdict === "object" ? a.verdict : {};
   r.state = RECONCILE_STATES.includes(v.state) ? v.state : "UNRESOLVED";
   r.reason = _isNonEmptyString(v.reason) ? v.reason : null;
-  r.undelivered_count = Array.isArray(v.undelivered) ? v.undelivered.length : null;
+  r.undelivered_count = Array.isArray(v.undelivered)
+    ? v.undelivered.length
+    : null;
   r.undelivered_lanes = Array.isArray(v.undelivered)
-    ? v.undelivered.slice(0, MAX_REPORTED_LANES).map((l) => l.dispatch_name || l.launch_id)
+    ? v.undelivered
+        .slice(0, MAX_REPORTED_LANES)
+        .map((l) => l.dispatch_name || l.launch_id)
     : null;
   r.parallelism = v.parallelism || null;
   return r;
@@ -335,10 +363,24 @@ function appendRecord(a) {
   try {
     const repoDir = a.repoDir || process.cwd();
     const record = a.record;
-    if (!record || typeof record !== "object" || !RECORD_KINDS.includes(record.kind))
+    if (
+      !record ||
+      typeof record !== "object" ||
+      !RECORD_KINDS.includes(record.kind)
+    )
       return { ok: false, error: "record MUST be an object with a known kind" };
     const sinkPath = _sinkPath(repoDir, record.session_id);
-    const w = appendSinkLine({ repoDir, sinkPath, line: JSON.stringify(record) });
+    // Declared even though this sink is repoDir-contained today: measured in a real
+    // worktree, containment passes either way, while OMITTING it fails closed the
+    // moment an entry point resolves the shared learning tree to the main checkout.
+    // Uniform declaration is what keeps the boundary one derivation instead of a
+    // per-caller judgement that drifted six times already.
+    const w = appendSinkLine({
+      repoDir,
+      additionalRoots: mainCheckoutBoundaryRoots(repoDir),
+      sinkPath,
+      line: JSON.stringify(record),
+    });
     if (!w.ok) return { ok: false, error: `${w.error} — ${w.reason}` };
     return { ok: true, sinkPath };
   } catch (e) {
@@ -363,14 +405,24 @@ function readLedger(a) {
     const repoDir = (a && a.repoDir) || process.cwd();
     sinkPath = (a && a.sinkPath) || _sinkPath(repoDir, a && a.sessionId);
   } catch (e) {
-    return { ok: false, reason: `could not resolve the ledger path: ${e && e.message ? e.message : String(e)}` };
+    return {
+      ok: false,
+      reason: `could not resolve the ledger path: ${e && e.message ? e.message : String(e)}`,
+    };
   }
   let text;
   try {
     const st = fs.statSync(sinkPath);
-    if (!st.isFile()) return { ok: false, reason: `ledger path ${sinkPath} is not a regular file` };
+    if (!st.isFile())
+      return {
+        ok: false,
+        reason: `ledger path ${sinkPath} is not a regular file`,
+      };
     if (st.size > MAX_LEDGER_BYTES)
-      return { ok: false, reason: `ledger is ${st.size} bytes, over the ${MAX_LEDGER_BYTES}-byte read cap` };
+      return {
+        ok: false,
+        reason: `ledger is ${st.size} bytes, over the ${MAX_LEDGER_BYTES}-byte read cap`,
+      };
     text = fs.readFileSync(sinkPath, "utf8");
   } catch (e) {
     // ENOENT is the fresh-clone / CI / launch-hook-never-ran case. It is UNRESOLVED, not clean.
@@ -388,7 +440,8 @@ function readLedger(a) {
     if (line.trim() === "") continue;
     try {
       const r = JSON.parse(line);
-      if (r && typeof r === "object" && RECORD_KINDS.includes(r.kind)) rows.push(r);
+      if (r && typeof r === "object" && RECORD_KINDS.includes(r.kind))
+        rows.push(r);
       else skipped++;
     } catch {
       skipped++;
@@ -450,7 +503,8 @@ function reconcile(rows, failure) {
   let lastDeclared = null;
   rows.forEach((r, i) => {
     if (!r || typeof r !== "object") return;
-    if (r.kind === "launch" && _isNonEmptyString(r.launch_id)) launches.set(r.launch_id, r);
+    if (r.kind === "launch" && _isNonEmptyString(r.launch_id))
+      launches.set(r.launch_id, r);
     else if (r.kind === "delivery") deliveries.push(r);
     else if (r.kind === "declared") {
       lastDeclaredIndex = i;
@@ -485,7 +539,9 @@ function reconcile(rows, failure) {
   const orphanDeliverers = new Set();
   const unjoinableDeliverers = new Set();
   for (const d of deliveries) {
-    const emitter = _isNonEmptyString(d.generation) ? d.generation : MAIN_GENERATION;
+    const emitter = _isNonEmptyString(d.generation)
+      ? d.generation
+      : MAIN_GENERATION;
     // The main agent is not a launched lane, so its own SendMessage calls satisfy no lane.
     if (emitter === MAIN_GENERATION) continue;
     // An UNNAMED lane delivering. Its runtime id parses cleanly but carries no dispatch name, so
@@ -521,12 +577,23 @@ function reconcile(rows, failure) {
   for (const L of launches.values()) {
     const g = _isNonEmptyString(L.generation) ? L.generation : MAIN_GENERATION;
     if (!generations.has(g))
-      generations.set(g, { generation: g, launched: [], delivered: [], undelivered: [], unjoinable: [], unattributable: [] });
+      generations.set(g, {
+        generation: g,
+        launched: [],
+        delivered: [],
+        undelivered: [],
+        unjoinable: [],
+        unattributable: [],
+      });
     const bucket = generations.get(g);
     const lane = {
       launch_id: L.launch_id,
-      dispatch_name: _isNonEmptyString(L.dispatch_name) ? L.dispatch_name : null,
-      subagent_type: _isNonEmptyString(L.subagent_type) ? L.subagent_type : null,
+      dispatch_name: _isNonEmptyString(L.dispatch_name)
+        ? L.dispatch_name
+        : null,
+      subagent_type: _isNonEmptyString(L.subagent_type)
+        ? L.subagent_type
+        : null,
       generation: g,
     };
     bucket.launched.push(lane);
@@ -553,14 +620,19 @@ function reconcile(rows, failure) {
     for (let i = lastDeclaredIndex + 1; i < rows.length; i++) {
       const r = rows[i];
       if (!r || r.kind !== "launch") continue;
-      const g = _isNonEmptyString(r.generation) ? r.generation : MAIN_GENERATION;
+      const g = _isNonEmptyString(r.generation)
+        ? r.generation
+        : MAIN_GENERATION;
       if (g === MAIN_GENERATION) dispatched++;
     }
-    const declared = Number.isInteger(lastDeclared.declared_subparts) ? lastDeclared.declared_subparts : 0;
+    const declared = Number.isInteger(lastDeclared.declared_subparts)
+      ? lastDeclared.declared_subparts
+      : 0;
     parallelism = {
       declared,
       dispatched,
-      shortfall: declared >= 2 && dispatched < declared ? declared - dispatched : 0,
+      shortfall:
+        declared >= 2 && dispatched < declared ? declared - dispatched : 0,
     };
   }
 
@@ -628,25 +700,33 @@ function formatReconcileAdvisory(verdict) {
     );
   }
   const lines = [];
-  const undelivered = Array.isArray(verdict.undelivered) ? verdict.undelivered : [];
+  const undelivered = Array.isArray(verdict.undelivered)
+    ? verdict.undelivered
+    : [];
   if (undelivered.length > 0) {
     const shown = undelivered.slice(0, MAX_REPORTED_LANES);
     const more = undelivered.length - shown.length;
     lines.push(
       `[dispatch-reconcile] ${undelivered.length} dispatched lane(s) have NOT called SendMessage — ` +
         "their output is UNDELIVERED and invisible to the orchestrator: " +
-        shown.map((l) => `${l.dispatch_name || l.launch_id} (gen ${l.generation})`).join(", ") +
+        shown
+          .map((l) => `${l.dispatch_name || l.launch_id} (gen ${l.generation})`)
+          .join(", ") +
         (more > 0 ? ` … and ${more} more` : "") +
         ". Ask the lane to deliver before assuming it died and redoing the work serially.",
     );
   }
-  const unjoinable = Array.isArray(verdict.unjoinable) ? verdict.unjoinable : [];
+  const unjoinable = Array.isArray(verdict.unjoinable)
+    ? verdict.unjoinable
+    : [];
   if (unjoinable.length > 0)
     lines.push(
       `[dispatch-reconcile] ${unjoinable.length} dispatch(es) carried no \`name\`, so delivery is UNJOINABLE ` +
         "for them — neither clean nor undelivered. Pass `name` to make a lane reconcilable.",
     );
-  const unattributable = Array.isArray(verdict.unattributable) ? verdict.unattributable : [];
+  const unattributable = Array.isArray(verdict.unattributable)
+    ? verdict.unattributable
+    : [];
   if (unattributable.length > 0)
     lines.push(
       `[dispatch-reconcile] ${unattributable.length} dispatch name(s) exist in more than one generation ` +
@@ -657,14 +737,18 @@ function formatReconcileAdvisory(verdict) {
   // join failure and not an accusation: the lane delivered, and neither side carries a name to
   // join on. Saying "no launch row matches" about it (the orphan wording) would misdescribe a
   // launch row that is PRESENT and merely unjoinable.
-  const unjoinableDel = Array.isArray(verdict.unjoinable_deliverers) ? verdict.unjoinable_deliverers : [];
+  const unjoinableDel = Array.isArray(verdict.unjoinable_deliverers)
+    ? verdict.unjoinable_deliverers
+    : [];
   if (unjoinableDel.length > 0)
     lines.push(
       `[dispatch-reconcile] ${unjoinableDel.length} lane(s) delivered under an UNNAMED dispatch id ` +
         `(${unjoinableDel.slice(0, MAX_REPORTED_LANES).join(", ")}), so the delivery cannot be attributed to a ` +
         "named lane — their launch rows are present but carry no `name`. Neither delivered nor undelivered.",
     );
-  const orphans = Array.isArray(verdict.orphan_deliverers) ? verdict.orphan_deliverers : [];
+  const orphans = Array.isArray(verdict.orphan_deliverers)
+    ? verdict.orphan_deliverers
+    : [];
   if (orphans.length > 0)
     lines.push(
       `[dispatch-reconcile] ${orphans.length} deliverer(s) match no recorded dispatch ` +

@@ -94,7 +94,10 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { appendSinkLine } = require("./append-sink.js");
+const {
+  appendSinkLine,
+  mainCheckoutBoundaryRoots,
+} = require("./append-sink.js");
 
 /**
  * The declared-sub-part floor. INHERITED from `dispatch-ledger.js::reconcile`, not chosen here.
@@ -134,8 +137,12 @@ function assessDelegationDefault(parallelism, failure) {
           "delegated correctly.",
     };
   }
-  const declared = Number.isInteger(parallelism.declared) ? parallelism.declared : null;
-  const dispatched = Number.isInteger(parallelism.dispatched) ? parallelism.dispatched : null;
+  const declared = Number.isInteger(parallelism.declared)
+    ? parallelism.declared
+    : null;
+  const dispatched = Number.isInteger(parallelism.dispatched)
+    ? parallelism.dispatched
+    : null;
   if (declared === null || dispatched === null) {
     return {
       state: "UNKNOWN",
@@ -189,7 +196,9 @@ function assessDelegationDefault(parallelism, failure) {
  */
 function assessFromLedger(rows, failure, reconcileFn) {
   if (typeof reconcileFn !== "function")
-    return assessDelegationDefault(null, { reason: "no reconciler was available to read the ledger." });
+    return assessDelegationDefault(null, {
+      reason: "no reconciler was available to read the ledger.",
+    });
   let verdict;
   try {
     verdict = reconcileFn(Array.isArray(rows) ? rows : null, failure);
@@ -212,9 +221,20 @@ function assessFromLedger(rows, failure, reconcileFn) {
  */
 function assertFloorMatchesReconciler(reconcileFn) {
   const rowsFor = (declared, dispatched) => {
-    const rows = [{ kind: "declared", declared_subparts: declared, generation: "(main-agent)" }];
+    const rows = [
+      {
+        kind: "declared",
+        declared_subparts: declared,
+        generation: "(main-agent)",
+      },
+    ];
     for (let i = 0; i < dispatched; i++)
-      rows.push({ kind: "launch", launch_id: `L${i}`, generation: "(main-agent)", dispatch_name: `lane-${i}` });
+      rows.push({
+        kind: "launch",
+        launch_id: `L${i}`,
+        generation: "(main-agent)",
+        dispatch_name: `lane-${i}`,
+      });
     return rows;
   };
   try {
@@ -227,7 +247,10 @@ function assertFloorMatchesReconciler(reconcileFn) {
       detail: `reconciler shortfall at declared=${DECLARED_FLOOR - 1}: ${below && below.shortfall}; at declared=${DECLARED_FLOOR}: ${at && at.shortfall}`,
     };
   } catch (e) {
-    return { ok: false, detail: `reconciler threw: ${e && e.message ? e.message : String(e)}` };
+    return {
+      ok: false,
+      detail: `reconciler threw: ${e && e.message ? e.message : String(e)}`,
+    };
   }
 }
 
@@ -277,10 +300,23 @@ function signatureOf(verdict) {
 /** Per-session dedupe marker. Mirrors `dispatch-ledger.js::_sinkPath`'s injective mapping. */
 function markerPath(repoDir, session) {
   const crypto = require("node:crypto");
-  const raw = _isNonEmptyString(session) && session.trim().length > 0 ? session : "unknown-session";
+  const raw =
+    _isNonEmptyString(session) && session.trim().length > 0
+      ? session
+      : "unknown-session";
   const safe = raw.replace(/[^A-Za-z0-9._-]/g, "_");
-  const suffix = crypto.createHash("sha256").update(raw, "utf8").digest("hex").slice(0, 8);
-  return path.join(repoDir, ".claude", "learning", "delegation-default", `${safe}-${suffix}.jsonl`);
+  const suffix = crypto
+    .createHash("sha256")
+    .update(raw, "utf8")
+    .digest("hex")
+    .slice(0, 8);
+  return path.join(
+    repoDir,
+    ".claude",
+    "learning",
+    "delegation-default",
+    `${safe}-${suffix}.jsonl`,
+  );
 }
 
 /**
@@ -318,6 +354,7 @@ function markSurfaced(repoDir, session, sig, nowIso) {
   try {
     return appendSinkLine({
       repoDir,
+      additionalRoots: mainCheckoutBoundaryRoots(repoDir),
       sinkPath: markerPath(repoDir, session),
       line: JSON.stringify({ sig, ts: nowIso || new Date().toISOString() }),
     });

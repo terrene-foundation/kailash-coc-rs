@@ -163,7 +163,10 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { appendSinkLine } = require("./append-sink.js");
+const {
+  appendSinkLine,
+  mainCheckoutBoundaryRoots,
+} = require("./append-sink.js");
 
 /**
  * The main-agent generation sentinel. IMPORTED from the producer, never restated. A local copy of
@@ -209,7 +212,8 @@ const MAX_NAMED = 8;
  * 3 distinct causes" and "un-hermetic PATH fallthrough", which are blocked on WORK, not on a
  * person. Silencing those would make the gate inert exactly when the board is busiest.
  */
-const HUMAN_BLOCKED_RE = /\b(?:blocked[-\s]on[-\s]human|awaiting[-\s]human|human[-\s]gated|needs[-\s]human[-\s]decision)\b/i;
+const HUMAN_BLOCKED_RE =
+  /\b(?:blocked[-\s]on[-\s]human|awaiting[-\s]human|human[-\s]gated|needs[-\s]human[-\s]decision)\b/i;
 
 // ── forest-ledger anchors ─────────────────────────────────────────────────────────────────────
 //
@@ -339,7 +343,14 @@ function countRunningLanes(rows, failure) {
   }
 
   const running = [...launched].filter((n) => !terminated.has(n)).sort();
-  return { ok: true, running, launched: launched.size, terminated: terminated.size, unnamed: 0, reason: null };
+  return {
+    ok: true,
+    running,
+    launched: launched.size,
+    terminated: terminated.size,
+    unnamed: 0,
+    reason: null,
+  };
 }
 
 // ── INSTRUMENT B — open work ──────────────────────────────────────────────────────────────────
@@ -355,7 +366,8 @@ function countRunningLanes(rows, failure) {
  * @returns {{found:boolean, rows:string[]}} `rows` are the raw data-row lines
  */
 function parseForestLedger(text) {
-  if (typeof text !== "string" || text.length === 0) return { found: false, rows: [] };
+  if (typeof text !== "string" || text.length === 0)
+    return { found: false, rows: [] };
 
   const lines = text.split("\n");
   let inSection = false;
@@ -395,7 +407,12 @@ function parseForestLedger(text) {
     const cells = line.split("|").slice(1, -1);
     if (cells.length === 0) continue;
     // Separator row (`| --- | --- |`)
-    if (cells.every((c) => /^:?-+:?$/.test(c.replace(/\s/g, "")) || c.trim() === "")) continue;
+    if (
+      cells.every(
+        (c) => /^:?-+:?$/.test(c.replace(/\s/g, "")) || c.trim() === "",
+      )
+    )
+      continue;
     // Header row — matched on the ID/Item column pair, accepting BOTH the inline header and the
     // split shared header, exactly as the upstream validator does.
     // Two accepted header shapes, both matched CASE-INSENSITIVELY. The first is the wide
@@ -404,7 +421,11 @@ function parseForestLedger(text) {
     // the real header through as a data row and inflated every count by one per fragment — caught
     // by fixtures 11/15/17, which is what a firing pole asserting an exact count is for.
     const joined = cells.join("|").toLowerCase();
-    if (/\b(?:value-anchor|value_anchor)\b/.test(joined) && /\b(?:item|id)\b/.test(joined)) continue;
+    if (
+      /\b(?:value-anchor|value_anchor)\b/.test(joined) &&
+      /\b(?:item|id)\b/.test(joined)
+    )
+      continue;
     if (/^\s*id\s*$/i.test(cells[0] || "")) continue;
 
     rows.push(line);
@@ -468,7 +489,14 @@ function countOpenWork(fragments) {
     };
   }
 
-  return { ok: true, total, dispatchable: total - humanBlocked, humanBlocked, sources, reason: null };
+  return {
+    ok: true,
+    total,
+    dispatchable: total - humanBlocked,
+    humanBlocked,
+    sources,
+    reason: null,
+  };
 }
 
 // ── the decision ──────────────────────────────────────────────────────────────────────────────
@@ -488,7 +516,10 @@ function countOpenWork(fragments) {
  *            dispatchable:number|null, humanBlocked:number|null, laneFloor:number, reason:string|null}}
  */
 function assessFleetDrain(readings, cfg) {
-  const laneFloor = cfg && Number.isInteger(cfg.laneFloor) && cfg.laneFloor >= 0 ? cfg.laneFloor : DEFAULT_LANE_FLOOR;
+  const laneFloor =
+    cfg && Number.isInteger(cfg.laneFloor) && cfg.laneFloor >= 0
+      ? cfg.laneFloor
+      : DEFAULT_LANE_FLOOR;
   const lanes = (readings && readings.lanes) || null;
   const work = (readings && readings.work) || null;
 
@@ -504,7 +535,10 @@ function assessFleetDrain(readings, cfg) {
   };
 
   if (!lanes || !lanes.ok) {
-    return { ...base, reason: (lanes && lanes.reason) || "the running-lane count is UNKNOWN." };
+    return {
+      ...base,
+      reason: (lanes && lanes.reason) || "the running-lane count is UNKNOWN.",
+    };
   }
   if (!work || !work.ok) {
     return {
@@ -596,7 +630,9 @@ function formatFleetDrainAdvisory(verdict) {
   const lines = [
     `[fleet-drain] ${head}`,
     `  running lanes: ${verdict.running}${names}   dispatchable open rows: ${verdict.dispatchable}` +
-      (verdict.humanBlocked ? ` (+${verdict.humanBlocked} blocked-on-human, not counted)` : ""),
+      (verdict.humanBlocked
+        ? ` (+${verdict.humanBlocked} blocked-on-human, not counted)`
+        : ""),
     `  ${verdict.reason}`,
   ];
 
@@ -643,7 +679,13 @@ function signatureOf(verdict) {
 function _markerPath(repoDir, sessionId) {
   const raw = _isNonEmptyString(sessionId) ? sessionId : "unknown-session";
   const safe = raw.replace(/[^A-Za-z0-9._-]/g, "_");
-  return path.join(repoDir, ".claude", "learning", "fleet-drain", `${safe}.jsonl`);
+  return path.join(
+    repoDir,
+    ".claude",
+    "learning",
+    "fleet-drain",
+    `${safe}.jsonl`,
+  );
 }
 
 /**
@@ -686,8 +728,23 @@ function markSurfaced(repoDir, sessionId, signature, nowIso) {
       signature,
       ts: _isNonEmptyString(nowIso) ? nowIso : new Date().toISOString(),
     });
-    const w = appendSinkLine({ repoDir, sinkPath, line });
-    return w && w.ok ? { ok: true } : { ok: false, error: (w && `${w.error} — ${w.reason}`) || "append failed" };
+    // Declared even though this sink is repoDir-contained today: measured in a real
+    // worktree, containment passes either way, while OMITTING it fails closed the
+    // moment an entry point resolves the shared learning tree to the main checkout.
+    // Uniform declaration is what keeps the boundary one derivation instead of a
+    // per-caller judgement that drifted six times already.
+    const w = appendSinkLine({
+      repoDir,
+      additionalRoots: mainCheckoutBoundaryRoots(repoDir),
+      sinkPath,
+      line,
+    });
+    return w && w.ok
+      ? { ok: true }
+      : {
+          ok: false,
+          error: (w && `${w.error} — ${w.reason}`) || "append failed",
+        };
   } catch (e) {
     return { ok: false, error: e && e.message ? e.message : String(e) };
   }
@@ -720,7 +777,12 @@ function collectNotesSurfaces(baseDir) {
         return g && g.ok ? g.content : null;
       }
       const st = fs.lstatSync(p);
-      if (st.isSymbolicLink() || !st.isFile() || st.size > FALLBACK_NOTES_CAP_BYTES) return null;
+      if (
+        st.isSymbolicLink() ||
+        !st.isFile() ||
+        st.size > FALLBACK_NOTES_CAP_BYTES
+      )
+        return null;
       return fs.readFileSync(p, "utf8");
     } catch {
       return null;
@@ -741,7 +803,8 @@ function collectNotesSurfaces(baseDir) {
 
   for (const p of candidates) {
     const text = read(p);
-    if (typeof text === "string" && text.length > 0) out.push({ path: path.relative(baseDir, p) || p, text });
+    if (typeof text === "string" && text.length > 0)
+      out.push({ path: path.relative(baseDir, p) || p, text });
   }
   return out;
 }
@@ -760,14 +823,21 @@ function collectNotesSurfaces(baseDir) {
  */
 function assertMainGenerationMatchesProducer(buildLaunchRecord) {
   try {
-    const r = buildLaunchRecord({ sessionId: "s", dispatchName: "d", nowIso: "1970-01-01T00:00:00.000Z" });
+    const r = buildLaunchRecord({
+      sessionId: "s",
+      dispatchName: "d",
+      nowIso: "1970-01-01T00:00:00.000Z",
+    });
     const got = r && r.generation;
     return {
       ok: got === MAIN_GENERATION,
       detail: `producer default generation ${JSON.stringify(got)} vs filtered ${JSON.stringify(MAIN_GENERATION)}`,
     };
   } catch (e) {
-    return { ok: false, detail: `producer builder threw: ${e && e.message ? e.message : String(e)}` };
+    return {
+      ok: false,
+      detail: `producer builder threw: ${e && e.message ? e.message : String(e)}`,
+    };
   }
 }
 

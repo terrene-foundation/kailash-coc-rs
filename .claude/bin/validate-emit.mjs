@@ -3414,12 +3414,21 @@ function checkCocArtifactIds(root) {
     // must still be gated here. This is a CORPUS question, not a distribution
     // one; narrowing it to one lane would silently un-gate the other lane's ids.
     const r = emitCoc({ outDir: tmp, lane: "all" });
+    // COUNT CHECK, not just a count in the detail string. This row was an
+    // unconditional PASS whose record count appeared only as prose, so an emit
+    // producing ZERO artifacts reported "PASS — 0 artifacts". emit-coc guards each
+    // source dir with `existsSync`, so a missing or unreadable `.claude/rules/`
+    // silently yields an empty emit — the empty-denominator shape, in the validator
+    // that certifies the emit.
+    const detail = `${r.records} artifacts (rules=${r.counts.rules} agents=${r.counts.agents} skills=${r.counts.skills} commands=${r.counts.commands})`;
     const results = [
-      {
-        artifact: ".coc/",
-        status: STATUS.PASS,
-        detail: `${r.records} artifacts (rules=${r.counts.rules} agents=${r.counts.agents} skills=${r.counts.skills} commands=${r.counts.commands})`,
-      },
+      r.records === 0
+        ? {
+            artifact: ".coc/",
+            status: STATUS.FAIL,
+            detail: `emit produced ZERO artifacts — ${detail}. An empty emit and a broken source tree are indistinguishable downstream; this is not a pass.`,
+          }
+        : { artifact: ".coc/", status: STATUS.PASS, detail },
     ];
     for (const w of r.warnOversize) {
       results.push({
