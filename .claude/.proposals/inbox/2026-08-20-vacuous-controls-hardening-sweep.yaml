@@ -1,0 +1,85 @@
+# Step-7c downstream upflow — inbox offer.
+#
+# NO source_repo, NO consumer identity: hop-level-only provenance per the Step-7c
+# schema (the lane head is template_slug). Free-text `reason:` bodies are the
+# human-scrub surface and are deliberately work-descriptive.
+#
+# Origin: two VACUOUS CONTROLS in template-owned artifacts — controls that
+# execute, exit clean, and check nothing in the region that matters. Both were
+# found the same way, and it is the finding method that generalizes: by RUNNING
+# the control and reading what it actually measured, rather than trusting its
+# exit code. Neither is fixable downstream — both files are template-owned, so a
+# local edit is Class-A non-durable and is rebuilt by the next sync.
+#
+# Both fixes are ONE PREDICATE each. The evidence is the expensive part, not the
+# patch.
+#
+# READ FIRST — the first entry is the more serious, and it is self-referential:
+#   1. .claude/rules/hardening.md   — Rule 2 shape (a) mandates a sweep whose own
+#                                     alternation omits the commonest tenant-scope
+#                                     identifier, so the control written to catch
+#                                     this class cannot see instances keyed on it.
+#                                     19 measured, all invisible.
+#   2. .claude/commands/sweep.md    — Sweep 5's pre-condition counts spec
+#                                     SUBDIRECTORIES, not spec FILES, so the normal
+#                                     flat layout auto-skips the dimension behind a
+#                                     not-applicable sentinel.
+origin: downstream
+codify_date: 2026-08-20
+codify_session: "sec(vacuity): two vacuous controls in template-owned artifacts, both one-predicate fixes. (1) hardening.md Rule 2 shape-(a)'s mandated sweep alternation omits organization_id/org_id — measured 19 live conjunctions of exactly that shape on one consumer tree, every one invisible to the grep the rule mandates to catch them. (2) commands/sweep.md Sweep-5's gate counts spec subdirectories rather than spec files, so a flat specs/*.md layout returns spec_count=0 and emits the orchestration-mode N/A sentinel — running the dimension anyway on that tree surfaced 3 orphans and 2 HIGH findings the sentinel had hidden. Both entries carry the measurement AND its positive control."
+template_slug: kailash-coc-rs
+template_version: "2.24.0"
+loom_sha: "43167a54"
+changes:
+  - file: .claude/rules/hardening.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      Rule 2's access-control-attribute extension names shape (a), the falsy
+      short-circuit, and mandates a gate-review sweep for it. That sweep's own
+      alternation is
+      `[A-Za-z_.]*(compartment|clearance|classification|tenant_id)[a-z_]* and` --
+      four attribute names. The single most common tenant-scope identifier in a
+      multi-tenant service layer, `organization_id`, is NOT among them, and the
+      string `organization_id` appears ZERO times anywhere in the rule. So the
+      sweep the rule mandates to catch the next instance of this class cannot see
+      any instance keyed on that identifier. Measured on one consumer tree: 19 live
+      `organization_id is not None and <cross-tenant compare>` conjunctions, every
+      one of them shape (a) by the rule's own definition, and all 19 invisible to
+      the mandated grep. Positive control for that measurement: the same tree
+      returns 13,468 hits for the bare identifier, so the instrument was live and
+      the 19 is a real reading rather than a broken pattern. This is the
+      vacuous-control shape sitting INSIDE the rule written to prevent it. Fix is
+      one alternation: add `organization_id` (and, for the codebases that
+      abbreviate it, `org_id`) to shape (a)'s sweep pattern, and name the
+      identifier in the clause prose so a reader does not infer the shape is
+      compartment/clearance-only. A companion note is warranted and would otherwise
+      be omitted: that sweep is LEXICAL, and rules quote their own DO-NOT examples,
+      so a consumer mechanizing this sweep as a test SHOULD parse rather than grep
+      -- measured 21 grep hits against 19 real code sites, the two differences both
+      being prose inside docstrings that quote the shape in order to explain it. A
+      grep-based ratchet would pin documentation and break on a reword.
+    diff_lines: "+6 -2"
+  - file: .claude/commands/sweep.md
+    action: modified
+    base_version: "2.24.0"
+    reason: >-
+      Sweep 5 (redteam gaps vs specs) is guarded by a pre-condition that counts
+      SUBDIRECTORIES inside a workspace `specs/` directory rather than spec FILES.
+      For the normal layout -- flat `specs/*.md` with no nesting -- the gate returns
+      `spec_count=0` and emits the orchestration-mode not-applicable sentinel, so
+      the mandated per-spec verification is SKIPPED and the sweep report records the
+      dimension as structurally N/A rather than as unrun. Measured on one consumer
+      tree: 3 specs directories holding 9 spec files and 0 subdirectories -- gate
+      returned 0, dimension auto-skipped. Running the dimension anyway on that same
+      tree surfaced 3 orphans and 2 HIGH findings the sentinel had hidden. This is
+      the same class as the hardening.md entry above, and it is worse here because
+      the sentinel is affirmatively misleading: `sweep-completeness.md` MUST-4
+      requires an unrun dimension be declared UNCOVERED, never clean, and an N/A
+      sentinel reads as "structurally not applicable" -- a stronger claim than "not
+      run", and one no consumer will re-check. Fix is one predicate: count spec
+      FILES (`find <workspace>/specs -name '*.md'`), not subdirectories. Any
+      consumer with a flat specs layout is currently skipping Sweep 5 and recording
+      a sentinel asserting it was never applicable.
+    diff_lines: "+2 -2"
+status: pending_review
