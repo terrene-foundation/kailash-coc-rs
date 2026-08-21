@@ -124,7 +124,60 @@ try {
     "#174: a valid receipt in a linked worktree is invisible from the main checkout",
   );
 
+  // ---- the WORKSPACE-JOURNAL search path, per worktree ---------------------
+  // Receipts also land in `workspaces/<ws>/journal/` (codify-authored) and its
+  // `.pending/`. Gate A flagged exactly these lines as "dropped" when the #174
+  // fix moved them into a per-root helper — the logic was preserved, but nothing
+  // in this fixture PROVED it, so the gate found a real coverage hole even though
+  // its discard reading was wrong. These rows close it: the workspace path must
+  // survive per worktree, not only for the caller's own root.
+  rmSync(path.join(A, ".claude", "cross-repo-authz"), {
+    recursive: true,
+    force: true,
+  });
+  const wsJournal = path.join(A, "workspaces", "demo-ws", "journal");
+  mkdirSync(wsJournal, { recursive: true });
+  writeFileSync(
+    path.join(wsJournal, "0001-receipt.md"),
+    `timestamp: ${new Date().toISOString()}\n\ncross-repo-authorized: ${SLUG} read\n`,
+  );
+  check(
+    "workspace-journal-receipt-found-in-a-SIBLING-worktree",
+    hasCrossRepoAuthorizationReceipt(SLUG, B, "read") === true,
+    "the per-worktree workspaces/<ws>/journal/ search path was lost in the refactor",
+  );
+
+  const wsPending = path.join(wsJournal, ".pending");
+  mkdirSync(wsPending, { recursive: true });
+  rmSync(path.join(wsJournal, "0001-receipt.md"), { force: true });
+  writeFileSync(
+    path.join(wsPending, "0002-receipt.md"),
+    `timestamp: ${new Date().toISOString()}\n\ncross-repo-authorized: ${SLUG} read\n`,
+  );
+  check(
+    "workspace-journal-PENDING-receipt-found-in-a-SIBLING-worktree",
+    hasCrossRepoAuthorizationReceipt(SLUG, B, "read") === true,
+    "the per-worktree workspaces/<ws>/journal/.pending/ search path was lost in the refactor",
+  );
+
+  // The `_`-prefixed and `instructions` workspaces are excluded BY DESIGN; a
+  // receipt there must NOT clear the gate, or the refactor widened the surface.
+  rmSync(path.join(A, "workspaces"), { recursive: true, force: true });
+  const skipped = path.join(A, "workspaces", "_template", "journal");
+  mkdirSync(skipped, { recursive: true });
+  writeFileSync(
+    path.join(skipped, "0003-receipt.md"),
+    `timestamp: ${new Date().toISOString()}\n\ncross-repo-authorized: ${SLUG} read\n`,
+  );
+  check(
+    "underscore-workspace-is-still-EXCLUDED",
+    hasCrossRepoAuthorizationReceipt(SLUG, B, "read") === false,
+    "a receipt under workspaces/_template/ cleared the gate — the refactor widened the search surface",
+  );
+  rmSync(path.join(A, "workspaces"), { recursive: true, force: true });
+
   // ---- widening the SEARCH must not widen anything else --------------------
+  writeReceipt(A, 0);
   check(
     "read-receipt-does-NOT-clear-a-write-action",
     hasCrossRepoAuthorizationReceipt(SLUG, B, "write") === false,
