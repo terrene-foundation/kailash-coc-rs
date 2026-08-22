@@ -10560,17 +10560,20 @@ changes:
       `grep -c 'workspaces/\*\*/.env' .claude/sync-manifest.yaml` returning
       non-zero means loom has shipped the fence and the local interim can come
       out. Until then the override stays.
-    reconciliation: >-
-      STILL-OPEN as of 2026-08-20, and open by construction rather than by
-      neglect — this is an ARCHITECTURAL ask, the class the 133-entry
-      re-reconciliation identified as the one a content sync structurally cannot
-      carry. The local half is DONE and verified (`d49e322`, 17/17 tracked); the
-      upstream half is loom's. Owner-gated 2026-08-20: the operator chose to
-      file upstream rather than carry the interim indefinitely, on the grounds
-      that every consumer otherwise repeats the same rediscovery. No prior entry
-      in this manifest carries the `.gitignore` workspace fence as an upstream
-      ask — the existing `.gitignore`-keyed entry covers the re-anchoring of the
-      managed block, which is a different defect.
+    reconciliation:
+      status: "STILL-OPEN"
+      reconciled_at: 2026-08-22
+      evidence: >-
+        STILL-OPEN as of 2026-08-20, and open by construction rather than by
+        neglect — this is an ARCHITECTURAL ask, the class the 133-entry
+        re-reconciliation identified as the one a content sync structurally cannot
+        carry. The local half is DONE and verified (`d49e322`, 17/17 tracked); the
+        upstream half is loom's. Owner-gated 2026-08-20: the operator chose to
+        file upstream rather than carry the interim indefinitely, on the grounds
+        that every consumer otherwise repeats the same rediscovery. No prior entry
+        in this manifest carries the `.gitignore` workspace fence as an upstream
+        ask — the existing `.gitignore`-keyed entry covers the re-anchoring of the
+        managed block, which is a different defect.
   - file: .claude/hooks/lib/violation-patterns.js
     action: modify
     origin: use-template
@@ -10642,18 +10645,21 @@ changes:
       read/write tier, not the ROOT the search resolves from. Grepped the entry
       set for `hasCrossRepoAuthorizationReceipt` and for `worktree` in the same
       file context before appending.
-    reconciliation: >-
-      STILL-OPEN upstream as of 2026-08-21. The local half is DONE and verified:
-      fixed at the template with a paired-control fixture
-      (`.claude/audit-fixtures/cross-repo-authz-worktree/run.mjs`) that exits 1
-      against the PRE-FIX lib with exactly the two worktree rows failing while
-      every safety row still passes, and 10/10 exit 0 against the fixed lib.
-      `violation-patterns.js` is loom-owned (last three commits all `chore(sync)`,
-      against a control showing local commits on non-loom-owned paths), so the
-      local fix is Class-A NON-DURABLE and the next `/sync-to-use` rebuilds it
-      away. THIS ENTRY IS THE DURABLE SURFACE. Filed from GitHub issue #174, a
-      Route-A downstream filing, routed per `issue-triage-routing.md` for a repo
-      whose declared class is `coc-use-template`: the origination node.
+    reconciliation:
+      status: "STILL-OPEN"
+      reconciled_at: 2026-08-22
+      evidence: >-
+        STILL-OPEN upstream as of 2026-08-21. The local half is DONE and verified:
+        fixed at the template with a paired-control fixture
+        (`.claude/audit-fixtures/cross-repo-authz-worktree/run.mjs`) that exits 1
+        against the PRE-FIX lib with exactly the two worktree rows failing while
+        every safety row still passes, and 10/10 exit 0 against the fixed lib.
+        `violation-patterns.js` is loom-owned (last three commits all `chore(sync)`,
+        against a control showing local commits on non-loom-owned paths), so the
+        local fix is Class-A NON-DURABLE and the next `/sync-to-use` rebuilds it
+        away. THIS ENTRY IS THE DURABLE SURFACE. Filed from GitHub issue #174, a
+        Route-A downstream filing, routed per `issue-triage-routing.md` for a repo
+        whose declared class is `coc-use-template`: the origination node.
   - file: .claude/rules/ci-job-budget.md
     action: add
     origin: use-template
@@ -10723,19 +10729,22 @@ changes:
       Adjacent but DISTINCT: `ci-cost-discipline.md` governs how many RUNS a
       wave buys (re-push and PR-count economy); this governs how many JOBS a
       single PR fans out to. The two compose and neither subsumes the other.
-    reconciliation: >-
-      LANDED LOCALLY 2026-08-21, upstream STILL-OPEN. Local half is done and
-      verified: `--selftest` 10/10 (every declared check has an input whose
-      correct verdict is FAIL, including a two-pole test asserting the clean and
-      freeloader trees produce DIFFERENT verdicts); the audit runs clean on this
-      repo at 7 jobs; the dogfood control reddens and restores. `validate-emit`
-      unchanged at 971 pass / 19 fail with zero findings naming this rule, so it
-      adds no blocking failure.
-      The rule FILE is in the synced tree and therefore Class-A non-durable —
-      the next `/sync-to-use` rebuilds it away. THIS ENTRY IS THE DURABLE
-      SURFACE for the contract. The audit, declaration and workflow are under
-      `.github/`, which this lane does not sync, so those survive independently
-      of the entry's fate.
+    reconciliation:
+      status: "PARTIALLY-SOLVED"
+      reconciled_at: 2026-08-22
+      evidence: >-
+        LANDED LOCALLY 2026-08-21, upstream STILL-OPEN. Local half is done and
+        verified: `--selftest` 10/10 (every declared check has an input whose
+        correct verdict is FAIL, including a two-pole test asserting the clean and
+        freeloader trees produce DIFFERENT verdicts); the audit runs clean on this
+        repo at 7 jobs; the dogfood control reddens and restores. `validate-emit`
+        unchanged at 971 pass / 19 fail with zero findings naming this rule, so it
+        adds no blocking failure.
+        The rule FILE is in the synced tree and therefore Class-A non-durable —
+        the next `/sync-to-use` rebuilds it away. THIS ENTRY IS THE DURABLE
+        SURFACE for the contract. The audit, declaration and workflow are under
+        `.github/`, which this lane does not sync, so those survive independently
+        of the entry's fate.
 
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or
