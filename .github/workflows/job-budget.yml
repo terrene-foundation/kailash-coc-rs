@@ -1,0 +1,48 @@
+name: Job Budget
+
+# WHY THIS IS RELEVANCE-GATED, AND WHY THAT MATTERS HERE SPECIFICALLY.
+#
+# This workflow enforces the rule that a PR-reachable job must be required,
+# relevance-gated, or budgeted. An unfiltered job here would be a freeloader by its
+# own definition — it would run on every PR (docs, proposals, session notes) to check
+# a declaration that only changes when `.github/` changes.
+#
+# The `paths:` filter on the pull_request arm is therefore load-bearing, not an
+# optimisation: it is what makes this workflow pass its own audit. Removing it makes
+# the audit fail on itself, which is the intended feedback.
+#
+# NOTE the arm asymmetry, which is deliberate and is a trap elsewhere in this repo:
+# the filter sits on the `pull_request` arm ALONE. A `push` arm would need its own.
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - ".github/job-budget.json"
+      - ".github/scripts/job-budget-audit.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  job-budget:
+    name: Job budget (freeloader + pool ceiling)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure the parser is present
+        # The audit refuses (exit 2) rather than skipping when PyYAML is absent, so a
+        # missing parser can never read as a pass. This step makes that path unlikely
+        # rather than relying on the refusal.
+        run: python3 -m pip install --quiet pyyaml
+
+      - name: Selftest — prove the audit can return the other verdict
+        # Runs BEFORE the audit on purpose. A gate that has not been shown capable of
+        # failing is not evidence when it passes, so the selftest is the control for
+        # the run that follows it.
+        run: python3 .github/scripts/job-budget-audit.py --selftest
+
+      - name: Audit
+        run: python3 .github/scripts/job-budget-audit.py

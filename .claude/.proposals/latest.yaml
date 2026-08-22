@@ -10560,17 +10560,20 @@ changes:
       `grep -c 'workspaces/\*\*/.env' .claude/sync-manifest.yaml` returning
       non-zero means loom has shipped the fence and the local interim can come
       out. Until then the override stays.
-    reconciliation: >-
-      STILL-OPEN as of 2026-08-20, and open by construction rather than by
-      neglect — this is an ARCHITECTURAL ask, the class the 133-entry
-      re-reconciliation identified as the one a content sync structurally cannot
-      carry. The local half is DONE and verified (`d49e322`, 17/17 tracked); the
-      upstream half is loom's. Owner-gated 2026-08-20: the operator chose to
-      file upstream rather than carry the interim indefinitely, on the grounds
-      that every consumer otherwise repeats the same rediscovery. No prior entry
-      in this manifest carries the `.gitignore` workspace fence as an upstream
-      ask — the existing `.gitignore`-keyed entry covers the re-anchoring of the
-      managed block, which is a different defect.
+    reconciliation:
+      status: "STILL-OPEN"
+      reconciled_at: 2026-08-22
+      evidence: >-
+        STILL-OPEN as of 2026-08-20, and open by construction rather than by
+        neglect — this is an ARCHITECTURAL ask, the class the 133-entry
+        re-reconciliation identified as the one a content sync structurally cannot
+        carry. The local half is DONE and verified (`d49e322`, 17/17 tracked); the
+        upstream half is loom's. Owner-gated 2026-08-20: the operator chose to
+        file upstream rather than carry the interim indefinitely, on the grounds
+        that every consumer otherwise repeats the same rediscovery. No prior entry
+        in this manifest carries the `.gitignore` workspace fence as an upstream
+        ask — the existing `.gitignore`-keyed entry covers the re-anchoring of the
+        managed block, which is a different defect.
   - file: .claude/hooks/lib/violation-patterns.js
     action: modify
     origin: use-template
@@ -10642,18 +10645,106 @@ changes:
       read/write tier, not the ROOT the search resolves from. Grepped the entry
       set for `hasCrossRepoAuthorizationReceipt` and for `worktree` in the same
       file context before appending.
-    reconciliation: >-
-      STILL-OPEN upstream as of 2026-08-21. The local half is DONE and verified:
-      fixed at the template with a paired-control fixture
-      (`.claude/audit-fixtures/cross-repo-authz-worktree/run.mjs`) that exits 1
-      against the PRE-FIX lib with exactly the two worktree rows failing while
-      every safety row still passes, and 10/10 exit 0 against the fixed lib.
-      `violation-patterns.js` is loom-owned (last three commits all `chore(sync)`,
-      against a control showing local commits on non-loom-owned paths), so the
-      local fix is Class-A NON-DURABLE and the next `/sync-to-use` rebuilds it
-      away. THIS ENTRY IS THE DURABLE SURFACE. Filed from GitHub issue #174, a
-      Route-A downstream filing, routed per `issue-triage-routing.md` for a repo
-      whose declared class is `coc-use-template`: the origination node.
+    reconciliation:
+      status: "STILL-OPEN"
+      reconciled_at: 2026-08-22
+      evidence: >-
+        STILL-OPEN upstream as of 2026-08-21. The local half is DONE and verified:
+        fixed at the template with a paired-control fixture
+        (`.claude/audit-fixtures/cross-repo-authz-worktree/run.mjs`) that exits 1
+        against the PRE-FIX lib with exactly the two worktree rows failing while
+        every safety row still passes, and 10/10 exit 0 against the fixed lib.
+        `violation-patterns.js` is loom-owned (last three commits all `chore(sync)`,
+        against a control showing local commits on non-loom-owned paths), so the
+        local fix is Class-A NON-DURABLE and the next `/sync-to-use` rebuilds it
+        away. THIS ENTRY IS THE DURABLE SURFACE. Filed from GitHub issue #174, a
+        Route-A downstream filing, routed per `issue-triage-routing.md` for a repo
+        whose declared class is `coc-use-template`: the origination node.
+  - file: .claude/rules/ci-job-budget.md
+    action: add
+    origin: use-template
+    suggested_tier: cc
+    base_version: "2.25.0"
+    reason: >-
+      A CI JOB-BUDGET RATCHET, APPLIED AT THIS TEMPLATE AHEAD OF THE CASCADE.
+      Upstream (esperie-enterprise/loom#1877) proposes incorporating a
+      `ci-job-budget` artifact set from a BUILD repo. The operator directed that
+      the underlying problem be addressed HERE now rather than waiting for the
+      cascade, on the expectation that the eventual sync is then a merge-and-
+      validate rather than a first encounter.
+      THE PROBLEM, AND WHY IT IS NOT VISIBLE LOCALLY. CI jobs accrete one
+      unremarkable job at a time and nothing says anything at the moment each is
+      added. No single addition is worth arguing about; the sum is, and by the
+      time the sum is visible nobody can say which job to remove or why it was
+      added. The upstream instance measured one PR fanning out to 33
+      runner-consuming jobs against a pool of 24, of which only 12 gated
+      anything.
+      MEASURED HERE FIRST, AND THE RESULT REFRAMED THE WORK. This template's
+      census is 7 PR-reachable jobs, 3 required, 6 relevance-gated, ZERO
+      freeloaders. The defect upstream describes does NOT manifest here. What
+      DOES apply is the root cause: nothing fires when a job is added, so
+      zero-freeloaders is a property of discipline, not of construction. The
+      work is therefore the RATCHET that holds it at zero, not a cleanup.
+      Reporting the census honestly is load-bearing — a proposal claiming to fix
+      a fan-out this repo does not have would be an unfalsifiable one.
+      WHAT WAS ADAPTED RATHER THAN COPIED. Upstream's declaration encodes pools
+      and capacities for a self-hosted fleet. Every job here is `ubuntu-latest`
+      — a single GitHub-hosted pool whose concurrency ceiling is an account-plan
+      property no configured secret can read. That is upstream's OWN decision
+      point 3 ("the capacity number has no scheduled reader") arriving as a live
+      constraint rather than a deferred one. Rather than inherit a fleet-shaped
+      declaration or invent a plausible integer, capacity is declared null /
+      UNVERIFIED and the audit renders UNKNOWN for it — never a pass. A ceiling
+      comparison against a guessed number is an instrument that cannot
+      discriminate: it would render green for every input including the ones the
+      check exists to catch. The gate that actually bites here is the freeloader
+      check, fully decidable from the workflow files. Setting a measured
+      capacity later activates the ceiling arm with no code change.
+      CARRIED OVER VERBATIM AS DESIGN PROPERTIES, because upstream records each
+      as hard-won: the Detection field does not restate a case count (every
+      revision that pinned one went stale within a commit, twice); an
+      anti-vacuity floor (`every-check-has-a-negative-control`) fails loudly when
+      a check is added with no result, which is what an inert gate looks like
+      from outside; the audit fails CLOSED on a non-finite capacity, which a
+      mutation showed a loose numeric test admits, silently deleting the ceiling
+      for every pool; and the edit-time layer is advisory rather than blocking,
+      because adding a CI job is legitimate — the goal is a declared act, not a
+      refusal.
+      PLACEMENT IS DURABILITY-DRIVEN, AND THAT IS THE PART MOST WORTH CARRYING
+      UPSTREAM. The audit and its declaration live under `.github/`, measured
+      non-synced on this lane: the manifest declares exactly ONE `.github/`
+      surface and scopes it to the py lane ("rs ships none"), and no sync commit
+      has ever written `.github/workflows/` here (control: syncs DID write
+      `.claude/hooks/`). A `.claude/bin/` placement would be Class-A
+      non-durable and rebuilt away by the next `/sync-to-use` — so a consumer
+      adopting this set into `.claude/bin/` would silently lose it. Any upstream
+      distribution of this artifact set should account for that.
+      DOGFOODED. The workflow that runs the audit is itself relevance-gated, so
+      it passes its own rule; stripping its `paths:` filter makes the audit fail
+      naming that workflow as the freeloader, and restoring it returns exit 0.
+    dedup_evidence: >-
+      No prior entry in this manifest concerns CI job budgeting, runner pools,
+      freeloader jobs, or workflow trigger economy. Grepped the entry set for
+      `job-budget`, `freeloader`, `runs-on` and `concurrency` before appending.
+      Adjacent but DISTINCT: `ci-cost-discipline.md` governs how many RUNS a
+      wave buys (re-push and PR-count economy); this governs how many JOBS a
+      single PR fans out to. The two compose and neither subsumes the other.
+    reconciliation:
+      status: "PARTIALLY-SOLVED"
+      reconciled_at: 2026-08-22
+      evidence: >-
+        LANDED LOCALLY 2026-08-21, upstream STILL-OPEN. Local half is done and
+        verified: `--selftest` 10/10 (every declared check has an input whose
+        correct verdict is FAIL, including a two-pole test asserting the clean and
+        freeloader trees produce DIFFERENT verdicts); the audit runs clean on this
+        repo at 7 jobs; the dogfood control reddens and restores. `validate-emit`
+        unchanged at 971 pass / 19 fail with zero findings naming this rule, so it
+        adds no blocking failure.
+        The rule FILE is in the synced tree and therefore Class-A non-durable —
+        the next `/sync-to-use` rebuilds it away. THIS ENTRY IS THE DURABLE
+        SURFACE for the contract. The audit, declaration and workflow are under
+        `.github/`, which this lane does not sync, so those survive independently
+        of the entry's fate.
 
 # ---------------------------------------------------------------------------
 # Gate-1 triage pass, 2026-08-09. ADDITIVE — no entry above was altered or

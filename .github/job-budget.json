@@ -1,0 +1,54 @@
+{
+  "_schema": "job-budget/v1",
+  "_why": [
+    "CI jobs accrete one unremarkable job at a time, and nothing says anything at the moment",
+    "each is added. This repo does NOT currently have that problem — the census at authoring",
+    "time was 7 PR-reachable jobs, 3 required, 6 relevance-gated, 0 freeloaders. The ratchet",
+    "exists so that stays true by construction rather than by discipline.",
+    "Adapted from loom#1877 (kailash-rs), whose measured instance was 33 PR-reachable jobs",
+    "against a pool of 24 with only 12 gating anything."
+  ],
+  "_declaration_is_the_contract": [
+    "Adding a PR-reachable job means adding it HERE too, as one of: a required context, a",
+    "relevance-gated job (a job-level `if:` or a `paths:` filter on the pull_request arm), or",
+    "a budgeted exemption below with a dated rationale. The audit fails otherwise. That is the",
+    "whole mechanism: the cost of a new job becomes a visible, reviewable line in a diff."
+  ],
+
+  "pools": {
+    "github-hosted-ubuntu": {
+      "runs_on": ["ubuntu-latest"],
+      "capacity": null,
+      "capacity_source": "UNVERIFIED",
+      "capacity_note": [
+        "DELIBERATELY null, not a guessed number. Concurrent-job capacity for GitHub-hosted",
+        "runners is a property of the ACCOUNT PLAN, readable only via an endpoint no configured",
+        "secret here can reach (the same gap loom#1877 records as its decision point 3: the",
+        "capacity number has no scheduled reader).",
+        "A declared-but-unverified integer would be an instrument that cannot discriminate — it",
+        "would render a green 'within capacity' verdict from a number nobody measured. So the",
+        "audit reports capacity as UNKNOWN and does NOT emit a pass for it. The freeloader check",
+        "below is fully decidable from the workflow files and is the gate that actually bites.",
+        "To activate the capacity check: set capacity to the measured integer and change",
+        "capacity_source to how it was obtained (e.g. 'gh api /orgs/<org>/settings/billing/...',",
+        "with the date). The audit picks it up with no code change."
+      ]
+    }
+  },
+
+  "required_contexts": [
+    "validate",
+    "Proposal manifest freshness (ratchet)",
+    "Sync invariants (local-fix discard + obsoleted disjointness)"
+  ],
+  "required_contexts_source": "gh api repos/terrene-foundation/kailash-coc-rs/branches/main/protection/required_status_checks, measured 2026-08-21",
+
+  "budgeted": [],
+  "_budgeted_shape": {
+    "job": "the job's `name:` (or its id when unnamed), exactly as the audit reports it",
+    "workflow": "the workflow filename",
+    "rationale": "why this job runs on every PR while gating nothing",
+    "added": "YYYY-MM-DD",
+    "revisit": "YYYY-MM-DD — an exemption with no revisit date is how a temporary allowance becomes permanent"
+  }
+}
