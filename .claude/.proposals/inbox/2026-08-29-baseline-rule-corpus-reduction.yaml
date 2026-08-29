@@ -1,0 +1,257 @@
+# Step-7c downstream upflow proposal manifest.
+# Schema: skills/30-claude-code-patterns/sync-flow.md
+#         § "Downstream Upflow Proposal Schema (Step 7c)"
+#
+# NO source_repo — hop-level-only provenance. The originating consumer is
+# deliberately NOT identified (scenario 8/9 disclosure fence). The lane head is
+# template_slug; at relay the template stamps `via: <template-slug>`.
+#
+# Fence i (consumer-side scrub) receipt, re-derived 2026-08-29:
+#   node .claude/bin/scan-synced-disclosure.mjs --root <change-files-only>
+#   -> "Scanned: 14 files on the synced surface / RESULT: clean - 0 findings"
+#   Mechanical half PASSES. The human half found 4 residual project-specific
+#   lines, all in two extract files; they are listed under
+#   `blocking_genericization` below and MUST be genericized before the offer.
+#
+# Wrong-lane glob check (MUST, before writing this manifest):
+#   git diff --name-only <base>..<tip> | grep -E '^(src/|packages/|pyproject\.toml$|Cargo\.toml$)'
+#   -> exit 1, zero matches. All candidate paths are `.claude/**`. Proceed.
+
+origin: downstream
+codify_date: 2026-08-29
+codify_session: "refactor(rules): recover 46,726 B of always-on baseline rule injection via Rule-10 path-(a) paired extraction, and build the two missing corpus detectors"
+template_slug: kailash-coc-rs
+template_version: "2.24.0"
+loom_sha: "43167a54"
+
+status: pending_review
+
+# ---------------------------------------------------------------------------
+# GROUP 1 — baseline-injection reduction (Rule-10 path-(a) paired extraction)
+#
+# Measured on the proposing tree, both endpoints re-derived this session by
+# summing `git cat-file -s` over every `.claude/rules/*.md` carrying
+# `scope: baseline` in its frontmatter:
+#     before  232,110 B across 20 baseline rules
+#     after   185,384 B across 20 baseline rules
+#     delta   -46,726 B  (-20.13%)
+# The baseline rule COUNT is unchanged at 20. No MUST clause, MUST NOT clause,
+# BLOCKED-corpus entry or Trust-Posture-Wiring field was deleted: every one is
+# either retained resident or relocated to a paired extract in the same change.
+# ---------------------------------------------------------------------------
+changes:
+  - file: .claude/rules/stale-tree-discipline.md
+    action: modified
+    base_version: "2.24.0"
+    diff_lines: "+58 -225"
+    bytes_before: 17810
+    bytes_after: 6669
+    baseline_bytes_recovered: 11141
+    paired_extract: .claude/guides/rule-extracts/stale-tree-discipline.md
+    reason: >-
+      Largest single recovery. The four MUST clauses, their DO/DO-NOT blocks and
+      an `**Enforced:**` line naming each clause's live guard stay resident; the
+      incident narrative, the four-defect root-cause table, the BLOCKED corpora
+      and the guard-authoring post-mortem move to the paired extract. Generic:
+      the trunk-hostage worktree defect and the stale-checkout write hazard are
+      properties of git plus the worktree workflow, not of any one project.
+
+  - file: .claude/rules/agents.md
+    action: modified
+    base_version: "2.24.0"
+    diff_lines: "+23 -38"
+    bytes_before: 25589
+    bytes_after: 15198
+    baseline_bytes_recovered: 10391
+    paired_extract: .claude/guides/rule-extracts/agents.md
+    reason: >-
+      Orchestration-mandate depth (worked dispatch examples, the idle-lane
+      evidence narrative, per-clause Wiring detail) moves to the existing
+      extract; every MUST clause and its delivery contract stay resident.
+      Generic: agent-orchestration discipline is CO-method, project-independent.
+
+  - file: .claude/rules/session-notes-continuity.md
+    action: modified
+    base_version: "2.24.0"
+    diff_lines: "+50 -200"
+    bytes_before: 14271
+    bytes_after: 5552
+    baseline_bytes_recovered: 8719
+    paired_extract: .claude/guides/rule-extracts/session-notes-continuity.md
+    reason: >-
+      New paired extract. Session-notes shape rules stay resident; the worked
+      fragments and origin narrative move. Generic: the continuity contract is
+      COC-method with no project coupling.
+
+  - file: .claude/rules/ci-run-consolidation.md
+    action: modified
+    base_version: "2.24.0"
+    diff_lines: "+54 -178"
+    bytes_before: 13679
+    bytes_after: 6103
+    baseline_bytes_recovered: 7576
+    paired_extract: .claude/guides/rule-extracts/ci-run-consolidation.md
+    reason: >-
+      New paired extract. The three MUST clauses stay resident; the measured
+      cost tables, the cost-correction narrative and the draft-guard sizing move.
+      PARTIALLY project-coupled - see `blocking_genericization` item 1: one
+      retained command line carries a project-specific coverage target and MUST
+      be placeholdered before the offer.
+
+  - file: .claude/rules/git.md
+    action: modified
+    base_version: "2.24.0"
+    diff_lines: "+21 -33"
+    bytes_before: 22587
+    bytes_after: 17221
+    baseline_bytes_recovered: 5366
+    paired_extract: .claude/guides/rule-extracts/git.md
+    reason: >-
+      The three clause-scoped Trust-Posture-Wiring blocks move to the extract;
+      the Discipline bullets they wire stay resident. Generic: git workflow
+      discipline is project-independent.
+
+  - file: .claude/rules/security.md
+    action: modified
+    base_version: "2.24.0"
+    diff_lines: "+8 -78"
+    bytes_before: 29931
+    bytes_after: 26398
+    baseline_bytes_recovered: 3533
+    reason: >-
+      NOT an extraction - a RE-SCOPING, and the structurally most interesting
+      item here. Three MUST clauses that apply only to Rust source (constant-time
+      credential comparison, fail-closed defaults, network transport hardening)
+      were resident in a `priority: 0` baseline rule, so every session in every
+      language paid for them. They move to a new `priority: 10` path-scoped
+      companion gated on `**/*.rs` + `**/Cargo.toml`. Enforcement is unchanged
+      where it applies and free where it does not.
+
+  - file: .claude/rules/security-rust.md
+    action: created
+    base_version: "2.24.0"
+    diff_lines: "+89 -0"
+    reason: >-
+      The path-scoped companion receiving the three Rust-only clauses above.
+      `priority: 10`, `scope: path-scoped`, `paths: ["**/*.rs", "**/Cargo.toml"]`.
+      Pays no baseline-emission cost per rule-authoring.md Rule 10 § Trigger scope.
+
+  - file: .claude/guides/rule-extracts/stale-tree-discipline.md
+    action: created
+    base_version: "2.24.0"
+    diff_lines: "+177 -0"
+    reason: "Paired extract host. Carries 3 of the 4 lines in `blocking_genericization`."
+
+  - file: .claude/guides/rule-extracts/session-notes-continuity.md
+    action: created
+    base_version: "2.24.0"
+    diff_lines: "+205 -0"
+    reason: "Paired extract host for the session-notes depth."
+
+  - file: .claude/guides/rule-extracts/ci-run-consolidation.md
+    action: created
+    base_version: "2.24.0"
+    diff_lines: "+194 -0"
+    reason: "Paired extract host. Carries 1 of the 4 lines in `blocking_genericization`."
+
+  - file: .claude/guides/rule-extracts/agents.md
+    action: modified
+    base_version: "2.24.0"
+    diff_lines: "+170 -0"
+    reason: "Append-only: receives the orchestration depth cut from the resident rule."
+
+  - file: .claude/guides/rule-extracts/git.md
+    action: modified
+    base_version: "2.24.0"
+    diff_lines: "+48 -0"
+    reason: "Append-only: receives the three clause-scoped Wiring blocks."
+
+  # -------------------------------------------------------------------------
+  # GROUP 2 — the two missing corpus detectors.
+  #
+  # Independent of the byte reduction and, in the proposer's assessment, of
+  # comparable value: both are generic corpus instruments with no project
+  # coupling, and each closes a class the corpus could not previously see.
+  # -------------------------------------------------------------------------
+  - file: .claude/bin/detection-binding-check.mjs
+    action: created
+    base_version: "2.24.0"
+    diff_lines: "+399 -0"
+    reason: >-
+      The detector for coc-artifact-eval-coverage.md MUST-4 (the artifact-to-harness
+      binding). Its 16 fixture cases were committed long before any scanner
+      existed to run them, so nothing ever ran them - the detector whose job is
+      catching rules that claim nonexistent detectors was itself a nonexistent
+      detector. Answers one question only: does a rule's declared harness binding
+      EXIST on disk, across exactly three namespaces (bin scanners, audit
+      fixtures, test-harness probes). Deliberately treats `.claude/hooks/**` as
+      NON-binding and says so, because whether a declared detector is actually
+      DISPATCHED is a different proposition needing a different instrument; it
+      reports that as out of scope rather than half-answering it. Fails closed on
+      an unclassified namespace. Re-derived by the proposer against a 124-rule
+      corpus: 10 critical findings, including two dangling probe bindings and
+      four dangling fixture bindings.
+
+  - file: .claude/bin/check-clause-consistency.mjs
+    action: modified
+    base_version: "2.24.0"
+    diff_lines: "+257 -1"
+    reason: >-
+      Adds check A5 - phantom enforcement: a rule whose Wiring claims an
+      enforcement mechanism that nothing on disk provides. Generic corpus check.
+
+  - file: .claude/audit-fixtures/detection-binding-check/
+    action: created
+    base_version: "2.24.0"
+    diff_lines: "+182 -0"
+    reason: >-
+      Fixture suite plus README for the new detector, including a
+      clean-false-positive case (a shell-command binding namespace that must NOT
+      flag). Both polarities pinned.
+
+  - file: .claude/audit-fixtures/check-clause-consistency/a5-phantom-enforcement.test.mjs
+    action: created
+    base_version: "2.24.0"
+    diff_lines: "+189 -0"
+    reason: "Bipolar fixture suite for the new A5 check."
+
+# ---------------------------------------------------------------------------
+# MUST be resolved before the offer is made. The mechanical fence-i scanner
+# does NOT reach these: it matches org-slug and disclosure SHAPES, not project
+# names or operator home paths. Per the Step-7c schema the non-mechanical
+# residual is explicitly the human gate's job. All four are illustrative
+# example text, none load-bearing; each is replaced by a placeholder.
+# ---------------------------------------------------------------------------
+blocking_genericization:
+  - file: .claude/guides/rule-extracts/ci-run-consolidation.md
+    found: "a --cov=src/<project> coverage target in an example gate command"
+    fix: "replace the project path segment with a <project> placeholder"
+  - file: .claude/guides/rule-extracts/stale-tree-discipline.md
+    found: "a worktree path naming this project in an example git error message"
+    fix: "replace with .../<worktree-name>"
+  - file: .claude/guides/rule-extracts/stale-tree-discipline.md
+    found: "two operator home paths naming this project in example git commands"
+    fix: "replace with ~/repos/<org>/<project>"
+
+# ---------------------------------------------------------------------------
+# Deliberately NOT proposed. Recorded so the reviewer can see the boundary was
+# drawn on purpose rather than by omission.
+# ---------------------------------------------------------------------------
+not_upflowed:
+  - file: .github/workflows/pr-gate.yml
+    diff_lines: "+56 -8"
+    reason: >-
+      Project-specific CI. Wires this repo's own previously-unrun fixture suites
+      into this repo's own required gate, on a self-hosted runner pool the
+      template does not have, and its inline evidence counts are inventories of
+      this repo's fixture tree. The METHOD is generic and worth stating in prose -
+      inventory your audit-fixtures directory, find the suites no workflow
+      invokes, run them, wire only the green ones, and triage the reds separately
+      rather than wiring a known-red suite as a blocking step. The FILE is not
+      portable and is excluded.
+  - file: .claude/clause-consistency-baseline.json
+    diff_lines: "+14 -7"
+    reason: >-
+      A frozen-debt ratchet whose contents are this corpus's specific findings.
+      The template must generate its own from its own corpus; copying this one
+      would freeze findings the template does not have and mask ones it does.
