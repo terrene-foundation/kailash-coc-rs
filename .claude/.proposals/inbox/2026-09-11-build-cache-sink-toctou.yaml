@@ -1,0 +1,398 @@
+origin: downstream
+codify_date: '2026-09-11'
+codify_session: 'codify(build-cache): sink-side TOCTOU enforcement, a fail-closed emission gate, and
+  an abridge prefix-match that silently deleted a mandated security section'
+template_slug: kailash-coc-rs
+template_version: 2.24.0
+loom_sha: 43167a54
+changes:
+- file: .claude/hooks/lib/build-cache-safe-clear.js
+  action: created
+  base_version: 2.24.0
+  reason: 'Proposes a NEW module supplying the enforcement half the corpus''s own security.md § Path
+    Containment says a realpath re-check does not provide. That clause already states the resolve
+    closes the lexical-bypass class but is necessary-but-not-sufficient — it "does NOT by itself defeat
+    the check-to-use TOCTOU (a symlink swap between check and the exec/read sink)", which "needs fd-based
+    / O_NOFOLLOW enforcement AT the sink". The shipped SessionEnd cache reclaimer is exactly a check-to-use
+    gap of that shape - it validates a candidate with `fs.realpathSync` and then destroys it with
+    `fs.rmSync(real, {recursive:true, force:true})`, a second independent pathname resolution whose
+    every intermediate component the kernel re-walks after the guard has passed. Nothing in the corpus
+    closed that, because Node exposes no `openat`/`unlinkat`. Proposed mechanism - `clearValidatedCacheContents(realPath,
+    deadline, inactiveSinceMs)` opens the validated root `O_RDONLY|O_DIRECTORY|O_NOFOLLOW`, compares
+    `fstat` against the pre-open `lstat` by (dev, ino) and abandons on any mismatch, then passes that
+    descriptor as fd 3 to a short static program under a FIXED `/usr/bin/python3` (resolved via realpath;
+    if that interpreter is absent the module preserves the cache rather than searching PATH for a
+    destructive helper). The child re-proves the cache marker by `fstat` through the pinned fd, re-asserts
+    subtree staleness before every destructive step, opens each nested directory `O_NOFOLLOW` relative
+    to its already-pinned parent, and re-checks (dev, ino) before each `rmdir`. The validated root
+    itself is left in place, so no final pathname-based removal exists to redirect. Python is used
+    ONLY because it exposes `dir_fd`-relative unlink/rmdir that Node does not; the trust decision
+    stays in Node. ONE RESIDUAL A REVIEWER SHOULD WEIGH, stated because it is visible in the diff
+    - the module carries four optional test-injection parameters (`beforeOpen`, `nestedSwap`, `beforePin`,
+    `activityInjection`) and the child program carries matching `swap`/`activate` modes, so the deterministic
+    race fixtures can plant a swap at an exact boundary. They are inert unless a caller passes them
+    and the entry names are regex-constrained, but they are injection affordances inside a destructive
+    helper, and the template may prefer them compiled out or moved behind a separate test entry point.
+
+    '
+  diff_lines: +217 -0
+- file: .claude/hooks/build-cache-gc.js
+  action: modified
+  base_version: 2.24.0
+  reason: 'Rewires the SessionEnd reclaimer onto the fd-pinned clear above, removes three separate
+    grants of ambient authority that are LIVE on the shipped artifact today, and leaves one defect
+    unfixed which is named here rather than left for the reviewer to find. WHAT IT CLOSES. (1) `fs.rmSync(real,
+    {recursive:true, force:true})` is replaced by `clearValidatedCacheContents`, closing the check-to-use
+    gap described above. (2) Both `execFileSync` sites resolved their binary through the CALLER''s
+    PATH - `find` for the scan and `du` for the size probe. That is an ambient-authority hole in the
+    shipped artifact, not a hypothetical- a hook that runs at session teardown inherits whatever PATH
+    the session had. `find` is now pinned to `/usr/bin/find` (resolved via realpath, and the reclaim
+    returns early if it will not resolve), and the `du` probe is REMOVED entirely - freed bytes now
+    come from `st_blocks` accumulated inside the pinned walk, so no additional PATH-resolved binary
+    runs during a destructive operation at all. (3) `TMPDIR` is dropped from the destructive boundary;
+    the scan roots become the fixed `/private/tmp` + `/tmp`. An environment variable an untrusted
+    parent can set is an INPUT, never authority to widen where a hook deletes. The SessionStart guard
+    still measures and surfaces the macOS per-user cache class so an operator can reclaim it explicitly.
+    (4) `tempRoots()` did not canonicalize its roots. On macOS `/tmp` is a symlink to `/private/tmp`,
+    so the shipped code scans the SAME directory twice - doubling the cost of a scan that, per the
+    defect below, is already the thing exhausting the budget. Now `.map(realRoot)` through a `Set`,
+    so the pair collapses to one root. (5) Proof-of-cache is TIGHTENED - a sibling `Cargo.toml` is
+    no longer accepted, leaving Cargo''s own `CACHEDIR.TAG` signature as the sole positive marker.
+    WHAT IT DOES NOT CLOSE, AND THIS IS THE HONEST HALF. The scan budget is raised from 3500ms to
+    `FIND_TIMEOUT_MS = 6000` inside a `RECLAIM_BUDGET_MS = 7500` single deadline. Measured while validating
+    this work, `/usr/bin/find /private/tmp -maxdepth 3 -type d -name target` took 13.7s wall for 1.7s
+    of CPU under heavy parallel load, and the same scan against a populated per-user temp root (204,550
+    top-level entries) did not finish in 120s. 6000 is still under 13.7s, so THIS CHANGE DOES NOT
+    FIX IT - it moves the threshold. THE DEFECT IS THE SILENCE, NOT THE NUMBER. When the scan times
+    out, `catch (_) { continue; }` skips the root with no diagnostic and the hook exits 0 printing
+    `{"continue":true}`, having reclaimed nothing while reporting success. It fails in the SAFE direction
+    (nothing is deleted) but it is indistinguishable from a clean run in which there was nothing to
+    reclaim, which is the non-discriminating-instrument shape instrument-discipline.md MUST-1 governs.
+    The durable fix is a DIAGNOSTIC on the skipped root - a distinct budget-exhausted outcome the
+    operator and the fixture can both read - and only then a budget number, adaptive or otherwise.
+    This entry deliberately does not propose the number, because the right ceiling depends on the
+    SessionEnd hook-timeout policy the template sets.
+
+    '
+  diff_lines: +32 -71
+- file: .claude/settings.json
+  action: modified
+  base_version: 2.24.0
+  reason: 'Single-line change - the SessionEnd `build-cache-gc.js` hook timeout goes 30s to 10s, so
+    the harness ceiling sits just above the reclaimer''s 7500ms internal budget rather than three
+    times above it. Recorded as its own entry ONLY because it is coupled- the harness timeout and
+    `RECLAIM_BUDGET_MS` are two surfaces of one contract and must move together. The budget decision
+    named in the entry above is a decision about the PAIR- if the template raises the internal budget
+    to something that can actually complete a scan, this ceiling must rise with it, and tightening
+    the ceiling first would guarantee the silent no-op. Note for the reviewer- this settings surface
+    is downstream-owned in some consumer layouts, so the template should apply the value to whichever
+    settings artifact it distributes, and the manifest residual quoted in the fixture entry below
+    records that these hooks have no loom-side lifecycle registration at all.
+
+    '
+  diff_lines: +1 -1
+- file: .claude/rules/build-cache-hygiene.md
+  action: modified
+  base_version: 2.24.0
+  reason: 'Brings the documented reclaim contract into line with the code above, so the rule stops
+    promising behaviour the hardened hook no longer has. Three substantive corrections - the rule
+    stops describing a sibling `Cargo.toml` as acceptable proof-of-cache (only `CACHEDIR.TAG` remains);
+    it stops advertising `$TMPDIR` as a scan root, saying instead that ambient `$TMPDIR` never widens
+    a destructive boundary while the SessionStart guard still surfaces that class; and it records
+    that the destructive walk is rooted at a pinned `O_NOFOLLOW` descriptor with the empty `target/`
+    root left in place so an intermediate path swap cannot redirect a recursive delete. The prose
+    also shifts from "a directory is deleted" to "a directory''s contents are cleared", which is what
+    the hook now does. If the template accepts the diagnostic fix named in the hook entry, this rule
+    is where the budget-exhausted outcome should be documented as part of the contract.
+
+    '
+  diff_lines: +11 -6
+- file: .claude/audit-fixtures/build-cache-gc/test-deletion-safety.sh
+  action: modified
+  base_version: 2.24.0
+  reason: 'Extends the deletion-safety regression lock from 7 predicates (A-G) to 17, adding the race
+    and ambient-authority cases the hardening exists for - deterministic parent-swap at the sink (the
+    fd opener must refuse a mismatched inode without clearing either tree), nested-entry swap during
+    the walk, pre-pin replacement, and hostile `PATH` + hostile `TMPDIR` supplied to the hook process.
+    Some cases drive the module directly with an injected swap callback, which is what the test-injection
+    parameters named in the first entry are for. IT ALSO REPAIRS A CHECK THAT COULD NEVER DISCRIMINATE,
+    AND THIS IS THE STRONGEST SINGLE ARGUMENT IN THIS BATCH. Predicate (D) — "the live checkout''s
+    own `target/` is PRESERVED" — is asserted by invoking the hook with `cwd` set to the REPO ROOT.
+    That root''s `target/` is outside the scan roots and is therefore never reached, so the predicate
+    passes whether or not the `liveTarget` guard exists at all- neither its pass nor its fail says
+    anything about the property it names. This work fixes it by synthesizing a `LIVE_CHECKOUT` under
+    the temp root and pointing the hook''s `cwd` there, so the live-checkout target sits INSIDE the
+    scanned surface and the guard is the only thing that can preserve it. (D) becomes discriminating
+    for the first time. (D) additionally fails as shipped for a reason worth naming- it asserts a
+    Cargo `target/` at the repository root, which holds on an rs SDK repo and does not hold on a consumer
+    whose runtime is not Rust. The distribution manifest already scopes this whole cluster — the rule,
+    both session-lifecycle hooks, and this fixture — as rs-only with "no global equivalent", placed
+    under `variants/rs/`, and records an open RESIDUAL that neither hook is registered in any loom-side
+    lifecycle settings because there is no variant-hook registration mechanism. So the fixture''s
+    Cargo-root assumption is consistent with where the artifact is distributed; what is NOT consistent
+    is asserting it from a cwd the scan never visits. HONEST STATUS, AND IT IS NOT GREEN. On the host
+    where this was validated the extended fixture reports 15 of 17. Every TOCTOU predicate passes
+    - parent-swap-at-sink refused by the inode-pinned `O_NOFOLLOW` open, nested-entry swap defeated
+    by open-first `dir_fd` traversal, pre-pin replacement independently failing the fd-rooted cache
+    proof, hostile `TMPDIR` not widening confinement. The two failures are (A) "stray cache should
+    be cleared" and (J) "PATH attack", which are the only two predicates that drive the hook end to
+    end, and BOTH are collateral of the unfixed budget defect rather than security findings. That
+    was measured, not assumed- raising the budgets tenfold made (A) pass, and a second run at the
+    same raised budgets made it fail again, which is load-dependence rather than a code verdict. (J)
+    was reproduced standalone- the planted `find` on PATH did NOT run, because `findBinary` is pinned
+    to `/usr/bin/find`, so the security property (J) names HOLDS. What fails in (J) is its functional
+    half - the reclaim did not happen - because the pinned scan timed out. (J)''s assertion therefore
+    conflates a security property with a functional one and should be split into two predicates; a
+    reviewer reading its red as a PATH finding would be reading it wrong. WHY THIS FIXTURE CANNOT
+    REACH A CONSUMER TRUNK, AND THIS IS THE LOAD-BEARING ARGUMENT. The (D) fix is not new work and
+    it is not a rediscovery. It was authored once, on 2026-08-02, and it reached a consumer''s integration
+    trunk. It was then removed TWICE, and both removals were correct given where the file is owned.
+    HOW THIS HISTORY WAS READ, stated so the account is checkable rather than assertable, and because
+    reading it the obvious way produces the wrong answer. Plain `git log -- <path>` applies history
+    simplification and omits commits whose change does not survive into the merge result- on this
+    path it lists THREE commits where `git log --full-history -- <path>` lists FOURTEEN, and the restoration
+    described below is among the eleven it hides. Every claim in this entry is therefore taken from
+    BLOB HASHES at each commit under `--full-history`, never from commit subjects and never from the
+    simplified log. The same method establishes the inheritance question- the later branch carrying
+    this fixture descends from the original authoring (`--is-ancestor`, and its four fix lines match
+    the original''s), so it INHERITED the fix inside a larger rewrite rather than re-authoring it.
+    No claim of an independent second authoring is made, and an earlier draft of this entry that made
+    one was wrong. REMOVAL ONE, 2026-08-03 - a ROUTINE `/sync-from-template` pull of THIS TEMPLATE
+    at 2.24.0 reverted the file wholesale. The sync''s own diff on this path is a literal revert of
+    the four fix lines - the synthesized `LIVE_CHECKOUT` root, its cache setup, the hook invocation''s
+    `cwd`, and the (D) assertion target all return to the pre-fix `$REPO` form. Nothing about that
+    sync was wrong; the template ships this path, so the template''s copy won. THAT is the mechanism
+    this proposal exists to interrupt- the fix and the distribution channel are pointed at the same
+    file, and the channel wins every time. REMOVAL TWO, 2026-08-09 - the fix was restored on a side
+    lineage the same day as the revert, survived three subsequent main-merges, and was then stripped
+    again by a single-parent commit that restored 52 loom-owned artifacts to their distributed state
+    on the explicit ground that a consumer consumes them read-only and "improvements route UP via
+    /codify Step 7c — never by hand-editing them in a consumer repo". That removal was also correct,
+    and it is not reducible to a stale template pull- the commit forecloses that reading itself, noting
+    that the repo-class file and the distribution manifest are byte-identical on both sides, which
+    a real pull moving 52 artifacts would not have left untouched (independently confirmed - both
+    blobs are unchanged across the commit). The consumer looked at a template-owned file carrying
+    a local fix and surrendered the local fix ON PRINCIPLE, which is precisely the principle this
+    Step-7c route exists to serve. So the fixture has been red on that trunk for five weeks, not because
+    nobody fixed it, but because it was fixed, distributed over, restored, and then deliberately surrendered
+    to the owner of the file. That commit also named the remedy in its own message — "The governance
+    artifacts are not abandoned — they are routed." THIS PROPOSAL IS THE FIRST TIME THAT ROUTING HAS
+    BEEN EXECUTED FOR THIS ITEM, 33 DAYS LATER. The intent was recorded on the day of the removal;
+    only the execution was missing, which is the honest answer to the obvious question of why this
+    was not upflowed in August. Verifiable from the template side without any consumer access- inspect
+    what 2.24.0 ships for this path and observe that it carries the `cwd = $REPO` form, which is the
+    form that cannot discriminate.
+
+    '
+  diff_lines: +178 -4
+- file: .claude/bin/validate-emit.mjs
+  action: modified
+  base_version: 2.24.0
+  reason: 'Four changes of one class - the emission validator has paths on which it reports something
+    other than a failure while having produced no verdict, which is the instrument-discipline.md MUST-1
+    shape sitting at the gate that guards distribution. (1) DELIVERED-REFERENCE INTEGRITY (new, check
+    E in `consumer-efficacy`) - a loader-valid emitted artifact can still be operationally broken
+    when its body points at a CLI-local file that composition excluded or renamed. `findDanglingEmittedReferences`
+    walks the fresh emission''s `.codex/{prompts,skills}` and `.gemini/{commands,skills,agents}` lanes,
+    extracts every concrete CLI-local reference, and FAILS on any whose target is absent. It judges
+    absolute fresh-emission state, not the diff. Both the emission root and each candidate are canonicalized
+    before the containment decision and an unresolvable or escaping target fails closed, so a symlink
+    cannot make an out-of-tree file read as delivered. (2) PER-LANE SCAN EVIDENCE - a scan lane that
+    is missing, unreadable, symlinked, or resolves outside the emission root is recorded as an explicit
+    finding rather than contributing zero sources. Before this, an absent lane read as a clean lane.
+    (3) AN ERRORED EMITTER IS NO LONGER A PASS - `checkMirrorExclusion` and `checkConsumerEfficacy`
+    downgraded to SKIP when `emit-cli-artifacts.mjs` could not be run or the manifest could not be
+    read. Both now FAIL, with the detail naming that the evidence did not run. A crash in the thing
+    being measured is zero evidence, never confirmation (evidence-first-claims.md MUST-3). (4) `main()`
+    returns a status instead of calling `process.exit`, and the entry point sets `process.exitCode`
+    - so buffered stdout is not truncated on the way out and the function is callable from the fixture
+    harness. `WARN:`-prefixed advisory details are renamed `ADVISORY:` throughout, detail text and
+    matching predicate moving together, so the non-blocking lexical channel is not confusable with
+    a blocking one.
+
+    '
+  diff_lines: +127 -13
+- file: .claude/bin/lib/coc-manifest.mjs
+  action: modified
+  base_version: 2.24.0
+  reason: 'Fixes the CLI path-rewriter that PRODUCES the dangling references the new integrity check
+    detects - without this, the check reports real breakage the rewriter keeps re-creating on every
+    emit. Three corrections. (a) Gemini command files are emitted as TOML, but the rewriter mapped
+    only the DIRECTORY, leaving `.gemini/commands/<name>.md` references pointing at files that are
+    never emitted; the extension is now rewritten with the directory. (b) Agent files flatten their
+    source category directory on emission, and Codex additionally uses the `specialist-<name>` prompt
+    convention with a trailing `-specialist` stripped - the old directory-only rewrite preserved the
+    source category path and so pointed at nothing. The replacement resolves the full file reference
+    per CLI. (c) `sync-flow.md` is the CLI-neutral reference file inside an otherwise deliberately
+    Claude-only skill, so it is fenced through a sentinel and restored verbatim rather than being
+    rewritten into a CLI tree from which the enclosing skill is excluded.
+
+    '
+  diff_lines: +22 -2
+- file: .claude/bin/emit.mjs
+  action: modified
+  base_version: 2.24.0
+  reason: 'Four fixes in the emitter, one of which is a silent SECURITY-CONTENT LOSS and is stated
+    first. (1) `abridgeV6` strips the `## Origin` provenance section from an emitted CLI baseline,
+    but its heading test was a PREFIX match - `/^##\s+Origin\b/i` - so ANY H2 whose title merely BEGINS
+    with "Origin" was deleted along with its entire body. A section titled `## Origin Validation`
+    is exactly that shape, and Origin/Host validation is the DNS-rebinding defence security.md mandates
+    for HTTP MCP transports. A security requirement could therefore be removed from the emitted baseline
+    while the source file still carried it, with no downstream signal that anything was missing. The
+    test is tightened to match only a bare `## Origin` heading, and a regression case pins that `##
+    Origin Validation` survives abridgement. (2) `_collectDeclaredArtifactPatterns` widened every
+    declared `skills/<name>/<file>` entry into a `skills/<name>/**` wildcard, so declaring ONE file
+    in a skill directory silently declared the whole directory - `validateTierCompleteness` would
+    then report a clean distribution fate for artifacts nobody had classified. The widening is removed
+    and the completeness walk now enumerates FILES under `skills/` rather than directories, so an
+    undeclared artifact inside a partially-declared skill is reported. (3) V17''s canon-only roster
+    probe skipped whenever the repo-class field was anything other than `coc-source`, which means
+    a TYPO in that field disabled the probe silently. `classifyRosterProbeRole` makes the decision
+    a closed set - run / skip / invalid - and an unrecognized role now FAILS rather than skipping.
+    (4) The `WARN` emission tier is reported as `ADVISORY` in both the stdout line and the stderr
+    notice, matching the validator rename above so the advisory channel is distinguishable from a
+    blocking one.
+
+    '
+  diff_lines: +29 -12
+- file: .claude/bin/emit-reference-integrity.test.mjs
+  action: created
+  base_version: 2.24.0
+  reason: 'New test file covering `findDanglingEmittedReferences` and the fail-closed downgrades -
+    a resolving reference passes, a missing target fails, a symlink pointing outside the emission
+    root fails, a missing or unreadable scan lane is reported as a finding rather than silently contributing
+    no sources, and an errored emitter blocks. NOTE ON THE RUNNER, because it contradicts the surrounding
+    convention - this file and its sibling below are `node:test` files (they `import test from "node:test"`)
+    and are run with `node --test`, NOT with the repo''s `*.test.mjs` vitest convention. A reviewer
+    who runs them under vitest gets a misleading result. Both suites were run for this proposal -
+    5 of 5 and 6 of 6 pass. That is the whole of the automated evidence for surface 2; no CI leg runs
+    them.
+
+    '
+  diff_lines: +117 -0
+- file: .claude/bin/emit-tier-completeness.test.mjs
+  action: modified
+  base_version: 2.24.0
+  reason: 'Follows the emitter changes with three assertions that would have caught them. The skill-pattern
+    case is re-pinned to a FILE that is declared (passes) alongside a sibling file in the same skill
+    directory that is NOT declared (must now fail) - the PAIR is what makes removal of the `skills/<name>/**`
+    widening observable, since either assertion alone passes under both the old and the new behaviour.
+    `classifyRosterProbeRole` is pinned over its whole closed set including a deliberately misspelled
+    role that must classify `invalid`. An `abridgeV6` case pins that `## Origin Validation` and its
+    body survive abridgement. `node:test` file, as above.
+
+    '
+  diff_lines: +18 -1
+- file: .claude/skills/03-nexus/README.md
+  action: modified
+  base_version: 2.24.0
+  reason: 'Three cross-skill pointers cite the pre-renumbering skill layout - `skills/1-core-sdk/`,
+    `skills/2-frameworks/dataflow/`, `skills/2-frameworks/kaizen/`. None of those paths exist; repaired
+    to `skills/01-core-sdk/`, `skills/02-dataflow/`, `skills/04-kaizen/`.
+
+    '
+  diff_lines: +3 -3
+- file: .claude/skills/06-cheatsheets/README.md
+  action: modified
+  base_version: 2.24.0
+  reason: 'The "Related Documentation" pointer cites `skills/3-patterns/cheatsheets/`, a path from
+    the pre-renumbering layout that does not exist; repaired to this skill''s own real location `skills/06-cheatsheets/`.
+
+    '
+  diff_lines: +1 -1
+- file: .claude/skills/16-validation-patterns/validate-workflow-structure.md
+  action: modified
+  base_version: 2.24.0
+  reason: 'Directs the reader to start from `skills/15-code-templates/`, which does not exist in the
+    corpus; repointed at the maintained patterns in `skills/01-core-sdk/`.
+
+    '
+  diff_lines: +1 -1
+- file: .claude/skills/12-testing-strategies/probe-driven-verification.md
+  action: modified
+  base_version: 2.24.0
+  reason: 'The worked example of a STRUCTURAL FACT asserts `.codex/prompts/sync.md exists` - a concrete
+    emitted path that is not emitted, so the illustration of a discriminating structural check is
+    itself a reference that does not resolve. Generalized to `.codex/prompts/<command>.md` so the
+    example teaches the shape without pinning a file composition may exclude.
+
+    '
+  diff_lines: +1 -1
+- file: .claude/skills/command-authoring/SKILL.md
+  action: modified
+  base_version: 2.24.0
+  reason: 'The native-primitive carve-out section cites `.claude/agents/codex-architect.md` by path
+    and instructs the reader not to emit `.codex/prompts/review.md`; both are concrete artifact paths
+    inside guidance that is itself emitted into the Codex tree, where the agent path does not exist
+    under that name. Both restated as the contract rather than the path.
+
+    '
+  diff_lines: +2 -2
+- file: .claude/skills/management/release-workflow.md
+  action: modified
+  base_version: 2.24.0
+  reason: 'The file-map table lists `.claude/agents/management/release-manager.md`, an agent that
+    no longer exists under that path or that name; repaired to the real `.claude/agents/release/release-specialist.md`.
+
+    '
+  diff_lines: +1 -1
+- file: .claude/commands/sync-from-template.md
+  action: modified
+  base_version: 2.24.0
+  reason: 'The BUILD-vs-USE distinction tells downstream consumers that `/codify` writes to `.claude/agents/project/`
+    and `.claude/skills/project/`. Neither directory is part of the distributed layout, so a consumer
+    following the instruction creates an unmanaged surface. Restated as the preserved-surface contract
+    without naming directories the corpus does not define.
+
+    '
+  diff_lines: +1 -1
+- file: .claude/commands/whoami.md
+  action: modified
+  base_version: 2.24.0
+  reason: 'The implementation-notes paragraph claims key-fingerprint extraction commands, branch-naming
+    examples, and GPG-vs-SSH detection heuristics live in `skills/30-claude-code-patterns/`; that
+    material is in skill 43''s operational runbook, which the same paragraph already cites for the
+    adjacent ceremony gotchas. The wrong pointer is dropped and the fingerprint material folded into
+    the correct citation, leaving the validator, schema, and roster paths — which do resolve — unchanged.
+
+    '
+  diff_lines: +1 -1
+- file: .claude/hooks/build-cache-guard.js
+  action: modified
+  base_version: 2.24.0
+  reason: 'Proposes that BOTH build-cache session-lifecycle hooks SELF-SKIP on a repository with no
+    Cargo surface, because as shipped they run every session on consumers where they can never have
+    anything to do. The evidence is a closed loop and every link is in the distributed artifacts themselves.
+    (1) The distribution manifest scopes this whole cluster to Rust - the rule, both session-lifecycle
+    hooks, and the deletion-safety fixture are declared "rs-specific cargo `target/` cache-reclaim
+    discipline … all rs-only (no global equivalent)" and are shipped under `variants/rs/`. (2) The
+    same manifest block records that NEITHER hook is registered anywhere upstream, and says why- there
+    is no variant-hook lifecycle-registration mechanism, so "the SessionStart/SessionEnd wiring is
+    a CONSUMER-side concern on pull", explicitly FLAGGED for Gate-2 disposition. (3) `build-cache-guard.js`
+    says the same thing about itself in its own header - `@settings-registration: optional-consumer`,
+    an rs-VARIANT-ONLY hook "registered in NO loom settings.json", with the marker declared to BE
+    the Gate-2 disposition the manifest flagged for it. (4) So every consumer that pulls the rs variant
+    wires these two hooks by hand, and any consumer whose runtime is not Rust wires two Cargo-cache
+    hooks into every session. That is not hypothetical- measured on a consumer carrying ZERO Rust
+    files (calibrated- the same enumeration returns 551 TypeScript files), both hooks are registered
+    at SessionStart and SessionEnd, and running the reclaimer against a planted stray Cargo cache
+    produced exit 0, stdout `{"continue":true}`, 8 seconds of wall time, and the cache still present.
+    Eight seconds per session, forever, on a repo that can never have a `target/` to reclaim. PROPOSED
+    DISPOSITION, AND THE SHAPE OF IT IS THE POINT. Add a fail-fast guard at the top of both hooks-
+    no `Cargo.toml` and no `*.rs` anywhere in the repository means exit 0 immediately, before any
+    scan. Fix it ONCE, upstream, in the loom-owned hook, and it costs nothing on a genuine Rust repo.
+    The alternative — telling each consumer to unregister the hooks — is REJECTED here for two reasons
+    and the second one is structural. First, it is a per-consumer wiring decision that every rs-variant
+    non-Rust consumer would face independently and re-face on every pull. Second, it is not durable-
+    the consumer settings surface is listed in the manifest''s own `exclude:` block, yet the routine
+    2.24.0 sync rewrote it anyway (+22/-11) — the same self-exclusion failure this batch documents
+    elsewhere — so an unregistration would simply be re-added by the next sync. Worth one line for
+    the reviewer who will ask the obvious follow-up- neither build-cache hook is in the settings self-heal
+    protected set (`CANONICAL_GUARD_HOOKS` holds exactly two markers, both of them the deny-guards;
+    the string `build-cache` appears zero times in either guard, calibrated against a token known
+    present at 15 hits), so an unregistration would NOT be auto-restored. It would just be re-synced.
+    Which is the same mechanism as removal one in the fixture entry above, arriving at the same conclusion-
+    the durable fix lives upstream or it does not live.
+
+    '
+  diff_lines: ~+6 -0 (an early-return Cargo-surface probe at the head of each of the two hooks)
